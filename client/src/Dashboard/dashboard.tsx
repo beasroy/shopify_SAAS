@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {  ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {Navbar} from './navbar.tsx';
 import { RefreshCw } from "lucide-react";
@@ -47,6 +47,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
  
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 6;
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -79,10 +82,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
 
-    // Set up automatic refresh every 5 minutes
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
 
-    // Clean up interval on component unmount
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
@@ -98,8 +99,11 @@ export default function Dashboard() {
           return sortDirection === 'asc' 
             ? a.order_number - b.order_number
             : b.order_number - a.order_number;
+        } else if (sortColumn === 'total_price') {
+          return sortDirection === 'asc'
+            ? parseFloat(a.total_price) - parseFloat(b.total_price)
+            : parseFloat(b.total_price) - parseFloat(a.total_price);
         }
-        // Add other columns if needed
         return 0;
       });
 
@@ -129,6 +133,14 @@ export default function Dashboard() {
   const handleManualRefresh = () => {
     fetchData();
   };
+
+  // Calculate the orders for the current page
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   if (!data) return <div className="flex items-center justify-center h-screen">
     <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
@@ -196,7 +208,10 @@ export default function Dashboard() {
                     <TableRow className="bg-gray-100">
                       {['Order Number', 'Total Price', 'Date', 'Status'].map((header) => (
                         <TableHead key={header} className="font-semibold text-gray-600">
-                          <Button variant="ghost" onClick={() => handleSort(header.toLowerCase().replace(' ', '_') as keyof Order)}>
+                          <Button 
+                            variant="ghost" 
+                            onClick={() => handleSort(header.toLowerCase().replace(' ', '_') as keyof Order)}
+                          >
                             {header}
                             {sortColumn === header.toLowerCase().replace(' ', '_') && (
                               sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
@@ -207,7 +222,7 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.map((order) => (
+                    {currentOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-gray-50 transition-colors">
                         <TableCell className="font-medium">{order.order_number}</TableCell>
                         <TableCell>€{parseFloat(order.total_price).toFixed(2)}</TableCell>
@@ -221,6 +236,26 @@ export default function Dashboard() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-4">
+                <Button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
+                <span>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
+                <Button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={indexOfLastOrder >= filteredOrders.length}
+                  variant="outline"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -244,18 +279,30 @@ export default function Dashboard() {
         </div>
 
         {/* Sales by Time of Day chart */}
-        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-8">
+        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
           <CardHeader>
             <CardTitle className="text-lg text-gray-600">Sales by Time of Day</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-80"> {/* Increased height */}
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))}>
+              <BarChart
+                data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="sales" fill="#8884d8" />
+                <XAxis 
+                  dataKey="hour" 
+                  label={{ value: 'Hour of Day', position: 'insideBottom', offset: -10 }}
+                  tickFormatter={(hour) => `${hour}:00`}
+                />
+                <YAxis 
+                  label={{ value: 'Sales (€)', angle: -90, position: 'insideLeft', offset: 15 }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`€${value}`, 'Sales']}
+                  labelFormatter={(hour) => `Time: ${hour}:00 - ${(hour + 1) % 24}:00`}
+                />
+                <Bar dataKey="sales" fill="#8884d8" name="Sales" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

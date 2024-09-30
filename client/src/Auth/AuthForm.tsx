@@ -65,7 +65,7 @@ export default function AuthForm() {
             if (response.data.success) {
                 localStorage.setItem('token', response.data.token);
                 localStorage.setItem('username', response.data.user.username); 
-              console.log(response.data.user.username)
+              
 
                 toast({
                     title: 'Login successful!',

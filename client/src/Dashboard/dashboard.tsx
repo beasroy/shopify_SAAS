@@ -52,12 +52,13 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        alert('Please Login');
         navigate('/');
         return;
       }
       const response = await axios.get<DashboardData>('http://localhost:8000/shopify/data', {
         headers: {
-            Authorization: `Bearer ${token}` // Include the token in the Authorization header
+            Authorization: `Bearer ${token}`
         }
     });
     console.log(response.data);

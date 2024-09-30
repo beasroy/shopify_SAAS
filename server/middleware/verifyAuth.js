@@ -12,10 +12,10 @@ export const verifyAuth = (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - No Token Provided" });
     }
 
-    const token = authHeader.split(" ")[1]; // Get token part after "Bearer"
+    const token = authHeader.split(" ")[1]; 
     const decoded = jwt.verify(token, SECRET_KEY);
 
-    req.user = decoded; // Attach decoded user data to the request
+    req.user = decoded; 
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

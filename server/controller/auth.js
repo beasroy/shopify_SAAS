@@ -55,7 +55,7 @@ export const userRegistration = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: 'User registered successfully',
-            data: userResponse
+            user: userResponse
         });
 
     } catch (error) {
@@ -98,13 +98,22 @@ export const userLogin = async (req, res) => {
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '1d' } 
         );
+
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: isProduction, 
+            sameSite: isProduction ? 'strict' : 'lax', 
+            maxAge: 24* 60 * 60 * 1000 
+        });
+
 
         return res.status(200).json({
             success: true,
             message: 'Login successful',
-            token, 
             user: {
                 id: user._id,
                 username: user.username,
@@ -121,6 +130,29 @@ export const userLogin = async (req, res) => {
         });
     }
 }
+
+export const userLogout = (req, res) => {
+    try {
+        res.clearCookie('token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    } catch (error) {
+        console.error('Error during logout:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred during logout.',
+            error: error.message
+        });
+    }
+};
+
 
 
 

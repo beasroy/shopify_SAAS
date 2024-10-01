@@ -53,18 +53,10 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please Login');
-        navigate('/');
-        return;
-      }
       const response = await axios.get<DashboardData>('http://localhost:8000/shopify/data', {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    });
-    console.log(response.data);
+        withCredentials: true 
+      });
+      console.log(response.data);
       setData(response.data);
       setFilteredOrders(response.data.orders);
       setLastUpdated(new Date());
@@ -72,12 +64,12 @@ export default function Dashboard() {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert('Your session has expired. Please log in again.');
-        navigate('/login');
+        navigate('/');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     fetchData();

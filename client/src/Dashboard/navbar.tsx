@@ -1,23 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { LogOut, User, ShoppingBag } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useUser } from '../context/UserContext' 
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState<string>('');
+  const { user, setUser } = useUser(); 
 
-  useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:8000/auth/logout', {}, {
+        withCredentials: true
+      });
+      setUser(null); 
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    navigate('/');
   };
 
   return (
@@ -31,7 +32,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center space-x-4">
             <Button variant="ghost" className="text-gray-600 hover:text-gray-800 hover:bg-gray-100">
               <User className="h-5 w-5 mr-2" />
-              <span className="hidden sm:inline">{username || 'User'}</span>
+              <span className="hidden sm:inline">{user?.username || 'User'}</span>
             </Button>
             <Button 
               variant="outline" 

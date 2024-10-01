@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast" // Importing the toast functionality
+import { useToast } from "@/hooks/use-toast"
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext'; 
 
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,7 @@ export default function AuthForm() {
   const { toast } = useToast()
   const navigate = useNavigate();
   const [errors, setErrors] = useState({ username: '', email: '', password: '' });
+  const { setUser } = useUser(); 
 
   const toggleForm = () => setIsLogin(!isLogin);
 
@@ -59,13 +61,14 @@ export default function AuthForm() {
         if (isLogin) {
             response = await axios.post(
                 'http://localhost:8000/auth/login', 
-                { email, password }
+                { email, password },
+                { withCredentials: true }
             );
 
             if (response.data.success) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('username', response.data.user.username); 
-              
+                // Set the user in the context
+                setUser(response.data.user);
+                console.log('User set in context:', response.data.user);
 
                 toast({
                     title: 'Login successful!',
@@ -77,22 +80,20 @@ export default function AuthForm() {
         } else {
             response = await axios.post(
                 'http://localhost:8000/auth/signup', 
-                { username, email, password }
+                { username, email, password },
+                { withCredentials: true }
             );
 
             if (response.data.success) {
-                // Show success toast for signup
                 toast({
                     title: 'Registration successful!',
                     description: 'Please log in with your new account.',
                     variant: 'default',
                 });
-                // Switch to login form
                 setIsLogin(true);
             }
         }
     } catch (error) {
-        // Show error toast
         if (axios.isAxiosError(error) && error.response) {
             toast({
                 title: 'Error',
@@ -107,7 +108,7 @@ export default function AuthForm() {
             });
         }
     }
-};
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600">
@@ -154,7 +155,6 @@ export default function AuthForm() {
             </motion.div>
           )}
 
-          {/* Email Field */}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -168,7 +168,7 @@ export default function AuthForm() {
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
-          {/* Password Field */}
+         
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -182,13 +182,11 @@ export default function AuthForm() {
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
-          {/* Submit Button */}
           <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
             {isLogin ? 'Login' : 'Sign Up'}
           </Button>
         </form>
 
-        {/* Toggle Login/Signup */}
         <p className="mt-4 text-center text-sm text-gray-600">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button onClick={toggleForm} className="text-indigo-600 hover:underline">

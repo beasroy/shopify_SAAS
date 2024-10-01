@@ -20,21 +20,21 @@ export const fetchShopifyData = async (req, res) => {
     const orders = await shopify.order.list({status :'any'});
     console.log(`Successfully fetched ${orders.length} orders`);
 
-    // Calculations
+    
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-    // Top-selling products
+    
     const topSellingProducts = getTopSellingProducts(orders);
 
-    // Sales by time of day
+    
     const salesByTimeOfDay = getSalesByTimeOfDay(orders);
 
-    // Conversion rate (You can modify how conversion rate is calculated)
+    
     const conversionRate = calculateConversionRate(orders);
 
-    // Send the response with calculated metrics
+    
     res.json({
       orders,
       totalOrders,

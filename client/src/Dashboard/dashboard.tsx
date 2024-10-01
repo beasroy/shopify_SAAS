@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import {Navbar} from './navbar.tsx';
 import { RefreshCw } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
-
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp } from "lucide-react";
 
 interface DashboardData {
   orders: any[];
@@ -43,12 +43,11 @@ export default function Dashboard() {
   const [orderFilter, setOrderFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const navigate = useNavigate();
  
-
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 6;
+
+  const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -164,17 +163,18 @@ export default function Dashboard() {
         {/* Top stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {[
-            { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600" },
-            { title: "Total Sales", value: `€${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600" },
-            { title: "Conversion Rate", value: `${data.conversionRate.toFixed(2)}%`, colorClass: "text-violet-600" },
-            { title: "Average Order Value", value: `€${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600" }
+            { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600", icon: ShoppingCart },
+            { title: "Total Sales", value: `€${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600", icon: DollarSign },
+            { title: "Conversion Rate", value: `${data.conversionRate.toFixed(2)}%`, colorClass: "text-violet-600", icon: PercentIcon },
+            { title: "Average Order Value", value: `€${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600", icon: TrendingUp }
           ].map((item, index) => (
             <Card key={index} className="shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg text-gray-600">{item.title}</CardTitle>
+                <item.icon className={`h-6 w-6 ${item.colorClass}`} />
               </CardHeader>
               <CardContent>
-                <p className={`text-5xl font-bold ${item.colorClass}`}>{item.value}</p>
+                <p className={`text-4xl font-bold ${item.colorClass}`}>{item.value}</p>
               </CardContent>
             </Card>
           ))}
@@ -216,9 +216,9 @@ export default function Dashboard() {
                   <TableBody>
                     {currentOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-gray-50 transition-colors">
-                        <TableCell className="font-medium">{order.order_number}</TableCell>
-                        <TableCell>€{parseFloat(order.total_price).toFixed(2)}</TableCell>
-                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium px-5">{order.order_number}</TableCell>
+                        <TableCell className=" px-5">€{parseFloat(order.total_price).toFixed(2)}</TableCell>
+                        <TableCell className=" px-5">{new Date(order.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge className={`${getStatusColor(order.financial_status)} font-semibold`}>
                             {order.financial_status}
@@ -255,7 +255,7 @@ export default function Dashboard() {
           {/* Top Selling Products */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Top Selling Products</CardTitle>
+              <CardTitle className="text-2xl text-gray-600">Top Selling Products</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">

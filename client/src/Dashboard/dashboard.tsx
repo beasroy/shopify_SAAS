@@ -14,8 +14,17 @@ import React from 'react';
 import MonthlyReturningCustomerRatesChart from './MonthlyReturningCustomerRatesChart';
 import { ReferringChannelChart } from './ReferringChannelChart';
 import SalesByTimeOfDayChart from './SalesByTimeOfDayChart';
+import TopCitiesLineChart from './CityChart.tsx';
 
+interface ReportData {
+  yearMonth: string;
+  [key: string]: string; // Allows for additional properties like landingPage, city, channel, etc.
+}
 
+interface AnalyticsReport {
+  reportType: string;
+  data: ReportData[];
+}
 
 interface DashboardData {
   orders: any[];
@@ -27,7 +36,19 @@ interface DashboardData {
   salesByTimeOfDay: number[];
   MonthlyCustomerReturnRate: { [month: string]: number };
   referringChannelsData: { [channel: string]: number }
+}
 
+interface CombinedData {
+  orders: any[];
+  totalOrders: number;
+  totalSales: number;
+  conversionRate: number;
+  averageOrderValue: number;
+  topSellingProducts: { name: string; count: number }[];
+  salesByTimeOfDay: number[];
+  MonthlyCustomerReturnRate: { [month: string]: number };
+  referringChannelsData: { [channel: string]: number }
+  analyticsReports: AnalyticsReport[];
 }
 
 interface Order {
@@ -44,7 +65,7 @@ export default function Dashboard() {
 
 
 
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData] = useState<CombinedData | null>(null);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof Order>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -80,13 +101,31 @@ export default function Dashboard() {
         url += `?${params.toString()}`;
       }
 
-      const response = await axios.get<DashboardData>(url, {
+      const shopifyResponse = await axios.get<DashboardData>(url, {
         withCredentials: true
       });
-      console.log("response", response.data);
-      console.log("response monthlycustomer", response.data.MonthlyCustomerReturnRate);
-      setData(response.data);
-      setFilteredOrders(response.data.orders);
+
+      const analyticsResponse = await axios.post('http://localhost:8000/analytics/report', {
+        startDate,
+        endDate
+      }, {
+        withCredentials: true
+      });
+
+      console.log("Shopify response", shopifyResponse.data);
+      console.log("Analytics response", analyticsResponse.data);
+
+
+      const combinedData = {
+        ...shopifyResponse.data,
+        analyticsReports: analyticsResponse.data // Add analytics data to the combined data
+      };
+
+      setData(combinedData);
+
+
+      setFilteredOrders(combinedData.orders);
+
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -111,11 +150,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (data) {
-      let filtered = data.orders.filter(order =>
-        order.order_number.toString().includes(orderFilter) &&
-        (startDate ? new Date(order.created_at).toLocaleDateString() === new Date(startDate).toLocaleDateString() : true) &&
-        (endDate ? new Date(order.created_at).toLocaleDateString() === new Date(endDate).toLocaleDateString() : true)
-      );
+      let filtered = data.orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
+        const matchesStartDate = startDate ? orderDate >= new Date(startDate) : true;
+        const matchesEndDate = endDate ? orderDate <= new Date(endDate) : true;
+
+        // Debugging line to check each order's match status
+        console.log(`Order ID: ${order.id}, Matches: ${matchesOrderNumber && matchesStartDate && matchesEndDate}`);
+
+        return matchesOrderNumber && matchesStartDate && matchesEndDate;
+      });
 
       // Apply sorting
       filtered.sort((a, b) => {
@@ -132,7 +177,6 @@ export default function Dashboard() {
       });
 
       setFilteredOrders(filtered);
-
     }
   }, [data, orderFilter, startDate, endDate, sortColumn, sortDirection]);
 
@@ -180,7 +224,7 @@ export default function Dashboard() {
   const handleManualRefresh = () => {
     fetchData();
   };
-
+  console.log(filteredOrders)
   // Calculate the orders for the current page
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
@@ -190,22 +234,42 @@ export default function Dashboard() {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   const prepareMonthlyReturnRatesData = () => {
-    if (!data || !data.MonthlyCustomerReturnRate) return [];
+    if (!data || !data.analyticsReports) return [];
 
-    return Object.entries(data.MonthlyCustomerReturnRate).map(([month, returningCustomerRate]) => {
-      console.log(`Month: ${month}, Returning Customer Rate:`, returningCustomerRate); // Log the rate
-      return {
-        month,
-        returningCustomerRate: returningCustomerRate !== undefined ? returningCustomerRate : 0, // Default to 0 if undefined
-      };
-    });
+    // Find the report for "Returning Customer Rate"
+    const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
+
+    if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
+
+    // Map the data to the expected format
+    return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
+      month: yearMonth, // e.g., '202410'
+      returningCustomerRate: parseFloat(returnRate) || 0, // Convert to number, default to 0 if NaN
+    }));
+  };
+  const preparedReferringData = () => {
+    if (!data || !data.analyticsReports) return [];
+
+    const referringChannelData = data.analyticsReports.find(report => report.reportType === 'Sessions by Referring Channel')?.data || [];
+    if (!referringChannelData) return [];
+    // Prepare the referring data
+    return referringChannelData.map(entry => ({
+      channel: entry.channel,
+      visitors: entry.visitors, // Keep visitors as a string
+    }));
   };
 
-  const preparedReferringData = Object.entries(data?.referringChannelsData || {}).map(([channel, orderCount]) => ({
-    channel,
-    orderCount,
-  }));
-  console.log(preparedReferringData);
+  const preparedCityData = () => {
+    if (!data || !data.analyticsReports) return [];
+
+    const cityData = data.analyticsReports.find(report => report.reportType === 'Sessions by Location')?.data || [];
+    if (!cityData) return [];
+    // Prepare the referring data
+    return cityData.map(entry => ({
+      city: entry.city,
+      visitors: entry.visitors, // Keep visitors as a string
+    }));
+  };
 
 
 
@@ -388,10 +452,19 @@ export default function Dashboard() {
           {/* Referring Channels Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Referring Channels</CardTitle>
+              <CardTitle className="text-lg text-gray-600">Top 5 Referring Channels</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
-              <ReferringChannelChart data={preparedReferringData} />
+              <ReferringChannelChart rawData={preparedReferringData()} />
+            </CardContent>
+          </Card>
+          {/* City Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-600">Top 5 Cities</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              <TopCitiesLineChart cityData={preparedCityData()} />
             </CardContent>
           </Card>
         </div>

@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-analytics/data": "^4.9.0",
+    "@shopify/shopify-api": "^11.5.0",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",

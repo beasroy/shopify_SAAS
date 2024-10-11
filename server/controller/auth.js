@@ -98,7 +98,7 @@ export const userLogin = async (req, res) => {
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
-            { expiresIn: '1d' } 
+            { expiresIn: '1h' } 
         );
 
         const isProduction = process.env.NODE_ENV === 'production';
@@ -107,7 +107,7 @@ export const userLogin = async (req, res) => {
             httpOnly: true,
             secure: isProduction, 
             sameSite: isProduction ? 'strict' : 'lax', 
-            maxAge: 24* 60 * 60 * 1000 
+            maxAge: 60 * 60 * 1000 
         });
 
 

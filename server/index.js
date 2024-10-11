@@ -5,6 +5,7 @@ import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.js"
 import spotifyRoutes from "./routes/shopify.js"
+import analyticsRoutes from "./routes/analytics.js"
 
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(cookieParser());
 
 app.use("/auth",authRoutes);
 app.use("/shopify",spotifyRoutes);
+app.use("/analytics",analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

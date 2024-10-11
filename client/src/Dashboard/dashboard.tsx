@@ -1,16 +1,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {Navbar} from './navbar.tsx';
+import { Navbar } from './navbar.tsx';
 import { RefreshCw } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp } from "lucide-react";
+import React from 'react';
+import MonthlyReturningCustomerRatesChart from './MonthlyReturningCustomerRatesChart';
+import { ReferringChannelChart } from './ReferringChannelChart';
+import SalesByTimeOfDayChart from './SalesByTimeOfDayChart';
+
+
 
 interface DashboardData {
   orders: any[];
@@ -20,6 +25,9 @@ interface DashboardData {
   averageOrderValue: number;
   topSellingProducts: { name: string; count: number }[];
   salesByTimeOfDay: number[];
+  MonthlyCustomerReturnRate: { [month: string]: number };
+  referringChannelsData: { [channel: string]: number }
+
 }
 
 interface Order {
@@ -32,18 +40,21 @@ interface Order {
 
 
 export default function Dashboard() {
- 
 
- 
+
+
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [sortColumn, setSortColumn] = useState<keyof Order>('order_number');
+  const [sortColumn, setSortColumn] = useState<keyof Order>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [orderFilter, setOrderFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
- 
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 6;
 
@@ -52,10 +63,28 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get<DashboardData>('http://localhost:8000/shopify/data', {
-        withCredentials: true 
+      let url = 'http://localhost:8000/shopify/data';
+      const params = new URLSearchParams();
+
+      if (orderFilter) {
+        params.append('orderNumber', orderFilter);
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
+      const response = await axios.get<DashboardData>(url, {
+        withCredentials: true
       });
-      console.log(response.data);
+      console.log("response", response.data);
+      console.log("response monthlycustomer", response.data.MonthlyCustomerReturnRate);
       setData(response.data);
       setFilteredOrders(response.data.orders);
       setLastUpdated(new Date());
@@ -68,7 +97,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, orderFilter, startDate, endDate]);
 
   useEffect(() => {
     fetchData();
@@ -78,16 +107,20 @@ export default function Dashboard() {
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
+
+
   useEffect(() => {
     if (data) {
-      let filtered = data.orders.filter(order => 
-        order.order_number.toString().includes(orderFilter)
+      let filtered = data.orders.filter(order =>
+        order.order_number.toString().includes(orderFilter) &&
+        (startDate ? new Date(order.created_at).toLocaleDateString() === new Date(startDate).toLocaleDateString() : true) &&
+        (endDate ? new Date(order.created_at).toLocaleDateString() === new Date(endDate).toLocaleDateString() : true)
       );
 
       // Apply sorting
       filtered.sort((a, b) => {
         if (sortColumn === 'order_number') {
-          return sortDirection === 'asc' 
+          return sortDirection === 'asc'
             ? a.order_number - b.order_number
             : b.order_number - a.order_number;
         } else if (sortColumn === 'total_price') {
@@ -99,8 +132,13 @@ export default function Dashboard() {
       });
 
       setFilteredOrders(filtered);
+
     }
-  }, [data, orderFilter, sortColumn, sortDirection]);
+  }, [data, orderFilter, startDate, endDate, sortColumn, sortDirection]);
+
+  console.log('Data:', data);
+
+  console.log("reffering channel", data?.referringChannelsData)
 
   const handleSort = (column: keyof Order) => {
     if (column === sortColumn) {
@@ -111,12 +149,30 @@ export default function Dashboard() {
     }
   };
 
+  const handleOrderFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOrderFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStartDate(e.target.value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEndDate(e.target.value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+
+
+
+
   const getStatusColor = (status: string) => {
     const statusMap: { [key: string]: string } = {
       paid: "bg-green-100 text-green-800",
       pending: "bg-yellow-100 text-yellow-800",
       refunded: "bg-red-100 text-red-800",
-      // Add more statuses as needed
     };
     return statusMap[status.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
@@ -132,6 +188,29 @@ export default function Dashboard() {
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  const prepareMonthlyReturnRatesData = () => {
+    if (!data || !data.MonthlyCustomerReturnRate) return [];
+
+    return Object.entries(data.MonthlyCustomerReturnRate).map(([month, returningCustomerRate]) => {
+      console.log(`Month: ${month}, Returning Customer Rate:`, returningCustomerRate); // Log the rate
+      return {
+        month,
+        returningCustomerRate: returningCustomerRate !== undefined ? returningCustomerRate : 0, // Default to 0 if undefined
+      };
+    });
+  };
+
+  const preparedReferringData = Object.entries(data?.referringChannelsData || {}).map(([channel, orderCount]) => ({
+    channel,
+    orderCount,
+  }));
+  console.log(preparedReferringData);
+
+
+
+
+
 
   if (!data) return <div className="flex items-center justify-center h-screen">
     <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
@@ -149,8 +228,8 @@ export default function Dashboard() {
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </span>
             )}
-            <Button 
-              onClick={handleManualRefresh} 
+            <Button
+              onClick={handleManualRefresh}
               disabled={isLoading}
               className="flex items-center"
             >
@@ -162,11 +241,12 @@ export default function Dashboard() {
 
         {/* Top stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+          {/* Existing data cards */}
           {[
             { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600", icon: ShoppingCart },
-            { title: "Total Sales", value: `€${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600", icon: DollarSign },
+            { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600", icon: DollarSign },
             { title: "Conversion Rate", value: `${data.conversionRate.toFixed(2)}%`, colorClass: "text-violet-600", icon: PercentIcon },
-            { title: "Average Order Value", value: `€${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600", icon: TrendingUp }
+            { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600", icon: TrendingUp }
           ].map((item, index) => (
             <Card key={index} className="shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -178,20 +258,41 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
+
+
+
         </div>
+
 
         {/* Second row: Orders table and charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Orders table */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-2xl text-gray-800">Recent Orders</CardTitle>
               <Input
                 placeholder="Filter by order number..."
                 value={orderFilter}
-                onChange={(e) => setOrderFilter(e.target.value)}
+                onChange={handleOrderFilterChange}
                 className="max-w-xs"
               />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Start Date"
+                  value={startDate}
+                  onChange={handleStartDateChange}
+                  className="max-w-xs"
+                  type="date"
+                />
+                <span>to</span>
+                <Input
+                  placeholder="End Date"
+                  value={endDate}
+                  onChange={handleEndDateChange}
+                  className="max-w-xs"
+                  type="date"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -200,8 +301,8 @@ export default function Dashboard() {
                     <TableRow className="bg-gray-100">
                       {['Order Number', 'Total Price', 'Date', 'Status'].map((header) => (
                         <TableHead key={header} className="font-semibold text-gray-600">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             onClick={() => handleSort(header.toLowerCase().replace(' ', '_') as keyof Order)}
                           >
                             {header}
@@ -214,10 +315,10 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {currentOrders.map((order) => (
+                    {currentOrders.length > 0 ? currentOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-gray-50 transition-colors">
                         <TableCell className="font-medium px-5">{order.order_number}</TableCell>
-                        <TableCell className=" px-5">€{parseFloat(order.total_price).toFixed(2)}</TableCell>
+                        <TableCell className=" px-5">₹{parseFloat(order.total_price).toFixed(2)}</TableCell>
                         <TableCell className=" px-5">{new Date(order.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge className={`${getStatusColor(order.financial_status)} font-semibold`}>
@@ -225,7 +326,11 @@ export default function Dashboard() {
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">No orders found</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -269,36 +374,38 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-5'>
+          {/* Monthly Returning Customer Rates Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-600">Monthly Returning Customer Rates</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              <MonthlyReturningCustomerRatesChart data={prepareMonthlyReturnRatesData()} />
+            </CardContent>
+          </Card>
+
+          {/* Referring Channels Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-600">Referring Channels</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ReferringChannelChart data={preparedReferringData} />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Sales by Time of Day chart */}
         <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
           <CardHeader>
             <CardTitle className="text-lg text-gray-600">Sales by Time of Day</CardTitle>
           </CardHeader>
-          <CardContent className="h-80"> {/* Increased height */}
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} 
-                margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="hour" 
-                  label={{ value: 'Hour of Day', position: 'insideBottom', offset: -10 }}
-                  tickFormatter={(hour) => `${hour}:00`}
-                />
-                <YAxis 
-                  label={{ value: 'Sales (€)', angle: -90, position: 'insideLeft', offset: 15 }}
-                />
-                <Tooltip 
-                  formatter={(value) => [`€${value}`, 'Sales']}
-                  labelFormatter={(hour) => `Time: ${hour}:00 - ${(hour + 1) % 24}:00`}
-                />
-                <Bar dataKey="sales" fill="#8884d8" name="Sales" />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-80">
+            <SalesByTimeOfDayChart data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} />
           </CardContent>
         </Card>
+
       </div>
     </>
   );

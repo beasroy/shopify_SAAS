@@ -6,4 +6,5 @@ const router = express.Router();
 
 router.get('/data',verifyAuth,fetchShopifyData);
 
+
 export default router;

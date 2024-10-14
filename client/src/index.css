@@ -64,3 +64,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.recharts-default-legend .recharts-legend-item {
+  margin-top: 12px;
+}

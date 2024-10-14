@@ -2,7 +2,7 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ReferringChannelsChartProps {
-  rawData: { channel: string; visitors: string }[]; // Accept raw data
+  rawData: { Channel: string; Visitors: string }[]; // Accept raw data
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF6699', '#FF33CC'];
@@ -10,16 +10,16 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF6699', '#FF33CC'
 export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ rawData }) => {
   // Aggregate visitors by channel
   const aggregatedData = rawData.reduce((acc, entry) => {
-    const channel = entry.channel;
-    const visitors = parseInt(entry.visitors, 10); // Convert visitors to number
+    const Channel = entry.Channel;
+    const Visitors = parseInt(entry.Visitors, 10); // Convert visitors to number
 
-    if (!acc[channel]) {
-      acc[channel] = { channel, totalVisitors: 0 };
+    if (!acc[Channel]) {
+      acc[Channel] = { Channel, totalVisitors: 0 };
     }
-    acc[channel].totalVisitors += visitors; // Sum visitors for each channel
+    acc[Channel].totalVisitors += Visitors; // Sum visitors for each channel
 
     return acc;
-  }, {} as Record<string, { channel: string; totalVisitors: number }>);
+  }, {} as Record<string, { Channel: string; totalVisitors: number }>);
 
   // Convert aggregated data back to an array and sort by total visitors
   const topChannels = Object.values(aggregatedData)
@@ -39,7 +39,7 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
               marginRight: '5px',
             }}
           />
-          <span className='text-xs'>{entry.channel}</span>
+          <span className='text-xs'>{entry.Channel}</span>
         </div>
       ))}
     </div>
@@ -60,7 +60,7 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
             outerRadius="60%" // Reduced outerRadius to fit within the card
             label
           >
-            {topChannels.map((entry, index) => (
+            {topChannels.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>

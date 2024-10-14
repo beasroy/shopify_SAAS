@@ -1,16 +1,9 @@
 import express from "express";
 import { getBatchReports } from "../controller/analytics.js";
+import { verifyAuth } from "../middleware/verifyAuth.js";
 
 const router = express.Router();
 
-// router.get('/landingPage',getLandingPageReport);
-
-// router.get('/city',getSessionsByLocation);
-
-// router.get('/channel',getSessionsByReferringChannel);
-
-// router.get('/returnCustomer',getReturningCustomerRate);
-
-router.post('/report',getBatchReports)
+router.post('/report',verifyAuth,getBatchReports)
 
 export default router;

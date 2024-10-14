@@ -68,10 +68,8 @@ export const fetchShopifyData = async (req, res) => {
     const conversionRate = calculateConversionRate(orders);
     const tenMonthsAgoOrder = getLast10MonthOrder(orders);
     const MonthlyAverageOrderValue = getMonthlyAverageOrderValue(orders);
-    const MonthlyCustomerReturnRate = calculateMonthlyReturningCustomerRate(orders);
-    const customers = await fetchCustomers();
-    const citiesData = processCities(customers)
-    const referringChannelsData = processReferringChannels(orders)
+  
+  
 
     res.json({
       orders,
@@ -83,9 +81,6 @@ export const fetchShopifyData = async (req, res) => {
       salesByTimeOfDay,
       tenMonthsAgoOrder,
       MonthlyAverageOrderValue,
-      MonthlyCustomerReturnRate,
-      citiesData,
-      referringChannelsData,
    
     });
 
@@ -173,84 +168,9 @@ function getMonthlyAverageOrderValue(orders) {
 }
 
 
-function calculateMonthlyReturningCustomerRate(orders) {
-  const monthlyData = {};
-
-  // Loop through all orders to group by month and count customer occurrences
-  orders.forEach(order => {
-    const createdAt = new Date(order.created_at);
-    const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = {
-        customerCount: {}
-      };
-    }
-
-    // Count customer occurrences
-    if (order.customer && order.customer.id) {
-      const customerId = order.customer.id;
-
-      if (!monthlyData[monthKey].customerCount[customerId]) {
-        monthlyData[monthKey].customerCount[customerId] = 0;
-      }
-      monthlyData[monthKey].customerCount[customerId]++;
-    }
-  });
-
-  // Calculate returning customer rates per month
-  const returningCustomerRates = {};
-  for (const month in monthlyData) {
-    const customerCount = monthlyData[month].customerCount;
-    const totalCustomers = Object.keys(customerCount).length;
-    const returningCustomers = Object.values(customerCount).filter(count => count > 1).length;
-
-    returningCustomerRates[month] = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
-  }
-
-  return returningCustomerRates;
-}
 
 
-const fetchCustomers = async () => {
-  const response = await client.get({
-    path: 'customers',
-    query: { status: 'any' }
-  });
-  return response.body.customers;
-};
 
-const processCities = (customers) => {
-  const citiesData = {};
-
-  customers.forEach(customer => {
-    const city = customer.default_address?.city || 'Unknown';
-
-    if (!citiesData[city]) {
-      citiesData[city] = { customerCount: 0 };
-    }
-    // Sum orders for each city
-    citiesData[city].customerCount += 1; // Count unique customers
-  });
-
-  return citiesData;
-};
-
-const processReferringChannels = (orders) => {
-  const referringChannelsData = {};
-
-  orders.forEach(order => {
-    const source = order.source_name || 'Direct'; // Modify based on your actual data structure
-
-    if (!referringChannelsData[source]) {
-      referringChannelsData[source] = 0;
-    }
-
-    referringChannelsData[source] += 1; // Count orders per referring channel
-  });
-
-  return referringChannelsData;
-};
 
 
 

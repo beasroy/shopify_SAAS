@@ -59,7 +59,7 @@ export async function getBatchReports(req, res) {
               dimension: { dimensionName: 'yearMonth' }
             }
           ],
-          limit: 100, // Limit the response to 100 rows
+          limit: 50, // Limit the response to 100 rows
         },
         // Second report: Sessions by Location (monthly data)
         {
@@ -85,7 +85,7 @@ export async function getBatchReports(req, res) {
               dimension: { dimensionName: 'yearMonth' }
             }
           ],
-          limit: 100, // Limit the response to 100 rows
+          limit: 50, // Limit the response to 100 rows
         },
         // Third report: Sessions by Referring Channel (monthly data)
         {
@@ -96,7 +96,9 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            { name: 'yearMonth' },                   // Group by month
+            { name: 'yearMonth' }, 
+            { name: "source" },
+            { name: "medium" },                  // Group by month
             { name: 'sessionDefaultChannelGroup' }   // Referring channel
           ],
           metrics: [
@@ -109,7 +111,7 @@ export async function getBatchReports(req, res) {
               dimension: { dimensionName: 'yearMonth' }
             }
           ],
-          limit: 100, // Limit the response to 100 rows
+          limit: 50, // Limit the response to 100 rows
         },
         // Fourth report: Returning Customer Rate (monthly data)
         {
@@ -126,7 +128,7 @@ export async function getBatchReports(req, res) {
             { name: 'totalUsers' },   // Total users (including both new and returning)
             { name: 'newUsers' },     // New users in the given period
           ],
-          limit: 100, // Limit the response to 100 rows
+          limit: 50, // Limit the response to 100 rows
         }
       ]
     });
@@ -141,7 +143,7 @@ export async function getBatchReports(req, res) {
             data: report.rows.map(row => ({
               yearMonth: row.dimensionValues[0]?.value,
               landingPage: row.dimensionValues[1]?.value,
-              totalUsers: row.metricValues[0]?.value,
+              visitors: row.metricValues[0]?.value,
               sessions: row.metricValues[1]?.value,
               addToCarts: row.metricValues[2]?.value,
               checkouts: row.metricValues[3]?.value,
@@ -165,7 +167,9 @@ export async function getBatchReports(req, res) {
             reportType: 'Sessions by Referring Channel',
             data: report.rows.map(row => ({
               yearMonth: row.dimensionValues[0]?.value,
-              channel: row.dimensionValues[1]?.value,
+              source: row.dimensionValues[1]?.value,
+              medium: row.dimensionValues[2]?.value,  // Medium (e.g., cpc, organic, referral)
+              channel: row.dimensionValues[3]?.value,
               visitors: row.metricValues[0]?.value,
               sessions: row.metricValues[1]?.value,
             }))

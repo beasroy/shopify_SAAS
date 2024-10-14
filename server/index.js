@@ -28,6 +28,10 @@ app.use("/analytics",analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
+app.get('/', (req, res) => {
+  res.send('Hello, World!'); // Change this to whatever response you want
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

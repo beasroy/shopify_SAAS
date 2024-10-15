@@ -81,6 +81,7 @@ export default function AuthForm() {
                     variant: 'default',
                 });
                 navigate('/dashboard');
+                console.log(baseURL);
             }
         } else {
             response = await axios.post(

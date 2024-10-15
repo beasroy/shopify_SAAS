@@ -131,6 +131,7 @@ export default function Dashboard() {
       setData(combinedData);
       setFilteredOrders(combinedData.orders);
       setLastUpdated(new Date());
+      console.log(baseURL)
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -147,6 +148,7 @@ export default function Dashboard() {
     fetchData();
 
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
+    
 
     return () => clearInterval(intervalId);
   }, [fetchData]);

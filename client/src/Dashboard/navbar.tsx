@@ -11,7 +11,7 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://3.109.203.156:8000/auth/logout', {}, {
+      await axios.post('http://3.109.203.156/auth/logout', {}, {
         withCredentials: true
       });
       setUser(null); 

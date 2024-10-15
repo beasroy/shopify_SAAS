@@ -16,7 +16,7 @@ connectDB();
 
 
 app.use(cors({
-  origin: 'http://localhost:5173',  // Frontend URL
+  origin: 'http://3.109.203.156/',  // Frontend URL
   credentials: true  // Allow credentials (cookies)
 }));
 app.use(express.json());

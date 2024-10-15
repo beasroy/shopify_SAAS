@@ -14,11 +14,12 @@ dotenv.config();
 
 connectDB();
 
-
 app.use(cors({
-  origin: 'http://3.109.203.156/',  // Frontend URL
+  origin: 'http://3.109.203.156',  // Frontend URL without trailing slash
   credentials: true  // Allow credentials (cookies)
 }));
+
+
 app.use(express.json());
 app.use(cookieParser());
 

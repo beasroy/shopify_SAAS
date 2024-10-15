@@ -117,8 +117,8 @@ export default function Dashboard() {
         withCredentials: true
       });
 
-      console.log("Shopify response", shopifyResponse.data);
-      console.log("Analytics response", analyticsResponse.data);
+      // console.log("Shopify response", shopifyResponse.data);
+      // console.log("Analytics response", analyticsResponse.data);
 
 
       const combinedData = {
@@ -162,7 +162,7 @@ export default function Dashboard() {
         const matchesEndDate = endDate ? orderDate <= new Date(endDate) : true;
 
         // Debugging line to check each order's match status
-        console.log(`Order ID: ${order.id}, Matches: ${matchesOrderNumber && matchesStartDate && matchesEndDate}`);
+        // console.log(`Order ID: ${order.id}, Matches: ${matchesOrderNumber && matchesStartDate && matchesEndDate}`);
 
         return matchesOrderNumber && matchesStartDate && matchesEndDate;
       });
@@ -185,7 +185,7 @@ export default function Dashboard() {
     }
   }, [data, orderFilter, startDate, endDate, sortColumn, sortDirection]);
 
-  console.log('Data:', data);
+  // console.log('Data:', data);
 
 
   const handleSort = (column: keyof Order) => {
@@ -240,15 +240,13 @@ export default function Dashboard() {
   const prepareMonthlyReturnRatesData = () => {
     if (!data || !data.analyticsReports) return [];
 
-    // Find the report for "Returning Customer Rate"
     const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
 
     if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
 
-    // Map the data to the expected format
     return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
-      month: yearMonth, // e.g., '202410'
-      returningCustomerRate: parseFloat(returnRate) || 0, // Convert to number, default to 0 if NaN
+      month: yearMonth, 
+      returningCustomerRate: parseFloat(returnRate) || 0, 
     }));
   };
   const preparedReferringData = () => {
@@ -256,13 +254,13 @@ export default function Dashboard() {
 
     const referringChannelData = data.analyticsReports.find(report => report.reportType === 'Sessions by Referring Channel')?.data || [];
     if (!referringChannelData) return [];
-    // Prepare the referring data
+   
     return referringChannelData.map(entry => ({
       Channel: entry.channel,
       Source: entry.source,
       Medium: entry.medium,
       Visitors: entry.visitors,
-      Sessions: entry.sessions // Keep visitors as a string
+      Sessions: entry.sessions 
     }));
   };
 
@@ -272,13 +270,13 @@ export default function Dashboard() {
 
     const cityData = data.analyticsReports.find(report => report.reportType === 'Sessions by Location')?.data || [];
     if (!cityData) return [];
-    // Prepare the referring data
+
     return cityData.map(entry => ({
       City: entry.city,
       Region: entry.region,
       Country: entry.country,
       Visitors: entry.visitors,
-      Sessions: entry.sessions // Keep visitors as a string
+      Sessions: entry.sessions 
     }));
   };
 
@@ -289,7 +287,7 @@ export default function Dashboard() {
     if (!pageData) return [];
     
     return pageData.map(entry => ({
-      LandingPage: getShortLabel(entry.landingPage), // Use getShortLabel to shorten the URL
+      LandingPage: getShortLabel(entry.landingPage), 
       AddToCarts: entry.addToCarts,
       Checkouts: entry.checkouts,
       Conversions: entry.conversions,
@@ -298,16 +296,16 @@ export default function Dashboard() {
     }));
   };
   
-  // Function to get a short label from the URL
+
   const getShortLabel = (label: string) => {
-    const url = new URL(label, 'http://dummy-base-url'); // Create a dummy base URL to use the URL API
-    return url.pathname; // Return the path (e.g., /products/padma-dupatta)
+    const url = new URL(label, 'http://dummy-base-url'); 
+    return url.pathname; 
   };
   
 
  
   const handleOpenModal = (data: any[]) => {
-    setReportData(data); // Set the data for the modal
+    setReportData(data); 
     setModalOpen(true);
   };
   const handleCloseModal = () => {

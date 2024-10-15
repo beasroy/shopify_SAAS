@@ -28,28 +28,25 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
 
   // Custom legend component
   const renderLegend = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+    <div className="grid grid-cols-3 gap-2 mt-2">
       {topChannels.map((entry, index) => (
-        <div key={`legend-${index}`} style={{ margin: '0 10px', display: 'flex', alignItems: 'center' }}>
+        <div key={`legend-${index}`} className="flex items-center">
           <div
-            style={{
-              width: '15px',
-              height: '15px',
-              backgroundColor: COLORS[index % COLORS.length],
-              marginRight: '5px',
-            }}
+            className="w-4 h-4 mr-2"
+            style={{ backgroundColor: COLORS[index % COLORS.length] }}
           />
-          <span className='text-xs'>{entry.Channel}</span>
+          <span className="text-xs">{entry.Channel}</span>
         </div>
       ))}
     </div>
   );
+  
 
   return (
     <div> {/* Wrap everything in a div */}
        {renderLegend()}
       {/* ResponsiveContainer should only contain one child */}
-      <ResponsiveContainer width="100%" height={300}> 
+      <ResponsiveContainer width="100%" height={280}> 
         <PieChart>
           <Pie
             data={topChannels}

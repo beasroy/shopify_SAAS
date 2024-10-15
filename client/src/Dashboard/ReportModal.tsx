@@ -26,11 +26,18 @@ interface CityReport {
   YearMonth: string;
 }
 
+interface ReferringChannelReport {
+  Channel: string;
+  Source: string;
+  Medium: string;
+  Visitors: string;
+  Sessions: string;
+}
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  data: (LandingPageReport | CityReport)[];
+  data: (LandingPageReport | CityReport |ReferringChannelReport)[];
 }
 
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, title, data }) => {
@@ -46,7 +53,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, title, data 
     ...item,
     Sessions: Number(item.Sessions),
   }));
-  console.log('parseddata', parsedData);
+  // console.log('parseddata', parsedData);
   const maxSessions = Math.max(...parsedData.map(item => item.Sessions));
 
   return (

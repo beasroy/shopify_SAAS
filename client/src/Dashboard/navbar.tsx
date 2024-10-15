@@ -11,15 +11,22 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://3.109.203.156/auth/logout', {}, {
+      // Determine the base URL based on the environment
+      const baseURL = import.meta.env.PROD 
+          ? import.meta.env.VITE_API_URL 
+          : import.meta.env.VITE_LOCAL_API_URL;
+
+      await axios.post(`${baseURL}/auth/logout`, {}, {
         withCredentials: true
       });
+
       setUser(null); 
       navigate('/');
     } catch (error) {
       console.error('Error logging out:', error);
     }
-  };
+};
+
 
   return (
     <nav className="bg-white shadow-md">

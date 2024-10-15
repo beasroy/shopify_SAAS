@@ -15,9 +15,10 @@ dotenv.config();
 connectDB();
 
 app.use(cors({
-  origin: 'http://3.109.203.156',  // Frontend URL without trailing slash
+  origin: ['http://3.109.203.156', 'http://localhost:5173'],  // Allow server URL and Vite development URL
   credentials: true  // Allow credentials (cookies)
 }));
+
 
 
 app.use(express.json());

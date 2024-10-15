@@ -89,7 +89,13 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      let url = `http://3.109.203.156/shopify/data`;
+      // Determine the base URL based on the environment
+      const baseURL = 
+        import.meta.env.PROD 
+        ? import.meta.env.VITE_API_URL 
+        : import.meta.env.VITE_LOCAL_API_URL;
+
+      let url = `${baseURL}/shopify/data`;
       const params = new URLSearchParams();
 
       if (orderFilter) {
@@ -110,27 +116,20 @@ export default function Dashboard() {
         withCredentials: true
       });
 
-      const analyticsResponse = await axios.post(`http://3.109.203.156/analytics/report`, {
+      const analyticsResponse = await axios.post(`${baseURL}/analytics/report`, {
         startDate,
         endDate
       }, {
         withCredentials: true
       });
 
-      // console.log("Shopify response", shopifyResponse.data);
-      // console.log("Analytics response", analyticsResponse.data);
-
-
       const combinedData = {
         ...shopifyResponse.data,
-        analyticsReports: analyticsResponse.data // Add analytics data to the combined data
+        analyticsReports: analyticsResponse.data
       };
 
       setData(combinedData);
-
-
       setFilteredOrders(combinedData.orders);
-
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -142,6 +141,7 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   }, [navigate, orderFilter, startDate, endDate]);
+
 
   useEffect(() => {
     fetchData();

@@ -58,9 +58,14 @@ export default function AuthForm() {
 
     try {
         let response;
+        // Determine the base URL based on the environment
+        const baseURL = import.meta.env.PROD 
+            ? import.meta.env.VITE_API_URL 
+            : import.meta.env.VITE_LOCAL_API_URL;
+
         if (isLogin) {
             response = await axios.post(
-                'http://3.109.203.156/auth/login', 
+                `${baseURL}/auth/login`, 
                 { email, password },
                 { withCredentials: true }
             );
@@ -79,7 +84,7 @@ export default function AuthForm() {
             }
         } else {
             response = await axios.post(
-                'http://3.109.203.156/auth/signup', 
+                `${baseURL}/auth/signup`, 
                 { username, email, password },
                 { withCredentials: true }
             );
@@ -108,7 +113,8 @@ export default function AuthForm() {
             });
         }
     }
-  };
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600">

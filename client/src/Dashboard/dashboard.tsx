@@ -89,7 +89,7 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      let url = 'http://localhost:8000/shopify/data';
+      let url = `http://3.109.203.156:8000/shopify/data`;
       const params = new URLSearchParams();
 
       if (orderFilter) {
@@ -110,7 +110,7 @@ export default function Dashboard() {
         withCredentials: true
       });
 
-      const analyticsResponse = await axios.post('http://localhost:8000/analytics/report', {
+      const analyticsResponse = await axios.post(`http://3.109.203.156:8000/analytics/report`, {
         startDate,
         endDate
       }, {

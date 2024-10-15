@@ -98,18 +98,18 @@ export const userLogin = async (req, res) => {
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' } 
+            { expiresIn: '1h' }
         );
 
+        // Update the secure flag and sameSite settings for HTTP
         const isProduction = process.env.NODE_ENV === 'production';
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: isProduction, 
-            sameSite: isProduction ? 'strict' : 'lax', 
-            maxAge: 60 * 60 * 1000 
+            secure: false, // Set to false for HTTP (no HTTPS)
+            sameSite: 'lax', // 'lax' is less strict, allowing cross-site requests in some cases
+            maxAge: 60 * 60 * 1000 // 1 hour
         });
-
 
         return res.status(200).json({
             success: true,
@@ -129,14 +129,15 @@ export const userLogin = async (req, res) => {
             error: error.message
         });
     }
-}
+};
+
 
 export const userLogout = (req, res) => {
     try {
         res.clearCookie('token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+            secure: false, // Set to false because we are using HTTP
+            sameSite: 'lax' // Use 'lax' for standard behavior; adjust if needed
         });
 
         return res.status(200).json({
@@ -152,6 +153,7 @@ export const userLogout = (req, res) => {
         });
     }
 };
+
 
 
 

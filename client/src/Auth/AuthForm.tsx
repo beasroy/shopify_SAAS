@@ -60,7 +60,7 @@ export default function AuthForm() {
         let response;
         if (isLogin) {
             response = await axios.post(
-                'http://localhost:8000/auth/login', 
+                'http://3.109.203.156:8000/auth/login', 
                 { email, password },
                 { withCredentials: true }
             );
@@ -79,7 +79,7 @@ export default function AuthForm() {
             }
         } else {
             response = await axios.post(
-                'http://localhost:8000/auth/signup', 
+                'http://3.109.203.156:8000/auth/signup', 
                 { username, email, password },
                 { withCredentials: true }
             );

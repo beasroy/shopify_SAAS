@@ -1,71 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Navbar } from './navbar.tsx';
-import { RefreshCw } from "lucide-react";
+
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, DollarSign, PercentIcon, TrendingUp } from "lucide-react";
-import React from 'react';
-import MonthlyReturningCustomerRatesChart from './MonthlyReturningCustomerRatesChart';
-import { ReferringChannelChart } from './ReferringChannelChart';
-import SalesByTimeOfDayChart from './SalesByTimeOfDayChart';
-import TopCitiesLineChart from './CityChart.tsx';
-import TopPagesPieChart from './LandingPageChart.tsx';
-import ReportModal from './ReportModal.tsx';
-import { FileChartColumn } from 'lucide-react';
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw } from "lucide-react";
 
-interface ReportData {
-  yearMonth: string;
-  [key: string]: string; // Allows for additional properties like landingPage, city, channel, etc.
-}
-
-interface AnalyticsReport {
-  reportType: string;
-  data: ReportData[];
-}
-
-interface DashboardData {
-  orders: any[];
-  totalOrders: number;
-  totalSales: number;
-  conversionRate: number;
-  averageOrderValue: number;
-  topSellingProducts: { name: string; count: number }[];
-  salesByTimeOfDay: number[];
-  MonthlyCustomerReturnRate: { [month: string]: number };
-  referringChannelsData: { [channel: string]: number }
-}
-
-interface CombinedData {
-  orders: any[];
-  totalOrders: number;
-  totalSales: number;
-  conversionRate: number;
-  averageOrderValue: number;
-  topSellingProducts: { name: string; count: number }[];
-  salesByTimeOfDay: number[];
-  MonthlyCustomerReturnRate: { [month: string]: number };
-  referringChannelsData: { [channel: string]: number }
-  analyticsReports: AnalyticsReport[];
-}
-
-interface Order {
-  id: number;
-  order_number: number;
-  total_price: string;
-  created_at: string;
-  financial_status: string;
-}
-
+import { Navbar } from './navbar.tsx';
+import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
+import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
+import SalesByTimeOfDayChart from '../components/dashboard_component/SalesByTimeOfDayChart.tsx';
+import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
+import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
+import ReportModal from '../components/dashboard_component/ReportModal.tsx';
+import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
+import { DashboardData, CombinedData, Order } from './interfaces';
 
 export default function Dashboard() {
-
-
 
 
   const [data, setData] = useState<CombinedData | null>(null);
@@ -89,11 +41,11 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Determine the base URL based on the environment
-      const baseURL = 
-        import.meta.env.PROD 
-        ? import.meta.env.VITE_API_URL 
-        : import.meta.env.VITE_LOCAL_API_URL;
+
+      const baseURL =
+        import.meta.env.PROD
+          ? import.meta.env.VITE_API_URL
+          : import.meta.env.VITE_LOCAL_API_URL;
 
       let url = `${baseURL}/shopify/data`;
       const params = new URLSearchParams();
@@ -148,7 +100,7 @@ export default function Dashboard() {
     fetchData();
 
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
-    
+
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
@@ -231,10 +183,6 @@ export default function Dashboard() {
     fetchData();
   };
 
-  // Calculate the orders for the current page
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -247,8 +195,8 @@ export default function Dashboard() {
     if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
 
     return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
-      month: yearMonth, 
-      returningCustomerRate: parseFloat(returnRate) || 0, 
+      month: yearMonth,
+      returningCustomerRate: parseFloat(returnRate) || 0,
     }));
   };
   const preparedReferringData = () => {
@@ -256,13 +204,13 @@ export default function Dashboard() {
 
     const referringChannelData = data.analyticsReports.find(report => report.reportType === 'Sessions by Referring Channel')?.data || [];
     if (!referringChannelData) return [];
-   
+
     return referringChannelData.map(entry => ({
       Channel: entry.channel,
       Source: entry.source,
       Medium: entry.medium,
       Visitors: entry.visitors,
-      Sessions: entry.sessions 
+      Sessions: entry.sessions
     }));
   };
 
@@ -278,18 +226,18 @@ export default function Dashboard() {
       Region: entry.region,
       Country: entry.country,
       Visitors: entry.visitors,
-      Sessions: entry.sessions 
+      Sessions: entry.sessions
     }));
   };
 
   const preparedPageData = () => {
     if (!data || !data.analyticsReports) return [];
-    
+
     const pageData = data.analyticsReports.find(report => report.reportType === 'Landing Page Report')?.data || [];
     if (!pageData) return [];
-    
+
     return pageData.map(entry => ({
-      LandingPage: getShortLabel(entry.landingPage), 
+      LandingPage: getShortLabel(entry.landingPage),
       AddToCarts: entry.addToCarts,
       Checkouts: entry.checkouts,
       Conversions: entry.conversions,
@@ -297,17 +245,17 @@ export default function Dashboard() {
       Sessions: entry.sessions
     }));
   };
-  
+
 
   const getShortLabel = (label: string) => {
-    const url = new URL(label, 'http://dummy-base-url'); 
-    return url.pathname; 
+    const url = new URL(label, 'http://dummy-base-url');
+    return url.pathname;
   };
-  
 
- 
+
+
   const handleOpenModal = (data: any[]) => {
-    setReportData(data); 
+    setReportData(data);
     setModalOpen(true);
   };
   const handleCloseModal = () => {
@@ -361,9 +309,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
-
-
-
         </div>
 
 
@@ -398,65 +343,17 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-100">
-                      {['Order Number', 'Total Price', 'Date', 'Status'].map((header) => (
-                        <TableHead key={header} className="font-semibold text-gray-600">
-                          <Button
-                            variant="ghost"
-                            onClick={() => handleSort(header.toLowerCase().replace(' ', '_') as keyof Order)}
-                          >
-                            {header}
-                            {sortColumn === header.toLowerCase().replace(' ', '_') && (
-                              sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
-                            )}
-                          </Button>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentOrders.length > 0 ? currentOrders.map((order) => (
-                      <TableRow key={order.id} className="hover:bg-gray-50 transition-colors">
-                        <TableCell className="font-medium px-5">{order.order_number}</TableCell>
-                        <TableCell className=" px-5">₹{parseFloat(order.total_price).toFixed(2)}</TableCell>
-                        <TableCell className=" px-5">{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge className={`${getStatusColor(order.financial_status)} font-semibold`}>
-                            {order.financial_status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    )) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center">No orders found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* Pagination */}
-              <div className="flex justify-between items-center mt-4">
-                <Button
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  variant="outline"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-                <span>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
-                <Button
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={indexOfLastOrder >= filteredOrders.length}
-                  variant="outline"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
+              <OrdersTable
+                orders={filteredOrders}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                handleSort={handleSort}
+                getStatusColor={getStatusColor}
+                currentPage={currentPage}
+                ordersPerPage={ordersPerPage}
+                paginate={paginate}
+                totalOrders={filteredOrders.length} // Pass the total number of orders
+              />
             </CardContent>
           </Card>
 
@@ -493,8 +390,8 @@ export default function Dashboard() {
             <CardHeader className='flex flex-row items-center justify-between'>
               <CardTitle className="text-lg text-gray-600">Top 5 Referring Channels</CardTitle>
               <Button onClick={() => handleOpenModal(preparedReferringData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
-              <FileChartColumn />
-            </Button>
+                <FileChartColumn />
+              </Button>
             </CardHeader>
             <CardContent className="h-80">
               <ReferringChannelChart rawData={preparedReferringData()} />
@@ -505,45 +402,45 @@ export default function Dashboard() {
             <CardHeader className='flex flex-row justify-between items-center'>
               <CardTitle className="text-lg text-gray-600">Top 5 Cities</CardTitle>
               <Button onClick={() => handleOpenModal(preparedCityData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
-              <FileChartColumn />
-            </Button>
+                <FileChartColumn />
+              </Button>
             </CardHeader>
             <CardContent className="h-80">
               <TopCitiesLineChart cityData={preparedCityData()} />
             </CardContent>
           </Card>
         </div>
-<div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-        {/* Sales by Time of Day chart */}
-        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
-          <CardHeader>
-            <CardTitle className="text-lg text-gray-600">Sales by Time of Day</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <SalesByTimeOfDayChart data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} />
-          </CardContent>
-        </Card>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+          {/* Sales by Time of Day chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-600">Sales by Time of Day</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <SalesByTimeOfDayChart data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} />
+            </CardContent>
+          </Card>
 
           {/* Landing Page Report*/}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
-          <CardHeader className='flex flex-row justify-between items-center'>
-            <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
-            <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
-           <FileChartColumn />
-            </Button>
-          </CardHeader>
-          <CardContent className="h-72">
-             <TopPagesPieChart PageData={preparedPageData()} />
-          </CardContent>
-        </Card>
+            <CardHeader className='flex flex-row justify-between items-center'>
+              <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
+              <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+                <FileChartColumn />
+              </Button>
+            </CardHeader>
+            <CardContent className="h-72">
+              <TopPagesPieChart PageData={preparedPageData()} />
+            </CardContent>
+          </Card>
 
-        {/* Report Modal */}
-        <ReportModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          title="Report Data"
-          data={reportData}
-        />
+          {/* Report Modal */}
+          <ReportModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            title="Report Data"
+            data={reportData}
+          />
         </div>
       </div>
     </>

@@ -3,7 +3,7 @@ import { UserProvider } from './context/UserContext';
 import { BrowserRouter as Router,Route,Routes } from 'react-router-dom';
 import AuthForm from "./Auth/AuthForm.tsx";
 import { Toaster } from "@/components/ui/toaster"
-import Dashboard from "./Dashboard/dashboard.tsx";
+import BusinessDashboard from './Dashboard/BusinessDashboard.tsx';
 
 function App() {
   return (
@@ -12,7 +12,7 @@ function App() {
         <Toaster />
         <Routes>
           <Route path="/" element={<AuthForm />} />
-          <Route path="/dashboard" element={<Dashboard/>} />
+          <Route path="/dashboard" element={<BusinessDashboard/>} />
         </Routes>
       </Router>
     </UserProvider>

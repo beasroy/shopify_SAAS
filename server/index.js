@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.js"
 import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
+import brandRoutes from "./routes/brand.js"
+import fetchAdAccountData from "./controller/adMetcris.js";
 
 
 const app = express();
@@ -15,18 +17,19 @@ dotenv.config();
 connectDB();
 
 app.use(cors({
-  origin: ['http://3.109.203.156', 'http://localhost:5173'],  // Allow server URL and Vite development URL
-  credentials: true  // Allow credentials (cookies)
+  origin: ['http://3.109.203.156', 'http://localhost:5173'],  
+  credentials: true  
 }));
 
-
-
+const adAccountIds = ['act_1475581489568840', 'act_578320240630885', 'act_193585543386176', 'act_241464625568212'];
+fetchAdAccountData(adAccountIds);
 app.use(express.json());
 app.use(cookieParser());
 
 app.use("/auth",authRoutes);
 app.use("/shopify",spotifyRoutes);
 app.use("/analytics",analyticsRoutes);
+app.use("/",brandRoutes);
 
 const PORT = process.env.PORT || 5000;
 

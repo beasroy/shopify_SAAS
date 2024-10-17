@@ -1,10 +1,10 @@
-
-
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Home, Settings, User } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp } from 'lucide-react'
+import React from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 
 export default function CollapsibleSidebar() {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const toggleSidebar = () => {
     setIsExpanded(prev => !prev)
@@ -26,23 +26,68 @@ export default function CollapsibleSidebar() {
           </button>
         </div>
         <nav className="mt-8">
-          <SidebarItem icon={<Home size={24} />} text="Home" isExpanded={isExpanded} />
-          <SidebarItem icon={<User size={24} />} text="Profile" isExpanded={isExpanded} />
-          <SidebarItem icon={<Settings size={24} />} text="Settings" isExpanded={isExpanded} />
+          <SidebarItem icon={<ChartColumn size={24} />} text="Analytics" isExpanded={isExpanded} openIcon={<ChevronUp/>} closeIcon={<ChevronDown />}>
+            <SidebarChild path="/dashboard" text="Business Dashboard" />
+            <SidebarChild path="/analytics-dashboard" text="Metrics Dashboard" />
+          </SidebarItem>
         </nav>
       </div>
-  
   )
 }
 
-function SidebarItem({ icon, text, isExpanded }: { icon: React.ReactNode; text: string; isExpanded: boolean }) {
+function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children }: { 
+  icon?: React.ReactNode; 
+  text: string; 
+  isExpanded: boolean; 
+  openIcon: React.ReactNode; 
+  closeIcon: React.ReactNode; 
+  children?: React.ReactNode 
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleToggle = () => {
+    setIsOpen(prev => !prev);
+  };
+
   return (
-    <a
-      href="#"
-      className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+    <div>
+      <div
+        onClick={handleToggle} // Toggle accordion on click
+        className="flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
+      >
+        <span className="mr-4">{icon}</span>
+        {isExpanded && <span className="text-sm">{text}</span> }
+        {isExpanded &&<span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>} {/* Show open/close icon */}
+      </div>
+      {isOpen && isExpanded && ( // Render children if open and expanded
+        <div className="relative pl-8">
+          <div className="absolute top-0 w-1 h-full bg-gray-500" /> {/* Continuous line */}
+            {React.Children.map(children, (child) => (
+              <div> {/* Added padding for child items */}
+                {child}
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SidebarChild({ path, text }: { path: string; text: string }) {
+  const { pathname } = useLocation();
+  const isSelected = pathname === path;
+
+  return (
+    <NavLink
+      to={path}
+      className={`flex items-center text-sm w-full p-3 hover:bg-gray-700 transition-colors duration-200 ${
+        isSelected ? 'text-white font-semibold relative' : 'text-gray-100'
+      }`}
     >
-      <span className="mr-4">{icon}</span>
-      {isExpanded && <span className="text-sm">{text}</span>}
-    </a>
-  )
+      {text}
+      {isSelected && (
+        <div className="absolute left-0 w-1 h-full bg-white" /> 
+      )}
+    </NavLink>
+  );
 }

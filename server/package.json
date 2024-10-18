@@ -22,6 +22,7 @@
     "express": "^4.21.0",
     "facebook-nodejs-business-sdk": "^21.0.0",
     "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
     "mongodb": "^6.9.0",
     "mongoose": "^8.7.0",
     "shopify-api-node": "^3.14.0"

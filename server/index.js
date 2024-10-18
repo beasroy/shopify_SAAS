@@ -7,7 +7,7 @@ import authRoutes from "./routes/auth.js"
 import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
-import fetchAdAccountData from "./controller/adMetcris.js";
+import fbMetricrRoutes from "./routes/FbAnalytics.js"
 
 
 const app = express();
@@ -21,8 +21,7 @@ app.use(cors({
   credentials: true  
 }));
 
-const adAccountIds = ['act_1475581489568840', 'act_578320240630885', 'act_193585543386176', 'act_241464625568212'];
-fetchAdAccountData(adAccountIds);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -30,6 +29,7 @@ app.use("/auth",authRoutes);
 app.use("/shopify",spotifyRoutes);
 app.use("/analytics",analyticsRoutes);
 app.use("/",brandRoutes);
+app.use("/metrics",fbMetricrRoutes)
 
 const PORT = process.env.PORT || 5000;
 

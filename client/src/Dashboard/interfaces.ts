@@ -40,3 +40,36 @@ export interface Order {
   created_at: string;
   financial_status: string;
 }
+
+// types.ts
+
+export interface PurchaseRoas {
+  action_type: string;
+  value: string;
+}
+
+export interface Purchases {
+  action_type: string;
+  value: string;
+}
+
+export interface Metric {
+  label: string;
+  value: string;
+}
+
+export interface AdAccountData {
+  adAccountId: string;
+  spend?: string;
+  purchase_roas?: PurchaseRoas[];
+  purchases?: Purchases;
+  Revenue?:string;
+  cpm?: string;
+  ctr?: string;
+  cpc?: string;
+  cpp?: string;
+  date_start: string;
+  date_stop: string;
+  message?: string;
+  metrics?: Metric[]; // Optional for accounts with no data
+}

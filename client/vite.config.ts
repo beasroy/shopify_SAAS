@@ -10,6 +10,6 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true // or false
+    sourcemap: false// or false
   }
 })

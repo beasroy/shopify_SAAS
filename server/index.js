@@ -18,7 +18,7 @@ dotenv.config();
 connectDB();
 
 app.use(cors({
-  origin: ['http://3.109.203.156', 'http://localhost:5173'],  
+  origin: ['http://3.109.203.156', 'http://localhost:5173','http://parallels.messold.com'],  
   credentials: true  
 }));
 

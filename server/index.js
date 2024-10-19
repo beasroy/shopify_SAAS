@@ -8,6 +8,7 @@ import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
+import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 
 
 const app = express();
@@ -30,6 +31,11 @@ app.use("/shopify",spotifyRoutes);
 app.use("/analytics",analyticsRoutes);
 app.use("/",brandRoutes);
 app.use("/metrics",fbMetricrRoutes)
+
+const add_account_id = process.env.GOOGLE_AD_ACCOUNT_ID
+const managerId = process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID
+getAdLevelSpendAndROAS(add_account_id,managerId);
+
 
 const PORT = process.env.PORT || 5000;
 

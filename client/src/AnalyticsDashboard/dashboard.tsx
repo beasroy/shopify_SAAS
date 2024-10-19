@@ -14,13 +14,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import AdAccountMetrics from "./AdAccountsMetrics.tsx"
+import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
 import { AdAccountData } from '@/Dashboard/interfaces.ts'
 
 export default function Dashboard() {
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(), // Sets the default from date to today
-  to: new Date(),
+    to: new Date(),
   })
   const [isLoading, setIsLoading] = useState(false);
   const [adAccountsMetrics, setAdAccountsMetrics] = useState<AdAccountData[]>([]);
@@ -84,9 +84,7 @@ export default function Dashboard() {
     fetchFbAdData();
   }, [fetchFbAdData]);
 
-  useEffect(() => {
-    console.log('Ad Accounts Metrics:', adAccountsMetrics);
-  }, [adAccountsMetrics]); // Log updated state
+
 
 
 
@@ -136,10 +134,11 @@ export default function Dashboard() {
         ) : (
           <>
             {adAccountsMetrics.map((accountMetrics, index) => (
-              <AdAccountMetrics
+              <AdAccountMetricsCard
                 key={index}
                 title={`Facebook - Udd Studio Ad Account-${index + 1}`}
-                metrics={accountMetrics.metrics || []} // Provide a default empty arra
+                metrics={accountMetrics.metrics || []}
+                date={date || { from: new Date(), to: new Date() }} 
               />
             ))}
           </>

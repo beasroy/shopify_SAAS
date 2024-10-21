@@ -1,21 +1,14 @@
 "use client"
 import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Settings2Icon } from "lucide-react"
+import {  Settings2Icon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate } from 'react-router-dom';
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
 import axios from "axios"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
 import { AdAccountData } from '@/Dashboard/interfaces.ts'
+import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
 
 export default function Dashboard() {
   const [date, setDate] = useState<DateRange | undefined>({
@@ -98,7 +91,8 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <DatePickerWithRange date={date} setDate={setDate} />
+            <DatePickerWithRange date={date} setDate={setDate}
+            defaultDate={{ from: new Date(), to: new Date() }} />
           </div>
         </div>
       </header>
@@ -149,53 +143,6 @@ export default function Dashboard() {
   )
 }
 
-function DatePickerWithRange({
-  date,
-  setDate
-}: {
-  date: DateRange | undefined
-  setDate: (date: DateRange | undefined) => void
-}) {
-  return (
-    <div className="grid gap-2">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            id="date"
-            variant={"outline"}
-            className={cn(
-              "w-[260px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(date.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Pick a date</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
-            numberOfMonths={2}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  )
-}
 
 function renderMetricCard(title: string, value: string) {
   return (

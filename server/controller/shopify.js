@@ -35,28 +35,52 @@ export const fetchShopifyData = async (req, res) => {
   try {
     console.log('Fetching orders and session data...');
     const { startDate, endDate } = req.query;
-    let orders;
+    let orders = [];
+    let queryParams = { status: 'any', limit: 250 }; // Set limit to max 250
 
     if (startDate && endDate) {
-      const response = await client.get({
-        path: 'orders',
-        query: {
-          status: 'any',
-          created_at_min: new Date(startDate).toISOString(),
-          created_at_max: new Date(endDate).toISOString()
-        }
-      });
-      orders = response.body.orders;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); // Start of the day on startDate
+      queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); // End of the day on endDate
     } else {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      queryParams.created_at_min = firstDayOfMonth.toISOString(); // Start of the month
+      queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+    }
+    
+
+    console.log('Query Parameters:', queryParams);
+
+    let hasNextPage = true;
+    let pageInfo; // For cursor pagination
+
+    while (hasNextPage) {
+      // Add page_info to queryParams if it exists
+      if (pageInfo) {
+        queryParams.page_info = pageInfo;
+      }
+
       const response = await client.get({
         path: 'orders',
-        query: { status: 'any' }
+        query: queryParams,
       });
-      orders = response.body.orders;
+
+      orders = orders.concat(response.body.orders); // Append new orders to the list
+      console.log(`Fetched ${response.body.orders.length} orders from this page`);
+
+      // Check if there's a next page
+      if (response.body.orders.length < queryParams.limit) {
+        hasNextPage = false; // No more orders to fetch
+      } else {
+        // Update pageInfo for the next iteration
+        pageInfo = response.headers['link'] ? extractPageInfo(response.headers['link']) : null;
+        hasNextPage = !!pageInfo; // Continue if there's a next page
+      }
     }
 
-    console.log(`Successfully fetched ${orders.length} orders`);
-
+    console.log(`Successfully fetched a total of ${orders.length} orders`);
 
     // Existing data processing
     const totalOrders = orders.length;
@@ -68,8 +92,6 @@ export const fetchShopifyData = async (req, res) => {
     const conversionRate = calculateConversionRate(orders);
     const tenMonthsAgoOrder = getLast10MonthOrder(orders);
     const MonthlyAverageOrderValue = getMonthlyAverageOrderValue(orders);
-  
-  
 
     res.json({
       orders,
@@ -81,7 +103,6 @@ export const fetchShopifyData = async (req, res) => {
       salesByTimeOfDay,
       tenMonthsAgoOrder,
       MonthlyAverageOrderValue,
-   
     });
 
   } catch (error) {
@@ -97,6 +118,7 @@ export const fetchShopifyData = async (req, res) => {
     res.status(500).json({ error: errorMessage });
   }
 };
+
 
 function getTopSellingProducts(orders) {
   const productCounts = {};

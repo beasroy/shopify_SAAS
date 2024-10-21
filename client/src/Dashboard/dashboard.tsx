@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw } from "lucide-react";
-
-import { Navbar } from './navbar.tsx';
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, Settings2Icon } from "lucide-react";
+import { DateRange } from "react-day-picker"
+import { format } from "date-fns"
+// import { Navbar } from './navbar.tsx';
 import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
 import SalesByTimeOfDayChart from '../components/dashboard_component/SalesByTimeOfDayChart.tsx';
@@ -16,6 +17,23 @@ import TopPagesPieChart from '../components/dashboard_component/LandingPageChart
 import ReportModal from '../components/dashboard_component/ReportModal.tsx';
 import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
 import { DashboardData, CombinedData, Order } from './interfaces';
+import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function Dashboard() {
 
@@ -27,16 +45,24 @@ export default function Dashboard() {
   const [orderFilter, setOrderFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [isModalOpen, setModalOpen] = useState(false);
   const [reportData, setReportData] = useState<any[]>([]);
+  const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
+
 
 
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 6;
 
   const navigate = useNavigate();
+
+  const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
+  const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+
+  const debouncedStartDate = useDebouncedValue(startDate, 500);
+  const debouncedEndDate = useDebouncedValue(endDate, 500);
+
+  const now = new Date(); // Define 'now' variable
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -53,11 +79,11 @@ export default function Dashboard() {
       if (orderFilter) {
         params.append('orderNumber', orderFilter);
       }
-      if (startDate) {
-        params.append('startDate', startDate);
+      if (debouncedStartDate) {
+        params.append('startDate', debouncedStartDate);
       }
-      if (endDate) {
-        params.append('endDate', endDate);
+      if (debouncedEndDate) {
+        params.append('endDate', debouncedEndDate);
       }
 
       if (params.toString()) {
@@ -69,8 +95,8 @@ export default function Dashboard() {
       });
 
       const analyticsResponse = await axios.post(`${baseURL}/analytics/report`, {
-        startDate,
-        endDate
+        debouncedStartDate,
+        debouncedEndDate
       }, {
         withCredentials: true
       });
@@ -84,6 +110,7 @@ export default function Dashboard() {
       setFilteredOrders(combinedData.orders);
       setLastUpdated(new Date());
       console.log(baseURL)
+      console.log("startdate:",startDate);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -93,7 +120,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, orderFilter, startDate, endDate]);
+  }, [navigate, orderFilter, debouncedStartDate, debouncedEndDate]);
 
 
   useEffect(() => {
@@ -112,8 +139,8 @@ export default function Dashboard() {
       let filtered = data.orders.filter(order => {
         const orderDate = new Date(order.created_at);
         const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
-        const matchesStartDate = startDate ? orderDate >= new Date(startDate) : true;
-        const matchesEndDate = endDate ? orderDate <= new Date(endDate) : true;
+        const matchesStartDate = debouncedStartDate ? orderDate >= new Date(debouncedStartDate) : true;
+        const matchesEndDate = debouncedEndDate ? orderDate <= new Date(debouncedEndDate) : true;
 
         // Debugging line to check each order's match status
         // console.log(`Order ID: ${order.id}, Matches: ${matchesOrderNumber && matchesStartDate && matchesEndDate}`);
@@ -137,7 +164,7 @@ export default function Dashboard() {
 
       setFilteredOrders(filtered);
     }
-  }, [data, orderFilter, startDate, endDate, sortColumn, sortDirection]);
+  }, [data, orderFilter, debouncedStartDate, debouncedEndDate, sortColumn, sortDirection]);
 
   // console.log('Data:', data);
 
@@ -156,15 +183,15 @@ export default function Dashboard() {
     setCurrentPage(1); // Reset to first page when filter changes
   };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStartDate(e.target.value);
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
+  // const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   setStartDate(e.target.value);
+  //   setCurrentPage(1); // Reset to first page when filter changes
+  // };
 
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEndDate(e.target.value);
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
+  // const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   setEndDate(e.target.value);
+  //   setCurrentPage(1); // Reset to first page when filter changes
+  // };
 
 
 
@@ -269,7 +296,22 @@ export default function Dashboard() {
 
   return (
     <>
-      <Navbar />
+      
+      <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
+        <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-2">
+            <Settings2Icon className="h-6 w-6 text-gray-500" />
+            <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <DatePickerWithRange date={date} setDate={setDate} 
+           defaultDate={{ 
+            from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
+            to: now // Current date
+          }}  />
+          </div>
+        </div>
+      </header>
       <div className="p-4 md:p-8 bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800">Shopify Dashboard</h1>
@@ -324,7 +366,7 @@ export default function Dashboard() {
                 onChange={handleOrderFilterChange}
                 className="max-w-xs"
               />
-              <div className="flex md:flex-row flex-col items-center gap-2 justify-center">
+              {/* <div className="flex md:flex-row flex-col items-center gap-2 justify-center">
                 <Input
                   placeholder="Start Date"
                   value={startDate}
@@ -340,7 +382,7 @@ export default function Dashboard() {
                   className="max-w-xs"
                   type="date"
                 />
-              </div>
+              </div> */}
             </CardHeader>
             <CardContent>
               <OrdersTable

@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp,LogOut, User2Icon } from 'lucide-react'
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useUser } from '../context/UserContext' 
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -10,12 +13,14 @@ export default function CollapsibleSidebar() {
     setIsExpanded(prev => !prev)
   }
 
+
   return (
       <div
-        className={`bg-gray-800 text-white transition-all duration-300 ease-in-out ${
+        className={`bg-gray-800 text-white transition-all duration-300 ease-in-out flex flex-col justify-between ${
           isExpanded ? 'w-64' : 'w-16'
         }`}
       >
+        <div>
         <div className="flex justify-end p-4">
           <button
             onClick={toggleSidebar}
@@ -31,6 +36,8 @@ export default function CollapsibleSidebar() {
             <SidebarChild path="/analytics-dashboard" text="Metrics Dashboard" />
           </SidebarItem>
         </nav>
+        </div>
+        <UserProfile isExpanded={isExpanded} />
       </div>
   )
 }
@@ -89,5 +96,45 @@ function SidebarChild({ path, text }: { path: string; text: string }) {
         <div className="absolute left-0 w-1 h-full bg-white" /> 
       )}
     </NavLink>
+  );
+}
+
+function UserProfile({isExpanded}:{isExpanded: boolean}){
+  const { user,setUser } = useUser();
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      // Determine the base URL based on the environment
+      const baseURL = import.meta.env.PROD 
+          ? import.meta.env.VITE_API_URL 
+          : import.meta.env.VITE_LOCAL_API_URL;
+
+      await axios.post(`${baseURL}/auth/logout`, {}, {
+        withCredentials: true
+      });
+
+      setUser(null); 
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+};
+  return (
+    <div>
+    <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+      
+        <span className="text-gray-300 hover:text-white">
+          <User2Icon size={24} /> {/* You can use a profile icon here */}
+        </span>
+        {isExpanded && <span className="text-sm mr-2">{user?.username}</span> }
+      
+    </div>
+   <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+   <span className="text-gray-300 hover:text-white">
+      <LogOut onClick={handleLogout} size={24} />
+      </span>
+      {isExpanded &&<span className="hidden sm:inline">Logout</span>}
+      </div>
+    </div>
   );
 }

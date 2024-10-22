@@ -194,6 +194,7 @@ export async function getBatchReports(req, res) {
       }
     });
 
+
     // Send the batch report data
     res.status(200).json(batchData);
   } catch (error) {

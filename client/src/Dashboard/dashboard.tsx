@@ -64,6 +64,7 @@ export default function Dashboard() {
   const debouncedStartDate = useDebouncedValue(startDate, 500);
   const debouncedEndDate = useDebouncedValue(endDate, 500);
 
+
   const now = new Date(); // Define 'now' variable
 
   const fetchData = useCallback(async () => {
@@ -97,11 +98,13 @@ export default function Dashboard() {
       });
 
       const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report`, {
-        debouncedStartDate,
-        debouncedEndDate
+        startDate: debouncedStartDate,
+        endDate: debouncedEndDate
       }, {
         withCredentials: true
       });
+
+      console.log("Analytics Data:", analyticsResponse.data);
 
       const combinedData = {
         ...shopifyResponse.data,
@@ -127,7 +130,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-    console.log("DATA",data)
 
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
 
@@ -197,7 +199,7 @@ export default function Dashboard() {
             }
             return 0;
         });
-
+        console.log("DATA",data)
         setFilteredOrders(filtered);
     }
 }, [data, orderFilter, debouncedStartDate, debouncedEndDate, sortColumn, sortDirection]);

@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import http from "http";
+import { initWebSocket } from "./webhook/shopifyWebhook.js";
 import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.js"
@@ -26,15 +28,24 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/auth",authRoutes);
-app.use("/shopify",spotifyRoutes);
-app.use("/analytics",analyticsRoutes);
-app.use("/",brandRoutes);
-app.use("/metrics",fbMetricrRoutes)
+const dataOperationRouter = express.Router();
+app.use('/api', dataOperationRouter);
+
+dataOperationRouter.use("/auth",authRoutes);
+dataOperationRouter.use("/shopify",spotifyRoutes);
+dataOperationRouter.use("/analytics",analyticsRoutes);
+dataOperationRouter.use("/brands",brandRoutes);
+dataOperationRouter.use("/metrics",fbMetricrRoutes)
 
 // const add_account_id = process.env.GOOGLE_AD_ACCOUNT_ID
 // const managerId = process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID
 // getAdLevelSpendAndROAS(add_account_id,managerId);
+
+//websocket connection
+
+// const server = http.createServer(app);
+
+// initWebSocket(server);
 
 
 const PORT = process.env.PORT || 5000;

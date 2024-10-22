@@ -3,20 +3,22 @@ import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
 import {  Settings2Icon } from "lucide-react"
 import { DateRange } from "react-day-picker"
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
 import { AdAccountData } from '@/Dashboard/interfaces.ts'
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
 
+
 export default function Dashboard() {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(), // Sets the default from date to today
+    from: new Date(), 
     to: new Date(),
   })
   const [isLoading, setIsLoading] = useState(false);
   const [adAccountsMetrics, setAdAccountsMetrics] = useState<AdAccountData[]>([]);
+  const {brandId} = useParams();
 
 
   const navigate = useNavigate();
@@ -32,16 +34,19 @@ export default function Dashboard() {
       const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
       const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
+      // console.log('Request Payload:', { brandId, startDate, endDate });
+
       const fbAdResponse = await axios.post(
-        `${baseURL}/metrics/fbad`,
+        `${baseURL}/api/metrics/fbad/${brandId}`,
         { startDate, endDate },
         { withCredentials: true }
       );
 
       const Fbdata = fbAdResponse.data;
-      const transformedData = Fbdata
+      const transformedData = Fbdata.data
         .filter((account: any) => !account.message) // Exclude accounts with messages
-        .map((account: any) => ({ // Adjust if there's an ID or name in your account
+        .map((account: any) => ({
+          account_name: account.account_name,  // Adjust if there's an ID or name in your account
           metrics: [
             { label: 'Amount Spent', value: `₹ ${parseFloat(account.spend).toLocaleString()}` },
             { label: 'Revenue', value: `₹ ${parseFloat(account.Revenue?.value || '0').toLocaleString()}` }, // Handle Revenue safely
@@ -75,7 +80,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchFbAdData();
+    console.log(adAccountsMetrics)
   }, [fetchFbAdData]);
+
+
+  useEffect(() => {
+    fetchFbAdData();
+
+    const intervalId = setInterval(fetchFbAdData, 5 * 60 * 1000);
+
+
+    return () => clearInterval(intervalId);
+  }, [fetchFbAdData]);
+
 
 
 
@@ -130,7 +147,7 @@ export default function Dashboard() {
             {adAccountsMetrics.map((accountMetrics, index) => (
               <AdAccountMetricsCard
                 key={index}
-                title={`Facebook - Udd Studio Ad Account-${index + 1}`}
+                title={`Facebook - ${accountMetrics.account_name}`}
                 metrics={accountMetrics.metrics || []}
                 date={date || { from: new Date(), to: new Date() }} 
               />

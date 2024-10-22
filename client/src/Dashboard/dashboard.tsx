@@ -49,6 +49,8 @@ export default function Dashboard() {
   const [reportData, setReportData] = useState<any[]>([]);
   const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
 
+  // const websocketUrl = import.meta.env.PROD ? 'wss://your-production-url' : 'ws://localhost:PORT';
+
 
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,7 +75,7 @@ export default function Dashboard() {
           ? import.meta.env.VITE_API_URL
           : import.meta.env.VITE_LOCAL_API_URL;
 
-      let url = `${baseURL}/shopify/data`;
+      let url = `${baseURL}/api/shopify/data`;
       const params = new URLSearchParams();
 
       if (orderFilter) {
@@ -94,7 +96,7 @@ export default function Dashboard() {
         withCredentials: true
       });
 
-      const analyticsResponse = await axios.post(`${baseURL}/analytics/report`, {
+      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report`, {
         debouncedStartDate,
         debouncedEndDate
       }, {
@@ -109,8 +111,8 @@ export default function Dashboard() {
       setData(combinedData);
       setFilteredOrders(combinedData.orders);
       setLastUpdated(new Date());
-      console.log(baseURL)
-      console.log("startdate:",startDate);
+  
+     
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -125,6 +127,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
+    console.log("DATA",data)
 
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
 
@@ -133,38 +136,75 @@ export default function Dashboard() {
   }, [fetchData]);
 
 
+  //websocket connection
+
+  // useEffect(() => {
+  //   const ws = new WebSocket(websocketUrl);
+
+  //   ws.onopen = () => {
+  //     console.log('WebSocket connected');
+  //   };
+
+  //   ws.onmessage = (event) => {
+  //     const newData = JSON.parse(event.data);
+  //     console.log('New webhook data received:', newData);
+
+  //     // Fetch the latest data again after receiving the update
+  //     fetchData(); // Re-fetch data to ensure the dashboard reflects the latest state
+  //   };
+
+  //   ws.onclose = () => {
+  //     console.log('WebSocket disconnected');
+  //   };
+
+  //   return () => {
+  //     ws.close(); // Clean up WebSocket connection on component unmount
+  //   };
+  // }, [fetchData, websocketUrl]);
+
+
 
   useEffect(() => {
     if (data) {
-      let filtered = data.orders.filter(order => {
-        const orderDate = new Date(order.created_at);
-        const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
-        const matchesStartDate = debouncedStartDate ? orderDate >= new Date(debouncedStartDate) : true;
-        const matchesEndDate = debouncedEndDate ? orderDate <= new Date(debouncedEndDate) : true;
+        let filtered = data.orders.filter(order => {
+            const orderDate = new Date(order.created_at);
+            const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
+            
+            const startDate = debouncedStartDate ? new Date(debouncedStartDate) : null;
+            const endDate = debouncedEndDate ? new Date(debouncedEndDate) : null;
 
-        // Debugging line to check each order's match status
-        // console.log(`Order ID: ${order.id}, Matches: ${matchesOrderNumber && matchesStartDate && matchesEndDate}`);
+            const matchesStartDate = startDate ? orderDate >= startDate : true;
+            const matchesEndDate = endDate ? orderDate <= endDate : true;
 
-        return matchesOrderNumber && matchesStartDate && matchesEndDate;
-      });
+            // Special case when start and end dates are equal
+            if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
+                return matchesOrderNumber && orderDate.toDateString() === startDate.toDateString();
+            }
 
-      // Apply sorting
-      filtered.sort((a, b) => {
-        if (sortColumn === 'order_number') {
-          return sortDirection === 'asc'
-            ? a.order_number - b.order_number
-            : b.order_number - a.order_number;
-        } else if (sortColumn === 'total_price') {
-          return sortDirection === 'asc'
-            ? parseFloat(a.total_price) - parseFloat(b.total_price)
-            : parseFloat(b.total_price) - parseFloat(a.total_price);
-        }
-        return 0;
-      });
+            return matchesOrderNumber && matchesStartDate && matchesEndDate;
+        });
 
-      setFilteredOrders(filtered);
+        // Apply sorting
+        filtered.sort((a, b) => {
+            if (sortColumn === 'order_number') {
+                return sortDirection === 'asc'
+                    ? a.order_number - b.order_number
+                    : b.order_number - a.order_number;
+            } else if (sortColumn === 'total_price') {
+                return sortDirection === 'asc'
+                    ? parseFloat(a.total_price) - parseFloat(b.total_price)
+                    : parseFloat(b.total_price) - parseFloat(a.total_price);
+            }
+            return 0;
+        });
+
+        setFilteredOrders(filtered);
     }
-  }, [data, orderFilter, debouncedStartDate, debouncedEndDate, sortColumn, sortDirection]);
+}, [data, orderFilter, debouncedStartDate, debouncedEndDate, sortColumn, sortDirection]);
+
+
+
+
 
   // console.log('Data:', data);
 
@@ -301,7 +341,7 @@ export default function Dashboard() {
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-2">
             <Settings2Icon className="h-6 w-6 text-gray-500" />
-            <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
+            <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
           <div className="flex items-center space-x-2">
             <DatePickerWithRange date={date} setDate={setDate} 

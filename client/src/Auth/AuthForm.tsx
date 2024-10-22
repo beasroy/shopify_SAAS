@@ -6,17 +6,19 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast"
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext'; 
+import { useUser } from '../context/UserContext';
+import { EyeIcon, EyeOffIcon } from 'lucide-react';
 
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast()
   const navigate = useNavigate();
   const [errors, setErrors] = useState({ username: '', email: '', password: '' });
-  const { setUser } = useUser(); 
+  const { setUser } = useUser();
 
   const toggleForm = () => setIsLogin(!isLogin);
 
@@ -57,64 +59,64 @@ export default function AuthForm() {
     }
 
     try {
-        let response;
-        // Determine the base URL based on the environment
-        const baseURL = import.meta.env.PROD 
-            ? import.meta.env.VITE_API_URL 
-            : import.meta.env.VITE_LOCAL_API_URL;
+      let response;
+      // Determine the base URL based on the environment
+      const baseURL = import.meta.env.PROD
+        ? import.meta.env.VITE_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
 
-        if (isLogin) {
-            response = await axios.post(
-                `${baseURL}/auth/login`, 
-                { email, password },
-                { withCredentials: true }
-            );
+      if (isLogin) {
+        response = await axios.post(
+          `${baseURL}/api/auth/login`,
+          { email, password },
+          { withCredentials: true }
+        );
 
-            if (response.data.success) {
-                // Set the user in the context
-                setUser(response.data.user);
-                console.log('User set in context:', response.data.user);
+        if (response.data.success) {
+          // Set the user in the context
+          setUser(response.data.user);
+          console.log('User set in context:', response.data.user);
 
-                toast({
-                    title: 'Login successful!',
-                    description: 'Welcome! Redirecting to your dashboard.',
-                    variant: 'default',
-                });
-                navigate('/dashboard');
-                console.log(baseURL);
-            }
-        } else {
-            response = await axios.post(
-                `${baseURL}/auth/signup`, 
-                { username, email, password },
-                { withCredentials: true }
-            );
-
-            if (response.data.success) {
-                toast({
-                    title: 'Registration successful!',
-                    description: 'Please log in with your new account.',
-                    variant: 'default',
-                });
-                setIsLogin(true);
-            }
+          toast({
+            title: 'Login successful!',
+            description: 'Welcome! Redirecting to your dashboard.',
+            variant: 'default',
+          });
+          navigate('/dashboard');
+          console.log(baseURL);
         }
+      } else {
+        response = await axios.post(
+          `${baseURL}/api/auth/signup`,
+          { username, email, password },
+          { withCredentials: true }
+        );
+
+        if (response.data.success) {
+          toast({
+            title: 'Registration successful!',
+            description: 'Please log in with your new account.',
+            variant: 'default',
+          });
+          setIsLogin(true);
+        }
+      }
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            toast({
-                title: 'Error',
-                description: error.response.data.message || 'An error occurred',
-                variant: 'destructive',
-            });
-        } else {
-            toast({
-                title: 'Unexpected Error',
-                description: 'An unexpected error occurred',
-                variant: 'destructive',
-            });
-        }
+      if (axios.isAxiosError(error) && error.response) {
+        toast({
+          title: 'Error',
+          description: error.response.data.message || 'An error occurred',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Unexpected Error',
+          description: 'An unexpected error occurred',
+          variant: 'destructive',
+        });
+      }
     }
-};
+  };
 
 
   return (
@@ -175,17 +177,30 @@ export default function AuthForm() {
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
-         
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
+            <div className='relative'>
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-2"
+              >
+                {showPassword ? (
+                  <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-500" />
+                )}
+              </button>
+            </div>
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 

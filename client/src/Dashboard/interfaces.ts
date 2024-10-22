@@ -68,6 +68,7 @@ export interface AdAccountData {
   ctr?: string;
   cpc?: string;
   cpp?: string;
+  account_name?:string;
   date_start: string;
   date_stop: string;
   message?: string;

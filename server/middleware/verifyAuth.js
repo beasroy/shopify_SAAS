@@ -4,12 +4,6 @@ import { config } from "dotenv";
 config();
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
-const generateAccessToken = (user) => {
-  const expiresIn = '1h'; 
-  const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn });
-  return { token, expiresIn };
-};
-
 export const verifyAuth = (req, res, next) => {
   try {
     const token = req.cookies.token;
@@ -22,20 +16,20 @@ export const verifyAuth = (req, res, next) => {
     } 
 
     const decoded = jwt.verify(token, SECRET_KEY);
-    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+    // const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
 
-    if (decoded.exp - currentTime < 300) { // 5 minutes (300 seconds)
-      // Generate a new access token
-      const newTokenData = generateAccessToken({ id: decoded.id });
+    // if (decoded.exp - currentTime < 300) { // 5 minutes (300 seconds)
+    //   // Generate a new access token
+    //   const newTokenData = generateAccessToken({ id: decoded.id });
 
-      // Adjust cookie settings for HTTP
-      res.cookie('token', newTokenData.token, {
-        httpOnly: true,
-        secure: false, // Set to false since we are using HTTP
-        sameSite: 'lax', // Adjust based on your cross-origin requirements
-        maxAge: 60 * 60 * 1000 // 1 hour
-      });
-    }
+    //   // Adjust cookie settings for HTTP
+    //   res.cookie('token', newTokenData.token, {
+    //     httpOnly: true,
+    //     secure: false, // Set to false since we are using HTTP
+    //     sameSite: 'lax', // Adjust based on your cross-origin requirements
+    //     maxAge: 60 * 60 * 1000 // 1 hour
+    //   });
+    // }
 
     req.user = decoded; 
     next();

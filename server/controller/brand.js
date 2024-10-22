@@ -18,3 +18,13 @@ export const addBrands = async(req,res) =>{
         res.status(500).json({ message: 'Error creating brand', error: error.message });
     }
 }
+
+export const getBrands = async(req,res) =>{
+    try{
+        const brands = await Brand.find();
+        res.json(brands);
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching brands', error: error.message });
+    }
+}

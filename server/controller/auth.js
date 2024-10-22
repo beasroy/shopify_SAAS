@@ -108,7 +108,7 @@ export const userLogin = async (req, res) => {
             httpOnly: true,
             secure: false, // Set to false for HTTP (no HTTPS)
             sameSite: 'lax', // 'lax' is less strict, allowing cross-site requests in some cases
-            maxAge: 60 * 60 * 1000 // 1 hour
+            maxAge: 7 * 24 * 60 * 60 * 1000 
         });
 
         return res.status(200).json({

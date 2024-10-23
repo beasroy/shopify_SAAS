@@ -74,3 +74,15 @@ export interface AdAccountData {
   message?: string;
   metrics?: Metric[]; // Optional for accounts with no data
 }
+
+
+export interface AggregatedMetrics {
+  totalSpent: string;
+  totalRevenue: string;
+  totalROAS: string; 
+  totalPurchases: string;
+  totalCPC: string;
+  totalCPM: string;
+  totalCTR: string;
+  totalCPP: string;
+}

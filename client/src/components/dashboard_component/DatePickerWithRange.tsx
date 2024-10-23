@@ -9,16 +9,25 @@ import { cn } from "@/lib/utils";
 type DatePickerWithRangeProps = {
   date: DateRange | undefined;
   setDate: (date: DateRange | undefined) => void;
-  defaultDate?: DateRange; // New prop for default dates
+  defaultDate?: DateRange;
+  resetToFirstPage?: () => void; // New prop for default dates
 };
 
 export const DatePickerWithRange: React.FC<DatePickerWithRangeProps> = ({
   date,
   setDate,
   defaultDate,
+  resetToFirstPage
 }) => {
   // Use defaultDate only if date is undefined
   const effectiveDate = date && (date.from || date.to) ? date : defaultDate;
+
+  const handleDateChange = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+    if (resetToFirstPage) {
+      resetToFirstPage(); // Call reset only if provided
+    }
+  };
 
   return (
     <div className="grid gap-2">
@@ -52,7 +61,7 @@ export const DatePickerWithRange: React.FC<DatePickerWithRangeProps> = ({
             mode="range"
             defaultMonth={effectiveDate?.from}
             selected={effectiveDate}
-            onSelect={setDate}
+            onSelect={handleDateChange}
             numberOfMonths={2}
           />
         </PopoverContent>

@@ -114,8 +114,7 @@ export default function Dashboard() {
       setData(combinedData);
       setFilteredOrders(combinedData.orders);
       setLastUpdated(new Date());
-  
-     
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -169,21 +168,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (data) {
         let filtered = data.orders.filter(order => {
-            const orderDate = new Date(order.created_at);
             const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
-            
-            const startDate = debouncedStartDate ? new Date(debouncedStartDate) : null;
-            const endDate = debouncedEndDate ? new Date(debouncedEndDate) : null;
-
-            const matchesStartDate = startDate ? orderDate >= startDate : true;
-            const matchesEndDate = endDate ? orderDate <= endDate : true;
-
-            // Special case when start and end dates are equal
-            if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
-                return matchesOrderNumber && orderDate.toDateString() === startDate.toDateString();
-            }
-
-            return matchesOrderNumber && matchesStartDate && matchesEndDate;
+            return matchesOrderNumber
         });
 
         // Apply sorting
@@ -201,8 +187,9 @@ export default function Dashboard() {
         });
         console.log("DATA",data)
         setFilteredOrders(filtered);
+        console.log("filtered orders",filteredOrders.length)
     }
-}, [data, orderFilter, debouncedStartDate, debouncedEndDate, sortColumn, sortDirection]);
+}, [data, orderFilter, sortColumn, sortDirection]);
 
 
 
@@ -224,19 +211,6 @@ export default function Dashboard() {
     setOrderFilter(e.target.value);
     setCurrentPage(1); // Reset to first page when filter changes
   };
-
-  // const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   setStartDate(e.target.value);
-  //   setCurrentPage(1); // Reset to first page when filter changes
-  // };
-
-  // const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   setEndDate(e.target.value);
-  //   setCurrentPage(1); // Reset to first page when filter changes
-  // };
-
-
-
 
 
   const getStatusColor = (status: string) => {
@@ -350,7 +324,7 @@ export default function Dashboard() {
            defaultDate={{ 
             from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
             to: now // Current date
-          }}  />
+          }} resetToFirstPage={()=>setCurrentPage(1)} />
           </div>
         </div>
       </header>
@@ -408,23 +382,6 @@ export default function Dashboard() {
                 onChange={handleOrderFilterChange}
                 className="max-w-xs"
               />
-              {/* <div className="flex md:flex-row flex-col items-center gap-2 justify-center">
-                <Input
-                  placeholder="Start Date"
-                  value={startDate}
-                  onChange={handleStartDateChange}
-                  className="max-w-xs"
-                  type="date"
-                />
-                <span>to</span>
-                <Input
-                  placeholder="End Date"
-                  value={endDate}
-                  onChange={handleEndDateChange}
-                  className="max-w-xs"
-                  type="date"
-                />
-              </div> */}
             </CardHeader>
             <CardContent>
               <OrdersTable

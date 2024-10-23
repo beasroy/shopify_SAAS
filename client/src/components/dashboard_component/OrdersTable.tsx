@@ -39,6 +39,14 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
 
+  console.log("Current Page:", currentPage);
+console.log("Orders per Page:", ordersPerPage);
+console.log("Index of First Order:", indexOfFirstOrder);
+console.log("Index of Last Order:", indexOfLastOrder);
+console.log("Current Orders Length:", currentOrders.length);
+console.log("total Orders Length:", totalOrders)
+
+
   return (
     <>
       <div className="overflow-x-auto">

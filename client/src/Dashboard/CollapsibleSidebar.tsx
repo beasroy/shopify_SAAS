@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store } from 'lucide-react'
 import React from 'react'
@@ -13,11 +12,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import Logo from '@/components/dashboard_component/Logo'
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { selectedBrandId, setSelectedBrandId } = useBrand();
-  const [brands, setBrands] = useState<any[]>([]);
+  const { selectedBrandId, setSelectedBrandId, brands,setBrands } = useBrand();
   const location = useLocation();
 
   const baseURL =
@@ -39,7 +38,7 @@ export default function CollapsibleSidebar() {
       }
     };
     fetchBrands();
-  }, []);
+  }, [setBrands]);
 
   return (
     <TooltipProvider>
@@ -58,8 +57,18 @@ export default function CollapsibleSidebar() {
           </div>
           <nav className="mt-3">
             <SidebarItem
+              icon={<Logo />}
+              text={"Messold"}
+              isExpanded={isExpanded}
+              isSelected={true}
+              tooltipContent="Messold"
+            >
+            </SidebarItem>
+          </nav>
+          <nav className="mt-3">
+            <SidebarItem
               icon={<Store size={24} />}
-              text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') : "Your Brands"}
+              text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') || "Unknown Brand" : "Your Brands"}
               isExpanded={isExpanded}
               openIcon={<ChevronUp />}
               closeIcon={<ChevronDown />}
@@ -100,8 +109,8 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   icon?: React.ReactNode;
   text: string;
   isExpanded: boolean;
-  openIcon: React.ReactNode;
-  closeIcon: React.ReactNode;
+  openIcon?: React.ReactNode;
+  closeIcon?: React.ReactNode;
   children?: React.ReactNode;
   isSelected: boolean;
   tooltipContent: string;
@@ -132,7 +141,7 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
             {content}
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p className='mb-4'>{tooltipContent}</p>
+          <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>{tooltipContent}</p>
             {React.Children.map(children, (child) => (
               <div className="relative">
                 <div className="absolute top-0 w-1 h-full bg-gray-500" />
@@ -207,7 +216,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
       <span className="text-gray-300 hover:text-white">
         <User2Icon size={24} />
       </span>
-      {isExpanded && <span className="text-sm mr-2">{user?.username}</span>}
+      {isExpanded && <span className="text-sm mr-2">{user?.username ||'user'}</span>}
     </div>
   );
 
@@ -228,7 +237,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
             {userProfileContent}
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p>{user?.username}</p>
+            <p>{user?.username || 'user'}</p>
           </TooltipContent>
         </Tooltip>
       ) : (

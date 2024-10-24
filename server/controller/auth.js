@@ -101,13 +101,13 @@ export const userLogin = async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        // Update the secure flag and sameSite settings for HTTP
+        // Configure cookies for production (HTTPS)
         const isProduction = process.env.NODE_ENV === 'production';
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // Set to false for HTTP (no HTTPS)
-            sameSite: 'lax', // 'lax' is less strict, allowing cross-site requests in some cases
+            secure: isProduction, // Use true if running on HTTPS in production
+            sameSite: isProduction ? 'strict' : 'lax', // 'strict' is more secure; 'lax' allows standard behavior
             maxAge: 7 * 24 * 60 * 60 * 1000 
         });
 
@@ -131,13 +131,15 @@ export const userLogin = async (req, res) => {
     }
 };
 
-
 export const userLogout = (req, res) => {
     try {
+        // Configure cookies for production (HTTPS)
+        const isProduction = process.env.NODE_ENV === 'production';
+
         res.clearCookie('token', {
             httpOnly: true,
-            secure: false, // Set to false because we are using HTTP
-            sameSite: 'lax' // Use 'lax' for standard behavior; adjust if needed
+            secure: isProduction, // Use true if running on HTTPS in production
+            sameSite: isProduction ? 'strict' : 'lax' // Use 'strict' for better security
         });
 
         return res.status(200).json({
@@ -153,8 +155,4 @@ export const userLogout = (req, res) => {
         });
     }
 };
-
-
-
-
 

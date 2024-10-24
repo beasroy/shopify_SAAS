@@ -3,15 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Bell, Settings, Briefcase, RefreshCw, Store } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useUser } from "@/context/UserContext"
+import { useBrand } from "@/context/BrandContext"
 
 export default function LandingPage() {
 
-    const {user} = useUser() ;
+  const { user } = useUser();
+  const { brands } = useBrand();
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-pink-50 p-6 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight ">Welcome back, {user?.username.split(' ')[0]} !</h1>
-        
+        <h1 className="text-3xl font-bold tracking-tight ">Welcome back, {user?.username.split(' ')[0] || 'user'} !</h1>
+
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="bg-white border-t-4 border-t-black shadow-lg">
             <CardHeader>
@@ -19,25 +21,24 @@ export default function LandingPage() {
               <CardDescription>Quick access to your brand dashboards</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button asChild className="w-full justify-start hover:bg-black/50 hover:text-white">
-                <Link to="/udd-studio/business-dashboard">
-                  <Store className="mr-2 h-4 w-4" />
-                  UDD Studio
-                </Link>
-              </Button>
-              <Button asChild className="w-full justify-start hover:bg-pink-500 bg-pink-600 text-white">
-                <Link to="/fisherman-hub/business-dashboard">
-                  <Store className="mr-2 h-4 w-4" />
-                  Fisherman Hub
-                </Link>
-              </Button>
+              {brands.map((brand, index) => (
+                <Button
+                key={brand._id}
+                 asChild
+                  className={`w-full justify-start ${index %2 == 0?' hover:bg-black/50 hover:text-white':'hover:bg-pink-500 bg-pink-600 text-white'} `}>
+                  <Link to={`/business-dashboard/${brand._id}`}>
+                    <Store className="mr-2 h-4 w-4" />
+                    {brand.name}
+                  </Link>
+                </Button>
+              ))}
               <Button variant="outline" className="w-full justify-start border-dashed border-2 border-gray-300 hover:bg-indigo-50">
                 <Briefcase className="mr-2 h-4 w-4" />
                 Add New Brand
               </Button>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-white border-t-4 border-t-pink-500 shadow-lg">
             <CardHeader>
               <CardTitle className="text-pink-600">Recent Activity</CardTitle>

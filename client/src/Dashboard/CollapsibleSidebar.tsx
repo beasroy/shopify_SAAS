@@ -40,6 +40,7 @@ export default function CollapsibleSidebar() {
     fetchBrands();
   }, [setBrands]);
 
+
   return (
     <TooltipProvider>
       <div
@@ -95,7 +96,13 @@ export default function CollapsibleSidebar() {
               tooltipContent="Analytics"
             >
               <SidebarChild path={`/business-dashboard/${selectedBrandId || ''}`} text="Business Dashboard" />
-              <SidebarChild path={`/analytics-dashboard/${selectedBrandId || ''}`} text="Metrics Dashboard" />
+              <SidebarChild path={`/analytics-dashboard/${selectedBrandId || ''}`} text="Metrics Dashboard"
+             disabled={
+              !selectedBrandId || 
+              !brands || 
+              brands.length === 0 || 
+              !brands.find(b => b._id === selectedBrandId)?.fbAdAccounts?.length
+            } />
             </SidebarItem>
           </nav>
         </div>
@@ -165,14 +172,14 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   );
 }
 
-function SidebarChild({ path, text, onClick, selectedBrandId }: { path: string; text: string; onClick?: () => void; selectedBrandId?: string | null }) {
+function SidebarChild({ path, text, onClick, selectedBrandId,disabled }: { path: string; text: string; onClick?: () => void; selectedBrandId?: string | null ,disabled?: boolean}) {
   const { pathname } = useLocation();
   const isSelected = pathname === path || (selectedBrandId === path.split('/').pop());
 
   return (
     <NavLink
       to={path}
-      className={`flex items-center text-sm w-full p-3 hover:bg-gray-700 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}
+      className={`flex items-center text-sm w-full p-3 hover:bg-gray-700 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed':''}`}
       onClick={(e) => {
         if (onClick) {
           e.preventDefault();

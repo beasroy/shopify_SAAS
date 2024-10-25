@@ -41,6 +41,7 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
   return (
     <div>
       <ResponsiveContainer width="100%" height={ 280}>
+        {topPages.length>0 ?(
         <PieChart>
           <Tooltip formatter={(value, name) => [`${value}`, `${name}`]} />
           {!isMobileOrTablet && ( // Conditionally render the Legend
@@ -61,6 +62,11 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
             ))}
           </Pie>
         </PieChart>
+        ):(
+          <div style={{ textAlign: 'center', marginTop: '50px' }}>
+          <p>No data available for top landing pages.Please set up Google Analytics for this data.</p>
+          </div>
+        )}
       </ResponsiveContainer>
     </div>
   );

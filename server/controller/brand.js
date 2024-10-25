@@ -28,3 +28,33 @@ export const getBrands = async(req,res) =>{
         res.status(500).json({ message: 'Error fetching brands', error: error.message });
     }
 }
+
+export const updateBrands = async(req,res) =>{
+    try {
+        const {brandid}=req.params;
+        const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+
+        if (!brandid || !name) {
+            return res.status(400).json({ error: 'Brand ID and name are required.' });
+          }
+      
+          const updateData = {
+            name,
+            fbAdAccounts,
+            googleAdAccount,
+            ga4Account,
+            shopifyAccount,
+          };
+
+          const updatedBrand = await Brand.findByIdAndUpdate(brandid, updateData, { new: true, runValidators: true });
+
+          if (!updatedBrand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+          }
+          res.status(200).json(updatedBrand);
+
+    } catch (error) {
+        console.error('Error updating brand:', error);
+        res.status(500).json({ error: 'Failed to update brand. Please try again.' });
+    }
+}

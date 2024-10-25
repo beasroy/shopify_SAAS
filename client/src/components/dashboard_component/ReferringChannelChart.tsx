@@ -8,6 +8,14 @@ interface ReferringChannelsChartProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF6699', '#FF33CC'];
 
 export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ rawData }) => {
+
+  if (rawData.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <p>No data available. Please set up Google Analytics for this data.</p>
+      </div>
+    );
+  }
   // Aggregate visitors by channel
   const aggregatedData = rawData.reduce((acc, entry) => {
     const Channel = entry.Channel;

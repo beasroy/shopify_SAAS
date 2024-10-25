@@ -25,6 +25,7 @@ const TopCitiesLineChart: React.FC<TopCitiesLineChartProps> = ({ cityData }) => 
 
   return (
     <ResponsiveContainer width="100%" height={300}>
+    {topCities.length > 0 ? (
       <LineChart data={topCities}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="city" label={{ value: 'City', position: 'insideBottom', offset: -10 }} />
@@ -33,6 +34,11 @@ const TopCitiesLineChart: React.FC<TopCitiesLineChartProps> = ({ cityData }) => 
         <Legend margin={{top:15}}/>
         <Line type="monotone" dataKey="visitors" stroke="#8884d8" activeDot={{ r: 8 }}/>
       </LineChart>
+    ):(
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+      <p>No data available. Please set up Google Analytics for this data.</p>
+    </div>
+    )}
     </ResponsiveContainer>
   );
 };

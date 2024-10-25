@@ -34,6 +34,14 @@ const formatMonth = (yearMonth: string) => {
 };
 
 const MonthlyReturningCustomerRatesChart: React.FC<MonthlyReturningCustomerRatesChartProps> = ({ data }) => {
+
+  if (data.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <p>No data available. Please set up Google Analytics for this data.</p>
+      </div>
+    );
+  }
   // Calculate max and min values
   const maxRate = Math.max(...data.map(entry => entry.returningCustomerRate));
   const minRate = Math.min(...data.map(entry => entry.returningCustomerRate));

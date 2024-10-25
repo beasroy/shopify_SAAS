@@ -1,21 +1,89 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import { config } from "dotenv";
+import Brand from "../models/Brands.js";
 
-config(); // Load environment variables
+config();
 
-const client = new BetaAnalyticsDataClient({
-  keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-});
+// const getCredentialsPath = (brandId) => {
+//   switch (brandId) {
+//     case '671b68bed3c4f462d681ef45':
+//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_UDDSTUDIO;
+//     case '671b6925d3c4f462d681ef47':
+//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_FISHERMANHUB;
+//     case '671b90c83aee55a69981a0c9':
+//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_KOLORTHERAPI;
+//     case '671b7d85f99634509a5f2693':
+//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_REPRISE;
+//     default:
+//       console.warn(`No credentials path found for brand ID: ${brandId}`);
+//       return null; 
+//   }
+// };
 
-const propertyId = process.env.GOOGLE_PROPERTY_ID;
+const getCredentials = (brandId) => {
+  switch (brandId) {
+    case '671b68bed3c4f462d681ef45':
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL_UDDSTUDIO,
+        private_key: process.env.GOOGLE_PRIVATE_KEY_UDDSTUDIO.replace(/\\n/g, '\n')
+      };
+    case '671b6925d3c4f462d681ef47':
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL_FISHERMANHUB,
+        private_key: process.env.GOOGLE_PRIVATE_KEY_FISHERMANHUB.replace(/\\n/g, '\n')
+      };
+    case '671b90c83aee55a69981a0c9':
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL_KOLORTHERAPI,
+        private_key: process.env.GOOGLE_PRIVATE_KEY_KOLORTHERAPI.replace(/\\n/g, '\n')
+      };
+    case '671b7d85f99634509a5f2693':
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL_REPRISE,
+        private_key: process.env.GOOGLE_PRIVATE_KEY_REPRISE.replace(/\\n/g, '\n')
+      };
+    default:
+      console.warn(`No credentials found for brand ID: ${brandId}`);
+      return null;
+  }
+};
 
-console.log('Property ID:', process.env.GOOGLE_PROPERTY_ID);
-console.log('Credentials path:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 // Batch request handler
 export async function getBatchReports(req, res) {
   try {
+    const { brandId } = req.params;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    // const credentialsPath = getCredentialsPath(brandId);
+    // if (!credentialsPath) {
+    //   console.warn(`No credentials found for brand ID: ${brandId}`);
+    //   return res.status(200).json([]);
+    // }
+
+    const credentials = getCredentials(brandId);
+
+    if (!credentials) {
+      console.warn(`No credentials found for brand ID: ${brandId}`);
+      return res.status(200).json([]);
+    }
+
+    const client = new BetaAnalyticsDataClient({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
+
+    // const client = new BetaAnalyticsDataClient({
+    //   keyFile: credentialsPath,
+    //   scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    // });
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
     // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
@@ -24,7 +92,7 @@ export async function getBatchReports(req, res) {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
+
       // Format the dates to YYYY-MM-DD
       startDate = firstDayOfMonth.toISOString().split('T')[0];
       endDate = lastDayOfMonth.toISOString().split('T')[0];
@@ -96,7 +164,7 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            { name: 'yearMonth' }, 
+            { name: 'yearMonth' },
             { name: "source" },
             { name: "medium" },                  // Group by month
             { name: 'sessionDefaultChannelGroup' }   // Referring channel

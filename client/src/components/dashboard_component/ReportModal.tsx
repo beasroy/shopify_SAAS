@@ -48,6 +48,21 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, title, data 
     return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`; // Use rgba for a gradient effect
   };
 
+  if (data.length === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-full w-[90%] h-[80%]">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="text-center mt-5">
+            <p>No data available. Please set up Google Analytics for this data.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   // Parse session data and find the maximum value
   const parsedData = data.map(item => ({
     ...item,

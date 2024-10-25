@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness} from "lucide-react";
+import { useNavigate, useParams } from 'react-router-dom';
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 // import { Navbar } from './navbar.tsx';
@@ -37,7 +37,8 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 export default function Dashboard() {
 
-
+  const { brandId } = useParams();
+  console.log(brandId)
   const [data, setData] = useState<CombinedData | null>(null);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof Order>('created_at');
@@ -76,7 +77,7 @@ export default function Dashboard() {
           ? import.meta.env.VITE_API_URL
           : import.meta.env.VITE_LOCAL_API_URL;
 
-      let url = `${baseURL}/api/shopify/data`;
+      let url = `${baseURL}/api/shopify/data/${brandId}`;
       const params = new URLSearchParams();
 
       if (orderFilter) {
@@ -97,7 +98,7 @@ export default function Dashboard() {
         withCredentials: true
       });
 
-      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report`, {
+      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
         startDate: debouncedStartDate,
         endDate: debouncedEndDate
       }, {
@@ -108,7 +109,7 @@ export default function Dashboard() {
 
       const combinedData = {
         ...shopifyResponse.data,
-        analyticsReports: analyticsResponse.data
+        analyticsReports: analyticsResponse.data || null,
       };
 
       setData(combinedData);
@@ -167,29 +168,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (data) {
-        let filtered = data.orders.filter(order => {
-            const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
-            return matchesOrderNumber
-        });
+      let filtered = data.orders.filter(order => {
+        const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
+        return matchesOrderNumber
+      });
 
-        // Apply sorting
-        filtered.sort((a, b) => {
-            if (sortColumn === 'order_number') {
-                return sortDirection === 'asc'
-                    ? a.order_number - b.order_number
-                    : b.order_number - a.order_number;
-            } else if (sortColumn === 'total_price') {
-                return sortDirection === 'asc'
-                    ? parseFloat(a.total_price) - parseFloat(b.total_price)
-                    : parseFloat(b.total_price) - parseFloat(a.total_price);
-            }
-            return 0;
-        });
-        console.log("DATA",data)
-        setFilteredOrders(filtered);
-        console.log("filtered orders",filteredOrders.length)
+      // Apply sorting
+      filtered.sort((a, b) => {
+        if (sortColumn === 'order_number') {
+          return sortDirection === 'asc'
+            ? a.order_number - b.order_number
+            : b.order_number - a.order_number;
+        } else if (sortColumn === 'total_price') {
+          return sortDirection === 'asc'
+            ? parseFloat(a.total_price) - parseFloat(b.total_price)
+            : parseFloat(b.total_price) - parseFloat(a.total_price);
+        }
+        return 0;
+      });
+      console.log("DATA", data)
+      setFilteredOrders(filtered);
+      console.log("filtered orders", filteredOrders.length)
     }
-}, [data, orderFilter, sortColumn, sortDirection]);
+  }, [data, orderFilter, sortColumn, sortDirection]);
 
 
 
@@ -312,7 +313,7 @@ export default function Dashboard() {
 
   return (
     <>
-      
+
       <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-2">
@@ -320,26 +321,28 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <DatePickerWithRange date={date} setDate={setDate} 
-           defaultDate={{ 
-            from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
-            to: now // Current date
-          }} resetToFirstPage={()=>setCurrentPage(1)} />
+            <DatePickerWithRange date={date} setDate={setDate}
+              defaultDate={{
+                from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
+                to: now // Current date
+              }} resetToFirstPage={() => setCurrentPage(1)} />
           </div>
         </div>
       </header>
       <div className="p-4 md:p-8 bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen">
         <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-semibold mb-2 flex items-center space-x-2">
-              <BriefcaseBusiness className="h-6 w-6" />
-              <span>Blended summary</span>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              <svg viewBox="0 0 24 24" className="w-5 h-5" >
-                <path d="M13.5437 4.24116L13.5441 4.24138C13.904 4.43971 14.2179 4.70303 14.4689 5.01529C14.7198 5.3275 14.903 5.68264 15.009 6.0601L15.4904 5.92486L15.009 6.0601C15.115 6.43752 15.1422 6.83078 15.0891 7.21776C15.0361 7.60457 14.9038 7.97861 14.6989 8.31855C14.6988 8.31873 14.6987 8.31891 14.6986 8.3191L8.41444 18.701C7.9918 19.3741 7.30557 19.868 6.49825 20.0687C5.68937 20.2699 4.83087 20.1586 4.10949 19.7614C3.38872 19.3646 2.86649 18.7168 2.64727 17.9633C2.42868 17.212 2.5264 16.4083 2.92214 15.7226L9.20689 5.33823C9.20695 5.33813 9.20702 5.33802 9.20708 5.33792C9.62451 4.65082 10.3142 4.14383 11.1301 3.93599C11.9464 3.72804 12.8151 3.83872 13.5437 4.24116Z" fill="#FFB70A" stroke="#FFB70A"></path><path d="M21.5404 15.4544L15.24 5.04127C14.7453 4.25097 13.9459 3.67817 13.0138 3.44633C12.0817 3.21448 11.0917 3.34215 10.2572 3.80182C9.4226 4.26149 8.8103 5.01636 8.55224 5.90372C8.29418 6.79108 8.41102 7.73988 8.87757 8.54562L15.178 18.9587C15.6726 19.749 16.4721 20.3218 17.4042 20.5537C18.3362 20.7855 19.3262 20.6579 20.1608 20.1982C20.9953 19.7385 21.6076 18.9836 21.8657 18.0963C22.1238 17.2089 22.0069 16.2601 21.5404 15.4544Z" fill="#3B8AD8"></path><path d="M9.23018 16.2447C9.07335 15.6884 8.77505 15.1775 8.36166 14.7572C7.94827 14.3369 7.43255 14.0202 6.86011 13.835C6.28768 13.6499 5.67618 13.6021 5.07973 13.6958C4.48328 13.7895 3.92026 14.0219 3.44049 14.3723C2.96071 14.7227 2.57898 15.1804 2.32906 15.7049C2.07914 16.2294 1.96873 16.8045 2.00762 17.3794C2.0465 17.9542 2.23347 18.5111 2.55199 19.0007C2.8705 19.4902 3.31074 19.8975 3.83376 20.1863C4.46363 20.5354 5.1882 20.6983 5.91542 20.6542C6.64264 20.6101 7.33969 20.361 7.91802 19.9386C8.49636 19.5162 8.92988 18.9395 9.16351 18.2817C9.39715 17.624 9.42035 16.915 9.23018 16.2447Z" fill="#2CAA14"></path>
-              </svg>
-            </h1>
+          <h1 className="text-2xl font-semibold mb-2 flex items-center space-x-3">
+            <BriefcaseBusiness className="h-6 w-6" />
+            <span>Blended summary</span>
+            <svg viewBox="0 0 64 64" className="w-5 h-5"
+              xmlns="http://www.w3.org/2000/svg" ><g>
+                <g><path d="M51.759,12.659c-0.221-0.021-4.94-0.371-4.94-0.371s-3.28-3.271-3.639-3.631    c-0.36-0.362-1.063-0.254-1.337-0.171c-0.039,0.011-0.715,0.222-1.834,0.567c-1.096-3.167-3.027-6.077-6.426-6.077    c-0.094,0-0.191,0.004-0.289,0.01c-0.966-1.283-2.164-1.844-3.199-1.844c-7.919,0-11.703,9.951-12.889,15.008    c-3.078,0.956-5.266,1.638-5.542,1.728C9.943,18.42,9.89,18.474,9.667,20.1C9.495,21.331,5,56.264,5,56.264l35.022,6.594    L59,58.731c0,0-6.661-45.261-6.703-45.572C52.255,12.849,51.983,12.677,51.759,12.659z M33.034,10.88    c0,0.119-0.002,0.231-0.002,0.344c-1.928,0.601-4.02,1.251-6.121,1.906c1.179-4.57,3.387-6.78,5.32-7.613    C32.716,6.743,33.034,8.505,33.034,10.88z M29.876,3.278c0.346,0,0.688,0.116,1.018,0.345c-2.539,1.199-5.258,4.224-6.408,10.261    c-1.679,0.522-3.319,1.034-4.838,1.506C20.994,10.783,24.188,3.278,29.876,3.278z M31.241,30.19c0,0-2.05-1.099-4.561-1.099    c-3.686,0-3.872,2.324-3.872,2.908c0,3.195,8.287,4.42,8.287,11.903c0,5.888-3.714,9.678-8.726,9.678    c-6.012,0-9.088-3.761-9.088-3.761l1.609-5.345c0,0,3.16,2.729,5.83,2.729c1.74,0,2.449-1.38,2.449-2.387    c0-4.168-6.799-4.354-6.799-11.203c0-5.761,4.116-11.341,12.428-11.341c3.199,0,4.783,0.923,4.783,0.923L31.241,30.19z     M35.11,10.578c0-0.211,0.002-0.417,0.002-0.644c0-1.966-0.273-3.551-0.709-4.807c1.752,0.219,2.919,2.223,3.67,4.528    C37.194,9.931,36.194,10.241,35.11,10.578z" fill="#95C675" /></g><g><path d="M51.759,12.659c-0.221-0.021-4.94-0.371-4.94-0.371s-3.28-3.271-3.639-3.631    c-0.36-0.362-1.063-0.254-1.337-0.171c-0.039,0.011-0.715,0.222-1.834,0.567c-1.096-3.167-3.027-6.077-6.426-6.077    c-0.094,0-0.191,0.004-0.289,0.01c-0.966-1.283-2.164-1.844-3.199-1.844c-7.919,0-9.873,9.951-11.059,15.008    c-3.078,0.956-5.44,6.219-5.719,6.307c-1.719,0.542-1.772,0.596-1.996,2.223C11.148,25.91,5,56.264,5,56.264l35.022,6.594    L59,58.731c0,0-6.661-45.261-6.703-45.572C52.255,12.849,51.983,12.677,51.759,12.659z M33.034,10.88    c0,0.119-0.002,0.231-0.002,0.344c-1.928,0.601-4.02,1.251-6.121,1.906c1.179-4.57,3.387-6.78,5.32-7.613    C32.716,6.743,33.034,8.505,33.034,10.88z M29.876,3.278c0.346,0,0.688,0.116,1.018,0.345c-2.539,1.199-5.258,4.224-6.408,10.261    c-1.679,0.522-3.319,1.034-4.838,1.506C20.994,10.783,24.188,3.278,29.876,3.278z M31.241,30.19c0,0-2.05-1.099-4.561-1.099    c-3.686,0-3.872,2.324-3.872,2.908c0,3.195,8.287,4.42,8.287,11.903c0,5.888-3.714,9.678-8.726,9.678    c-6.012,0-9.088-3.761-9.088-3.761l1.609-5.345c0,0,3.16,2.729,5.83,2.729c1.74,0,2.449-1.38,2.449-2.387    c0-4.168-6.799-4.354-6.799-11.203c0-5.761,4.116-11.341,12.428-11.341c3.199,0,4.783,0.923,4.783,0.923L31.241,30.19z     M35.11,10.578c0-0.211,0.002-0.417,0.002-0.644c0-1.966-0.273-3.551-0.709-4.807c1.752,0.219,2.919,2.223,3.67,4.528    C37.194,9.931,36.194,10.241,35.11,10.578z" fill="#79B259" /></g><path d="M40.022,62.857L59,58.731c0,0-6.661-45.261-6.703-45.572c-0.042-0.311-0.313-0.482-0.538-0.5   c-0.221-0.021-4.94-0.371-4.94-0.371s-3.28-3.271-3.639-3.631c-0.192-0.194-0.479-0.249-0.75-0.251   c-0.72,1.22-0.571,3.537-0.571,3.537l-2.232,50.839L40.022,62.857z" fill="#55932C" /><path d="M33.583,2.977c-0.094,0-0.191,0.004-0.289,0.01c-0.966-1.283-2.164-1.844-3.199-1.844   c-7.887,0-11.674,9.873-12.875,14.947l2.447-0.759c1.354-4.609,4.545-12.053,10.209-12.053c0.346,0,0.688,0.116,1.018,0.345   c-2.532,1.195-5.244,4.209-6.398,10.213l2.43-0.75c1.182-4.541,3.381-6.739,5.307-7.569c0.484,1.227,0.803,2.988,0.803,5.363   c0,0.108,0,0.211-0.002,0.314l2.078-0.643c0-0.2,0.002-0.4,0.002-0.617c0-1.966-0.273-3.551-0.709-4.807   c1.746,0.218,2.912,2.213,3.662,4.508l1.938-0.601C38.906,5.876,36.976,2.977,33.583,2.977z" fill="#4A7A2B" /><path d="M47.611,12.348c-0.474-0.037-0.793-0.06-0.793-0.06s-3.28-3.271-3.639-3.631   c-0.192-0.194-0.479-0.249-0.75-0.251c-0.72,1.22-0.571,3.537-0.571,3.537l-2.232,50.839l0.396,0.075l10.098-2.196L47.611,12.348z" fill="#4C822A" />
+              </g></svg>
+            <svg viewBox="0 0 24 24" className="w-5 h-5">
+              <rect x="17" y="2" width="5" height="20" rx="2.5" fill="#F9AB00"></rect>
+              <path d="M9.5 13.5C9.5 12.1193 10.6193 11 12 11C13.3807 11 14.5 12.1193 14.5 13.5V19.5C14.5 20.8807 13.3807 22 12 22C10.6193 22 9.5 20.8807 9.5 19.5V13.5Z" fill="#E37400"></path><path d="M2 19.5C2 18.1193 3.11929 17 4.5 17C5.88071 17 7 18.1193 7 19.5C7 20.8807 5.88071 22 4.5 22C3.11929 22 2 20.8807 2 19.5Z" fill="#E37400"></path><path d="M6.92162 10C6.36184 10 5.95724 9.68838 5.95724 9.05977V8.55474H3.2304C2.49881 8.55474 2 8.1088 2 7.45332C2 7.07723 2.12193 6.70651 2.40459 6.22297C2.93666 5.29349 3.57403 4.31565 4.31116 3.23573C4.92637 2.31162 5.39747 2 6.20111 2C7.2209 2 7.88044 2.54265 7.88044 3.38617V7.02351H8.19082C8.72842 7.02351 9 7.34587 9 7.79181C9 8.23774 8.72288 8.55474 8.19082 8.55474H7.88044V9.05977C7.88044 9.68838 7.47585 10 6.92162 10ZM6.01267 7.09335V3.48287H5.97387C5.0095 4.8368 4.34996 5.83076 3.7015 7.03962V7.09335H6.01267Z" fill="#E37400"></path>
+            </svg>
+          </h1>
           <div className="md:flex items-center hidden">
             {lastUpdated && (
               <span className="text-sm text-gray-600 mr-4">
@@ -358,7 +361,7 @@ export default function Dashboard() {
         </div>
 
         {/* Top stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 md:gap-8 md:mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 md:gap-8 md:mb-5">
           {/* Existing data cards */}
           {[
             { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600", icon: ShoppingCart },
@@ -380,7 +383,7 @@ export default function Dashboard() {
 
 
         {/* Second row: Orders table and charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
           {/* Orders table */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
@@ -424,7 +427,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-5'>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
           {/* Monthly Returning Customer Rates Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader>

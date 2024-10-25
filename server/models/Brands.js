@@ -13,10 +13,14 @@ const brandSchema = new mongoose.Schema({
     type: String, 
   },
   ga4Account: {
-    type: String, 
+    PropertyID:{
+      type: String,
+    }
   },
   shopifyAccount: {
-    type: String, 
+    shopName: {
+      type: String,
+    }
   },
 }, {
   timestamps: true 

@@ -31,6 +31,9 @@ export const fetchShopifyData = async (req, res) => {
     }
 
     const access_token = getAccestoken(brandId);
+    if (!access_token) {
+      return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
+    }
 
     const shopify = new Shopify({
       shopName: brand.shopifyAccount?.shopName,
@@ -41,9 +44,10 @@ export const fetchShopifyData = async (req, res) => {
     let orders = [];
     let queryParams = {
       status: 'any',
-      limit: 250, 
+      limit: 250, // Fetch 250 orders per request
     };
 
+    // Set query parameters based on startDate and endDate
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -58,22 +62,43 @@ export const fetchShopifyData = async (req, res) => {
 
     console.log('Query Parameters:', queryParams);
 
+    // Pagination logic
     let hasNextPage = true;
-    let lastOrderId = null;
+    let pageInfo;
 
     while (hasNextPage) {
-      if (lastOrderId) {
-        queryParams.since_id = lastOrderId; // For pagination using since_id
-      }
-
-      const response = await shopify.order.list(queryParams);
-      orders = orders.concat(response); // Append new orders to the list
-      console.log(`Fetched ${response.length} orders from this page`);
-
-      if (response.length < queryParams.limit) {
-        hasNextPage = false; // No more orders to fetch
+      // Add page_info to queryParams if it exists, otherwise remove it
+      if (pageInfo) {
+        queryParams = { page_info: pageInfo };
       } else {
-        lastOrderId = response[response.length - 1].id; // Get the ID of the last order fetched for pagination
+        delete queryParams.page_info;
+      }
+      console.log('Query Parameters after pageInfo:', queryParams);
+
+      try {
+        const response = await shopify.order.list(queryParams);
+
+        // If response is empty, no need to continue
+        if (!response || response.length === 0) {
+          console.log('No more orders found.');
+          break; // Exit the loop if no orders are found
+        }
+
+        orders = orders.concat(response);
+        console.log(`Fetched ${response.length} orders from this page`);
+
+        // Check if there is a next page
+        pageInfo = response.nextPageParameters?.page_info || null;
+        if (pageInfo) {
+          console.log("Next page exists:", pageInfo);
+          hasNextPage = true;
+        } else {
+          hasNextPage = false; // No more pages to fetch
+        }
+      } catch (error) {
+        console.error('Error while fetching orders:', error);
+        hasNextPage = false; 
+        return res.status(500).json({ error: `Error fetching orders: ${error.message}` });
       }
     }
 
@@ -81,7 +106,10 @@ export const fetchShopifyData = async (req, res) => {
 
     // Existing data processing
     const totalOrders = orders.length;
-    const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.total_price || 0), 0);
+    const totalSales = orders.reduce((sum, order) => {
+      const price = parseFloat(order.total_price) || 0; // Ensure we handle missing or NaN values
+      return sum + price;
+    }, 0);
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     // Perform additional calculations
@@ -102,14 +130,26 @@ export const fetchShopifyData = async (req, res) => {
   } catch (error) {
     console.error('Error in fetchShopifyData:', error);
     let errorMessage = 'Failed to fetch Shopify data';
+
+    // Improved error handling
     if (error.code === 'ECONNREFUSED') {
       errorMessage = 'Connection to Shopify API refused. Please check your network connection and Shopify store URL.';
     } else if (error.message.includes('Failed to fetch orders')) {
       errorMessage = `Error occurred while fetching orders: ${error.message}. Please verify your Shopify access token and API permissions.`;
+    } else if (error.response && error.response.body) {
+      errorMessage = `Shopify API error: ${error.response.body.errors}`;
     }
+
     res.status(500).json({ error: errorMessage });
   }
 };
+
+
+
+
+
+
+
 
 
 

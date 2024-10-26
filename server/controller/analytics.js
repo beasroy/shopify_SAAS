@@ -42,6 +42,11 @@ const getCredentials = (brandId) => {
         client_email: process.env.GOOGLE_CLIENT_EMAIL_REPRISE,
         private_key: process.env.GOOGLE_PRIVATE_KEY_REPRISE.replace(/\\n/g, '\n')
       };
+    case '671cc01d00989c5fdf2dcb11':
+      return {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL_MAYINCLOTHING,
+        private_key: process.env.GOOGLE_PRIVATE_KEY_MAYINCLOTHING.replace(/\\n/g, '\n')
+      };
     default:
       console.warn(`No credentials found for brand ID: ${brandId}`);
       return null;
@@ -59,12 +64,6 @@ export async function getBatchReports(req, res) {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    // const credentialsPath = getCredentialsPath(brandId);
-    // if (!credentialsPath) {
-    //   console.warn(`No credentials found for brand ID: ${brandId}`);
-    //   return res.status(200).json([]);
-    // }
-
     const credentials = getCredentials(brandId);
 
     if (!credentials) {
@@ -77,10 +76,6 @@ export async function getBatchReports(req, res) {
       scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
     });
 
-    // const client = new BetaAnalyticsDataClient({
-    //   keyFile: credentialsPath,
-    //   scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    // });
 
     const propertyId = brand.ga4Account?.PropertyID;
 
@@ -197,6 +192,18 @@ export async function getBatchReports(req, res) {
             { name: 'newUsers' },     // New users in the given period
           ],
           limit: 50, // Limit the response to 100 rows
+        },
+        {
+          dateRanges: [
+            { startDate, endDate }
+          ],
+          dimensions: [
+            { name: 'transactionId' }, 
+            { name: 'yearMonth' },        // Unique ID for each purchase               // Date of the transaction
+          ],
+          metrics: [
+       {name:'sessions'}       // Number of items purchased            // Sessions that resulted in purchase
+          ],
         }
       ]
     });
@@ -257,6 +264,15 @@ export async function getBatchReports(req, res) {
               };
             })
           };
+        case 4: // Purchase Data
+        return {
+          reportType: 'Purchase Data',
+          data: report.rows.map(row => ({
+            transactionId: row.dimensionValues[0]?.value,
+            yearMonth: row.dimensionValues[1]?.value,  // Date of the transaction
+            sessions: row.metricValues[0]?.value,
+          }))
+        };
         default:
           return [];
       }

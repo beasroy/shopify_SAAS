@@ -15,6 +15,14 @@ const getAccestoken = (brandId) => {
       return process.env.SHOPIFY_ACCESS_TOKEN_REPRISE;
     case '671b90c83aee55a69981a0c9':
       return process.env.SHOPIFY_ACCESS_TOKEN_KOLORTHERAPI;
+    case '671cd209fc16e7d6a19da1fd':
+      return process.env.SHOPIFY_ACCESS_TOKEN_KASHMIRVILLA;
+    case '671cc01d00989c5fdf2dcb11':
+      return process.env.SHOPIFY_ACCESS_TOKEN_MAYINCLOTHING;
+    case '671ccd765d652cf6efc21eda':
+      return process.env.SHOPIFY_ACCESS_TOKEN_HOUSEOFAWADH;
+    case '671cceb19b58dac9e4e23280':
+      return process.env.SHOPIFY_ACCESS_TOKEN_FIBERWORLD;
     default:
       throw new Error('Invalid brand ID: No credentials path found');
   }
@@ -104,25 +112,31 @@ export const fetchShopifyData = async (req, res) => {
 
     console.log(`Successfully fetched a total of ${orders.length} orders`);
 
+  
+
     // Existing data processing
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, order) => {
-      const price = parseFloat(order.total_price) || 0; // Ensure we handle missing or NaN values
-      return sum + price;
+      const gross = parseFloat(order.total_price) || 0; // Base gross sales
+      const shipping = parseFloat(order.total_shipping_price_set?.shop_money?.amount) || 0;
+      const taxes = parseFloat(order.total_tax) || 0;
+      const discounts = parseFloat(order.total_discounts) || 0;
+    
+      return sum + gross - discounts + shipping + taxes ;
     }, 0);
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     // Perform additional calculations
     const topSellingProducts = getTopSellingProducts(orders);
     const salesByTimeOfDay = getSalesByTimeOfDay(orders);
-    const conversionRate = calculateConversionRate(orders);
+    // const conversionRate = calculateConversionRate(orders);
 
     // Respond with data
     res.json({
       orders,
       totalOrders,
       totalSales,
-      conversionRate,
+      // conversionRate,
       averageOrderValue,
       topSellingProducts,
       salesByTimeOfDay,
@@ -177,9 +191,9 @@ function getSalesByTimeOfDay(orders) {
   return salesByHour;
 }
 
-function calculateConversionRate(orders) {
-  return (orders.length / 100) * 100;
-}
+// function calculateConversionRate(orders) {
+//   return (orders.length / 100) * 100;
+// }
 
 // function getLast10MonthOrder(orders) {
 //   const tenMonthsAgo = new Date();

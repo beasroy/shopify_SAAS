@@ -231,6 +231,23 @@ export default function Dashboard() {
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
+
+// Conversion Rate calculation
+const session = data?.analyticsReports.find(report=>report.reportType === 'Purchase Data');
+const totalFilteredSessions = session?.data.reduce((accumulator, entry) => {
+    if (entry.transactionId !== '(not set)' && entry.transactionId !== '') {
+        return accumulator + parseInt(entry.sessions, 10); // Sum the sessions
+    }
+    return accumulator; 
+}, 0);
+const totalSessions = session?.data.reduce((accumulator, entry) => {
+    return accumulator + parseInt(entry.sessions, 10); // Convert sessions to an integer
+}, 0);
+
+const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessions * 100 : 0;
+
+  
+
   const prepareMonthlyReturnRatesData = () => {
     if (!data || !data.analyticsReports) return [];
 
@@ -366,7 +383,7 @@ export default function Dashboard() {
           {[
             { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600", icon: ShoppingCart },
             { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600", icon: DollarSign },
-            { title: "Conversion Rate", value: `${data.conversionRate.toFixed(2)}%`, colorClass: "text-violet-600", icon: PercentIcon },
+            { title: "Conversion Rate", value: `${conversionRate.toFixed(2)}%`, colorClass: "text-violet-600", icon: PercentIcon },
             { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600", icon: TrendingUp }
           ].map((item, index) => (
             <Card key={index} className="shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">

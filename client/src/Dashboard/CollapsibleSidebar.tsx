@@ -172,14 +172,36 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   );
 }
 
-function SidebarChild({ path, text, onClick, selectedBrandId,disabled }: { path: string; text: string; onClick?: () => void; selectedBrandId?: string | null ,disabled?: boolean}) {
+function SidebarChild({
+  path,
+  text,
+  onClick,
+  selectedBrandId,
+  disabled,
+}: {
+  path: string;
+  text: string;
+  onClick?: () => void;
+  selectedBrandId?: string | null;
+  disabled?: boolean;
+}) {
   const { pathname } = useLocation();
   const isSelected = pathname === path || (selectedBrandId === path.split('/').pop());
 
-  return (
+  // Apply styles conditionally based on whether the item is disabled or not
+  const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${
+    isSelected ? 'text-white font-semibold relative' : 'text-gray-100'
+  } ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+
+  return disabled ? (
+    <div className={baseClasses}>
+      {text}
+      {isSelected && <div className="absolute left-0 w-1 h-full bg-white" />}
+    </div>
+  ) : (
     <NavLink
       to={path}
-      className={`flex items-center text-sm w-full p-3 hover:bg-gray-700 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed':''}`}
+      className={baseClasses}
       onClick={(e) => {
         if (onClick) {
           e.preventDefault();
@@ -188,12 +210,11 @@ function SidebarChild({ path, text, onClick, selectedBrandId,disabled }: { path:
       }}
     >
       {text}
-      {isSelected && (
-        <div className="absolute left-0 w-1 h-full bg-white" />
-      )}
+      {isSelected && <div className="absolute left-0 w-1 h-full bg-white" />}
     </NavLink>
   );
 }
+
 
 function UserProfile({ isExpanded }: { isExpanded: boolean }) {
   const { user, setUser } = useUser();

@@ -57,17 +57,42 @@ export const fetchShopifyData = async (req, res) => {
     };
 
     // Set query parameters based on startDate and endDate
+    // if (startDate && endDate) {
+    //   const start = new Date(startDate);
+    //   const end = new Date(endDate);
+    //   queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); // Start of the day on startDate
+    //   queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); // End of the day on endDate
+    // } else {
+    //   const now = new Date();
+    //   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    //   queryParams.created_at_min = firstDayOfMonth.toISOString(); // Start of the month
+    //   queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+    // }
+
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); // Start of the day on startDate
-      queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); // End of the day on endDate
-    } else {
+      
+      // Set start time to 6 AM for the startDate
+      start.setHours(0, 0, 0, 0); // Start of the day at 6 AM
+      queryParams.created_at_min = new Date(start.getTime()).toISOString(); // Convert to ISO string
+  
+      // Set end time to 11:59:59.999 PM for the endDate
+      end.setHours(23, 59, 59, 999); // End of the day at 11:59:59.999 PM
+      queryParams.created_at_max = new Date(end.getTime()).toISOString(); // Convert to ISO string
+  } else {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      queryParams.created_at_min = firstDayOfMonth.toISOString(); // Start of the month
-      queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
-    }
+      
+      // Set start time to 6 AM on the first day of the month
+      firstDayOfMonth.setHours(0, 0, 0, 0); // Start of the month at 6 AM
+      queryParams.created_at_min = new Date(firstDayOfMonth.getTime()).toISOString(); // Convert to ISO string
+  
+      // Set end time to 11:59:59.999 PM for the current day
+      now.setHours(23, 59, 59, 999); // End of the day at 11:59:59.999 PM
+      queryParams.created_at_max = new Date(now.getTime()).toISOString(); // Convert to ISO string
+  }
+  
 
     console.log('Query Parameters:', queryParams);
 

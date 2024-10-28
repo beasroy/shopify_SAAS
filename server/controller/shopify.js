@@ -75,14 +75,14 @@ export const fetchShopifyData = async (req, res) => {
         const end = new Date(endDate);
         
         // Adjust for +5:30 timezone
-        queryParams.created_at_min = new Date(start.setHours(6, 0, 0, 0) - utcOffset).toISOString(); // Start of the day at 6 AM in UTC
+        queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0) - utcOffset).toISOString(); // Start of the day at 6 AM in UTC
         queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999) - utcOffset).toISOString(); // End of the day at 11:59:59.999 PM in UTC
     } else {
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
         // Start time at 6 AM on the first day of the month
-        queryParams.created_at_min = new Date(firstDayOfMonth.setHours(6, 0, 0, 0) - utcOffset).toISOString(); // Start of the month at 6 AM in UTC
+        queryParams.created_at_min = new Date(firstDayOfMonth.setHours(0, 0, 0, 0) - utcOffset).toISOString(); // Start of the month at 6 AM in UTC
         // End time to the end of the current day
         queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999) - utcOffset).toISOString(); // End of the day in UTC
     }

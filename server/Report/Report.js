@@ -53,7 +53,7 @@ export const fetchTotalSales = async (brandId) => {
 
 // Get the current date in the +5:30 time zone
 const utcOffset = 5.5 * 60 * 60 * 1000; // Offset in milliseconds for +5:30
-const localDate = new Date(now.getTime() + utcOffset); // Current time in the brand's time zone
+const localDate = new Date(now.getTime() - utcOffset); // Current time in the brand's time zone
 
 // Calculate the start and end of yesterday in the brand's time zone
 const startOfYesterday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() - 1, 0, 0, 0); // Start of yesterday at 12:00 AM IST

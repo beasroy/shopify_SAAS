@@ -52,21 +52,23 @@ export const fetchTotalSales = async (brandId) => {
       const now = new Date(); // Get the current date and time
 
 // Get the current date in the +5:30 time zone
-const utcOffset = 5.5 * 60 * 60 * 1000; // Offset in milliseconds for +5:30
-const localDate = new Date(now.getTime() - utcOffset); // Current time in the brand's time zone
+    const utcOffset = 5.5 * 60 * 60 * 1000; // Offset in milliseconds for +5:30
+
 
 // Calculate the start and end of yesterday in the brand's time zone
-const startOfYesterday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() - 1, 0, 0, 0); // Start of yesterday at 12:00 AM IST
-const endOfYesterday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() - 1, 23, 59, 59, 999); // End of yesterday at 11:59:59.999 PM IST
+    const Yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    console.log(Yesterday.toISOString());  // Start of yesterday at 12:00 AM IST
+    const startOfYesterday = new Date(Yesterday.setHours(0, 0, 0, 0) - utcOffset).toISOString();
+    const endOfYesterday = new Date(Yesterday.setHours(23, 59, 59, 999) - utcOffset).toISOString(); // End of yesterday at 11:59 PM IST
 
-console.log(`Start of Yesterday (IST): ${startOfYesterday.toISOString()}`);
-console.log(`End of Yesterday (IST): ${endOfYesterday.toISOString()}`);
+    console.log(`Start of Yesterday (IST): ${startOfYesterday}`);
+    console.log(`End of Yesterday (IST): ${endOfYesterday}`);
 
   
       const queryParams = {
         status: 'any',
-        created_at_min: startOfYesterday.toISOString(),
-        created_at_max: endOfYesterday.toISOString(),
+        created_at_min: startOfYesterday,
+        created_at_max: endOfYesterday,
         limit: 250, // Fetch 250 orders per request
       };
   

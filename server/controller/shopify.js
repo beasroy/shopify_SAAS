@@ -72,20 +72,17 @@ export const fetchShopifyData = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      
-      // Set start time to 6 AM for the startDate
-      start.setHours(0, 0, 0, 0); // Start of the day at 6 AM
+    
+      start.setHours(6, 0, 0, 0); 
       queryParams.created_at_min = new Date(start.getTime()).toISOString(); // Convert to ISO string
   
-      // Set end time to 11:59:59.999 PM for the endDate
-      end.setHours(23, 59, 59, 999); // End of the day at 11:59:59.999 PM
+      end.setHours(23, 59, 59, 999);
       queryParams.created_at_max = new Date(end.getTime()).toISOString(); // Convert to ISO string
   } else {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       
-      // Set start time to 6 AM on the first day of the month
-      firstDayOfMonth.setHours(0, 0, 0, 0); // Start of the month at 6 AM
+      firstDayOfMonth.setHours(6, 0, 0, 0); 
       queryParams.created_at_min = new Date(firstDayOfMonth.getTime()).toISOString(); // Convert to ISO string
   
       // Set end time to 11:59:59.999 PM for the current day
@@ -197,8 +194,7 @@ function calculateTotalSales(orders, startDate, endDate) {
     startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
     endUTC = now.getTime();// End of the month in milliseconds
   }
-  const now = new Date();
-  console.log("date",new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime())
+
   const totalSales = orders.reduce((sum, order) => {
     const total_price = parseFloat(order.total_price) || 0;
 

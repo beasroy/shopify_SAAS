@@ -50,7 +50,7 @@ export const fetchTotalSales = async (brandId) => {
   
       // Set start and end date to yesterday
       const now = new Date();
-      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 6, 0, 0, 0);
       const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
   
       const queryParams = {
@@ -97,9 +97,16 @@ export const fetchTotalSales = async (brandId) => {
 };
 
 function calculateTotalSales(orders, startDate, endDate) {
-    // Parse start and end dates as
-    const startUTC = new Date(startDate).getTime();
-    const endUTC = new Date(endDate).getTime();
+    let startUTC, endUTC;
+    if(startDate && endDate){// Parse start and end dates as
+    startUTC = new Date(startDate).getTime();
+    endUTC = new Date(endDate).getTime();
+    }else{
+      const now = new Date(); // Get the current date
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
+      endUTC = now.getTime();// End of the month in milliseconds
+    }
   
     const totalSales = orders.reduce((sum, order) => {
       const total_price = parseFloat(order.total_price) || 0;

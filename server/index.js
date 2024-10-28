@@ -50,10 +50,15 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 
 // initWebSocket(server);
 
-cron.schedule('17 2 * * *', () => {
+cron.schedule('22 2 * * *', async () => {
   console.log('Running daily metrics calculation for all brands...');
-  calculateMetricsForAllBrands();
-},{timezone:'UTC'});
+  try {
+    await calculateMetricsForAllBrands();
+  } catch (error) {
+    console.error('Error executing metrics calculation:', error);
+  }
+}, { timezone: 'UTC' });
+
 
 const PORT = process.env.PORT || 5000;
 

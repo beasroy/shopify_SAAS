@@ -27,9 +27,8 @@ const getAccestoken = (brandId) => {
       default:
         throw new Error('Invalid brand ID: No credentials path found');
     }
-  };
-  
-  
+};
+    
 export const fetchTotalSales = async (brandId) => {
     try {
       console.log('Fetching orders...');
@@ -51,8 +50,8 @@ export const fetchTotalSales = async (brandId) => {
   
       // Set start and end date to yesterday
       const now = new Date();
-      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
   
       const queryParams = {
         status: 'any',
@@ -89,32 +88,50 @@ export const fetchTotalSales = async (brandId) => {
   
       console.log(`Successfully fetched a total of ${orders.length} orders`);
   
-      // Calculate total sales
-      const totalSales = orders.reduce((sum, order) => {
-        const gross = parseFloat(order.total_price) || 0; // Base gross sales
-        const discounts = parseFloat(order.total_discounts) || 0;
-        // const shipping = parseFloat(order.total_shipping_price_set?.shop_money?.amount) || 0;
-        // const taxes = parseFloat(order.total_tax) || 0;
-    
-    
-        //   const totalDuties = order.line_items.reduce((lineSum, item) => {
-        //     return lineSum + item.duties.reduce((dutySum, duty) => {
-        //       return dutySum + parseFloat(duty.amount_set.shop_money.amount || 0);
-        //     }, 0);
-        //   }, 0);
-        console.log(discounts)
-  
-        return sum + gross ; // Adjust total sales by discounts and other fees
-      }, 0);
-  
+      const totalSales =calculateTotalSales(orders,startOfYesterday,endOfYesterday);
       return totalSales; // Return only the total sales
     } catch (error) {
       console.error('Error in fetchTotalSales:', error);
       throw new Error(`Failed to fetch total sales: ${error.message}`);
     }
-  };
+};
+
+function calculateTotalSales(orders, startDate, endDate) {
+    // Parse start and end dates as
+    const startUTC = new Date(startDate).getTime();
+    const endUTC = new Date(endDate).getTime();
   
-  export const fetchFBAdReport = async (brandId) => {
+    const totalSales = orders.reduce((sum, order) => {
+      const total_price = parseFloat(order.total_price) || 0;
+  
+      // Calculate total refund amount for the order
+      const refundAmount = order.refunds.reduce((refundSum, refund) => {
+        const refundDateUTC = new Date(refund.created_at).getTime();
+  
+        // Check if the refund date falls within the specified date range
+        if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
+          const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
+            return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
+          }, 0);
+          
+          // Log the refund deduction
+          console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
+          
+          return refundSum + lineItemTotal;
+        }
+        
+        // If the refund date is not in the date range, return the current sum
+        return refundSum;
+      }, 0);
+  
+      // Return the net sales for this order
+      return sum + total_price - refundAmount;
+    }, 0);
+  
+    return totalSales;
+  }
+  
+export const fetchFBAdReport = async (brandId) => {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
     try {

@@ -162,10 +162,18 @@ export const fetchShopifyData = async (req, res) => {
 
 // Function to calculate total sales for a specific date range
 function calculateTotalSales(orders, startDate, endDate) {
-  // Parse start and end dates as
-  const startUTC = new Date(startDate).getTime();
-  const endUTC = new Date(endDate).getTime();
-
+  let startUTC, endUTC;
+  if(startDate && endDate){// Parse start and end dates as
+  startUTC = new Date(startDate).getTime();
+  endUTC = new Date(endDate).getTime();
+  }else{
+    const now = new Date(); // Get the current date
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
+    endUTC = now.getTime();// End of the month in milliseconds
+  }
+  const now = new Date();
+  console.log("date",new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime())
   const totalSales = orders.reduce((sum, order) => {
     const total_price = parseFloat(order.total_price) || 0;
 

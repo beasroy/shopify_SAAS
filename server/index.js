@@ -50,7 +50,7 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 // initWebSocket(server);
 
 
-const brandId = '671b68bed3c4f462d681ef45'; // Replace with actual brand ID
+const brandId = '671b6925d3c4f462d681ef47'; // Replace with actual brand ID
 const results = await fetchFBAdReport(brandId);
 
 results.data.forEach(result => {

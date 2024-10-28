@@ -56,41 +56,20 @@ export const fetchShopifyData = async (req, res) => {
       limit: 250, // Fetch 250 orders per request
     };
 
-    // Set query parameters based on startDate and endDate
-    // if (startDate && endDate) {
-    //   const start = new Date(startDate);
-    //   const end = new Date(endDate);
-    //   queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); // Start of the day on startDate
-    //   queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); // End of the day on endDate
-    // } else {
-    //   const now = new Date();
-    //   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    //   queryParams.created_at_min = firstDayOfMonth.toISOString(); // Start of the month
-    //   queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
-    // }
-
+ 
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-    
-      start.setHours(6, 0, 0, 0); 
-      queryParams.created_at_min = new Date(start.getTime()).toISOString(); // Convert to ISO string
-  
-      end.setHours(23, 59, 59, 999);
-      queryParams.created_at_max = new Date(end.getTime()).toISOString(); // Convert to ISO string
-  } else {
+      queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); 
+      queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); 
+    } else {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      firstDayOfMonth.setHours(6, 0, 0, 0); 
-      queryParams.created_at_min = new Date(firstDayOfMonth.getTime()).toISOString(); // Convert to ISO string
-  
-      // Set end time to 11:59:59.999 PM for the current day
-      now.setHours(23, 59, 59, 999); // End of the day at 11:59:59.999 PM
-      queryParams.created_at_max = new Date(now.getTime()).toISOString(); // Convert to ISO string
-  }
-  
+      queryParams.created_at_min = firstDayOfMonth.toISOString(); 
+      queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+    }
 
+  
     console.log('Query Parameters:', queryParams);
 
     // Pagination logic

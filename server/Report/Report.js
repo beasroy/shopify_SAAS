@@ -49,9 +49,19 @@ export const fetchTotalSales = async (brandId) => {
       });
   
       // Set start and end date to yesterday
-      const now = new Date();
-      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 6, 0, 0, 0);
-      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+      const now = new Date(); // Get the current date and time
+
+// Get the current date in the +5:30 time zone
+const utcOffset = 5.5 * 60 * 60 * 1000; // Offset in milliseconds for +5:30
+const localDate = new Date(now.getTime() + utcOffset); // Current time in the brand's time zone
+
+// Calculate the start and end of yesterday in the brand's time zone
+const startOfYesterday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() - 1, 0, 0, 0); // Start of yesterday at 12:00 AM IST
+const endOfYesterday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() - 1, 23, 59, 59, 999); // End of yesterday at 11:59:59.999 PM IST
+
+console.log(`Start of Yesterday (IST): ${startOfYesterday.toISOString()}`);
+console.log(`End of Yesterday (IST): ${endOfYesterday.toISOString()}`);
+
   
       const queryParams = {
         status: 'any',
@@ -98,6 +108,7 @@ export const fetchTotalSales = async (brandId) => {
 
 function calculateTotalSales(orders, startDate, endDate) {
     let startUTC, endUTC;
+
     if(startDate && endDate){// Parse start and end dates as
     startUTC = new Date(startDate).getTime();
     endUTC = new Date(endDate).getTime();

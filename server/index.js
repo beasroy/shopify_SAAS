@@ -10,6 +10,7 @@ import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
+import { fetchFBAdReport, fetchTotalSales } from "./Report/Report.js";
 
 // import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 
@@ -47,6 +48,26 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 // const server = http.createServer(app);
 
 // initWebSocket(server);
+
+
+const brandId = '671b68bed3c4f462d681ef45'; // Replace with actual brand ID
+const results = await fetchFBAdReport(brandId);
+
+results.data.forEach(result => {
+    // Check if purchase_roas exists in the result
+    if (result.purchase_roas) {
+        console.log(`Ad Account ID: ${result.adAccountId}`);
+        console.log(`Meta Spend: ${result.spend}`)
+        console.log("Purchase ROAS:", result.purchase_roas);
+    } else if (result.message) {
+        // If there's a message, log it as well
+        console.log(result.message);
+    }
+});
+
+const shopifyResult = await fetchTotalSales(brandId)
+console.log('shopifyResult',shopifyResult);
+ 
 
 
 const PORT = process.env.PORT || 5000;

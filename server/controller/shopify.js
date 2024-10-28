@@ -2,6 +2,7 @@
 import { config } from 'dotenv';
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
+import moment from 'moment';
 
 config();
 
@@ -97,12 +98,7 @@ export const fetchShopifyData = async (req, res) => {
 
         // Check if there is a next page
         pageInfo = response.nextPageParameters?.page_info || null;
-        if (pageInfo) {
-          console.log("Next page exists:", pageInfo);
-          hasNextPage = true;
-        } else {
-          hasNextPage = false; // No more pages to fetch
-        }
+        hasNextPage = !!pageInfo; // No more pages to fetch
       } catch (error) {
         console.error('Error while fetching orders:', error);
         hasNextPage = false; 
@@ -112,31 +108,35 @@ export const fetchShopifyData = async (req, res) => {
 
     console.log(`Successfully fetched a total of ${orders.length} orders`);
 
-  
 
     // Existing data processing
     const totalOrders = orders.length;
-    const totalSales = orders.reduce((sum, order) => {
-      const gross = parseFloat(order.total_price) || 0; // Base gross sales
-      const shipping = parseFloat(order.total_shipping_price_set?.shop_money?.amount) || 0;
-      const taxes = parseFloat(order.total_tax) || 0;
-      const discounts = parseFloat(order.total_discounts) || 0;
-    
-      return sum + gross - discounts + shipping + taxes ;
-    }, 0);
-    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+    // const totalSales = orders.reduce((sum, order) => {
+    //   const total_price = parseFloat(order.total_price) || 0;
+    //   const refundAmount = order.refunds.reduce((refundSum, refund) => {
+    //     return refundSum + refund.refund_line_items.reduce((lineSum, lineItem) => {
+    //       return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
+    //     }, 0);
+    //   }, 0);
+
+    //   return sum + total_price - refundAmount ;
+    // }, 0);
+
+    const totalsalesWithoutRefund = orders.reduce((sum,order)=>{
+      return sum + parseFloat(order.total_price) ;
+    },0)
+    const averageOrderValue = totalOrders > 0 ? totalsalesWithoutRefund / totalOrders : 0;
 
     // Perform additional calculations
     const topSellingProducts = getTopSellingProducts(orders);
     const salesByTimeOfDay = getSalesByTimeOfDay(orders);
-    // const conversionRate = calculateConversionRate(orders);
+    const totalSales = calculateTotalSales(orders,queryParams.created_at_min,queryParams.created_at_max)
 
-    // Respond with data
+    // Respond with data including returns
     res.json({
       orders,
       totalOrders,
       totalSales,
-      // conversionRate,
       averageOrderValue,
       topSellingProducts,
       salesByTimeOfDay,
@@ -160,6 +160,41 @@ export const fetchShopifyData = async (req, res) => {
 
 
 
+// Function to calculate total sales for a specific date range
+function calculateTotalSales(orders, startDate, endDate) {
+  // Parse start and end dates as
+  const startUTC = new Date(startDate).getTime();
+  const endUTC = new Date(endDate).getTime();
+
+  const totalSales = orders.reduce((sum, order) => {
+    const total_price = parseFloat(order.total_price) || 0;
+
+    // Calculate total refund amount for the order
+    const refundAmount = order.refunds.reduce((refundSum, refund) => {
+      const refundDateUTC = new Date(refund.created_at).getTime();
+
+      // Check if the refund date falls within the specified date range
+      if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
+        const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
+          return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
+        }, 0);
+        
+        // Log the refund deduction
+        console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
+        
+        return refundSum + lineItemTotal;
+      }
+      
+      // If the refund date is not in the date range, return the current sum
+      return refundSum;
+    }, 0);
+
+    // Return the net sales for this order
+    return sum + total_price - refundAmount;
+  }, 0);
+
+  return totalSales;
+}
 
 
 

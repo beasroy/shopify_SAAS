@@ -50,7 +50,7 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 
 // initWebSocket(server);
 
-cron.schedule('0 6 * * *', () => {
+cron.schedule('0 2 * * *', () => {
   console.log('Running daily metrics calculation for all brands...');
   calculateMetricsForAllBrands();
 })

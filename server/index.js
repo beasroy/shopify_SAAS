@@ -10,7 +10,8 @@ import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
-import { fetchFBAdReport, fetchTotalSales } from "./Report/Report.js";
+import { calculateMetricsForAllBrands } from "./Report/Report.js";
+import cron from 'node-cron';
 
 // import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 
@@ -49,26 +50,10 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 
 // initWebSocket(server);
 
-
-const brandId = '671b6925d3c4f462d681ef47'; // Replace with actual brand ID
-const results = await fetchFBAdReport(brandId);
-
-results.data.forEach(result => {
-    // Check if purchase_roas exists in the result
-    if (result.purchase_roas) {
-        console.log(`Ad Account ID: ${result.adAccountId}`);
-        console.log(`Meta Spend: ${result.spend}`)
-        console.log("Purchase ROAS:", result.purchase_roas);
-    } else if (result.message) {
-        // If there's a message, log it as well
-        console.log(result.message);
-    }
-});
-
-const shopifyResult = await fetchTotalSales(brandId)
-console.log('shopifyResult',shopifyResult);
- 
-
+cron.schedule('0 6 * * *', () => {
+  console.log('Running daily metrics calculation for all brands...');
+  calculateMetricsForAllBrands();
+})
 
 const PORT = process.env.PORT || 5000;
 

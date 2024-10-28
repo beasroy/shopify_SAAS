@@ -69,7 +69,7 @@ export const fetchShopifyData = async (req, res) => {
     //   queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
     // }
 
-    const utcOffset = 5.5 * 60 * 60 * 1000; // +5 hours and 30 minutes in milliseconds
+    const utcOffset = 5.5 * 60 * 60 * 1000; 
     if (startDate && endDate) {
         const start = new Date(startDate);
         const end = new Date(endDate);
@@ -77,16 +77,12 @@ export const fetchShopifyData = async (req, res) => {
         // Adjust for +5:30 timezone
         queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0) - utcOffset).toISOString(); // Start of the day at 6 AM in UTC
         queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999) - utcOffset).toISOString(); 
+    }else{
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         queryParams.created_at_min = new Date(firstDayOfMonth.setHours(0, 0, 0, 0) - utcOffset).toISOString(); 
         queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999) - utcOffset).toISOString(); 
     }
-    
-
-  
-
-
   
     console.log('Query Parameters:', queryParams);
 
@@ -127,20 +123,8 @@ export const fetchShopifyData = async (req, res) => {
 
     console.log(`Successfully fetched a total of ${orders.length} orders`);
 
-
-    // Existing data processing
     const totalOrders = orders.length;
-    // const totalSales = orders.reduce((sum, order) => {
-    //   const total_price = parseFloat(order.total_price) || 0;
-    //   const refundAmount = order.refunds.reduce((refundSum, refund) => {
-    //     return refundSum + refund.refund_line_items.reduce((lineSum, lineItem) => {
-    //       return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
-    //     }, 0);
-    //   }, 0);
-
-    //   return sum + total_price - refundAmount ;
-    // }, 0);
-
+   
     const totalsalesWithoutRefund = orders.reduce((sum,order)=>{
       return sum + parseFloat(order.total_price) ;
     },0)

@@ -48,21 +48,17 @@ export const fetchTotalSales = async (brandId) => {
         accessToken: access_token,
       });
   
-      // Set start and end date to yesterday
-      const now = new Date(); // Get the current date and time
+      
+      const now = new Date(); 
+      const utcOffset = 5.5 * 60 * 60 * 1000; 
 
-// Get the current date in the +5:30 time zone
-    const utcOffset = 5.5 * 60 * 60 * 1000; // Offset in milliseconds for +5:30
+      const Yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      console.log(Yesterday.toISOString());  // Start of yesterday at 12:00 AM IST
+      const startOfYesterday = new Date(Yesterday.setHours(0, 0, 0, 0) - utcOffset).toISOString();
+      const endOfYesterday = new Date(Yesterday.setHours(23, 59, 59, 999) - utcOffset).toISOString(); // End of yesterday at 11:59 PM IST
 
-
-// Calculate the start and end of yesterday in the brand's time zone
-    const Yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-    console.log(Yesterday.toISOString());  // Start of yesterday at 12:00 AM IST
-    const startOfYesterday = new Date(Yesterday.setHours(0, 0, 0, 0) - utcOffset).toISOString();
-    const endOfYesterday = new Date(Yesterday.setHours(23, 59, 59, 999) - utcOffset).toISOString(); // End of yesterday at 11:59 PM IST
-
-    console.log(`Start of Yesterday (IST): ${startOfYesterday}`);
-    console.log(`End of Yesterday (IST): ${endOfYesterday}`);
+      console.log(`Start of Yesterday (IST): ${startOfYesterday}`);
+      console.log(`End of Yesterday (IST): ${endOfYesterday}`);
 
   
       const queryParams = {
@@ -109,47 +105,46 @@ export const fetchTotalSales = async (brandId) => {
 };
 
 function calculateTotalSales(orders, startDate, endDate) {
-    let startUTC, endUTC;
-
-    if(startDate && endDate){// Parse start and end dates as
-    startUTC = new Date(startDate).getTime();
-    endUTC = new Date(endDate).getTime();
-    }else{
-      const now = new Date(); // Get the current date
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
-      endUTC = now.getTime();// End of the month in milliseconds
-    }
-  
-    const totalSales = orders.reduce((sum, order) => {
-      const total_price = parseFloat(order.total_price) || 0;
-  
-      // Calculate total refund amount for the order
-      const refundAmount = order.refunds.reduce((refundSum, refund) => {
-        const refundDateUTC = new Date(refund.created_at).getTime();
-  
-        // Check if the refund date falls within the specified date range
-        if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-          const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
-            return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
-          }, 0);
-          
-          // Log the refund deduction
-          console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
-          
-          return refundSum + lineItemTotal;
-        }
-        
-        // If the refund date is not in the date range, return the current sum
-        return refundSum;
-      }, 0);
-  
-      // Return the net sales for this order
-      return sum + total_price - refundAmount;
-    }, 0);
-  
-    return totalSales;
+  let startUTC, endUTC;
+  if(startDate && endDate){// Parse start and end dates as
+  startUTC = new Date(startDate).getTime();
+  endUTC = new Date(endDate).getTime();
+  }else{
+    const now = new Date(); // Get the current date
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
+    endUTC = now.getTime();// End of the month in milliseconds
   }
+
+  const totalSales = orders.reduce((sum, order) => {
+    const total_price = parseFloat(order.total_price) || 0;
+
+    // Calculate total refund amount for the order
+    const refundAmount = order.refunds.reduce((refundSum, refund) => {
+      const refundDateUTC = new Date(refund.created_at).getTime();
+
+      // Check if the refund date falls within the specified date range
+      if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
+        const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
+          return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
+        }, 0);
+        
+        // Log the refund deduction
+        console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
+        
+        return refundSum + lineItemTotal;
+      }
+      
+      // If the refund date is not in the date range, return the current sum
+      return refundSum;
+    }, 0);
+
+    // Return the net sales for this order
+    return sum + total_price - refundAmount;
+  }, 0);
+
+  return totalSales;
+}
   
 export const fetchFBAdReport = async (brandId) => {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;

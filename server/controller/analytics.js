@@ -204,7 +204,8 @@ export async function getBatchReports(req, res) {
           metrics: [
        {name:'sessions'}       // Number of items purchased            // Sessions that resulted in purchase
           ],
-        }
+        },
+        //
       ]
     });
 
@@ -284,5 +285,75 @@ export async function getBatchReports(req, res) {
   } catch (error) {
     console.error('Error fetching batch reports:', error);
     res.status(500).json({ error: 'Failed to fetch batch reports.' });
+  }
+}
+
+
+export async function getDailyAddToCartAndCheckouts(req, res) {
+  try {
+    const { brandId } = req.params;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const credentials = getCredentials(brandId);
+    if (!credentials) {
+      console.warn(`No credentials found for brand ID: ${brandId}`);
+      return res.status(200).json([]);
+    }
+
+    const client = new BetaAnalyticsDataClient({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    // Get the startDate and endDate from the request body
+    let { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      // Format the dates to YYYY-MM-DD
+      startDate = firstDayOfMonth.toISOString().split('T')[0];
+      endDate = lastDayOfMonth.toISOString().split('T')[0];
+    }
+
+    // Send a normal request for Add to Cart and Checkout data
+    const [response] = await client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }], // Group by date
+      metrics: [
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+      ],
+      orderBys: [{
+        desc: false,
+        dimension: { dimensionName: 'date' },
+      }],
+      limit: 100, // Limit the response to 100 rows
+    });
+
+    // Format the response
+    const data = response.rows.map(row => ({
+      date: row.dimensionValues[0]?.value,
+      addToCarts: row.metricValues[0]?.value,
+      checkouts: row.metricValues[1]?.value,
+    }));
+
+    // Send the data as response
+    res.status(200).json({
+      reportType: 'Daily Add to Cart and Checkout Data',
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching daily Add to Cart and Checkout data:', error);
+    res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
   }
 }

@@ -18,7 +18,8 @@ import ReportModal from '../components/dashboard_component/ReportModal.tsx';
 import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
 import { DashboardData, CombinedData, Order } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
-import downloadXlsxReport from '@/MetricsSheet/sheet.ts';
+import { SheetModal } from '@/MetricsSheet/SheetModal.tsx';
+
 
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isSheetModalOpen, setSheetModalOpen] = useState(false);
   const [reportData, setReportData] = useState<any[]>([]);
   const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
 
@@ -323,6 +325,15 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
     setModalOpen(false);
   };
 
+  const handleOpenSheetModal = () => {
+    console.log('sheet opened')
+    setSheetModalOpen(true);
+   
+  };
+  const handleCloseSheetModal = () => {
+    setSheetModalOpen(false);
+  };
+
 
   if (!data) return <div className="flex items-center justify-center h-screen">
     <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
@@ -338,8 +349,8 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
-          <Button onClick={() => downloadXlsxReport(brandId || '')} className='flex items-center justify-between bg-cyan-600'>
-            <p>Get Report</p>
+          <Button onClick={handleOpenSheetModal} className='flex items-center justify-between bg-cyan-600'>
+            <p>View Report</p>
             <Sheet />
           </Button>
             <DatePickerWithRange date={date} setDate={setDate}
@@ -515,6 +526,11 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
             title="Report Data"
             data={reportData}
           />
+          {/* sheetModal */}
+          <SheetModal
+          isOpen={isSheetModalOpen}
+          onClose={handleCloseSheetModal}
+          brandId={brandId || ''}/>
         </div>
       </div>
     </>

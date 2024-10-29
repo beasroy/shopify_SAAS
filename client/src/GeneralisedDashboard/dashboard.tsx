@@ -1,15 +1,26 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bell, Settings, Briefcase, RefreshCw, Store, FileSpreadsheet, Download } from "lucide-react"
+import { Bell, Settings, Briefcase, RefreshCw, Store, FileSpreadsheet} from "lucide-react"
 import { Link } from "react-router-dom"
 import { useUser } from "@/context/UserContext"
 import { useBrand } from "@/context/BrandContext"
-import downloadXlsxReport from "@/MetricsSheet/sheet"
+import { SheetModal } from "@/MetricsSheet/SheetModal"
 
 export default function LandingPage() {
 
   const { user } = useUser();
   const { brands } = useBrand();
+  const [isSheetModalOpen, setSheetModalOpen] = useState(false);
+  const [currentBrandId, setCurrentBrandId] = useState('');
+
+  const handleOpenSheetModal = (brandId:string) => {
+    setSheetModalOpen(true);
+    setCurrentBrandId(brandId);
+  };
+  const handleCloseSheetModal = () => {
+    setSheetModalOpen(false);
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-pink-50 p-6 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -39,10 +50,10 @@ export default function LandingPage() {
               </Button>
             </CardContent>
           </Card>
-          <Card className="bg-white border-t-4 border-t-green-500 shadow-lg">
+          <Card className="bg-white border-t-4 border-t-cyan-600 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-green-600">Excel Reports</CardTitle>
-            <CardDescription>Download Excel sheets for your brands</CardDescription>
+            <CardTitle className="text-cyan-600">Daily Reports</CardTitle>
+            <CardDescription>Get Daily Reports for your brands</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -50,19 +61,18 @@ export default function LandingPage() {
                 <Button
                   key={brand._id}
                   variant="outline"
-                  className="w-full justify-around items-center text-green-600 hover:bg-green-50 hover:text-green-700 border-green-200"
-                  onClick={() =>downloadXlsxReport(brand._id || '')}
+                  className="w-full justify-start items-center text-cyan-600 hover:bg-green-50 hover:text-cyan-700 border-cyan-400"
+                  onClick={() => handleOpenSheetModal(brand._id)}
                 >
                   <FileSpreadsheet className="h-4 w-4" />
                   <span className="">{brand.name}</span>
-                  <Download className="h-4 w-4" />
                 </Button>
               ))}
             </div>
           </CardContent>
         </Card>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-1">
         <Card className="bg-white border-t-4 border-t-amber-500 shadow-lg">
           <CardHeader>
             <CardTitle className="text-amber-600">Getting Started</CardTitle>
@@ -80,7 +90,7 @@ export default function LandingPage() {
           </CardContent>
         </Card>
       
-        
+{/*         
         <Card className="bg-white border-t-4 border-t-pink-500 shadow-lg">
             <CardHeader>
               <CardTitle className="text-pink-600">Recent Activity</CardTitle>
@@ -102,7 +112,7 @@ export default function LandingPage() {
                 </li>
               </ul>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -150,6 +160,10 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </div>
+        <SheetModal
+          isOpen={isSheetModalOpen}
+          onClose={handleCloseSheetModal}
+          brandId={currentBrandId || ''}/>
       </div>
     </div>
   )

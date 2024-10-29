@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { useNavigate, useParams } from 'react-router-dom';
-import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness } from "lucide-react";
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 // import { Navbar } from './navbar.tsx';
@@ -18,6 +18,7 @@ import ReportModal from '../components/dashboard_component/ReportModal.tsx';
 import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
 import { DashboardData, CombinedData, Order } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
+import downloadXlsxReport from '@/MetricsSheet/sheet.ts';
 
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -38,7 +39,6 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 export default function Dashboard() {
 
   const { brandId } = useParams();
-  console.log(brandId)
   const [data, setData] = useState<CombinedData | null>(null);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof Order>('created_at');
@@ -337,7 +337,11 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
             <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+          <Button onClick={() => downloadXlsxReport(brandId || '')} className='flex items-center justify-between bg-cyan-600'>
+            <p>Get Report</p>
+            <Sheet />
+          </Button>
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{
                 from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month

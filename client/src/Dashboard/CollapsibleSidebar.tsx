@@ -31,7 +31,7 @@ export default function CollapsibleSidebar() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await axios.get(`${baseURL}/api/brands/all`);
+        const response = await axios.get(`${baseURL}/api/brands/all`,{ withCredentials: true });
         setBrands(response.data);
       } catch (error) {
         console.error('Error fetching brands:', error);

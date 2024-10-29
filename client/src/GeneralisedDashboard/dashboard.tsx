@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bell, Settings, Briefcase, RefreshCw, Store } from "lucide-react"
+import { Bell, Settings, Briefcase, RefreshCw, Store, FileSpreadsheet, Download } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useUser } from "@/context/UserContext"
 import { useBrand } from "@/context/BrandContext"
+import downloadXlsxReport from "@/MetricsSheet/sheet"
 
 export default function LandingPage() {
 
@@ -38,8 +39,49 @@ export default function LandingPage() {
               </Button>
             </CardContent>
           </Card>
-
-          <Card className="bg-white border-t-4 border-t-pink-500 shadow-lg">
+          <Card className="bg-white border-t-4 border-t-green-500 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-green-600">Excel Reports</CardTitle>
+            <CardDescription>Download Excel sheets for your brands</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {brands.map((brand) => (
+                <Button
+                  key={brand._id}
+                  variant="outline"
+                  className="w-full justify-around items-center text-green-600 hover:bg-green-50 hover:text-green-700 border-green-200"
+                  onClick={() =>downloadXlsxReport(brand._id || '')}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span className="">{brand.name}</span>
+                  <Download className="h-4 w-4" />
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+        <Card className="bg-white border-t-4 border-t-amber-500 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-amber-600">Getting Started</CardTitle>
+            <CardDescription>Follow these steps to make the most of your analytics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="list-decimal list-inside space-y-2">
+              <li className="text-gray-700">Select a brand from the sidebar or "Your Brands" section</li>
+              <li className="text-gray-700">Connect your brand's Shopify store</li>
+              <li className="text-gray-700">Set up Google Analytics 4 property for your brand</li>
+              <li className="text-gray-700">Link your brand's Facebook Ads account</li>
+              <li className="text-gray-700">Configure Google Ads integration for your brand</li>
+              <li className="text-gray-700">Explore your unified brand analytics in the dashboard</li>
+            </ol>
+          </CardContent>
+        </Card>
+      
+        
+        <Card className="bg-white border-t-4 border-t-pink-500 shadow-lg">
             <CardHeader>
               <CardTitle className="text-pink-600">Recent Activity</CardTitle>
               <CardDescription>Your latest actions and updates</CardDescription>
@@ -62,23 +104,6 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </div>
-
-        <Card className="bg-white border-t-4 border-t-amber-500 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-amber-600">Getting Started</CardTitle>
-            <CardDescription>Follow these steps to make the most of your analytics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-2">
-              <li className="text-gray-700">Select a brand from the sidebar or "Your Brands" section</li>
-              <li className="text-gray-700">Connect your brand's Shopify store</li>
-              <li className="text-gray-700">Set up Google Analytics 4 property for your brand</li>
-              <li className="text-gray-700">Link your brand's Facebook Ads account</li>
-              <li className="text-gray-700">Configure Google Ads integration for your brand</li>
-              <li className="text-gray-700">Explore your unified brand analytics in the dashboard</li>
-            </ol>
-          </CardContent>
-        </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="bg-white border-t-4 border-t-teal-500 shadow-lg">

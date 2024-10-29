@@ -10,6 +10,7 @@ import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
+import excelReportRoutes from "./routes/report.js"
 import { calculateMetricsForAllBrands } from "./Report/Report.js";
 import cron from 'node-cron';
 
@@ -38,7 +39,8 @@ dataOperationRouter.use("/auth",authRoutes);
 dataOperationRouter.use("/shopify",spotifyRoutes);
 dataOperationRouter.use("/analytics",analyticsRoutes);
 dataOperationRouter.use("/brands",brandRoutes);
-dataOperationRouter.use("/metrics",fbMetricrRoutes)
+dataOperationRouter.use("/metrics",fbMetricrRoutes);
+dataOperationRouter.use("/report",excelReportRoutes);
 
 // const add_account_id = process.env.GOOGLE_AD_ACCOUNT_ID
 // const managerId = process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID
@@ -50,7 +52,7 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes)
 
 // initWebSocket(server);
 
-cron.schedule('28 2 * * *', async () => {
+cron.schedule('0 6 * * *', async () => {
   console.log('Cron job started at:', new Date().toISOString());
   try {
     await calculateMetricsForAllBrands();

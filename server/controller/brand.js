@@ -29,6 +29,22 @@ export const getBrands = async(req,res) =>{
     }
 }
 
+export const getBrandbyId = async(req,res)=>{
+    try {
+        const {brandId} = req.params;
+
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+        res.status(200).json(brand);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching brand', error: error.message });
+    }
+}
+
 export const updateBrands = async(req,res) =>{
     try {
         const {brandid}=req.params;

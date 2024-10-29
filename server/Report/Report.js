@@ -292,9 +292,9 @@ export const addReportData = async (brandId) => {
       googleSpend,
       googleROAS,
       shopifySales,
-      totalSpend,
-      grossROI,
-      netROI,
+      totalSpend:totalSpend.toFixed(2),
+      grossROI:grossROI.toFixed(2),
+      netROI:netROI.toFixed(2),
     });
 
     // Save the document

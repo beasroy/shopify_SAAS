@@ -52,7 +52,7 @@ dataOperationRouter.use("/report",excelReportRoutes);
 
 // initWebSocket(server);
 
-cron.schedule('27 6 * * *', async () => {
+cron.schedule('0 3 * * *', async () => {
   console.log('Cron job started at:', new Date().toISOString());
   try {
     await calculateMetricsForAllBrands();

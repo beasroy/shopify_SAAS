@@ -339,7 +339,7 @@ export const calculateMetricsForAllBrands = async () => {
       }
     });
   } catch (error) {
-    logger.error('Error processing metrics for all brands:', error);
+    console.error('Error processing metrics for all brands:', error);
   }
 };
 

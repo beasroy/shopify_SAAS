@@ -11,10 +11,10 @@ import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
-import { calculateMetricsForAllBrands } from "./Report/Report.js";
+import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
 import cron from 'node-cron';
 
-// import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
+
 
 
 const app = express();
@@ -63,7 +63,8 @@ cron.schedule('0 3 * * *', async () => {
 }, { timezone: 'UTC' });
 
 
-
+const brandId = '671b90c83aee55a69981a0c9'
+fetchTotalSales(brandId)
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

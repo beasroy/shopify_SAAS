@@ -3,7 +3,7 @@ import Metrics from "../models/Metrics.js"
 export const getMetricsbyID = async(req,res)=>{
     const {brandId} = req.params
     try {
-        const metrics = await Metrics.findOne({ brandId });
+        const metrics = await Metrics.find({ brandId });
 
         if (!metrics) {
             return res.status(404).json({ success: false, message: 'Metrics not found.' });

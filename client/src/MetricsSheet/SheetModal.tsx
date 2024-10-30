@@ -57,12 +57,14 @@ export const SheetModal: React.FC<SheetModalProps> = ({ isOpen, onClose, brandId
           const reportResponse = await axios.get(`${baseURL}/api/report/${brandId}`, { withCredentials: true });
           const metricsData: MetricsData[] = reportResponse.data.data;
 
+          console.log(metricsData);
           const brandResponse = await axios.get(`${baseURL}/api/brands/${brandId}`, { withCredentials: true });
           const brandName = brandResponse.data.name;
 
           setMetricsData(metricsData);
           setBrandName(brandName);
         } catch (err) {
+          console.log(err);
           setError("Failed to fetch data. Please try again later.");
         } finally {
           setLoading(false);

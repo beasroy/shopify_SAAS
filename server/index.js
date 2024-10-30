@@ -63,8 +63,6 @@ cron.schedule('0 3 * * *', async () => {
 }, { timezone: 'UTC' });
 
 
-const brandId = '671b90c83aee55a69981a0c9'
-fetchTotalSales(brandId)
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

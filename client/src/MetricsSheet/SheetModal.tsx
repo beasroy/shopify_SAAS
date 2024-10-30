@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {format} from 'date-fns'
 import {
   Dialog,
   DialogContent,
@@ -111,7 +112,7 @@ export const SheetModal: React.FC<SheetModalProps> = ({ isOpen, onClose, brandId
               <TableBody>
                 {dataArray.map((entry, index) => (
                   <TableRow key={index} className="hover:bg-gray-50">
-                    <TableCell className="border border-gray-300 px-2 py-1">{new Date(entry.date).toDateString()}</TableCell>
+                    <TableCell className="border border-gray-300 px-2 py-1">{ format(new Date(entry.date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="border border-gray-300 px-2 py-1">{entry.metaSpend.toFixed(2)}</TableCell>
                     <TableCell className="border border-gray-300 px-2 py-1">{(entry.metaSpend * entry.metaROAS).toFixed(2)}</TableCell>
                     <TableCell className="border border-gray-300 px-2 py-1">{entry.metaROAS.toFixed(2)}</TableCell>

@@ -56,8 +56,8 @@ export const fetchTotalSales = async (brandId) => {
     const yesterdayIST = moment().subtract(1, 'days');
 
     // Calculate the start and end of yesterday in IST, converted to UTC
-    const startOfYesterday = new Date(yesterdayIST.clone().startOf('day').add(5, 'hours').add(30, 'minutes')).toISOString();
-    const endOfYesterday = new Date(yesterdayIST.clone().endOf('day').add(5, 'hours').add(30, 'minutes')).toISOString();
+    const startOfYesterday = new Date(yesterdayIST.clone().startOf('day').subtract(5, 'hours').add(30, 'minutes')).toISOString();
+    const endOfYesterday = new Date(yesterdayIST.clone().endOf('day').subtract(5, 'hours').add(30, 'minutes')).toISOString();
     
     console.log(startOfYesterday); // Expected output: 2024-10-29T18:30:00.000Z
     console.log(endOfYesterday);   // Expected output: 2024-10-30T18:29:59.999Z

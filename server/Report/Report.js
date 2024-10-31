@@ -53,11 +53,12 @@ export const fetchTotalSales = async (brandId) => {
 
 
     const now = new Date();
-    const Yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-    console.log(Yesterday)
+    // const Yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const yesterday = moment().subtract(1, 'days');
+    console.log(yesterday)
     // Start and end of yesterday in UTC
-    const startOfYesterday = new Date(Yesterday.setUTCHours(0, 0, 0, 0)).toISOString();
-    const endOfYesterday = new Date(Yesterday.setUTCHours(23, 59, 59, 999)).toISOString();
+    const startOfYesterday = new Date(yesterday.clone().startOf('day')).toISOString();
+    const endOfYesterday = new Date(yesterday.clone().endOf('day')).toISOString();
     
     console.log(startOfYesterday); // 2024-10-29T00:00:00.000Z
     console.log(endOfYesterday);   // 2024-10-29T23:59:59.999Z

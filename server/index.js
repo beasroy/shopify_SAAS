@@ -62,8 +62,8 @@ cron.schedule('0 3 * * *', async () => {
   }
 }, { timezone: 'UTC' });
 
-const brandId='671b68bed3c4f462d681ef45';
-fetchTotalSales(brandId)
+// const brandId='671b68bed3c4f462d681ef45';
+// fetchTotalSales(brandId)
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

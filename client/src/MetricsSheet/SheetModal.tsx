@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import {format} from 'date-fns'
+"use client"
+
+import { useEffect, useState } from "react"
+import axios from "axios"
+import { format } from "date-fns"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -14,77 +16,104 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 
-// Define the MetricsData type based on your expected data structure
+import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { SearchX } from 'lucide-react';
+
 interface MetricsData {
-  date: string;
-  metaSpend: number;
-  metaROAS: number;
-  googleSpend: number;
-  googleROAS: number;
-  totalSpend: number;
-  grossROI: number;
-  shopifySales: number;
-  netROI: number;
+  date: string
+  metaSpend: number
+  metaROAS: number
+  googleSpend: number
+  googleROAS: number
+  totalSpend: number
+  grossROI: number
+  shopifySales: number
+  netROI: number
 }
 
-// Define props for the SheetModal component
 interface SheetModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  brandId: string;
+  isOpen: boolean
+  onClose: () => void
+  brandId: string
 }
 
-// Component definition
 export const SheetModal: React.FC<SheetModalProps> = ({ isOpen, onClose, brandId }) => {
-  const [metricsData, setMetricsData] = useState<MetricsData[]>([]);
-  const [brandName, setBrandName] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [metricsData, setMetricsData] = useState<MetricsData[]>([])
+  const [brandName, setBrandName] = useState<string>("")
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [date, setDate] = useState<Date>()
 
-  const baseURL =
-    import.meta.env.PROD
-      ? import.meta.env.VITE_API_URL
-      : import.meta.env.VITE_LOCAL_API_URL;
+  const baseURL = import.meta.env.PROD
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL
 
   useEffect(() => {
     if (isOpen) {
-      // Fetch data when the modal opens
       const fetchData = async () => {
-        setLoading(true);
-        setError(null);
+        setLoading(true)
+        setError(null)
         try {
-          const reportResponse = await axios.get(`${baseURL}/api/report/${brandId}`, { withCredentials: true });
-          const metricsData: MetricsData[] = reportResponse.data.data;
+          const queryParams: any = {};
+          if (date) {
+            queryParams.date = date.toISOString(); // Format date as 'YYYY-MM-DD'
+          }
+  
+          // Fetch the metrics data
+          const reportResponse = await axios.get(`${baseURL}/api/report/${brandId}`, {
+            params: queryParams, // Pass query parameters here
+            withCredentials: true,
+          });
+          const metricsData: MetricsData[] = reportResponse.data.data
 
-          console.log(metricsData);
-          const brandResponse = await axios.get(`${baseURL}/api/brands/${brandId}`, { withCredentials: true });
-          const brandName = brandResponse.data.name;
+          const brandResponse = await axios.get(`${baseURL}/api/brands/${brandId}`, { withCredentials: true })
+          const brandName = brandResponse.data.name
 
-          setMetricsData(metricsData);
-          setBrandName(brandName);
+          setMetricsData(metricsData)
+          setBrandName(brandName)
         } catch (err) {
-          console.log(err);
-          setError("Failed to fetch data. Please try again later.");
+          console.error(err)
+          setError("Failed to fetch data. Please try again later.")
         } finally {
-          setLoading(false);
+          setLoading(false)
         }
-      };
-
-      fetchData();
+      }
+      fetchData()
     }
-  }, [isOpen, brandId, baseURL]);
+  }, [isOpen, brandId,date, baseURL])
 
-  const dataArray = Array.isArray(metricsData) ? metricsData : [metricsData];
-
+  const tableHeaders = ["Date", "Meta Spend", "Meta Sales", "Meta ROAS", "Google Spend", "Google Sales", "Google ROAS", "Total Spend", "Gross ROI", "Shopify Sales", "Net ROI"]
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDate(new Date(event.target.value))
+  }
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold mb-4">
+      <DialogContent className="max-w-[95vw] max-h-[90vh] ">
+        <DialogHeader className="flex flex-col md:flex-row items-center justify-between md:gap-10 mt-2 ">
+          <DialogTitle className="text-xl font-bold">
             Daily Report - {brandName}
           </DialogTitle>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Input
+                type="date"
+                value={date ? date.toISOString().slice(0, 10) : ""}
+                onChange={handleDateChange}
+                className="w-[200px] pr-8" // Add padding to prevent text overlap with the icon
+                title="Select a date"
+              />
+              <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+            </div>
+            {date&&
+              <Button onClick={()=>setDate(undefined)} className="px-4 py-2 text-white bg-red-500 hover:bg-red-600">
+                <SearchX className="w-6 h-6" />
+              </Button>
+            }
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -92,44 +121,45 @@ export const SheetModal: React.FC<SheetModalProps> = ({ isOpen, onClose, brandId
         ) : error ? (
           <p className="text-red-500">{error}</p>
         ) : (
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader className="bg-blue-900 sticky top-0">
-                <TableRow>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Date</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Meta Spend</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Meta Sales</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Meta ROAS</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Google Spend</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Google Sales</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Google ROAS</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Total Spend</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Gross ROI</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Shopify Sales</TableHead>
-                  <TableHead className="font-bold text-white border border-gray-300 px-2 py-2">Net ROI</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dataArray.map((entry, index) => (
-                  <TableRow key={index} className="hover:bg-gray-50">
-                    <TableCell className="border border-gray-300 px-2 py-1">{ format(new Date(entry.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.metaSpend.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{(entry.metaSpend * entry.metaROAS).toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.metaROAS.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.googleSpend.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{(entry.googleSpend * entry.googleROAS).toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.googleROAS.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.totalSpend.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.grossROI.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.shopifySales.toFixed(2)}</TableCell>
-                    <TableCell className="border border-gray-300 px-2 py-1">{entry.netROI.toFixed(2)}</TableCell>
+          <div className="border rounded-md overflow-auto">
+            <div className="max-h-[70vh] overflow-hidden">
+              <Table>
+                <TableHeader className="bg-blue-900 sticky top-0 z-10">
+                  <TableRow>
+                    {tableHeaders.map((header) => (
+                      <TableHead key={header} className="font-bold text-white border px-2 py-2 text-center w-[120px]">
+                        {header}
+                      </TableHead>
+                    ))}
+                    <TableHead className="border px-2 py-2 text-center w-[15px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+              </Table>
+              <div className="max-h-[60vh] md:max-h-[calc(70vh-2.5rem)]  overflow-y-auto ">
+                <Table>
+                  <TableBody>
+                    {metricsData.map((entry, index) => (
+                      <TableRow key={index} className="hover:bg-gray-50">
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{format(new Date(entry.date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.metaSpend.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{(entry.metaSpend * entry.metaROAS).toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.metaROAS.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.googleSpend.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{(entry.googleSpend * entry.googleROAS).toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.googleROAS.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.totalSpend.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.grossROI.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.shopifySales.toFixed(2)}</TableCell>
+                        <TableCell className="border px-2 py-1 text-center  w-[120px]">{entry.netROI.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         )}
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}

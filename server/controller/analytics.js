@@ -310,20 +310,23 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     }
 
     // Convert startDate and endDate to Date objects for iteration
-    const start = new Date(startDate + 'T00:00:00+00:00'); // Set to start of the day in UTC
-    const end = new Date(endDate + 'T23:59:59+00:00'); // Set to end of the day in UTC
+    // const start = new Date(startDate + 'T00:00:00+00:00'); // Set to start of the day in UTC
+    // const end = new Date(endDate + 'T23:59:59+00:00'); // Set to end of the day in UTC
+
+    const start = new Date(startDate + 'T00:00:00+05:30'); // Start of the day in IST
+    const end = new Date(endDate + 'T23:59:59+05:30'); // End of the day in IST
 
     const data = [];
 
     for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
       const formattedDate = date.toISOString().split('T')[0];
-      console.log(formattedDate);
+      console.log(`IST Date: ${formattedDate} ${date.toISOString()}`);
 
       // Calculate the same day one week prior
       const oneWeekPrior = new Date(date);
       oneWeekPrior.setDate(date.getDate() - 7);
       const formattedOneWeekPrior = oneWeekPrior.toISOString().split('T')[0];
-      console.log(formattedOneWeekPrior)
+      console.log(`IST Date: ${formattedOneWeekPrior} ${date.toISOString()}`);
 
       // Run the report for the current date
       const [currentResponse] = await client.runReport({

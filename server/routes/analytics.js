@@ -1,9 +1,10 @@
 import express from "express";
-import { getBatchReports } from "../controller/analytics.js";
+import { getBatchReports, getDailyAddToCartAndCheckouts } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
 const router = express.Router();
 
 router.post('/report/:brandId',verifyAuth,getBatchReports)
+router.post('/atcreport/:brandId',getDailyAddToCartAndCheckouts);
 
 export default router;

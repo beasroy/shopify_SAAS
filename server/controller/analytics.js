@@ -4,21 +4,6 @@ import Brand from "../models/Brands.js";
 
 config();
 
-// const getCredentialsPath = (brandId) => {
-//   switch (brandId) {
-//     case '671b68bed3c4f462d681ef45':
-//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_UDDSTUDIO;
-//     case '671b6925d3c4f462d681ef47':
-//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_FISHERMANHUB;
-//     case '671b90c83aee55a69981a0c9':
-//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_KOLORTHERAPI;
-//     case '671b7d85f99634509a5f2693':
-//       return process.env.GOOGLE_APPLICATION_CREDENTIALS_REPRISE;
-//     default:
-//       console.warn(`No credentials path found for brand ID: ${brandId}`);
-//       return null; 
-//   }
-// };
 
 const getCredentials = (brandId) => {
   switch (brandId) {
@@ -324,32 +309,68 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       endDate = lastDayOfMonth.toISOString().split('T')[0];
     }
 
-    // Send a normal request for Add to Cart and Checkout data
-    const [response] = await client.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'date' }], // Group by date
-      metrics: [
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-      ],
-      orderBys: [{
-        desc: false,
-        dimension: { dimensionName: 'date' },
-      }],
-      limit: 100, // Limit the response to 100 rows
-    });
+    // Convert startDate and endDate to Date objects for iteration
+    const start = new Date(startDate + 'T00:00:00+00:00'); // Set to start of the day in UTC
+    const end = new Date(endDate + 'T23:59:59+00:00'); // Set to end of the day in UTC
 
-    // Format the response
-    const data = response.rows.map(row => ({
-      date: row.dimensionValues[0]?.value,
-      addToCarts: row.metricValues[0]?.value,
-      checkouts: row.metricValues[1]?.value,
-    }));
+    const data = [];
+
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const formattedDate = date.toISOString().split('T')[0];
+      console.log(formattedDate);
+
+      // Calculate the same day one week prior
+      const oneWeekPrior = new Date(date);
+      oneWeekPrior.setDate(date.getDate() - 7);
+      const formattedOneWeekPrior = oneWeekPrior.toISOString().split('T')[0];
+      console.log(formattedOneWeekPrior)
+
+      // Run the report for the current date
+      const [currentResponse] = await client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: formattedDate, endDate: formattedDate }],
+        dimensions: [{ name: 'date' }], // Group by date
+        metrics: [
+          { name: 'addToCarts' },
+          { name: 'checkouts' },
+          { name: 'sessions' }
+        ],
+      });
+
+      // Run the report for the date one week prior
+      const [priorResponse] = await client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: formattedOneWeekPrior, endDate: formattedOneWeekPrior }],
+        dimensions: [{ name: 'date' }], // Group by date
+        metrics: [
+          { name: 'addToCarts' },
+          { name: 'checkouts' },
+          { name: 'sessions' }
+        ],
+      });
+
+      // Extract data from both responses
+      const todayData = currentResponse.rows[0];
+      const lastWeekData = priorResponse.rows[0];
+
+      // Push the formatted result into the data array
+      data.push({
+        date: formattedDate,
+        addToCarts: todayData ? todayData.metricValues[0]?.value : 0,
+        checkouts: todayData ? todayData.metricValues[1]?.value : 0,
+        sessions: todayData ? todayData.metricValues[2]?.value : 0,
+        lastWeek: {
+          date: formattedOneWeekPrior,
+          addToCarts: lastWeekData ? lastWeekData.metricValues[0]?.value : 0,
+          checkouts: lastWeekData ? lastWeekData.metricValues[1]?.value : 0,
+          sessions: lastWeekData ? lastWeekData.metricValues[2]?.value : 0,
+        }
+      });
+    }
 
     // Send the data as response
     res.status(200).json({
-      reportType: 'Daily Add to Cart and Checkout Data',
+      reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range and One Week Prior',
       data,
     });
   } catch (error) {
@@ -357,3 +378,9 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
   }
 }
+
+
+
+
+
+

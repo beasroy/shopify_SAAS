@@ -302,11 +302,13 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     if (!startDate || !endDate) {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      console.log("firstDayOfMonth",firstDayOfMonth)
+      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      console.log("currentDayOfMonth",currentDayOfMonth)
 
       // Format the dates to YYYY-MM-DD
       startDate = firstDayOfMonth.toISOString().split('T')[0];
-      endDate = lastDayOfMonth.toISOString().split('T')[0];
+      endDate = currentDayOfMonth.toISOString().split('T')[0];
     }
 
     // Convert startDate and endDate to Date objects for iteration

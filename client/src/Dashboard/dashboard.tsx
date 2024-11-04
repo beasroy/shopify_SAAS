@@ -16,7 +16,7 @@ import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx'
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
 import ReportModal from '../components/dashboard_component/ReportModal.tsx';
 import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
-import { DashboardData, CombinedData, Order } from './interfaces';
+import { DashboardData, CombinedData, Order, WeeklyCartCheckoutData } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import { SheetModal } from '@/MetricsSheet/SheetModal.tsx';
 
@@ -108,6 +108,13 @@ export default function Dashboard() {
       });
 
       console.log("Analytics Data:", analyticsResponse.data);
+
+      const weeklyAnalyticsResponse = await axios.post<WeeklyCartCheckoutData>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
+        startDate: debouncedStartDate,
+        endDate: debouncedEndDate
+      },{withCredentials: true});
+
+      console.log("Weekly Analytics Data:", weeklyAnalyticsResponse.data);
 
       const combinedData = {
         ...shopifyResponse.data,

@@ -86,3 +86,16 @@ export interface AggregatedMetrics {
   totalCTR: string;
   totalCPP: string;
 }
+
+export interface WeeklyCartCheckoutData {
+  date: string;
+  addToCarts: string;
+  checkouts: string;
+  sessions: string;
+  lastWeek: {
+    date: string;
+    addToCarts: string;
+    checkouts: string;
+    sessions: string;
+  };
+}

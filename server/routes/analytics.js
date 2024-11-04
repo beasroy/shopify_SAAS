@@ -5,6 +5,6 @@ import { verifyAuth } from "../middleware/verifyAuth.js";
 const router = express.Router();
 
 router.post('/report/:brandId',verifyAuth,getBatchReports)
-router.post('/atcreport/:brandId',getDailyAddToCartAndCheckouts);
+router.post('/atcreport/:brandId',verifyAuth,getDailyAddToCartAndCheckouts);
 
 export default router;

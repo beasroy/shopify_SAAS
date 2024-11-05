@@ -9,39 +9,26 @@ export interface AnalyticsReport {
 }
 
 export interface DashboardData {
-  orders: any[];
   totalOrders: number;
   totalSales: number;
   conversionRate: number;
   averageOrderValue: number;
   topSellingProducts: { name: string; count: number }[];
-  salesByTimeOfDay: number[];
   MonthlyCustomerReturnRate: { [month: string]: number };
   referringChannelsData: { [channel: string]: number };
 }
 
 export interface CombinedData {
-  orders: any[];
   totalOrders: number;
   totalSales: number;
   conversionRate: number;
   averageOrderValue: number;
   topSellingProducts: { name: string; count: number }[];
-  salesByTimeOfDay: number[];
   MonthlyCustomerReturnRate: { [month: string]: number };
   referringChannelsData: { [channel: string]: number };
   analyticsReports: AnalyticsReport[];
 }
 
-export interface Order {
-  id: number;
-  order_number: number;
-  total_price: string;
-  created_at: string;
-  financial_status: string;
-}
-
-// types.ts
 
 export interface PurchaseRoas {
   action_type: string;
@@ -87,15 +74,9 @@ export interface AggregatedMetrics {
   totalCPP: string;
 }
 
-export interface WeeklyCartCheckoutData {
+export interface DailyCartCheckoutData {
   date: string;
   addToCarts: string;
   checkouts: string;
   sessions: string;
-  lastWeek: {
-    date: string;
-    addToCarts: string;
-    checkouts: string;
-    sessions: string;
-  };
 }

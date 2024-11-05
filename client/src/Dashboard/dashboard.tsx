@@ -1,22 +1,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
-// import { Navbar } from './navbar.tsx';
 import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
-import SalesByTimeOfDayChart from '../components/dashboard_component/SalesByTimeOfDayChart.tsx';
 import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
 import ReportModal from '../components/dashboard_component/ReportModal.tsx';
-import OrdersTable from '../components/dashboard_component/OrdersTable.tsx';
-import { DashboardData, CombinedData, Order, WeeklyCartCheckoutData } from './interfaces';
+import { DashboardData, CombinedData, DailyCartCheckoutData } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import { SheetModal } from '@/MetricsSheet/SheetModal.tsx';
 
@@ -41,10 +37,6 @@ export default function Dashboard() {
 
   const { brandId } = useParams();
   const [data, setData] = useState<CombinedData | null>(null);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [sortColumn, setSortColumn] = useState<keyof Order>('created_at');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [orderFilter, setOrderFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -53,11 +45,6 @@ export default function Dashboard() {
   const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
 
   // const websocketUrl = import.meta.env.PROD ? 'wss://your-production-url' : 'ws://localhost:PORT';
-
-
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 6;
 
   const navigate = useNavigate();
 
@@ -82,9 +69,6 @@ export default function Dashboard() {
       let url = `${baseURL}/api/shopify/data/${brandId}`;
       const params = new URLSearchParams();
 
-      if (orderFilter) {
-        params.append('orderNumber', orderFilter);
-      }
       if (debouncedStartDate) {
         params.append('startDate', debouncedStartDate);
       }
@@ -109,12 +93,12 @@ export default function Dashboard() {
 
       console.log("Analytics Data:", analyticsResponse.data);
 
-      const weeklyAnalyticsResponse = await axios.post<WeeklyCartCheckoutData>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
+      const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutData>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
         startDate: debouncedStartDate,
         endDate: debouncedEndDate
       },{withCredentials: true});
 
-      console.log("Weekly Analytics Data:", weeklyAnalyticsResponse.data);
+      console.log("Daily Analytics Data:", DailyAnalyticsResponse.data);
 
       const combinedData = {
         ...shopifyResponse.data,
@@ -122,7 +106,6 @@ export default function Dashboard() {
       };
 
       setData(combinedData);
-      setFilteredOrders(combinedData.orders);
       setLastUpdated(new Date());
 
     } catch (error) {
@@ -134,7 +117,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, orderFilter, debouncedStartDate, debouncedEndDate]);
+  }, [navigate, debouncedStartDate, debouncedEndDate]);
 
 
   useEffect(() => {
@@ -175,70 +158,11 @@ export default function Dashboard() {
 
 
 
-  useEffect(() => {
-    if (data) {
-      let filtered = data.orders.filter(order => {
-        const matchesOrderNumber = order.order_number.toString().includes(orderFilter);
-        return matchesOrderNumber
-      });
-
-      // Apply sorting
-      filtered.sort((a, b) => {
-        if (sortColumn === 'order_number') {
-          return sortDirection === 'asc'
-            ? a.order_number - b.order_number
-            : b.order_number - a.order_number;
-        } else if (sortColumn === 'total_price') {
-          return sortDirection === 'asc'
-            ? parseFloat(a.total_price) - parseFloat(b.total_price)
-            : parseFloat(b.total_price) - parseFloat(a.total_price);
-        }
-        return 0;
-      });
-      console.log("DATA", data)
-      setFilteredOrders(filtered);
-      console.log("filtered orders", filteredOrders.length)
-    }
-  }, [data, orderFilter, sortColumn, sortDirection]);
-
-
-
-
-
-  // console.log('Data:', data);
-
-
-  const handleSort = (column: keyof Order) => {
-    if (column === sortColumn) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
-
-  const handleOrderFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setOrderFilter(e.target.value);
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
-
-
-  const getStatusColor = (status: string) => {
-    const statusMap: { [key: string]: string } = {
-      paid: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      refunded: "bg-red-100 text-red-800",
-    };
-    return statusMap[status.toLowerCase()] || "bg-gray-100 text-gray-800";
-  };
 
   const handleManualRefresh = () => {
     fetchData();
   };
 
-
-  // Change page
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
 
 // Conversion Rate calculation
@@ -364,7 +288,7 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
               defaultDate={{
                 from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
                 to: now // Current date
-              }} resetToFirstPage={() => setCurrentPage(1)} />
+              }} />
           </div>
         </div>
       </header>
@@ -420,52 +344,6 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           ))}
         </div>
 
-
-        {/* Second row: Orders table and charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-          {/* Orders table */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-              <CardTitle className="text-2xl text-gray-800">Recent Orders</CardTitle>
-              <Input
-                placeholder="Filter by order number..."
-                value={orderFilter}
-                onChange={handleOrderFilterChange}
-                className="max-w-xs"
-              />
-            </CardHeader>
-            <CardContent>
-              <OrdersTable
-                orders={filteredOrders}
-                sortColumn={sortColumn}
-                sortDirection={sortDirection}
-                handleSort={handleSort}
-                getStatusColor={getStatusColor}
-                currentPage={currentPage}
-                ordersPerPage={ordersPerPage}
-                paginate={paginate}
-                totalOrders={filteredOrders.length} // Pass the total number of orders
-              />
-            </CardContent>
-          </Card>
-
-          {/* Top Selling Products */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-gray-600">Top Selling Products</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {data.topSellingProducts.map((product, index) => (
-                  <li key={index} className="flex justify-between items-center p-2 bg-white rounded-lg shadow">
-                    <span className="text-gray-800 font-medium">{product.name}</span>
-                    <span className="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">{product.count}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
           {/* Monthly Returning Customer Rates Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
@@ -503,13 +381,20 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           </Card>
         </div>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-          {/* Sales by Time of Day chart */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
+          {/* Top selling Products */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Sales by Time of Day</CardTitle>
+              <CardTitle className="text-2xl text-gray-600">Top Selling Products</CardTitle>
             </CardHeader>
-            <CardContent className="h-72">
-              <SalesByTimeOfDayChart data={data.salesByTimeOfDay.map((sales, hour) => ({ hour, sales }))} />
+            <CardContent>
+              <ul className="space-y-2">
+                {data.topSellingProducts.map((product, index) => (
+                  <li key={index} className="flex justify-between items-center p-2 bg-white rounded-lg shadow">
+                    <span className="text-gray-800 font-medium">{product.name}</span>
+                    <span className="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">{product.count}</span>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
 

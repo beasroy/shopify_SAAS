@@ -5,7 +5,7 @@ interface ReferringChannelsChartProps {
   rawData: { Channel: string; Visitors: string }[]; // Accept raw data
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF6699', '#FF33CC'];
+const COLORS = ['#071952', '#088395', '#37B7C3', '#4A628A', '#98DED9', '#FF33CC'];
 
 export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ rawData }) => {
 

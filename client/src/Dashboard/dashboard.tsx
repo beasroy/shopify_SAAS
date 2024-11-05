@@ -184,18 +184,37 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
 
   
 
+  // const prepareMonthlyReturnRatesData = () => {
+  //   if (!data || !data.analyticsReports) return [];
+
+  //   const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
+
+  //   if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
+
+  //   return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
+  //     month: yearMonth,
+  //     returningCustomerRate: parseFloat(returnRate) || 0,
+  //   }));
+  // };
+
   const prepareMonthlyReturnRatesData = () => {
-    if (!data || !data.analyticsReports) return [];
-
+    if (!data || !data.analyticsReports) return 0;
+  
     const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
-
-    if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
-
-    return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
-      month: yearMonth,
-      returningCustomerRate: parseFloat(returnRate) || 0,
-    }));
+  
+    if (!returningCustomerRateReport || !returningCustomerRateReport.data) return 0;
+  
+    // Extract return rates and calculate total return rate
+    const totalReturnRate = returningCustomerRateReport.data.reduce((acc, { returnRate }) => {
+      const rate = parseFloat(returnRate) || 0; // Ensure it's a number, default to 0 if parsing fails
+      return acc + rate; // Sum the return rates
+    }, 0);
+  
+    return totalReturnRate;
   };
+
+  const monthlyReturnRate = parseFloat(prepareMonthlyReturnRatesData().toFixed(2));
+  
   const preparedReferringData = () => {
     if (!data || !data.analyticsReports) return [];
 
@@ -276,7 +295,7 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
   return (
     <>
 
-      <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
+      <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-6">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-2">
             <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
@@ -295,7 +314,7 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           </div>
         </div>
       </header>
-      <div className="p-4 md:p-8 bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen">
+      <div className="p-4 md:p-6 bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-semibold mb-2 flex items-center space-x-3">
             <BriefcaseBusiness className="h-6 w-6" />
@@ -327,13 +346,14 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
         </div>
 
         {/* Top stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 md:gap-8 md:mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 mb-4 md:mb-5">
           {/* Existing data cards */}
           {[
-            { title: "Total Orders", value: data.totalOrders, colorClass: "text-blue-600", icon: ShoppingCart },
-            { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-emerald-600", icon: DollarSign },
-            { title: "Conversion Rate", value: `${conversionRate.toFixed(2)}%`, colorClass: "text-violet-600", icon: PercentIcon },
-            { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-amber-600", icon: TrendingUp }
+            { title: "Total Orders", value: data.totalOrders, colorClass: "text-cyan-700", icon: ShoppingCart },
+            { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-cyan-700", icon: DollarSign },
+            { title: "Conversion Rate", value: `${conversionRate.toFixed(2)}%`, colorClass: "text-cyan-700", icon: PercentIcon },
+            { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-cyan-700", icon: TrendingUp },
+            {title: "Monthly Return Rate" , value: `${monthlyReturnRate}`,colorClass: "text-cyan-700", icon: PercentIcon}
           ].map((item, index) => (
             <Card key={index} className="shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -341,14 +361,14 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
                 <item.icon className={`h-6 w-6 ${item.colorClass}`} />
               </CardHeader>
               <CardContent>
-                <p className={`text-4xl font-bold ${item.colorClass}`}>{item.value}</p>
+                <p className={`text-2xl font-bold ${item.colorClass}`}>{item.value}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
         
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4'>
         <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row justify-between items-center'>
             <div className='flex flex-col gap-1'>
@@ -383,7 +403,10 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           {/* Referring Channels Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle className="text-lg text-gray-600">Top 5 Referring Channels</CardTitle>
+            <div className='flex flex-col gap-1'>
+            <CardTitle className='text-base'>Top 5 referring channels</CardTitle>
+            <CardDescription>Visitor count for reffering channels</CardDescription>
+            </div>
               <Button onClick={() => handleOpenModal(preparedReferringData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
@@ -408,16 +431,16 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           onClose={handleCloseSheetModal}
           brandId={brandId || ''}/>
         </div>
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+        <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
           {/* Monthly Returning Customer Rates Chart */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
+          {/* <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
               <CardTitle className="text-lg text-gray-600">Monthly Returning Customer Rates</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               <MonthlyReturningCustomerRatesChart data={prepareMonthlyReturnRatesData()} />
             </CardContent>
-          </Card>
+          </Card> */}
 
                 {/* Landing Page Report*/}
                 <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">

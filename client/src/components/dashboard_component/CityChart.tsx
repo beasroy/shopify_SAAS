@@ -39,7 +39,7 @@ const TopCitiesBarChart: React.FC<TopCitiesBarChartProps> = ({ cityData }) => {
         <BarChart
           data={topCities}
           layout="vertical"
-          margin={{ right: 30, left: 35, bottom: 10 }}
+          margin={{ right: 30, left: 35, bottom: 30 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" label={{ value: 'Visitors', position: 'insideBottom', offset: -5 }} />

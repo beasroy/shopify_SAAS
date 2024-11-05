@@ -40,7 +40,7 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={ 280}>
+      <ResponsiveContainer width="100%" height={ 300}>
         {topPages.length>0 ?(
         <PieChart>
           <Tooltip formatter={(value, name) => [`${value}`, `${name}`]} />

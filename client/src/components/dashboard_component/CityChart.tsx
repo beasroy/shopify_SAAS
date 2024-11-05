@@ -1,5 +1,5 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
 
 // Define the interface for city data
 interface CityData {
@@ -9,38 +9,64 @@ interface CityData {
 
 // Function to get top 5 cities based on visitors from the data
 const getTopCities = (data: CityData[]) => {
-  // Convert visitors to numbers and sort the data based on the highest visitors
   return data
-    .map(item => ({ city: item.City, visitors: parseInt(item.Visitors, 10) })) // Convert visitors to integer
-    .sort((a, b) => b.visitors - a.visitors) // Sort by visitors in descending order
-    .slice(0, 5); // Get top 5
+    .map(item => ({ city: item.City, visitors: parseInt(item.Visitors, 10) }))
+    .filter(item => !isNaN(item.visitors)) // Filter out invalid entries
+    .sort((a, b) => b.visitors - a.visitors)
+    .slice(0, 5);
 };
 
-interface TopCitiesLineChartProps {
+interface TopCitiesBarChartProps {
   cityData: CityData[];
 }
 
-const TopCitiesLineChart: React.FC<TopCitiesLineChartProps> = ({ cityData }) => {
+
+const getBarColor = (value: number, max: number) => {
+  const blueColors = ['#E0F7FA', '#B2EBF2', '#80DEEA', '#4DD0E1', '#00ACC1']; 
+  const index = Math.floor((value / max) * (blueColors.length - 1)); 
+  return blueColors[index]; 
+};
+
+
+const TopCitiesBarChart: React.FC<TopCitiesBarChartProps> = ({ cityData }) => {
   const topCities = getTopCities(cityData);
+
+  const maxRate = Math.max(...topCities.map(entry => entry.visitors)); // Use topCities instead of cityData
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-    {topCities.length > 0 ? (
-      <LineChart data={topCities}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="city" label={{ value: 'City', position: 'insideBottom', offset: -10 }} />
-        <YAxis label={{ value: 'Visitors', angle: -90, position: 'insideLeft' }} />
-        <Tooltip formatter={(value) => [value, 'Visitors']} />
-        <Legend margin={{top:15}}/>
-        <Line type="monotone" dataKey="visitors" stroke="#8884d8" activeDot={{ r: 8 }}/>
-      </LineChart>
-    ):(
-      <div style={{ textAlign: 'center', marginTop: '50px' }}>
-      <p>No data available. Please set up Google Analytics for this data.</p>
-    </div>
-    )}
+      {topCities.length > 0 ? (
+        <BarChart
+          data={topCities}
+          layout="vertical"
+          margin={{ right: 30, left: 35, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis type="number" label={{ value: 'Visitors', position: 'insideBottom', offset: -5 }} />
+          <YAxis dataKey="city" type="category" />
+          <Tooltip 
+            formatter={(value) => [value, 'Visitors']}
+            contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+          />
+          <Legend verticalAlign="top" height={36} />
+          <Bar 
+            dataKey="visitors" 
+            name="Visitors" 
+            barSize={20} 
+            fill="#00ACC1" 
+            shape={(props:any) => {
+              const { visitors } = props.payload; // Access visitors from the payload
+              return <rect {...props} fill={getBarColor(visitors, maxRate)} />; // Use getBarColor to determine the fill color
+            }}
+          />
+        </BarChart>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">No data available. Please set up Google Analytics for this data.</p>
+        </div>
+      )}
     </ResponsiveContainer>
   );
 };
 
-export default TopCitiesLineChart;
+export default TopCitiesBarChart;

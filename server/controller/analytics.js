@@ -183,11 +183,11 @@ export async function getBatchReports(req, res) {
             { startDate, endDate }
           ],
           dimensions: [
-            { name: 'transactionId' }, 
+            { name: 'transactionId' },
             { name: 'yearMonth' },        // Unique ID for each purchase               // Date of the transaction
           ],
           metrics: [
-       {name:'sessions'}       // Number of items purchased            // Sessions that resulted in purchase
+            { name: 'sessions' }       // Number of items purchased            // Sessions that resulted in purchase
           ],
         },
         //
@@ -251,14 +251,14 @@ export async function getBatchReports(req, res) {
             })
           };
         case 4: // Purchase Data
-        return {
-          reportType: 'Purchase Data',
-          data: report.rows.map(row => ({
-            transactionId: row.dimensionValues[0]?.value,
-            yearMonth: row.dimensionValues[1]?.value,  // Date of the transaction
-            sessions: row.metricValues[0]?.value,
-          }))
-        };
+          return {
+            reportType: 'Purchase Data',
+            data: report.rows.map(row => ({
+              transactionId: row.dimensionValues[0]?.value,
+              yearMonth: row.dimensionValues[1]?.value,  // Date of the transaction
+              sessions: row.metricValues[0]?.value,
+            }))
+          };
         default:
           return [];
       }
@@ -322,7 +322,8 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       metrics: [
         { name: 'addToCarts' },
         { name: 'checkouts' },
-        { name: 'sessions' }
+        { name: 'sessions' },
+        { name: 'ecommercePurchases' }
       ],
     });
 
@@ -334,6 +335,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
         addToCarts: row.metricValues[0]?.value || 0,
         checkouts: row.metricValues[1]?.value || 0,
         sessions: row.metricValues[2]?.value || 0,
+        purchases: row.metricValues[3]?.value || 0,
       });
     });
 

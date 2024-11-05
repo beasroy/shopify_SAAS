@@ -18,6 +18,19 @@ export interface DashboardData {
   referringChannelsData: { [channel: string]: number };
 }
 
+export interface DailyCartCheckoutData {
+  date: string;
+  addToCarts: string;
+  checkouts: string;
+  sessions: string;
+  purchases: string;
+}
+
+export interface DailyCartCheckoutReport {
+  reportType: string;
+  data: DailyCartCheckoutData[]; // This structure is correct
+}
+
 export interface CombinedData {
   totalOrders: number;
   totalSales: number;
@@ -26,8 +39,10 @@ export interface CombinedData {
   topSellingProducts: { name: string; count: number }[];
   MonthlyCustomerReturnRate: { [month: string]: number };
   referringChannelsData: { [channel: string]: number };
-  analyticsReports: AnalyticsReport[];
+  analyticsReports: AnalyticsReport[]; // Assuming this is correctly defined elsewhere
+  dailyCartCheckoutReports: DailyCartCheckoutReport[]; // This expects an array of DailyCartCheckoutReport
 }
+
 
 
 export interface PurchaseRoas {
@@ -74,9 +89,4 @@ export interface AggregatedMetrics {
   totalCPP: string;
 }
 
-export interface DailyCartCheckoutData {
-  date: string;
-  addToCarts: string;
-  checkouts: string;
-  sessions: string;
-}
+

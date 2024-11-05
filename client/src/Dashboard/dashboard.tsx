@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,9 +12,10 @@ import { ReferringChannelChart } from '../components/dashboard_component/Referri
 import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
 import ReportModal from '../components/dashboard_component/ReportModal.tsx';
-import { DashboardData, CombinedData, DailyCartCheckoutData } from './interfaces';
+import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import { SheetModal } from '@/MetricsSheet/SheetModal.tsx';
+import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
 
 
 function useDebouncedValue<T>(value: T, delay: number): T {
@@ -93,7 +94,7 @@ export default function Dashboard() {
 
       console.log("Analytics Data:", analyticsResponse.data);
 
-      const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutData>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
+      const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutReport>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
         startDate: debouncedStartDate,
         endDate: debouncedEndDate
       },{withCredentials: true});
@@ -103,9 +104,11 @@ export default function Dashboard() {
       const combinedData = {
         ...shopifyResponse.data,
         analyticsReports: analyticsResponse.data || null,
+        dailyCartCheckoutReports: DailyAnalyticsResponse.data ? [DailyAnalyticsResponse.data] : [] // Store as an array
       };
 
       setData(combinedData);
+      console.log(data)
       setLastUpdated(new Date());
 
     } catch (error) {
@@ -344,17 +347,37 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           ))}
         </div>
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
-          {/* Monthly Returning Customer Rates Chart */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
-            <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Monthly Returning Customer Rates</CardTitle>
+        
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5'>
+        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader className='flex flex-row justify-between items-center'>
+            <div className='flex flex-col gap-1'>
+            <CardTitle className='text-base'>Aggregated E-commerce Metrics</CardTitle>
+            <CardDescription>Total Add to Carts, Checkouts, Sessions, and Purchases</CardDescription>
+            </div>
+            <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
+                <FileChartColumn />
+              </Button>
             </CardHeader>
-            <CardContent className="h-80">
-              <MonthlyReturningCustomerRatesChart data={prepareMonthlyReturnRatesData()} />
+            <CardContent>
+          <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data} />
+              </CardContent>
+              </Card>
+                       {/* City Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader className='flex flex-row justify-between items-center'>
+              <div className='flex flex-col gap-1'>
+              <CardTitle className='text-base'>Top 5 Cities</CardTitle>
+              <CardDescription>Visitor count for top cities</CardDescription>
+              </div>
+              <Button onClick={() => handleOpenModal(preparedCityData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+                <FileChartColumn />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <TopCitiesLineChart cityData={preparedCityData()} />
             </CardContent>
           </Card>
-
           {/* Referring Channels Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row items-center justify-between'>
@@ -367,21 +390,48 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
               <ReferringChannelChart rawData={preparedReferringData()} />
             </CardContent>
           </Card>
-          {/* City Chart */}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+
+    
+
+          {/* Report Modal */}
+          <ReportModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            title="Report Data"
+            data={reportData}
+          />
+          {/* sheetModal */}
+          <SheetModal
+          isOpen={isSheetModalOpen}
+          onClose={handleCloseSheetModal}
+          brandId={brandId || ''}/>
+        </div>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+          {/* Monthly Returning Customer Rates Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-600">Monthly Returning Customer Rates</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              <MonthlyReturningCustomerRatesChart data={prepareMonthlyReturnRatesData()} />
+            </CardContent>
+          </Card>
+
+                {/* Landing Page Report*/}
+                <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
             <CardHeader className='flex flex-row justify-between items-center'>
-              <CardTitle className="text-lg text-gray-600">Top 5 Cities</CardTitle>
-              <Button onClick={() => handleOpenModal(preparedCityData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+              <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
+              <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
             </CardHeader>
-            <CardContent className="h-80">
-              <TopCitiesLineChart cityData={preparedCityData()} />
+            <CardContent>
+              <TopPagesPieChart PageData={preparedPageData()} />
             </CardContent>
           </Card>
-        </div>
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-          {/* Top selling Products */}
+
+       
+            {/* Top selling Products
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
               <CardTitle className="text-2xl text-gray-600">Top Selling Products</CardTitle>
@@ -396,33 +446,8 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
                 ))}
               </ul>
             </CardContent>
-          </Card>
-
-          {/* Landing Page Report*/}
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
-            <CardHeader className='flex flex-row justify-between items-center'>
-              <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
-              <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
-                <FileChartColumn />
-              </Button>
-            </CardHeader>
-            <CardContent className="h-72">
-              <TopPagesPieChart PageData={preparedPageData()} />
-            </CardContent>
-          </Card>
-
-          {/* Report Modal */}
-          <ReportModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            title="Report Data"
-            data={reportData}
-          />
-          {/* sheetModal */}
-          <SheetModal
-          isOpen={isSheetModalOpen}
-          onClose={handleCloseSheetModal}
-          brandId={brandId || ''}/>
+          </Card> 
+  */}
         </div>
       </div>
     </>

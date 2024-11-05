@@ -302,78 +302,44 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     if (!startDate || !endDate) {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth",firstDayOfMonth)
+      console.log("firstDayOfMonth", firstDayOfMonth);
       const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      console.log("currentDayOfMonth",currentDayOfMonth)
+      console.log("currentDayOfMonth", currentDayOfMonth);
 
       // Format the dates to YYYY-MM-DD
       startDate = firstDayOfMonth.toISOString().split('T')[0];
       endDate = currentDayOfMonth.toISOString().split('T')[0];
     }
 
-    // Convert startDate and endDate to Date objects for iteration
-    const start = new Date(startDate); // Set to start of the day in UTC
-    const end = new Date(endDate); // Set to end of the day in UTC
-
-
     const data = [];
 
-    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-      const formattedDate = date.toISOString().split('T')[0];
-      console.log(`Date: ${formattedDate} ${date.toISOString()}`);
+    console.log(`Date Range: ${startDate} to ${endDate}`);
 
-      // Calculate the same day one week prior
-      const oneWeekPrior = new Date(date);
-      oneWeekPrior.setDate(date.getDate() - 7);
-      const formattedOneWeekPrior = oneWeekPrior.toISOString().split('T')[0];
-      console.log(`Date: ${formattedOneWeekPrior} ${date.toISOString()}`);
+    const [response] = await client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }], // Group by date
+      metrics: [
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'sessions' }
+      ],
+    });
 
-      // Run the report for the current date
-      const [currentResponse] = await client.runReport({
-        property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: formattedDate, endDate: formattedDate }],
-        dimensions: [{ name: 'date' }], // Group by date
-        metrics: [
-          { name: 'addToCarts' },
-          { name: 'checkouts' },
-          { name: 'sessions' }
-        ],
-      });
-
-      // Run the report for the date one week prior
-      const [priorResponse] = await client.runReport({
-        property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: formattedOneWeekPrior, endDate: formattedOneWeekPrior }],
-        dimensions: [{ name: 'date' }], // Group by date
-        metrics: [
-          { name: 'addToCarts' },
-          { name: 'checkouts' },
-          { name: 'sessions' }
-        ],
-      });
-
-      // Extract data from both responses
-      const todayData = currentResponse.rows[0];
-      const lastWeekData = priorResponse.rows[0];
-
-      // Push the formatted result into the data array
+    // Parse the data from the response
+    response.rows.forEach(row => {
+      const date = row.dimensionValues[0]?.value;
       data.push({
-        date: formattedDate,
-        addToCarts: todayData ? todayData.metricValues[0]?.value : 0,
-        checkouts: todayData ? todayData.metricValues[1]?.value : 0,
-        sessions: todayData ? todayData.metricValues[2]?.value : 0,
-        lastWeek: {
-          date: formattedOneWeekPrior,
-          addToCarts: lastWeekData ? lastWeekData.metricValues[0]?.value : 0,
-          checkouts: lastWeekData ? lastWeekData.metricValues[1]?.value : 0,
-          sessions: lastWeekData ? lastWeekData.metricValues[2]?.value : 0,
-        }
+        date,
+        addToCarts: row.metricValues[0]?.value || 0,
+        checkouts: row.metricValues[1]?.value || 0,
+        sessions: row.metricValues[2]?.value || 0,
       });
-    }
+    });
 
     // Send the data as response
     res.status(200).json({
-      reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range and One Week Prior',
+      reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range',
       data,
     });
   } catch (error) {
@@ -381,6 +347,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
   }
 }
+
 
 
 

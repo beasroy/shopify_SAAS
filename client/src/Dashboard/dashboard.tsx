@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
-import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
+// import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
 import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';

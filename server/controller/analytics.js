@@ -1,6 +1,7 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
+import moment from "moment";
 
 config();
 
@@ -325,17 +326,26 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
         { name: 'sessions' },
         { name: 'ecommercePurchases' }
       ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'date' }
+        }
+      ],
     });
 
     // Parse the data from the response
     response.rows.forEach(row => {
-      const date = row.dimensionValues[0]?.value;
+      const Date = row.dimensionValues[0]?.value;
+      const formattedDate = moment(Date).format("DD-MM-YYYY");
       data.push({
-        date,
-        addToCarts: row.metricValues[0]?.value || 0,
-        checkouts: row.metricValues[1]?.value || 0,
-        sessions: row.metricValues[2]?.value || 0,
-        purchases: row.metricValues[3]?.value || 0,
+        Date:formattedDate,
+        AddToCarts: row.metricValues[0]?.value || 0,
+        Checkouts: row.metricValues[1]?.value || 0,
+        Sessions: row.metricValues[2]?.value || 0,
+        Purchases: row.metricValues[3]?.value || 0,
+        AddToCartRate: ((row.metricValues[0]?.value/row.metricValues[2]?.value)*100).toFixed(2) || 0,
+        PurchaseRate:((row.metricValues[3]?.value/row.metricValues[2]?.value)*100).toFixed(2) || 0
       });
     });
 

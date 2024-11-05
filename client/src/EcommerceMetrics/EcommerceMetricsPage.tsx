@@ -139,7 +139,7 @@ interface EcommerceMetric{
             <TableBody>
               {data.map((item, index) => (
                 <TableRow key={index}>
-                  {Object.entries(item).map(([key, value], idx) => (
+                  {Object.entries(item).map(([_, value], idx) => (
                     <TableCell 
                       key={idx} 
                       className="px-4 py-2 border-b"

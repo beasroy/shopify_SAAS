@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
@@ -355,9 +355,11 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
             <CardTitle className='text-base'>Aggregated E-commerce Metrics</CardTitle>
             <CardDescription>Total Add to Carts, Checkouts, Sessions, and Purchases</CardDescription>
             </div>
+            <Link to={`/ecommerce-metrics/${brandId}`}>
             <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
+              </Link>
             </CardHeader>
             <CardContent>
           <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data} />

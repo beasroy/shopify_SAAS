@@ -7,6 +7,7 @@ import BusinessDashboard from './Dashboard/BusinessDashboard.tsx';
 import AnalyticsDashboard from './AnalyticsDashboard/AnalyticsDashboard.tsx';
 import GeneralDashboard from './GeneralisedDashboard/GeneralDashboard.tsx';
 import { BrandProvider } from './context/BrandContext.tsx';
+import EcommerceMetricsPage from './EcommerceMetrics/EcommerceMetricsPage.tsx';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/dashboard" element={<GeneralDashboard />} />
           <Route path="/business-dashboard/:brandId" element={<BusinessDashboard />} />
           <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard/>} />
+          <Route path ="/ecommerce-metrics/:brandId" element={<EcommerceMetricsPage />} />
         </Routes>
       </Router>
       </BrandProvider>

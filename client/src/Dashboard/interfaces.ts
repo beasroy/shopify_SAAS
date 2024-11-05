@@ -19,11 +19,11 @@ export interface DashboardData {
 }
 
 export interface DailyCartCheckoutData {
-  date: string;
-  addToCarts: string;
-  checkouts: string;
-  sessions: string;
-  purchases: string;
+  Date: string;
+  AddToCarts: string;
+  Checkouts: string;
+  Sessions: string;
+  Purchases: string;
 }
 
 export interface DailyCartCheckoutReport {

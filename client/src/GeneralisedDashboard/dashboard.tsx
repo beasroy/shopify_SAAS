@@ -1,26 +1,19 @@
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bell, Settings, Briefcase, RefreshCw, Store, FileSpreadsheet} from "lucide-react"
 import { Link } from "react-router-dom"
 import { useUser } from "@/context/UserContext"
 import { useBrand } from "@/context/BrandContext"
-import { SheetModal } from "@/MetricsSheet/SheetModal"
+
 
 export default function LandingPage() {
 
   const { user } = useUser();
   const { brands } = useBrand();
-  const [isSheetModalOpen, setSheetModalOpen] = useState(false);
-  const [currentBrandId, setCurrentBrandId] = useState('');
 
-  const handleOpenSheetModal = (brandId:string) => {
-    setSheetModalOpen(true);
-    setCurrentBrandId(brandId);
-  };
-  const handleCloseSheetModal = () => {
-    setSheetModalOpen(false);
-  };
+  
+
+ 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-pink-50 p-6 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -58,15 +51,15 @@ export default function LandingPage() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {brands.map((brand) => (
+                <Link to={`/ad-metrics/${brand._id}`}>
                 <Button
                   key={brand._id}
                   variant="outline"
-                  className="w-full justify-start items-center text-cyan-600 hover:bg-green-50 hover:text-cyan-700 border-cyan-400"
-                  onClick={() => handleOpenSheetModal(brand._id)}
-                >
+                  className="w-full justify-start items-center text-cyan-600 hover:bg-green-50 hover:text-cyan-700 border-cyan-400">
                   <FileSpreadsheet className="h-4 w-4" />
                   <span className="">{brand.name}</span>
                 </Button>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -160,10 +153,6 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </div>
-        <SheetModal
-          isOpen={isSheetModalOpen}
-          onClose={handleCloseSheetModal}
-          brandId={currentBrandId || ''}/>
       </div>
     </div>
   )

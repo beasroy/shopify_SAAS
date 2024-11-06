@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState } from 'react';
 interface Brand {
   _id: string;
   name: string;
+  brandId:string;
   fbAdAccounts?: []; 
 }
 

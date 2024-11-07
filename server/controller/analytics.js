@@ -273,27 +273,47 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
-    if (!startDate || !endDate) {
-      const now = new Date();
-    
-      // First day of the current month in local time
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-    
-      // Today's date in local time
-      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
-    
-      // Format the dates to YYYY-MM-DD in local time
-      const formatToLocalDateString = (date) => {
-        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-      };
-    
-      startDate = formatToLocalDateString(firstDayOfMonth);
-      endDate = formatToLocalDateString(currentDayOfMonth);
-    }
-    
-    console.log("Date Range:", startDate, "to", endDate);
+if (!startDate || !endDate) {
+  const now = new Date();
+
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  console.log("firstDayOfMonth (IST):", firstDayOfMonth);
+
+
+  const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+
+
+  const subtractISTOffset = (date) => {
+    const offset = 5.5 * 60 * 60 * 1000; 
+    return new Date(date.getTime() - offset);
+  };
+
+  
+  const adjustedStartDate = subtractISTOffset(firstDayOfMonth);
+  const adjustedEndDate = subtractISTOffset(currentDayOfMonth);
+
+ 
+  const formatToLocalDateString = (date) => {
+    return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+  };
+
+  startDate = formatToLocalDateString(adjustedStartDate);
+  endDate = formatToLocalDateString(adjustedEndDate);
+} else {
+  // If startDate and endDate are provided in the body, adjust them by subtracting 5.5 hours
+  const adjustDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const adjustedDate = new Date(date.getTime() - (5.5 * 60 * 60 * 1000)); // Subtract IST offset
+    return adjustedDate.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
+  };
+
+  startDate = adjustDate(startDate);
+  endDate = adjustDate(endDate);
+}
+
+console.log("Adjusted Date Range:", startDate, "to", endDate);
+
 
     const data = [];
 

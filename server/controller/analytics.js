@@ -270,49 +270,44 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
-if (!startDate || !endDate) {
-  const now = new Date();
-
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-
-
-  const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  console.log("currentDayOfMonth (IST):", currentDayOfMonth);
-
-
-  const subtractISTOffset = (date) => {
-    const offset = 5.5 * 60 * 60 * 1000; 
-    return new Date(date.getTime() - offset);
-  };
-
-  
-  const adjustedStartDate = subtractISTOffset(firstDayOfMonth);
-  const adjustedEndDate = subtractISTOffset(currentDayOfMonth);
-
- 
-  const formatToLocalDateString = (date) => {
-    return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-  };
-
-  startDate = formatToLocalDateString(adjustedStartDate);
-  endDate = formatToLocalDateString(adjustedEndDate);
-} else {
-  // If startDate and endDate are provided in the body, adjust them by subtracting 5.5 hours
-  const adjustDate = (dateStr) => {
-    const date = new Date(dateStr);
-    const adjustedDate = new Date(date.getTime() - (5.5 * 60 * 60 * 1000)); // Subtract IST offset
-    return adjustedDate.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
-  };
-
-  startDate = adjustDate(startDate);
-  endDate = adjustDate(endDate);
-}
-
-console.log("Adjusted Date Range:", startDate, "to", endDate);
+    const adjustToIST = (date) => {
+      // Add 5 hours and 30 minutes (in milliseconds) to convert to IST
+      const offset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+      return new Date(date.getTime() + offset);
+    };
+    
+    if (!startDate || !endDate) {
+      const now = new Date();
+    
+      // First day of the current month in UTC
+      const firstDayOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+      console.log("First day of the month (UTC):", firstDayOfMonth);
+    
+      // Today's date in UTC
+      const currentDayOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      console.log("Current day of the month (UTC):", currentDayOfMonth);
+    
+      // Adjust the start and end dates to IST
+      startDate = adjustToIST(firstDayOfMonth);
+      endDate = adjustToIST(currentDayOfMonth);
+    } else {
+      // If startDate and endDate are provided in the body, adjust them to IST
+      startDate = adjustToIST(new Date(startDate));
+      endDate = adjustToIST(new Date(endDate));
+    }
+    
+    // Format the dates to YYYY-MM-DD in IST
+    const formatToLocalDateString = (date) => {
+      return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+    };
+    
+    startDate = formatToLocalDateString(startDate);
+    endDate = formatToLocalDateString(endDate);
+    
+    console.log("Adjusted Date Range (IST):", startDate, "to", endDate);
+    
 
 
     const data = [];

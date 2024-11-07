@@ -23,7 +23,7 @@ interface TopPagesPieChartProps {
 }
 
 // Define an array of colors for the pie slices
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#8dd1e1'];
+const COLORS = ['#050C9C', '#3572EF', '#3ABEF9', '#577B8D', '#8dd1e1'];
 
 const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
   const topPages = getTopLandingPages(PageData);
@@ -40,9 +40,9 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={ 300}>
+      <ResponsiveContainer width="100%" height={ 280}>
         {topPages.length>0 ?(
-        <PieChart>
+        <PieChart className='px-6'>
           <Tooltip formatter={(value, name) => [`${value}`, `${name}`]} />
           {!isMobileOrTablet && ( // Conditionally render the Legend
             <Legend layout="vertical" align="right" verticalAlign="middle" />
@@ -51,7 +51,7 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
             data={topPages}
             dataKey="Visitors"
             nameKey="LandingPage"
-            cx="50%"
+            cx="35%"
             cy="50%"
             outerRadius={100}
             innerRadius={40}
@@ -73,3 +73,6 @@ const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
 };
 
 export default TopPagesPieChart;
+
+
+

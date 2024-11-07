@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios";
 import { format } from "date-fns"
-import { BriefcaseBusiness, Columns, RefreshCw } from "lucide-react";
+import { BriefcaseBusiness, Columns, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,20 +12,19 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
-interface EcommerceMetric {
-  Date: string;
-  AddToCarts: string;
-  Checkouts: string;
-  Sessions: string;
-  Purchases: string;
-  PurchaseRate: string;
-  AddToCartRate: string;
+interface CityMetric {
+  city: string;
+  country: string;
+  region: string;
+  addToCarts: string;
+  checkouts: string;
+  [key: string]: string;
 }
 
-const EcommerceMetricsPage: React.FC = () => {
+const CitySessionPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const now = new Date();
-  const [data, setData] = useState<EcommerceMetric[]>([]);
+  const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
@@ -33,7 +32,9 @@ const EcommerceMetricsPage: React.FC = () => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [isListVisible, setIsListVisible] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(["Date", "Sessions", "AddToCarts", "AddToCartRate", "Checkouts", "PurchaseRate"]);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(["City", "Sessions", "AddToCarts","AddToCartRate","Checkouts","PurchaseRate"]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 11;
 
   const toggleList = () => {
     setIsListVisible(!isListVisible);
@@ -45,7 +46,6 @@ const EcommerceMetricsPage: React.FC = () => {
         ? prev.filter(col => col !== column)
         : [...prev, column];
       
-      // Sort the new columns based on their order in allColumns
       return allColumns.filter(col => newColumns.includes(col));
     });
   };
@@ -57,12 +57,14 @@ const EcommerceMetricsPage: React.FC = () => {
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
 
-      const DailyAnalyticsResponse = await axios.post(`${baseURL}/api/analytics/atcreport/${brandId}`, {
+      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
         startDate: startDate,
         endDate: endDate
-      }, { withCredentials: true });
+      }, {
+        withCredentials: true
+      });
 
-      setData(DailyAnalyticsResponse.data.data || []);
+      setData(analyticsResponse.data[1].data || []);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -86,19 +88,37 @@ const EcommerceMetricsPage: React.FC = () => {
   };
 
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
-
-  // Sort selectedColumns based on their order in allColumns
   const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
+
+  const totalPages = Math.ceil(data.length / rowsPerPage);
+  const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  const parsedData = data.map(item => ({
+    ...item,
+    Sessions: Number(item.Sessions),
+  }));
+  // console.log('parseddata', parsedData);
+  const maxSessions = Math.max(...parsedData.map(item => item.Sessions));
+
+  const getBackgroundColor = (sessions: number, maxSessions: number) => {
+    const intensity = sessions / maxSessions; // Scale intensity between 0 and 1 
+    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`; // Use rgba for a gradient effect
+  };
+  const getTextColor = (sessions: number, maxSessions: number) => {
+    const intensity = sessions / maxSessions;
+    return intensity > 0.7 ? 'white' : 'black';
+  };
+
 
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden">
+      <div className="flex-1 h-screen overflow-auto">
         <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2">
               <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
-              <h1 className="text-2xl font-bold">E-commerce Metrics Overview</h1>
+              <h1 className="text-2xl font-bold">City Metrics Overview</h1>
             </div>
             <div className="flex flex-row space-x-3 items-center">
               <div className="md:flex items-center hidden">
@@ -148,7 +168,7 @@ const EcommerceMetricsPage: React.FC = () => {
           {isListVisible && (
             <div className="mb-4 p-4 border rounded-md bg-background">
               <h2 className="text-sm font-semibold mb-2">Select columns to display:</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {allColumns.map((column) => (
                   <div key={column} className="flex items-center space-x-2">
                     <Checkbox
@@ -168,26 +188,31 @@ const EcommerceMetricsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="border rounded-md overflow-auto">
+          <div className="border rounded-md">
             <Table className="text-center">
               <TableHeader className="bg-gray-200">
                 <TableRow>
                   {sortedSelectedColumns.map((column) => (
-                    <TableCell key={column} className="font-bold px-4 text-black min-w-[100px]">
+                    <TableCell key={column} className="font-bold px-4 text-black w-[150px]">
                       {column}
                     </TableCell>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((item, index) => (
+                {paginatedData.map((item, index) => (
                   <TableRow key={index}>
                     {sortedSelectedColumns.map((column) => (
                       <TableCell
                         key={column}
-                        className="px-4 py-2 border-b min-w-[100px]"
+                        className="px-4 py-2 border-b w-[150px] font-medium"
+                        style={{
+                          width: '150px',
+                          backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
+                          color: column === "Sessions" ? getTextColor(Number(item.Sessions), maxSessions) : 'inherit', 
+                        }}
                       >
-                        {item[column as keyof EcommerceMetric]}
+                        {item[column]}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -195,10 +220,30 @@ const EcommerceMetricsPage: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+
+          <div className="flex items-center justify-center gap-10 mt-4">
+            <Button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="flex items-center"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+            </Button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="flex items-center"
+            >
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export default EcommerceMetricsPage;
+export default CitySessionPage;

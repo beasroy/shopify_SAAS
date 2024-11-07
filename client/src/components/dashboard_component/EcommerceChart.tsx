@@ -30,7 +30,6 @@ const colorPalette = [
 ];
 
 export default function EcommerceMetrics({ rawData }: EcommerceMetricsProps) {
-  console.log(rawData)
   const aggregateData = () => {
     return rawData.reduce((acc, curr) => {
       acc.AddToCarts += parseInt(curr.AddToCarts, 10);

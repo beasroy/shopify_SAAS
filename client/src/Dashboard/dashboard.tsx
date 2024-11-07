@@ -167,18 +167,12 @@ export default function Dashboard() {
 
 
 // Conversion Rate calculation
-const session = data?.analyticsReports.find(report=>report.reportType === 'Purchase Data');
-const totalFilteredSessions = session?.data.reduce((accumulator, entry) => {
-    if (entry.transactionId !== '(not set)' && entry.transactionId !== '') {
-        return accumulator + parseInt(entry.sessions, 10); // Sum the sessions
-    }
-    return accumulator; 
-}, 0);
-const totalSessions = session?.data.reduce((accumulator, entry) => {
-    return accumulator + parseInt(entry.sessions, 10); // Convert sessions to an integer
-}, 0);
+const session = data?.analyticsReports.find(report => report.reportType === 'Purchase Data');
+let totalConversionRate = 0; // Initialize totalConversionRate
 
-const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessions * 100 : 0;
+if (session && Array.isArray(session.data)) {
+  totalConversionRate = session.data.reduce((acc, item) => acc + Number(item.ConversionRate), 0);
+}
 
   
 
@@ -236,13 +230,14 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
     if (!cityData) return [];
 
     return cityData.map(entry => ({
-      City: entry.city,
-      Region: entry.region,
-      Country: entry.country,
-      Visitors: entry.visitors,
-      Sessions: entry.sessions
+      City: entry.City,
+      Region: entry.Region,
+      Country: entry.Country,
+      Visitors: entry.Visitors,
+      Sessions: entry.Sessions
     }));
   };
+
 
   const preparedPageData = () => {
     if (!data || !data.analyticsReports) return [];
@@ -341,7 +336,7 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           {[
             { title: "Total Orders", value: data.totalOrders, colorClass: "text-cyan-700", icon: ShoppingCart },
             { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-cyan-700", icon: DollarSign },
-            { title: "Conversion Rate", value: `${conversionRate.toFixed(2)}%`, colorClass: "text-cyan-700", icon: PercentIcon },
+            { title: "Monthly Conversion Rate", value: `${totalConversionRate.toFixed(2)}%`, colorClass: "text-cyan-700", icon: PercentIcon },
             { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-cyan-700", icon: TrendingUp },
             {title: "Monthly Return Rate" , value: `${monthlyReturnRate}`,colorClass: "text-cyan-700", icon: PercentIcon}
           ].map((item, index) => (
@@ -379,12 +374,14 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row justify-between items-center'>
               <div className='flex flex-col gap-1'>
-              <CardTitle className='text-base'>Top 5 Cities</CardTitle>
-              <CardDescription>Visitor count for top cities</CardDescription>
+              <CardTitle className='text-base'>Top Cities</CardTitle>
+              <CardDescription>Visitor Count For Top cities</CardDescription>
               </div>
-              <Button onClick={() => handleOpenModal(preparedCityData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+              <Link to={`/city-metrics/${brandId}`}>
+              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
+              </Link>
             </CardHeader>
             <CardContent>
               <TopCitiesLineChart cityData={preparedCityData()} />
@@ -429,15 +426,15 @@ const conversionRate = totalSessions ? (totalFilteredSessions || 0) / totalSessi
 
                 {/* Landing Page Report*/}
                 <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
-            <CardHeader className='flex flex-row justify-between items-center'>
+            <CardHeader className='flex flex-row justify-between items-center px-6 py-3'>
               <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
               <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
             </CardHeader>
-            <CardContent>
+   
               <TopPagesPieChart PageData={preparedPageData()} />
-            </CardContent>
+          
           </Card>
 
        

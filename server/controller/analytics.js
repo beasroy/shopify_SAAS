@@ -65,19 +65,30 @@ export async function getBatchReports(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    // Get the startDate and endDate from the request body
+ 
     let { startDate, endDate } = req.body;
 
-    // Check if startDate and endDate are empty strings
     if (!startDate || !endDate) {
       const now = new Date();
+      
+     
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-      // Format the dates to YYYY-MM-DD
-      startDate = firstDayOfMonth.toISOString().split('T')[0];
-      endDate = lastDayOfMonth.toISOString().split('T')[0];
+      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
+      
+     
+      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      currentDayOfMonth.setHours(23, 59, 59, 999);  
+      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+      
+        const formatToLocalDateString = (date) => {
+        return date.toLocaleDateString('en-CA'); 
+      };
+    
+      startDate = formatToLocalDateString(firstDayOfMonth);
+      endDate = formatToLocalDateString(currentDayOfMonth);
     }
+    
+    console.log("Date Range:", startDate, "to", endDate);
 
     // Construct the batch request with individual report requests
     const [batchResponse] = await client.batchRunReports({
@@ -99,6 +110,7 @@ export async function getBatchReports(req, res) {
             { name: 'sessions' },
             { name: 'addToCarts' },
             { name: 'checkouts' },
+            { name: 'ecommercePurchases' },
             { name: 'conversions' },
           ],
         },
@@ -118,6 +130,9 @@ export async function getBatchReports(req, res) {
           metrics: [
             { name: 'totalUsers' },
             { name: 'sessions' },
+            { name: 'addToCarts' },
+            { name: 'checkouts' },
+            { name: 'ecommercePurchases' }
           ]
         
         },
@@ -160,11 +175,11 @@ export async function getBatchReports(req, res) {
             { startDate, endDate }
           ],
           dimensions: [
-            { name: 'transactionId' },
-            { name: 'date' },        // Unique ID for each purchase               // Date of the transaction
+            { name: 'yearMonth' },        // Unique ID for each purchase               // Date of the transaction
           ],
           metrics: [
-            { name: 'sessions' }       // Number of items purchased            // Sessions that resulted in purchase
+            { name: 'sessions' },
+            {name: 'ecommercePurchases'}       // Number of items purchased            // Sessions that resulted in purchase
           ],
         },
         //
@@ -184,18 +199,24 @@ export async function getBatchReports(req, res) {
               sessions: row.metricValues[1]?.value,
               addToCarts: row.metricValues[2]?.value,
               checkouts: row.metricValues[3]?.value,
-              conversions: row.metricValues[4]?.value,
+              Purchases:row.metricValues[4]?.value,
+              conversions: row.metricValues[5]?.value,
             }))
           };
         case 1: // Sessions by Location
           return {
             reportType: 'Sessions by Location',
             data: report.rows.map(row => ({
-              city: row.dimensionValues[0]?.value,
-              country: row.dimensionValues[1]?.value,
-              region: row.dimensionValues[2]?.value,
-              visitors: row.metricValues[0]?.value,
-              sessions: row.metricValues[1]?.value,
+              City: row.dimensionValues[0]?.value,
+              Country: row.dimensionValues[1]?.value,
+              Region: row.dimensionValues[2]?.value,
+              Visitors: row.metricValues[0]?.value,
+              Sessions: row.metricValues[1]?.value,
+              AddToCarts: row.metricValues[2]?.value,
+              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Checkouts: row.metricValues[3]?.value,
+              Purchases:row.metricValues[4]?.value,
+              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 2: // Sessions by Referring Channel
@@ -228,9 +249,10 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Purchase Data',
             data: report.rows.map(row => ({
-              transactionId: row.dimensionValues[0]?.value,
-              date: row.dimensionValues[1]?.value,  // Date of the transaction
+              yearMonth: row.dimensionValues[0]?.value,  // Date of the transaction
               sessions: row.metricValues[0]?.value,
+              Purchase:row.metricValues[1]?.value,
+              ConversionRate: ((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0, // Conversion rate as percentage
             }))
           };
         default:
@@ -273,27 +295,29 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
-    if (!startDate || !endDate) {
-      const now = new Date();
-    
-      // First day of the current month in local time
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-    
-      // Today's date in local time
-      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
-    
-      // Format the dates to YYYY-MM-DD in local time
-      const formatToLocalDateString = (date) => {
-        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-      };
-    
-      startDate = formatToLocalDateString(firstDayOfMonth);
-      endDate = formatToLocalDateString(currentDayOfMonth);
-    }
-    
-    console.log("Date Range:", startDate, "to", endDate);
+if (!startDate || !endDate) {
+  const now = new Date();
+  
+  // First day of the current month in local time
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  console.log("firstDayOfMonth (IST):", firstDayOfMonth);
+  
+  // Today's date in local time, setting time to 23:59:59.999 (last moment of the day)
+  const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  currentDayOfMonth.setHours(23, 59, 59, 999);  // Set to the last moment of the day
+  console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+  
+  // Format the dates to YYYY-MM-DD in local time
+  const formatToLocalDateString = (date) => {
+    return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+  };
+
+  startDate = formatToLocalDateString(firstDayOfMonth);
+  endDate = formatToLocalDateString(currentDayOfMonth);
+}
+
+console.log("Date Range:", startDate, "to", endDate);
+
 
     const data = [];
 
@@ -303,9 +327,9 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       dateRanges: [{ startDate, endDate }],
       dimensions: [{ name: 'date' }], // Group by date
       metrics: [
+        { name: 'sessions' },
         { name: 'addToCarts' },
         { name: 'checkouts' },
-        { name: 'sessions' },
         { name: 'ecommercePurchases' }
       ],
       orderBys: [
@@ -322,12 +346,12 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       const formattedDate = moment(Date).format("DD-MM-YYYY");
       data.push({
         Date:formattedDate,
-        AddToCarts: row.metricValues[0]?.value || 0,
-        Checkouts: row.metricValues[1]?.value || 0,
-        Sessions: row.metricValues[2]?.value || 0,
+        Sessions: row.metricValues[0]?.value || 0,
+        AddToCarts: row.metricValues[1]?.value || 0,
+        AddToCartRate: ((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0,
+        Checkouts: row.metricValues[2]?.value || 0,
         Purchases: row.metricValues[3]?.value || 0,
-        AddToCartRate: ((row.metricValues[0]?.value/row.metricValues[2]?.value)*100).toFixed(2) || 0,
-        PurchaseRate:((row.metricValues[3]?.value/row.metricValues[2]?.value)*100).toFixed(2) || 0
+        PurchaseRate:((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0,
       });
     });
 

@@ -270,45 +270,30 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
+    // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
-    const adjustToIST = (date) => {
-      // Add 5 hours and 30 minutes (in milliseconds) to convert to IST
-      const offset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
-      return new Date(date.getTime() + offset);
-    };
-    
     if (!startDate || !endDate) {
       const now = new Date();
     
-      // First day of the current month in UTC
-      const firstDayOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
-      console.log("First day of the month (UTC):", firstDayOfMonth);
+      // First day of the current month in local time
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
     
-      // Today's date in UTC
-      const currentDayOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-      console.log("Current day of the month (UTC):", currentDayOfMonth);
+      // Today's date in local time
+      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
     
-      // Adjust the start and end dates to IST
-      startDate = adjustToIST(firstDayOfMonth);
-      endDate = adjustToIST(currentDayOfMonth);
-    } else {
-      // If startDate and endDate are provided in the body, adjust them to IST
-      startDate = adjustToIST(new Date(startDate));
-      endDate = adjustToIST(new Date(endDate));
+      // Format the dates to YYYY-MM-DD in local time
+      const formatToLocalDateString = (date) => {
+        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+      };
+    
+      startDate = formatToLocalDateString(firstDayOfMonth);
+      endDate = formatToLocalDateString(currentDayOfMonth);
     }
     
-    // Format the dates to YYYY-MM-DD in IST
-    const formatToLocalDateString = (date) => {
-      return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-    };
-    
-    startDate = formatToLocalDateString(startDate);
-    endDate = formatToLocalDateString(endDate);
-    
-    console.log("Adjusted Date Range (IST):", startDate, "to", endDate);
-    
-
+    console.log("Date Range:", startDate, "to", endDate);
 
     const data = [];
 

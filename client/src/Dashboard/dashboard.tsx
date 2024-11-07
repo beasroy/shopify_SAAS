@@ -11,7 +11,6 @@ import { format } from "date-fns"
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
 import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
-import ReportModal from '../components/dashboard_component/ReportModal.tsx';
 import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
@@ -39,8 +38,6 @@ export default function Dashboard() {
   const [data, setData] = useState<CombinedData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [reportData, setReportData] = useState<any[]>([]);
   const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
 
   // const websocketUrl = import.meta.env.PROD ? 'wss://your-production-url' : 'ws://localhost:PORT';
@@ -214,11 +211,9 @@ if (session && Array.isArray(session.data)) {
     if (!referringChannelData) return [];
 
     return referringChannelData.map(entry => ({
-      Channel: entry.channel,
-      Source: entry.source,
-      Medium: entry.medium,
-      Visitors: entry.visitors,
-      Sessions: entry.sessions
+      Channel: entry.Channel,
+      Visitors: entry.Visitors,
+      Sessions: entry.Sessions
     }));
   };
 
@@ -246,30 +241,12 @@ if (session && Array.isArray(session.data)) {
     if (!pageData) return [];
 
     return pageData.map(entry => ({
-      LandingPage: getShortLabel(entry.landingPage),
-      AddToCarts: entry.addToCarts,
-      Checkouts: entry.checkouts,
-      Conversions: entry.conversions,
-      Visitors: entry.visitors,
-      Sessions: entry.sessions
+      LandingPage: entry.LandingPage,
+      Visitors: entry.Visitors,
+
     }));
   };
 
-
-  const getShortLabel = (label: string) => {
-    const url = new URL(label, 'http://dummy-base-url');
-    return url.pathname;
-  };
-
-
-
-  const handleOpenModal = (data: any[]) => {
-    setReportData(data);
-    setModalOpen(true);
-  };
-  const handleCloseModal = () => {
-    setModalOpen(false);
-  };
 
   if (!data) return <div className="flex items-center justify-center h-screen">
     <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
@@ -367,7 +344,7 @@ if (session && Array.isArray(session.data)) {
               </Link>
             </CardHeader>
             <CardContent>
-          <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data} />
+          <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data || []} />
               </CardContent>
               </Card>
                        {/* City Chart */}
@@ -391,27 +368,20 @@ if (session && Array.isArray(session.data)) {
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row items-center justify-between'>
             <div className='flex flex-col gap-1'>
-            <CardTitle className='text-base'>Top 5 referring channels</CardTitle>
+            <CardTitle className='text-base'>Top Referring Channels</CardTitle>
             <CardDescription>Visitor count for reffering channels</CardDescription>
             </div>
-              <Button onClick={() => handleOpenModal(preparedReferringData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+            <Link to={`/channel-metrics/${brandId}`}>
+              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
+              </Link>
             </CardHeader>
             <CardContent className="h-80">
               <ReferringChannelChart rawData={preparedReferringData()} />
             </CardContent>
           </Card>
 
-    
-
-          {/* Report Modal */}
-          <ReportModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            title="Report Data"
-            data={reportData}
-          />
         </div>
         <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
           {/* Monthly Returning Customer Rates Chart */}
@@ -427,10 +397,15 @@ if (session && Array.isArray(session.data)) {
                 {/* Landing Page Report*/}
                 <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
             <CardHeader className='flex flex-row justify-between items-center px-6 py-3'>
-              <CardTitle className="text-lg text-gray-600">Top 5 Landing Pages based on visitors</CardTitle>
-              <Button onClick={() => handleOpenModal(preparedPageData())} className=" bg-blue-50 text-blue-900 hover:text-white ">
+              <div className='flex flex-col gap-1'>
+            <CardTitle className='text-base'>Top Landing Pages</CardTitle>
+            <CardDescription>Visitors count based on Landing Pages</CardDescription>
+            </div>
+              <Link to={`/page-metrics/${brandId}`}>
+              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
                 <FileChartColumn />
               </Button>
+              </Link>
             </CardHeader>
    
               <TopPagesPieChart PageData={preparedPageData()} />

@@ -10,6 +10,8 @@ import { BrandProvider } from './context/BrandContext.tsx';
 import EcommerceMetricsPage from './EcommerceMetrics/EcommerceMetricsPage.tsx';
 import { ExcelMetricsPage } from './ExcelMetrics/ExcelMetrics.tsx';
 import CitySessionPage from './CitySessionPage/CitySessionPage.tsx';
+import ChannelSessionPage from './RefferingChannelPage/RefferingChannelPage.tsx';
+import LandingPageSession from './LandingPageSession/LandingPageSession.tsx';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path ="/ecommerce-metrics/:brandId" element={<EcommerceMetricsPage />} />
           <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
           <Route path ="/city-metrics/:brandId" element={<CitySessionPage />} />
+          <Route path ='/channel-metrics/:brandId' element={<ChannelSessionPage />} />
+          <Route path ='/page-metrics/:brandId' element={<LandingPageSession />} />
         </Routes>
       </Router>
       </BrandProvider>

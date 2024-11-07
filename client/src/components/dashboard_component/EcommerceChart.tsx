@@ -42,6 +42,14 @@ export default function EcommerceMetrics({ rawData }: EcommerceMetricsProps) {
 
   const aggregatedData = formatData(aggregateData());
 
+  if(rawData.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+      <p>No data available. Please set up Google Analytics for this data.</p>
+    </div>
+    )// Return null if aggregated data is not available yet
+  }
+
   return (
       <ResponsiveContainer width="100%" height={280}>
         <AreaChart data={aggregatedData}>

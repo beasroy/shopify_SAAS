@@ -111,7 +111,6 @@ export async function getBatchReports(req, res) {
             { name: 'addToCarts' },
             { name: 'checkouts' },
             { name: 'ecommercePurchases' },
-            { name: 'conversions' },
           ],
         },
         // Second report: Sessions by Location (monthly data)
@@ -145,13 +144,16 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            { name: "source" },
-            { name: "medium" },                  // Group by month
+            // { name: "source" },
+            // { name: "medium" },                  // Group by month
             { name: 'sessionDefaultChannelGroup' }   // Referring channel
           ],
           metrics: [
             { name: 'totalUsers' },
-            { name: 'sessions' }
+            { name: 'sessions' },
+            { name: 'addToCarts' },
+            { name: 'checkouts' },
+            { name: 'ecommercePurchases' },
           ]
         },
         // Fourth report: Returning Customer Rate (monthly data)
@@ -194,13 +196,14 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Landing Page Report',
             data: report.rows.map(row => ({
-              landingPage: row.dimensionValues[0]?.value,
-              visitors: row.metricValues[0]?.value,
-              sessions: row.metricValues[1]?.value,
-              addToCarts: row.metricValues[2]?.value,
-              checkouts: row.metricValues[3]?.value,
+              LandingPage: row.dimensionValues[0]?.value,
+              Visitors: row.metricValues[0]?.value,
+              Sessions: row.metricValues[1]?.value,
+              AddToCarts: row.metricValues[2]?.value,
+              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Checkouts: row.metricValues[3]?.value,
               Purchases:row.metricValues[4]?.value,
-              conversions: row.metricValues[5]?.value,
+              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 1: // Sessions by Location
@@ -223,11 +226,14 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Sessions by Referring Channel',
             data: report.rows.map(row => ({
-              source: row.dimensionValues[0]?.value,
-              medium: row.dimensionValues[1]?.value,  // Medium (e.g., cpc, organic, referral)
-              channel: row.dimensionValues[2]?.value,
-              visitors: row.metricValues[0]?.value,
-              sessions: row.metricValues[1]?.value,
+              Channel: row.dimensionValues[0]?.value,
+              Visitors: row.metricValues[0]?.value,
+              Sessions: row.metricValues[1]?.value,
+              AddToCarts: row.metricValues[2]?.value,
+              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Checkouts: row.metricValues[3]?.value,
+              Purchases:row.metricValues[4]?.value,
+              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 3: // Returning Customer Rate

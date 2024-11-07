@@ -91,9 +91,8 @@ export async function getBatchReports(req, res) {
               endDate,   // Using endDate from req.body
             },
           ],
-          dimensions: [
-            { name: 'yearMonth' },                   // Group by month
-            { name: 'landingPagePlusQueryString' }    // Landing page path
+          dimensions: [                // Group by month
+            { name: 'landingPage' }    // Landing page path
           ],
           metrics: [
             { name: 'totalUsers' },
@@ -102,13 +101,6 @@ export async function getBatchReports(req, res) {
             { name: 'checkouts' },
             { name: 'conversions' },
           ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'yearMonth' }
-            }
-          ],
-          limit: 50, // Limit the response to 100 rows
         },
         // Second report: Sessions by Location (monthly data)
         {
@@ -119,7 +111,6 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            { name: 'yearMonth' },                   // Group by month
             { name: 'city' },                        // City of the user
             { name: 'country' },                     // Country of the user
             { name: 'region' }                       // Region within the country
@@ -127,14 +118,8 @@ export async function getBatchReports(req, res) {
           metrics: [
             { name: 'totalUsers' },
             { name: 'sessions' },
-          ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'yearMonth' }
-            }
-          ],
-          limit: 50, // Limit the response to 100 rows
+          ]
+        
         },
         // Third report: Sessions by Referring Channel (monthly data)
         {
@@ -145,7 +130,6 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            { name: 'yearMonth' },
             { name: "source" },
             { name: "medium" },                  // Group by month
             { name: 'sessionDefaultChannelGroup' }   // Referring channel
@@ -153,14 +137,7 @@ export async function getBatchReports(req, res) {
           metrics: [
             { name: 'totalUsers' },
             { name: 'sessions' }
-          ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'yearMonth' }
-            }
-          ],
-          limit: 50, // Limit the response to 100 rows
+          ]
         },
         // Fourth report: Returning Customer Rate (monthly data)
         {
@@ -177,7 +154,6 @@ export async function getBatchReports(req, res) {
             { name: 'totalUsers' },   // Total users (including both new and returning)
             { name: 'newUsers' },     // New users in the given period
           ],
-          limit: 50, // Limit the response to 100 rows
         },
         {
           dateRanges: [
@@ -185,7 +161,7 @@ export async function getBatchReports(req, res) {
           ],
           dimensions: [
             { name: 'transactionId' },
-            { name: 'yearMonth' },        // Unique ID for each purchase               // Date of the transaction
+            { name: 'date' },        // Unique ID for each purchase               // Date of the transaction
           ],
           metrics: [
             { name: 'sessions' }       // Number of items purchased            // Sessions that resulted in purchase
@@ -203,8 +179,7 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Landing Page Report',
             data: report.rows.map(row => ({
-              yearMonth: row.dimensionValues[0]?.value,
-              landingPage: row.dimensionValues[1]?.value,
+              landingPage: row.dimensionValues[0]?.value,
               visitors: row.metricValues[0]?.value,
               sessions: row.metricValues[1]?.value,
               addToCarts: row.metricValues[2]?.value,
@@ -216,10 +191,9 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Sessions by Location',
             data: report.rows.map(row => ({
-              yearMonth: row.dimensionValues[0]?.value,
-              city: row.dimensionValues[1]?.value,
-              country: row.dimensionValues[2]?.value,
-              region: row.dimensionValues[3]?.value,
+              city: row.dimensionValues[0]?.value,
+              country: row.dimensionValues[1]?.value,
+              region: row.dimensionValues[2]?.value,
               visitors: row.metricValues[0]?.value,
               sessions: row.metricValues[1]?.value,
             }))
@@ -228,10 +202,9 @@ export async function getBatchReports(req, res) {
           return {
             reportType: 'Sessions by Referring Channel',
             data: report.rows.map(row => ({
-              yearMonth: row.dimensionValues[0]?.value,
-              source: row.dimensionValues[1]?.value,
-              medium: row.dimensionValues[2]?.value,  // Medium (e.g., cpc, organic, referral)
-              channel: row.dimensionValues[3]?.value,
+              source: row.dimensionValues[0]?.value,
+              medium: row.dimensionValues[1]?.value,  // Medium (e.g., cpc, organic, referral)
+              channel: row.dimensionValues[2]?.value,
               visitors: row.metricValues[0]?.value,
               sessions: row.metricValues[1]?.value,
             }))
@@ -256,7 +229,7 @@ export async function getBatchReports(req, res) {
             reportType: 'Purchase Data',
             data: report.rows.map(row => ({
               transactionId: row.dimensionValues[0]?.value,
-              yearMonth: row.dimensionValues[1]?.value,  // Date of the transaction
+              date: row.dimensionValues[1]?.value,  // Date of the transaction
               sessions: row.metricValues[0]?.value,
             }))
           };
@@ -302,19 +275,28 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     if (!startDate || !endDate) {
       const now = new Date();
+    
+      // First day of the current month in local time
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth", firstDayOfMonth);
+      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
+    
+      // Today's date in local time
       const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      console.log("currentDayOfMonth", currentDayOfMonth);
-
-      // Format the dates to YYYY-MM-DD
-      startDate = firstDayOfMonth.toISOString().split('T')[0];
-      endDate = currentDayOfMonth.toISOString().split('T')[0];
+      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+    
+      // Format the dates to YYYY-MM-DD in local time
+      const formatToLocalDateString = (date) => {
+        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+      };
+    
+      startDate = formatToLocalDateString(firstDayOfMonth);
+      endDate = formatToLocalDateString(currentDayOfMonth);
     }
+    
+    console.log("Date Range:", startDate, "to", endDate);
 
     const data = [];
 
-    console.log(`Date Range: ${startDate} to ${endDate}`);
 
     const [response] = await client.runReport({
       property: `properties/${propertyId}`,

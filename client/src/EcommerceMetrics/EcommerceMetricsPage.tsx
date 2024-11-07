@@ -62,11 +62,8 @@ interface EcommerceMetric{
       } finally {
         setIsLoading(false);
       }
-    }, [navigate, endDate, endDate]);
+    }, [navigate, startDate, endDate]);
 
-    useEffect(() => {
-      fetchMetrics();
-    }, [fetchMetrics]);
 
     useEffect(() => {
       fetchMetrics();

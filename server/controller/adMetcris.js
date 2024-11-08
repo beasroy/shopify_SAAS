@@ -145,8 +145,7 @@ export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,end
         "metrics.conversions",
         "metrics.clicks",
         "metrics.active_view_cpm",
-        "metrics.active_view_ctr",
-        "metrics.cost_per_conversion"
+        "metrics.ctr",
       ],
       segments: ["segments.date"],
       from_date: startDate,
@@ -157,27 +156,23 @@ export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,end
     let totalSpend = 0;
     let totalConversionsValue = 0;
     let totalConversions = 0;
-    let totalClicks = 0;
     let totalActiveViewCPM = 0;
     let totalActiveViewCTR = 0;
-    let totalCostPerConversion = 0;
+ 
 
     // Loop through the report rows and process the data
     for (const row of adsReport) {
       const costMicros = row.metrics.cost_micros || 0;
       const conversionsValue = row.metrics.conversions_value || 0;
       const conversions = row.metrics.conversions || 0;
-      const clicks = row.metrics.clicks || 0;
       const activeViewCPM = row.metrics.active_view_cpm || 0;
-      const activeViewCTR = row.metrics.active_view_ctr || 0;
-      const costPerConversion = row.metrics.cost_per_conversion || 0;
+      const activeViewCTR = row.metrics.ctr || 0;
 
       const spend = costMicros / 1_000_000;
 
       totalSpend += spend;
       totalConversionsValue += conversionsValue;
       totalConversions += conversions;
-      totalClicks += clicks;
       totalActiveViewCPM += activeViewCPM;
       totalActiveViewCTR += activeViewCTR;
       
@@ -191,13 +186,17 @@ export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,end
     }
 
     const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
+    const totalCostPerConversion = totalSpend > 0? (totalSpend / totalConversions) : 0;
 
     console.log(`Total Spend: ${totalSpend.toFixed(2)} (Currency Units)`);
     console.log(`Total Conversions Value: ${totalConversionsValue.toFixed(2)}`);
     console.log(`Total ROAS: ${roas.toFixed(2)}`);
     console.log(`Total Conversions: ${totalConversions.toFixed(2)}`);
+    console.log(`Total Active View CPM: ${totalActiveViewCPM.toFixed(2)} (Currency Units)`);
+    console.log(`Total Active View CTR: ${totalActiveViewCTR.toFixed(2)}`);
+    console.log(`Total Cost Per Conversion: ${totalCostPerConversion.toFixed(2)} (Currency Units)`);
 
-    return { totalSpend, roas, totalConversionsValue, totalConversions};
+    return { totalSpend, roas, totalConversionsValue, totalConversions, totalCostPerConversion};
 
   } catch (error) {
     console.error("Failed to fetch ad-level spend and ROAS:", error);

@@ -1,17 +1,17 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
 
-// Define the interface for city data
+//  interface for city data
 interface CityData {
   City: string;
-  Visitors: string; // Assuming visitors is a string based on your provided data
+  Visitors: string; 
 }
 
-// Function to get top 5 cities based on visitors from the data
+
 const getTopCities = (data: CityData[]) => {
   return data
     .map(item => ({ city: item.City, visitors: parseInt(item.Visitors, 10) }))
-    .filter(item => !isNaN(item.visitors)) // Filter out invalid entries
+    .filter(item => !isNaN(item.visitors)) // Filtering out invalid entries
     .sort((a, b) => b.visitors - a.visitors)
     .slice(0, 5);
 };
@@ -31,7 +31,7 @@ const getBarColor = (value: number, max: number) => {
 const TopCitiesBarChart: React.FC<TopCitiesBarChartProps> = ({ cityData }) => {
   const topCities = getTopCities(cityData);
 
-  const maxRate = Math.max(...topCities.map(entry => entry.visitors)); // Use topCities instead of cityData
+  const maxRate = Math.max(...topCities.map(entry => entry.visitors)); 
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -55,8 +55,8 @@ const TopCitiesBarChart: React.FC<TopCitiesBarChartProps> = ({ cityData }) => {
             barSize={20} 
             fill="#00ACC1" 
             shape={(props:any) => {
-              const { visitors } = props.payload; // Access visitors from the payload
-              return <rect {...props} fill={getBarColor(visitors, maxRate)} />; // Use getBarColor to determine the fill color
+              const { visitors } = props.payload; 
+              return <rect {...props} fill={getBarColor(visitors, maxRate)} />; 
             }}
           />
         </BarChart>

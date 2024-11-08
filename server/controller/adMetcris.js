@@ -2,6 +2,7 @@ import axios from 'axios';
 import { config } from 'dotenv';
 import moment from 'moment';
 import Brand from '../models/Brands.js';
+import { GoogleAdsApi } from "google-ads-api";
 
 config();
 
@@ -114,7 +115,7 @@ export const fetchFBAdAccountData = async(req,res)=>{
 
 // Google ADS API DATA
 
-import { GoogleAdsApi } from "google-ads-api";
+
 
 const client = new GoogleAdsApi({
   client_id: process.env.GOOGLE_AD_CLIENT_ID,
@@ -145,6 +146,7 @@ export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,end
         "metrics.clicks",
         "metrics.active_view_cpm",
         "metrics.active_view_ctr",
+        "metrics.cost_per_conversion"
       ],
       segments: ["segments.date"],
       from_date: startDate,
@@ -155,18 +157,30 @@ export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,end
     let totalSpend = 0;
     let totalConversionsValue = 0;
     let totalConversions = 0;
+    let totalClicks = 0;
+    let totalActiveViewCPM = 0;
+    let totalActiveViewCTR = 0;
+    let totalCostPerConversion = 0;
 
     // Loop through the report rows and process the data
     for (const row of adsReport) {
       const costMicros = row.metrics.cost_micros || 0;
       const conversionsValue = row.metrics.conversions_value || 0;
       const conversions = row.metrics.conversions || 0;
+      const clicks = row.metrics.clicks || 0;
+      const activeViewCPM = row.metrics.active_view_cpm || 0;
+      const activeViewCTR = row.metrics.active_view_ctr || 0;
+      const costPerConversion = row.metrics.cost_per_conversion || 0;
 
       const spend = costMicros / 1_000_000;
 
       totalSpend += spend;
       totalConversionsValue += conversionsValue;
       totalConversions += conversions;
+      totalClicks += clicks;
+      totalActiveViewCPM += activeViewCPM;
+      totalActiveViewCTR += activeViewCTR;
+      
 
       // Log individual ad metrics
       console.log(`Ad ID: ${row.ad_group_ad.ad.id}`);

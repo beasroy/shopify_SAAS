@@ -2,7 +2,7 @@ import { DailyCartCheckoutData } from "@/Dashboard/interfaces";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 interface EcommerceMetricsProps {
-  rawData: DailyCartCheckoutData[]; // Use camelCase for consistency
+  rawData: DailyCartCheckoutData[];  
 }
 
 const formatData = (data: any) => {
@@ -21,7 +21,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-// Updated color palette to shades of blue
+
 const colorPalette = [
   "#4f83cc", // Light Blue
   "#337ab7", // Medium Blue
@@ -47,7 +47,7 @@ export default function EcommerceMetrics({ rawData }: EcommerceMetricsProps) {
       <div style={{ textAlign: 'center', marginTop: '50px' }}>
       <p>No data available. Please set up Google Analytics for this data.</p>
     </div>
-    )// Return null if aggregated data is not available yet
+    )
   }
 
   return (

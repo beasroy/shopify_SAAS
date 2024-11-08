@@ -10,7 +10,7 @@ type DatePickerWithRangeProps = {
   date: DateRange | undefined;
   setDate: (date: DateRange | undefined) => void;
   defaultDate?: DateRange;
-  resetToFirstPage?: () => void; // New prop for default dates
+  resetToFirstPage?: () => void; 
 };
 
 export const DatePickerWithRange: React.FC<DatePickerWithRangeProps> = ({
@@ -25,7 +25,7 @@ export const DatePickerWithRange: React.FC<DatePickerWithRangeProps> = ({
   const handleDateChange = (newDate: DateRange | undefined) => {
     setDate(newDate);
     if (resetToFirstPage) {
-      resetToFirstPage(); // Call reset only if provided
+      resetToFirstPage(); 
     }
   };
 

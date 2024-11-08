@@ -42,14 +42,14 @@ const MonthlyReturningCustomerRatesChart: React.FC<MonthlyReturningCustomerRates
       </div>
     );
   }
-  // Calculate max and min values
+  
   const maxRate = Math.max(...data.map(entry => entry.returningCustomerRate));
   const minRate = Math.min(...data.map(entry => entry.returningCustomerRate));
 
   // Convert yearMonth to readable format
   const formattedData = data.map(entry => ({
     ...entry,
-    month: formatMonth(entry.month), // Convert "202410" to "October"
+    month: formatMonth(entry.month), 
   }));
 
   return (

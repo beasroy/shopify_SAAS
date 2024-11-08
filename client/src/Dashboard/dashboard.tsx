@@ -7,7 +7,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
-// import MonthlyReturningCustomerRatesChart from '../components/dashboard_component/MonthlyReturningCustomerRatesChart.tsx';
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
 import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
 import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
@@ -51,7 +50,7 @@ export default function Dashboard() {
   const debouncedEndDate = useDebouncedValue(endDate, 500);
 
 
-  const now = new Date(); // Define 'now' variable
+  const now = new Date(); 
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -89,17 +88,17 @@ export default function Dashboard() {
 
       console.log("Analytics Data:", analyticsResponse.data);
 
-      const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutReport>(`${baseURL}/api/analytics/atcreport/${brandId}`,{
+      const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutReport>(`${baseURL}/api/analytics/atcreport/${brandId}`, {
         startDate: debouncedStartDate,
         endDate: debouncedEndDate
-      },{withCredentials: true});
+      }, { withCredentials: true });
 
       console.log("Daily Analytics Data:", DailyAnalyticsResponse.data);
 
       const combinedData = {
         ...shopifyResponse.data,
         analyticsReports: analyticsResponse.data || null,
-        dailyCartCheckoutReports: DailyAnalyticsResponse.data ? [DailyAnalyticsResponse.data] : [] // Store as an array
+        dailyCartCheckoutReports: DailyAnalyticsResponse.data ? [DailyAnalyticsResponse.data] : [] 
       };
 
       setData(combinedData);
@@ -161,49 +160,31 @@ export default function Dashboard() {
     fetchData();
   };
 
+  // Conversion Rate calculation
+  const session = data?.analyticsReports.find(report => report.reportType === 'Purchase Data');
+  let totalConversionRate = 0; 
+  if (session && Array.isArray(session.data)) {
+    totalConversionRate = session.data.reduce((acc, item) => acc + Number(item.ConversionRate), 0);
+  }
 
-
-// Conversion Rate calculation
-const session = data?.analyticsReports.find(report => report.reportType === 'Purchase Data');
-let totalConversionRate = 0; // Initialize totalConversionRate
-
-if (session && Array.isArray(session.data)) {
-  totalConversionRate = session.data.reduce((acc, item) => acc + Number(item.ConversionRate), 0);
-}
-
-  
-
-  // const prepareMonthlyReturnRatesData = () => {
-  //   if (!data || !data.analyticsReports) return [];
-
-  //   const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
-
-  //   if (!returningCustomerRateReport || !returningCustomerRateReport.data) return [];
-
-  //   return returningCustomerRateReport.data.map(({ yearMonth, returnRate }) => ({
-  //     month: yearMonth,
-  //     returningCustomerRate: parseFloat(returnRate) || 0,
-  //   }));
-  // };
 
   const prepareMonthlyReturnRatesData = () => {
     if (!data || !data.analyticsReports) return 0;
-  
+
     const returningCustomerRateReport = data.analyticsReports.find(report => report.reportType === 'Returning Customer Rate');
-  
+
     if (!returningCustomerRateReport || !returningCustomerRateReport.data) return 0;
-  
-    // Extract return rates and calculate total return rate
+
     const totalReturnRate = returningCustomerRateReport.data.reduce((acc, { returnRate }) => {
-      const rate = parseFloat(returnRate) || 0; // Ensure it's a number, default to 0 if parsing fails
-      return acc + rate; // Sum the return rates
+      const rate = parseFloat(returnRate) || 0; 
+      return acc + rate; 
     }, 0);
-  
+
     return totalReturnRate;
   };
 
   const monthlyReturnRate = parseFloat(prepareMonthlyReturnRatesData().toFixed(2));
-  
+
   const preparedReferringData = () => {
     if (!data || !data.analyticsReports) return [];
 
@@ -254,7 +235,6 @@ if (session && Array.isArray(session.data)) {
 
   return (
     <>
-
       <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-6">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-2">
@@ -262,12 +242,12 @@ if (session && Array.isArray(session.data)) {
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
-          <Link to={`/ad-metrics/${brandId}`}>
-          <Button  className='flex items-center justify-between bg-cyan-600'>
-            <p>View Report</p>
-            <Sheet />
-          </Button>
-          </Link>
+            <Link to={`/ad-metrics/${brandId}`}>
+              <Button className='flex items-center justify-between bg-cyan-600'>
+                <p>View Report</p>
+                <Sheet />
+              </Button>
+            </Link>
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{
                 from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month
@@ -309,13 +289,12 @@ if (session && Array.isArray(session.data)) {
 
         {/* Top stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 mb-4 md:mb-5">
-          {/* Existing data cards */}
           {[
             { title: "Total Orders", value: data.totalOrders, colorClass: "text-cyan-700", icon: ShoppingCart },
             { title: "Total Sales", value: `₹${data.totalSales.toFixed(2)}`, colorClass: "text-cyan-700", icon: DollarSign },
             { title: "Monthly Conversion Rate", value: `${totalConversionRate.toFixed(2)}%`, colorClass: "text-cyan-700", icon: PercentIcon },
             { title: "Average Order Value", value: `₹${data.averageOrderValue.toFixed(2)}`, colorClass: "text-cyan-700", icon: TrendingUp },
-            {title: "Monthly Return Rate" , value: `${monthlyReturnRate}`,colorClass: "text-cyan-700", icon: PercentIcon}
+            { title: "Monthly Return Rate", value: `${monthlyReturnRate}`, colorClass: "text-cyan-700", icon: PercentIcon }
           ].map((item, index) => (
             <Card key={index} className="shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -329,35 +308,35 @@ if (session && Array.isArray(session.data)) {
           ))}
         </div>
 
-        
+
         <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4'>
-        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
-            <CardHeader className='flex flex-row justify-between items-center'>
-            <div className='flex flex-col gap-1'>
-            <CardTitle className='text-base'>Aggregated E-commerce Metrics</CardTitle>
-            <CardDescription>Total Add to Carts, Checkouts, Sessions, and Purchases</CardDescription>
-            </div>
-            <Link to={`/ecommerce-metrics/${brandId}`}>
-            <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
-                <FileChartColumn />
-              </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-          <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data || []} />
-              </CardContent>
-              </Card>
-                       {/* City Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row justify-between items-center'>
               <div className='flex flex-col gap-1'>
-              <CardTitle className='text-base'>Top Cities</CardTitle>
-              <CardDescription>Visitor Count For Top cities</CardDescription>
+                <CardTitle className='text-base'>Aggregated E-commerce Metrics</CardTitle>
+                <CardDescription>Total Add to Carts, Checkouts, Sessions, and Purchases</CardDescription>
+              </div>
+              <Link to={`/ecommerce-metrics/${brandId}`}>
+                <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
+                  <FileChartColumn />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <EcommerceMetrics rawData={data?.dailyCartCheckoutReports[0].data || []} />
+            </CardContent>
+          </Card>
+          {/* City Chart */}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
+            <CardHeader className='flex flex-row justify-between items-center'>
+              <div className='flex flex-col gap-1'>
+                <CardTitle className='text-base'>Top Cities</CardTitle>
+                <CardDescription>Visitor Count For Top cities</CardDescription>
               </div>
               <Link to={`/city-metrics/${brandId}`}>
-              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
-                <FileChartColumn />
-              </Button>
+                <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
+                  <FileChartColumn />
+                </Button>
               </Link>
             </CardHeader>
             <CardContent>
@@ -367,14 +346,14 @@ if (session && Array.isArray(session.data)) {
           {/* Referring Channels Chart */}
           <Card className="shadow-lg hover:shadow-xl transition-all duration-300 mb-5">
             <CardHeader className='flex flex-row items-center justify-between'>
-            <div className='flex flex-col gap-1'>
-            <CardTitle className='text-base'>Top Referring Channels</CardTitle>
-            <CardDescription>Visitor count for reffering channels</CardDescription>
-            </div>
-            <Link to={`/channel-metrics/${brandId}`}>
-              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
-                <FileChartColumn />
-              </Button>
+              <div className='flex flex-col gap-1'>
+                <CardTitle className='text-base'>Top Referring Channels</CardTitle>
+                <CardDescription>Visitor count for reffering channels</CardDescription>
+              </div>
+              <Link to={`/channel-metrics/${brandId}`}>
+                <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
+                  <FileChartColumn />
+                </Button>
               </Link>
             </CardHeader>
             <CardContent className="h-80">
@@ -384,52 +363,21 @@ if (session && Array.isArray(session.data)) {
 
         </div>
         <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
-          {/* Monthly Returning Customer Rates Chart */}
-          {/* <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Monthly Returning Customer Rates</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              <MonthlyReturningCustomerRatesChart data={prepareMonthlyReturnRatesData()} />
-            </CardContent>
-          </Card> */}
-
-                {/* Landing Page Report*/}
-                <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
+          {/* Landing Page Report*/}
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ">
             <CardHeader className='flex flex-row justify-between items-center px-6 py-3'>
               <div className='flex flex-col gap-1'>
-            <CardTitle className='text-base'>Top Landing Pages</CardTitle>
-            <CardDescription>Visitors count based on Landing Pages</CardDescription>
-            </div>
+                <CardTitle className='text-base'>Top Landing Pages</CardTitle>
+                <CardDescription>Visitors count based on Landing Pages</CardDescription>
+              </div>
               <Link to={`/page-metrics/${brandId}`}>
-              <Button  className=" bg-blue-50 text-blue-900 hover:text-white ">
-                <FileChartColumn />
-              </Button>
+                <Button className=" bg-blue-50 text-blue-900 hover:text-white ">
+                  <FileChartColumn />
+                </Button>
               </Link>
             </CardHeader>
-   
-              <TopPagesPieChart PageData={preparedPageData()} />
-          
+            <TopPagesPieChart PageData={preparedPageData()} />
           </Card>
-
-       
-            {/* Top selling Products
-          <Card className="shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-gray-600">Top Selling Products</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {data.topSellingProducts.map((product, index) => (
-                  <li key={index} className="flex justify-between items-center p-2 bg-white rounded-lg shadow">
-                    <span className="text-gray-800 font-medium">{product.name}</span>
-                    <span className="font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">{product.count}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card> 
-  */}
         </div>
       </div>
     </>

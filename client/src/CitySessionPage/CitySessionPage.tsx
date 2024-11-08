@@ -101,8 +101,8 @@ const CitySessionPage: React.FC = () => {
   const maxSessions = Math.max(...parsedData.map(item => item.Sessions));
 
   const getBackgroundColor = (sessions: number, maxSessions: number) => {
-    const intensity = sessions / maxSessions; // Scale intensity between 0 and 1 
-    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`; // Use rgba for a gradient effect
+    const intensity = sessions / maxSessions; 
+    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`; 
   };
   const getTextColor = (sessions: number, maxSessions: number) => {
     const intensity = sessions / maxSessions;

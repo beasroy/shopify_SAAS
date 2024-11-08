@@ -2,7 +2,7 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ReferringChannelsChartProps {
-  rawData: { Channel: string; Visitors: string }[]; // Accept raw data
+  rawData: { Channel: string; Visitors: string }[]; 
 }
 
 const COLORS = ['#071952', '#088395', '#37B7C3', '#4A628A', '#98DED9', '#FF33CC'];
@@ -19,20 +19,20 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
   // Aggregate visitors by channel
   const aggregatedData = rawData.reduce((acc, entry) => {
     const Channel = entry.Channel;
-    const Visitors = parseInt(entry.Visitors, 10); // Convert visitors to number
+    const Visitors = parseInt(entry.Visitors, 10); 
 
     if (!acc[Channel]) {
       acc[Channel] = { Channel, totalVisitors: 0 };
     }
-    acc[Channel].totalVisitors += Visitors; // Sum visitors for each channel
+    acc[Channel].totalVisitors += Visitors; 
 
     return acc;
   }, {} as Record<string, { Channel: string; totalVisitors: number }>);
 
-  // Convert aggregated data back to an array and sort by total visitors
+  
   const topChannels = Object.values(aggregatedData)
     .sort((a, b) => b.totalVisitors - a.totalVisitors)
-    .slice(0, 5); // Get top 5 channels
+    .slice(0, 5); 
 
   // Custom legend component
   const renderLegend = () => (
@@ -51,9 +51,9 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
   
 
   return (
-    <div> {/* Wrap everything in a div */}
+    <div> 
        {renderLegend()}
-      {/* ResponsiveContainer should only contain one child */}
+   
       <ResponsiveContainer width="100%" height={280}> 
         <PieChart>
           <Pie
@@ -62,7 +62,7 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
             nameKey="channel"
             cx="50%"
             cy="50%"
-            outerRadius="60%" // Reduced outerRadius to fit within the card
+            outerRadius="60%" 
             label
           >
             {topChannels.map((_, index) => (
@@ -72,8 +72,6 @@ export const ReferringChannelChart: React.FC<ReferringChannelsChartProps> = ({ r
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
-      {/* The custom legend should be placed outside the ResponsiveContainer */}
-   
     </div>
   );
 };

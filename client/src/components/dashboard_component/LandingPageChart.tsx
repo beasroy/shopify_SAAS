@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 
-// Define the interface for landingPage data
+//  interface for landingPage data
 interface PageData {
   LandingPage: string;
   Visitors: string;
@@ -22,7 +22,7 @@ interface TopPagesPieChartProps {
   PageData: PageData[];
 }
 
-// Define an array of colors for the pie slices
+
 const COLORS = ['#050C9C', '#3572EF', '#3ABEF9', '#577B8D', '#8dd1e1'];
 
 const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {

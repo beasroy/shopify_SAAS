@@ -45,7 +45,6 @@ const EcommerceMetricsPage: React.FC = () => {
         ? prev.filter(col => col !== column)
         : [...prev, column];
       
-      // Sort the new columns based on their order in allColumns
       return allColumns.filter(col => newColumns.includes(col));
     });
   };
@@ -87,7 +86,7 @@ const EcommerceMetricsPage: React.FC = () => {
 
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
 
-  // Sort selectedColumns based on their order in allColumns
+  
   const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
 
   return (

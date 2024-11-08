@@ -12,6 +12,7 @@ import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/FbAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
 import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
+import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 import cron from 'node-cron';
 
 
@@ -42,9 +43,9 @@ dataOperationRouter.use("/brands",brandRoutes);
 dataOperationRouter.use("/metrics",fbMetricrRoutes);
 dataOperationRouter.use("/report",excelReportRoutes);
 
-// const add_account_id = process.env.GOOGLE_AD_ACCOUNT_ID
-// const managerId = process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID
-// getAdLevelSpendAndROAS(add_account_id,managerId);
+const add_account_id = process.env.GOOGLE_AD_ACCOUNT_ID
+const managerId = process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID
+getAdLevelSpendAndROAS(add_account_id,managerId,"2024-11-08","2024-11-08");
 
 //websocket connection
 

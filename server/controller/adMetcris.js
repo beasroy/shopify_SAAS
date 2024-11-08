@@ -114,73 +114,79 @@ export const fetchFBAdAccountData = async(req,res)=>{
 
 // Google ADS API DATA
 
-// import { GoogleAdsApi } from "google-ads-api";
+import { GoogleAdsApi } from "google-ads-api";
 
-// const client = new GoogleAdsApi({
-//   client_id: process.env.GOOGLE_AD_CLIENT_ID,
-//   client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
-//   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-//   refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
-// });
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_AD_CLIENT_ID,
+  client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+  refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+});
 
 
 
-// export async function getAdLevelSpendAndROAS(customerId, managerId) {
-//   try {
-//     // Initialize the customer with the given credentials
-//     const customer = client.Customer({
-//       customer_id: customerId,
-//       refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
-//       login_customer_id: managerId,
-//     });
+export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,endDate) {
+  try {
+    // Initialize the customer with the given credentials
+    const customer = client.Customer({
+      customer_id: customerId,
+      refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+      login_customer_id: managerId,
+    });
 
-//     // Fetch the ad-level report using the ad_group_ad entity
-//     const adsReport = await customer.report({
-//       entity: "ad_group_ad",
-//       attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name"],
-//       metrics: [
-//         "metrics.cost_micros",
-//         "metrics.all_conversions_value",
-//         "metrics.clicks",
-//         "metrics.active_view_cpm",
-//         "metrics.active_view_ctr",
-//       ],
-//       segments: ["segments.date"],
-//       date_constant: "LAST_30_DAYS", // Fetch data for the last 30 days
-//     });
+    // Fetch the ad-level report using the ad_group_ad entity
+    const adsReport = await customer.report({
+      entity: "ad_group_ad",
+      attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name"],
+      metrics: [
+        "metrics.cost_micros",
+        "metrics.conversions_value",
+        "metrics.conversions",
+        "metrics.clicks",
+        "metrics.active_view_cpm",
+        "metrics.active_view_ctr",
+      ],
+      segments: ["segments.date"],
+      from_date: startDate,
+      to_date: endDate, 
+    });
 
-//     console.log("API Response:", JSON.stringify(adsReport, null, 2)); // Log the ads report to see if it returns any data
 
-//     // Variables to store total spend and total conversion value
-//     let totalSpend = 0;
-//     let totalConversionsValue = 0;
+    let totalSpend = 0;
+    let totalConversionsValue = 0;
+    let totalConversions = 0;
 
-//     // Loop through the report rows and process the data
-//     for (const row of adsReport) {
-//       const costMicros = row.metrics.cost_micros || 0;
-//       const conversionsValue = row.metrics.all_conversions_value || 0;
+    // Loop through the report rows and process the data
+    for (const row of adsReport) {
+      const costMicros = row.metrics.cost_micros || 0;
+      const conversionsValue = row.metrics.conversions_value || 0;
+      const conversions = row.metrics.conversions || 0;
 
-//       const spend = costMicros / 1_000_000;
+      const spend = costMicros / 1_000_000;
 
-//       totalSpend += spend;
-//       totalConversionsValue += conversionsValue;
+      totalSpend += spend;
+      totalConversionsValue += conversionsValue;
+      totalConversions += conversions;
 
-//       // Log individual ad metrics
-//       console.log(`Ad ID: ${row.ad_group_ad.ad.id}`);
-//       console.log(`Spend: ${spend.toFixed(2)} (Currency Units)`);
-//       console.log(`Conversions Value: ${conversionsValue.toFixed(2)}`);
-//       console.log('----------------------------------');
-//     }
+      // Log individual ad metrics
+      console.log(`Ad ID: ${row.ad_group_ad.ad.id}`);
+      console.log(`Spend: ${spend.toFixed(2)} (Currency Units)`);
+      console.log(`Conversions Value: ${conversionsValue.toFixed(2)}`);
+      console.log(`conversions: ${conversions}`);
+      console.log('----------------------------------');
+    }
 
-//     const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
+    const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
 
-//     console.log(`Total Spend: ${totalSpend.toFixed(2)} (Currency Units)`);
-//     console.log(`Total ROAS: ${roas.toFixed(2)}`);
+    console.log(`Total Spend: ${totalSpend.toFixed(2)} (Currency Units)`);
+    console.log(`Total Conversions Value: ${totalConversionsValue.toFixed(2)}`);
+    console.log(`Total ROAS: ${roas.toFixed(2)}`);
+    console.log(`Total Conversions: ${totalConversions.toFixed(2)}`);
 
-//     return { totalSpend, roas };
+    return { totalSpend, roas, totalConversionsValue, totalConversions};
 
-//   } catch (error) {
-//     console.error("Failed to fetch ad-level spend and ROAS:", error);
-//   }
-// }
+  } catch (error) {
+    console.error("Failed to fetch ad-level spend and ROAS:", error);
+  }
+}
 

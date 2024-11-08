@@ -126,80 +126,121 @@ const client = new GoogleAdsApi({
 
 
 
-export async function getAdLevelSpendAndROAS(customerId, managerId,startDate,endDate) {
-  try {
-    // Initialize the customer with the given credentials
-    const customer = client.Customer({
-      customer_id: customerId,
-      refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
-      login_customer_id: managerId,
-    });
+export async function getAdLevelSpendAndROAS(req, res) {
+    const { brandId } = req.params;
+    let { startDate, endDate } = req.body;
 
-    // Fetch the ad-level report using the ad_group_ad entity
-    const adsReport = await customer.report({
-      entity: "ad_group_ad",
-      attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name"],
-      metrics: [
-        "metrics.cost_micros",
-        "metrics.conversions_value",
-        "metrics.conversions",
-        "metrics.clicks",
-        "metrics.active_view_cpm",
-        "metrics.ctr",
-      ],
-      segments: ["segments.date"],
-      from_date: startDate,
-      to_date: endDate, 
-    });
+    try {
+        const brand = await Brand.findById(brandId);
 
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Brand not found.',
+            });
+        }
 
-    let totalSpend = 0;
-    let totalConversionsValue = 0;
-    let totalConversions = 0;
-    let totalActiveViewCPM = 0;
-    let totalActiveViewCTR = 0;
- 
+        const adAccountId = brand.googleAdAccount;
 
-    // Loop through the report rows and process the data
-    for (const row of adsReport) {
-      const costMicros = row.metrics.cost_micros || 0;
-      const conversionsValue = row.metrics.conversions_value || 0;
-      const conversions = row.metrics.conversions || 0;
-      const activeViewCPM = row.metrics.active_view_cpm || 0;
-      const activeViewCTR = row.metrics.ctr || 0;
+        if (!adAccountId || adAccountId.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No Google Ad accounts found for this brand.',
+            });
+        }
 
-      const spend = costMicros / 1_000_000;
+        if (!startDate || !endDate) {
+            startDate = moment().startOf('month').format('YYYY-MM-DD'); // First day of the current month
+            endDate = moment().format('YYYY-MM-DD'); // Current date
+        }
 
-      totalSpend += spend;
-      totalConversionsValue += conversionsValue;
-      totalConversions += conversions;
-      totalActiveViewCPM += activeViewCPM;
-      totalActiveViewCTR += activeViewCTR;
-      
+        // Initialize the customer with the given credentials
+        const customer = client.Customer({
+            customer_id: adAccountId,
+            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+        });
 
-      // Log individual ad metrics
-      console.log(`Ad ID: ${row.ad_group_ad.ad.id}`);
-      console.log(`Spend: ${spend.toFixed(2)} (Currency Units)`);
-      console.log(`Conversions Value: ${conversionsValue.toFixed(2)}`);
-      console.log(`conversions: ${conversions}`);
-      console.log('----------------------------------');
+        // Fetch the ad-level report using the ad_group_ad entity
+        const adsReport = await customer.report({
+            entity: "ad_group_ad",
+            attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+            metrics: [
+                "metrics.cost_micros",
+                "metrics.conversions_value",
+                "metrics.conversions",
+                "metrics.clicks",
+                "metrics.active_view_cpm",
+                "metrics.ctr",
+            ],
+            segments: ["segments.date"],
+            from_date: startDate,
+            to_date: endDate,
+        });
+
+        let totalSpend = 0;
+        let totalClicks = 0;
+        let totalConversionsValue = 0;
+        let totalConversions = 0;
+        let totalCPM = 0;
+        let totalCTR = 0;
+        let adAccountName = "";
+
+        // Process each row of the report
+        for (const row of adsReport) {
+            const costMicros = row.metrics.cost_micros || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const conversions = row.metrics.conversions || 0;
+            const averageCPM = row.metrics.average_cpm || 0;
+            const clicks = row.metrics.clicks || 0;
+            const ctr = row.metrics.ctr || 0;
+
+            // Capture the ad account name from the first row
+            if (!adAccountName && row.customer && row.customer.descriptive_name) {
+                adAccountName = row.customer.descriptive_name;
+            }
+
+            const spend = costMicros / 1_000_000;
+            totalSpend += spend;
+            totalConversionsValue += conversionsValue;
+            totalConversions += conversions;
+            totalClicks += clicks;
+            totalCTR += ctr;
+            totalCPM += averageCPM;
+        }
+
+        // Calculate metrics
+        const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend).toFixed(2) : 0;
+        const totalCostPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : 0;
+        const totalCPC = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : 0;
+        totalSpend = totalSpend.toFixed(2);
+        totalConversions = totalConversions.toFixed(2);
+        totalConversionsValue = totalConversionsValue.toFixed(2);
+
+        // Return the response with ad account name included
+        return res.json({
+            success: true,
+            data: {
+                adAccountName,  // Include the ad account name
+                totalSpend,
+                roas,
+                totalConversionsValue,
+                totalConversions,
+                totalCPC,
+                totalCPM,
+                totalCTR,
+                totalCostPerConversion   
+            }
+        });
+    } catch (error) {
+        console.error("Failed to fetch ad-level spend and ROAS:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
     }
-
-    const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
-    const totalCostPerConversion = totalSpend > 0? (totalSpend / totalConversions) : 0;
-
-    console.log(`Total Spend: ${totalSpend.toFixed(2)} (Currency Units)`);
-    console.log(`Total Conversions Value: ${totalConversionsValue.toFixed(2)}`);
-    console.log(`Total ROAS: ${roas.toFixed(2)}`);
-    console.log(`Total Conversions: ${totalConversions.toFixed(2)}`);
-    console.log(`Total Active View CPM: ${totalActiveViewCPM.toFixed(2)} (Currency Units)`);
-    console.log(`Total Active View CTR: ${totalActiveViewCTR.toFixed(2)}`);
-    console.log(`Total Cost Per Conversion: ${totalCostPerConversion.toFixed(2)} (Currency Units)`);
-
-    return { totalSpend, roas, totalConversionsValue, totalConversions, totalCostPerConversion};
-
-  } catch (error) {
-    console.error("Failed to fetch ad-level spend and ROAS:", error);
-  }
 }
+
+  
 

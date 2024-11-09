@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios";
 import { format } from "date-fns"
-import { BriefcaseBusiness, Columns, RefreshCw } from "lucide-react";
+import { BriefcaseBusiness, ChevronLeft, ChevronRight, Columns, RefreshCw } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox"
@@ -34,6 +34,12 @@ const EcommerceMetricsPage: React.FC = () => {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [isListVisible, setIsListVisible] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>(["Date", "Sessions", "AddToCarts", "AddToCartRate", "Checkouts", "PurchaseRate"]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const resetToFirstPage = ()=>{
+    setCurrentPage(1);
+  }
 
   const toggleList = () => {
     setIsListVisible(!isListVisible);
@@ -84,10 +90,11 @@ const EcommerceMetricsPage: React.FC = () => {
     fetchMetrics();
   };
 
-  const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
-
-  
+  const allColumns = data.length > 0 ? Object.keys(data[0]) : []; 
   const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
+
+  const totalPages = Math.ceil(data.length / rowsPerPage);
+  const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   return (
     <div className="flex h-screen">
@@ -123,6 +130,7 @@ const EcommerceMetricsPage: React.FC = () => {
                     from: new Date(now.getFullYear(), now.getMonth(), 1),
                     to: now
                   }} 
+                  resetToFirstPage={resetToFirstPage} 
                 />
               </div>
             </div>
@@ -179,7 +187,7 @@ const EcommerceMetricsPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((item, index) => (
+                {paginatedData.map((item, index) => (
                   <TableRow key={index}>
                     {sortedSelectedColumns.map((column) => (
                       <TableCell
@@ -193,6 +201,25 @@ const EcommerceMetricsPage: React.FC = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-center gap-10 mt-4">
+            <Button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="flex items-center"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+            </Button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="flex items-center"
+            >
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
           </div>
         </div>
       </div>

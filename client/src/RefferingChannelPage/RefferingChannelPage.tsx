@@ -34,7 +34,11 @@ const ChannelSessionPage: React.FC = () => {
   const [isListVisible, setIsListVisible] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>(["Channel", "Sessions", "AddToCarts","AddToCartRate","Checkouts","PurchaseRate"]);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 11;
+  const rowsPerPage = 10;
+
+  const resetToFirstPage = ()=>{
+    setCurrentPage(1);
+  }
 
   const toggleList = () => {
     setIsListVisible(!isListVisible);
@@ -144,6 +148,7 @@ const ChannelSessionPage: React.FC = () => {
                     from: new Date(now.getFullYear(), now.getMonth(), 1),
                     to: now
                   }} 
+                  resetToFirstPage={resetToFirstPage} 
                 />
               </div>
             </div>

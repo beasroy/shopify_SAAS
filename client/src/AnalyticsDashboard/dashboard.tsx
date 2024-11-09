@@ -17,7 +17,7 @@ export default function Dashboard() {
     to: new Date(),
   })
   const [isLoading, setIsLoading] = useState(false);
-  const [adAccountsMetrics, setAdAccountsMetrics] = useState<AdAccountData[]>([]);
+  const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [aggregatedMetrics, setAggregatedMetrics] = useState<AggregatedMetrics | null>(null)
 
   const { brandId } = useParams();
@@ -25,7 +25,7 @@ export default function Dashboard() {
 
   const navigate = useNavigate();
 
-  const fetchFbAdData = useCallback(async () => {
+  const fetchAdData = useCallback(async () => {
     setIsLoading(true);
     try {
       const baseURL =
@@ -67,7 +67,7 @@ export default function Dashboard() {
         }));
 
       console.log('Transformed Metrics:', transformedData);
-      setAdAccountsMetrics(transformedData);
+      setFbAdAccountsMetrics(transformedData);
       const newAggregatedMetrics = calculateAggregate(transformedData);
       setAggregatedMetrics(newAggregatedMetrics);
     } catch (error) {
@@ -83,19 +83,19 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    fetchFbAdData();
-    console.log(adAccountsMetrics)
-  }, [fetchFbAdData]);
+    fetchAdData();
+    console.log(fbAdAccountsMetrics)
+  }, [fetchAdData]);
 
 
   useEffect(() => {
-    fetchFbAdData();
+    fetchAdData();
 
-    const intervalId = setInterval(fetchFbAdData, 5 * 60 * 1000);
+    const intervalId = setInterval(fetchAdData, 5 * 60 * 1000);
 
 
     return () => clearInterval(intervalId);
-  }, [fetchFbAdData]);
+  }, [fetchAdData]);
 
 
 
@@ -174,6 +174,41 @@ export default function Dashboard() {
 
   ];
 
+  const googleMetrics = [
+    {
+      label: 'Total Cost',
+      value: aggregatedMetrics? aggregatedMetrics.totalSpent : '�� 0',
+    },
+    {
+      label: 'Converion Value',
+      value: aggregatedMetrics? aggregatedMetrics.totalRevenue : '�� 0',
+    },
+    {
+      label: 'ROAS',
+      value: aggregatedMetrics? aggregatedMetrics.totalROAS : '0.00',
+    },
+    {
+      label: 'Conversions',
+      value: aggregatedMetrics? aggregatedMetrics.totalPurchases : '0',
+    },
+    {
+      label: 'CPC',
+      value: aggregatedMetrics? aggregatedMetrics.totalCPC : '�� 0',
+    },
+    {
+      label: 'CPM',
+      value: aggregatedMetrics? aggregatedMetrics.totalCPM : '�� 0',
+    },
+    {
+      label: 'CTR',
+      value: aggregatedMetrics? aggregatedMetrics.totalCPC : '�� 0',
+    },
+    {
+      label: 'Cost Per Conversion',
+      value: aggregatedMetrics? aggregatedMetrics.totalCPM : '�� 0',
+    },
+  ]
+
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -210,7 +245,7 @@ export default function Dashboard() {
           </section>
         </div>
 
-            {adAccountsMetrics.map((accountMetrics, index) => (
+            {fbAdAccountsMetrics.map((accountMetrics, index) => (
               <AdAccountMetricsCard
                 key={index}
                 title={`Facebook - ${accountMetrics.account_name}`}

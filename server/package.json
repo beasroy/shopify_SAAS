@@ -27,7 +27,7 @@
     "moment": "^2.30.1",
     "moment-range": "^4.0.2",
     "mongodb": "^6.9.0",
-    "mongoose": "^8.8.0",
+    "mongoose": "^8.7.0",
     "node-cron": "^3.0.3",
     "shopify-api-node": "^3.14.0",
     "winston": "^3.0.0",

@@ -1,23 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store } from 'lucide-react';
-import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import { useBrand } from '@/context/BrandContext';
-import axios from 'axios';
+import { useState, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store } from 'lucide-react'
+import React from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { useUser } from '../context/UserContext'
+import { useNavigate } from 'react-router-dom'
+import { useBrand } from '@/context/BrandContext'
+import axios from 'axios'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import Logo from '@/components/dashboard_component/Logo';
+} from "@/components/ui/tooltip"
+import Logo from '@/components/dashboard_component/Logo'
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
+  const { selectedBrandId, setSelectedBrandId, brands,setBrands } = useBrand();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const baseURL =
     import.meta.env.PROD
@@ -31,7 +31,7 @@ export default function CollapsibleSidebar() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await axios.get(`${baseURL}/api/brands/all`, { withCredentials: true });
+        const response = await axios.get(`${baseURL}/api/brands/all`,{ withCredentials: true });
         setBrands(response.data);
       } catch (error) {
         console.error('Error fetching brands:', error);
@@ -39,6 +39,7 @@ export default function CollapsibleSidebar() {
     };
     fetchBrands();
   }, [setBrands]);
+
 
   return (
     <TooltipProvider>
@@ -55,31 +56,36 @@ export default function CollapsibleSidebar() {
               {isExpanded ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
             </button>
           </div>
-          <nav className="mt-3 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* Make the nav scrollable */}
+          <nav className="mt-3">
             <SidebarItem
               icon={<Logo />}
               text={"Messold"}
               isExpanded={isExpanded}
               isSelected={true}
               tooltipContent="Messold"
-            />
-            {/* Render the brands dynamically as logo and name */}
-            {brands.map(brand => (
-              <SidebarItem
-                key={brand._id}
-                icon={<Store size={24} />}
-                //icon={<img src={brand.logoUrl} alt={brand.name} className="w-6 h-6 rounded-full" />}  
-                //uncomment this when adding logos from db 
-                text={brand.name.replace(/_/g, ' ')}
-                isExpanded={isExpanded}
-                isSelected={selectedBrandId === brand._id}
-                tooltipContent={brand.name}
-                onClick={() => { // Add onClick to navigate directly to the business dashboard
-                  setSelectedBrandId(brand._id);
-                  navigate(`/business-dashboard/${brand._id}`);
-                }}
-              />
-            ))}
+            >
+            </SidebarItem>
+          </nav>
+          <nav className="mt-3">
+            <SidebarItem
+              icon={<Store size={24} />}
+              text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') || "Unknown Brand" : "Your Brands"}
+              isExpanded={isExpanded}
+              openIcon={<ChevronUp />}
+              closeIcon={<ChevronDown />}
+              isSelected={!!selectedBrandId}
+              tooltipContent="Your Brands"
+            >
+              {brands.map(brand => (
+                <SidebarChild
+                  key={brand._id}
+                  path={`/${brand._id}`} // Update to proper path
+                  text={brand.name.replace(/_/g, ' ')} 
+                  onClick={() => setSelectedBrandId(brand._id)} 
+                  selectedBrandId={selectedBrandId}
+                />
+              ))}
+            </SidebarItem>
             <SidebarItem
               icon={<ChartColumn size={24} />}
               text="Analytics"
@@ -91,12 +97,12 @@ export default function CollapsibleSidebar() {
             >
               <SidebarChild path={`/business-dashboard/${selectedBrandId || ''}`} text="Business Dashboard" />
               <SidebarChild path={`/analytics-dashboard/${selectedBrandId || ''}`} text="Metrics Dashboard"
-                disabled={
-                  !selectedBrandId || 
-                  !brands || 
-                  brands.length === 0 || 
-                  !brands.find(b => b._id === selectedBrandId)?.fbAdAccounts?.length
-                } />
+             disabled={
+              !selectedBrandId || 
+              !brands || 
+              brands.length === 0 || 
+              !brands.find(b => b._id === selectedBrandId)?.fbAdAccounts?.length
+            } />
             </SidebarItem>
           </nav>
         </div>
@@ -106,7 +112,7 @@ export default function CollapsibleSidebar() {
   );
 }
 
-function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent, onClick }: {
+function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent }: {
   icon?: React.ReactNode;
   text: string;
   isExpanded: boolean;
@@ -115,7 +121,6 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   children?: React.ReactNode;
   isSelected: boolean;
   tooltipContent: string;
-  onClick?: () => void; // Add onClick type
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -125,7 +130,7 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
 
   const content = (
     <div
-      onClick={onClick} // Add onClick to the main div
+      onClick={handleToggle}
       className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors
          duration-200 cursor-pointer ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}
     >
@@ -143,7 +148,7 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
             {content}
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p>{tooltipContent}</p>
+          <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>{tooltipContent}</p>
             {React.Children.map(children, (child) => (
               <div className="relative">
                 <div className="absolute top-0 w-1 h-full bg-gray-500" />
@@ -183,6 +188,7 @@ function SidebarChild({
   const { pathname } = useLocation();
   const isSelected = pathname === path || (selectedBrandId === path.split('/').pop());
 
+  // Apply styles conditionally based on whether the item is disabled or not
   const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${
     isSelected ? 'text-white font-semibold relative' : 'text-gray-100'
   } ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
@@ -208,6 +214,7 @@ function SidebarChild({
     </NavLink>
   );
 }
+
 
 function UserProfile({ isExpanded }: { isExpanded: boolean }) {
   const { user, setUser } = useUser();
@@ -237,7 +244,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
       <span className="text-gray-300 hover:text-white">
         <User2Icon size={24} />
       </span>
-      {isExpanded && <span className="text-sm mr-2">{user?.username || 'user'}</span>}
+      {isExpanded && <span className="text-sm mr-2">{user?.username ||'user'}</span>}
     </div>
   );
 
@@ -246,6 +253,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
       <span className="text-gray-300 hover:text-white">
         <LogOut onClick={handleLogout} size={24} />
       </span>
+      {isExpanded && <span className="hidden sm:inline">Logout</span>}
     </div>
   );
 

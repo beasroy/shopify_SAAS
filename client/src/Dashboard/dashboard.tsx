@@ -100,6 +100,10 @@ export default function Dashboard() {
     }
   }, [navigate, startDate, endDate]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
 
   useEffect(() => {
     fetchData();

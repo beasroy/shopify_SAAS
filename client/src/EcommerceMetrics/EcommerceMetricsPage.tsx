@@ -82,6 +82,10 @@ const EcommerceMetricsPage: React.FC = () => {
 
   useEffect(() => {
     fetchMetrics();
+  }, [fetchMetrics]);
+
+  useEffect(() => {
+    fetchMetrics();
     const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [fetchMetrics]);
@@ -95,6 +99,22 @@ const EcommerceMetricsPage: React.FC = () => {
 
   const totalPages = Math.ceil(data.length / rowsPerPage);
   const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  const parsedData = data.map(item => ({
+    ...item,
+    Sessions: Number(item.Sessions),
+  }));
+  // console.log('parseddata', parsedData);
+  const maxSessions = Math.max(...parsedData.map(item => item.Sessions));
+
+  const getBackgroundColor = (sessions: number, maxSessions: number) => {
+    const intensity = sessions / maxSessions; 
+    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`; 
+  };
+  const getTextColor = (sessions: number, maxSessions: number) => {
+    const intensity = sessions / maxSessions;
+    return intensity > 0.7 ? 'white' : 'black';
+  };
 
   return (
     <div className="flex h-screen">
@@ -190,10 +210,15 @@ const EcommerceMetricsPage: React.FC = () => {
                 {paginatedData.map((item, index) => (
                   <TableRow key={index}>
                     {sortedSelectedColumns.map((column) => (
-                      <TableCell
-                        key={column}
-                        className="px-4 py-2 border-b min-w-[100px]"
-                      >
+                     <TableCell
+                     key={column}
+                     className="px-4 py-2 border-b w-[150px] font-medium"
+                     style={{
+                       width: '150px',
+                       backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
+                       color: column === "Sessions" ? getTextColor(Number(item.Sessions), maxSessions) : 'inherit', 
+                     }}
+                   >
                         {item[column as keyof EcommerceMetric]}
                       </TableCell>
                     ))}

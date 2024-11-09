@@ -41,7 +41,7 @@ export const fetchFBAdAccountData = async(req,res)=>{
 
         const batchRequests = adAccountIds.map((accountId) => ({
             method: 'GET',
-            relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,cpc,cpm,ctr,cpp,account_name,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`,
+            relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`,
         }));
 
 
@@ -65,7 +65,8 @@ export const fetchFBAdAccountData = async(req,res)=>{
             if (res.code === 200) {
                 const result = JSON.parse(res.body);
                 if (result.data && result.data.length > 0) {
-                    const insight = result.data[0]; // Get the first entry of insights
+                    const insight = result.data[0];
+                    const purchase =  insight.actions ? insight.actions.find(action => action.action_type === 'purchase') : null;// Get the first entry of insights
                     return {
                         adAccountId: accountId,
                         spend: insight.spend,
@@ -74,12 +75,14 @@ export const fetchFBAdAccountData = async(req,res)=>{
                             value: roas.value,
                         })) : [],
                         Revenue: insight.action_values ? insight.action_values.find(action => action.action_type === 'purchase') : null,
-                        purchases: insight.actions ? insight.actions.find(action => action.action_type === 'purchase') : null, // Extract action_type and value into an array of objects
+                        purchases: purchase, // Extract action_type and value into an array of objects
                         cpm: insight.cpm || 0,
                         ctr: insight.ctr || 0,
-                        cpc: insight.cpc || 0,
-                        cpp: insight.cpp || 0,
+                        cpc: (insight.spend / insight.clicks).toFixed(2) || 0,
+                        cpp: purchase?.value ? (insight.spend / purchase.value).toFixed(2) : 0,
                         account_name:insight.account_name || "",
+                        clicks: insight.clicks,
+                        impressions: insight.impressions,
                         date_start: insight.date_start,
                         date_stop: insight.date_stop,
                     };
@@ -170,8 +173,6 @@ export async function getAdLevelSpendAndROAS(req, res) {
                 "metrics.conversions_value",
                 "metrics.conversions",
                 "metrics.clicks",
-                "metrics.active_view_cpm",
-                "metrics.ctr",
                 "metrics.impressions"
             ],
             segments: ["segments.date"],
@@ -183,77 +184,49 @@ export async function getAdLevelSpendAndROAS(req, res) {
         let totalClicks = 0;
         let totalConversionsValue = 0;
         let totalConversions = 0;
-        let totalCPM = 0;
-        let totalCTR = 0;
-        let newTotalCTR = 0;
         let totalImpressions = 0;
         let adAccountName = "";
 
         // Process each row of the report
         for (const row of adsReport) {
-            const adId = row.ad_group_ad.ad.id;
             const costMicros = row.metrics.cost_micros || 0;
-            const conversionsValue = row.metrics.conversions_value || 0;
-            const conversions = row.metrics.conversions || 0;
+            const spend = costMicros / 1_000_000;
             const impressions = row.metrics.impressions || 0;
-            const averageCPM = row.metrics.active_view_cpm || 0;
-            const clicks = row.metrics.clicks || 0;
-            const ctr = row.metrics.ctr || 0;
-           
-            const newCTR = clicks/impressions;
 
-            // Log each metric individually
-            console.log(`Ad ID: ${adId}`);
-            console.log(`Spend: ${(costMicros / 1_000_000).toFixed(2)}`);
-            console.log(`Conversions Value: ${conversionsValue}`);
-            console.log(`Conversions: ${conversions}`);
-            console.log(`Impressions: ${impressions}`);
-            console.log(`CPM: ${averageCPM}`);
-            console.log(`Clicks: ${clicks}`);
-            console.log(`CTR: ${newCTR}`);
-            console.log('-----------------------');
+            totalSpend += spend;
+            totalConversionsValue += row.metrics.conversions_value || 0;
+            totalConversions += row.metrics.conversions || 0;
+            totalClicks += row.metrics.clicks || 0;
+            totalImpressions += impressions;
 
             // Capture the ad account name from the first row
             if (!adAccountName && row.customer && row.customer.descriptive_name) {
                 adAccountName = row.customer.descriptive_name;
             }
-
-            const spend = costMicros / 1_000_000;
-            totalSpend += spend;
-            totalConversionsValue += conversionsValue;
-            totalConversions += conversions;
-            totalClicks += clicks;
-            totalCTR += ctr;
-            totalCPM += averageCPM;
-            totalImpressions += impressions;
-            newTotalCTR += newCTR; // Include impressions in the response
-
         }
 
-        // Calculate metrics
+        // Calculate aggregated metrics
         const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend).toFixed(2) : 0;
-        const totalCostPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : 0;
         const totalCPC = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : 0;
-        totalSpend = totalSpend.toFixed(2);
-        totalConversions = totalConversions.toFixed(2);
-        totalConversionsValue = totalConversionsValue.toFixed(2);
-        totalImpressions = totalImpressions.toFixed(2);
+        const totalCPM = totalImpressions > 0 ? ((totalSpend * 1000) / totalImpressions).toFixed(2) : 0;
+        const totalCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : 0;
+        const totalCostPerConversion = totalConversions > 0 ? (totalSpend / totalConversions).toFixed(2) : 0;
 
         // Return the response with ad account name included
         return res.json({
             success: true,
             data: {
                 adAccountName,  // Include the ad account name
-                totalSpend,
+                totalSpend: totalSpend.toFixed(2),
                 roas,
-                totalConversionsValue,
-                totalConversions,
+                totalConversionsValue: totalConversionsValue.toFixed(2),
+                totalConversions: totalConversions.toFixed(2),
                 totalCPC,
                 totalCPM,
                 totalCTR,
                 totalCostPerConversion,
+                totalClicks,
                 totalImpressions,
-                newTotalCTR // Include impressions in the response
             }
         });
     } catch (error) {
@@ -265,6 +238,7 @@ export async function getAdLevelSpendAndROAS(req, res) {
         });
     }
 }
+
 
 
   

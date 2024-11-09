@@ -55,27 +55,30 @@ export interface Purchases {
   value: string;
 }
 
-export interface Metric {
-  label: string;
+
+export interface ActionValue {
+  action_type: string;
   value: string;
 }
 
 export interface AdAccountData {
   adAccountId: string;
   spend?: string;
-  purchase_roas?: PurchaseRoas[];
-  purchases?: Purchases;
-  Revenue?:string;
+  purchase_roas?: ActionValue[];
+  purchases?: ActionValue;
+  Revenue?: ActionValue;
   cpm?: string;
   ctr?: string;
   cpc?: string;
   cpp?: string;
-  account_name?:string;
+  account_name?: string;
+  clicks?: string;
+  impressions?: string;
   date_start: string;
   date_stop: string;
   message?: string;
-  metrics?: Metric[]; // Optional for accounts with no data
 }
+
 
 
 export interface AggregatedMetrics {
@@ -83,10 +86,22 @@ export interface AggregatedMetrics {
   totalRevenue: string;
   totalROAS: string; 
   totalPurchases: string;
+  totalCTR: string;
+  totalCPC: string;
+}
+
+export interface GoogleAdAccountData {
+  adAccountName: string;
+  totalSpend: string;
+  roas: string;
+  totalConversionsValue: string;
+  totalConversions: string;
   totalCPC: string;
   totalCPM: string;
   totalCTR: string;
-  totalCPP: string;
+  totalCostPerConversion: string;
+  totalImpressions: string;
+  totalClicks: string;
 }
 
 

@@ -646,27 +646,31 @@ export const addReportData = async (brandId) => {
 export const calculateMetricsForAllBrands = async () => {
   try {
     const brands = await Brand.find({});
+    logger.info(`Found ${brands.length} brands for metrics calculation.`);
 
-    // Map through brands and convert the ObjectId to a string
-    const metricsPromises = brands.map(brand => {
-      const brandIdString = brand._id.toString(); // Convert ObjectId to string
+    const metricsPromises = brands.map(async (brand) => {
+      const brandIdString = brand._id.toString();
       logger.info(`Processing metrics for brand: ${brandIdString}`);
-      return addReportData(brandIdString); // Pass the string format of the ID
-    });
-
-    const results = await Promise.all(metricsPromises);
-
-    results.forEach((result, index) => {
-      if (result.success) {
-        logger.info(`Metrics successfully saved for brand ${brands[index]._id}`);
-      } else {
-        logger.error(`Failed to save metrics for brand ${brands[index]._id}: ${result.message}`);
+      
+      try {
+        const result = await addReportData(brandIdString);
+        if (result.success) {
+          logger.info(`Metrics successfully saved for brand ${brandIdString}`);
+        } else {
+          logger.error(`Failed to save metrics for brand ${brandIdString}: ${result.message}`);
+        }
+      } catch (error) {
+        logger.error(`Error in addReportData for brand ${brandIdString}: ${error.message}`);
       }
     });
+
+    await Promise.allSettled(metricsPromises); // Using Promise.allSettled to catch all results
+    logger.info("Completed metrics calculation for all brands.");
   } catch (error) {
-    console.error('Error processing metrics for all brands:', error);
+    logger.error('Error processing metrics for all brands:', error);
   }
 };
+
 
 
 

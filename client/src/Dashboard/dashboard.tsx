@@ -15,21 +15,7 @@ import { DatePickerWithRange } from '@/components/dashboard_component/DatePicker
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
 
 
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 export default function Dashboard() {
 
@@ -46,8 +32,6 @@ export default function Dashboard() {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
-  const debouncedStartDate = useDebouncedValue(startDate, 500);
-  const debouncedEndDate = useDebouncedValue(endDate, 500);
 
 
   const now = new Date(); 
@@ -64,11 +48,11 @@ export default function Dashboard() {
       let url = `${baseURL}/api/shopify/data/${brandId}`;
       const params = new URLSearchParams();
 
-      if (debouncedStartDate) {
-        params.append('startDate', debouncedStartDate);
+      if (startDate) {
+        params.append('startDate', startDate);
       }
-      if (debouncedEndDate) {
-        params.append('endDate', debouncedEndDate);
+      if (endDate) {
+        params.append('endDate', endDate);
       }
 
       if (params.toString()) {
@@ -80,8 +64,8 @@ export default function Dashboard() {
       });
 
       const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
-        startDate: debouncedStartDate,
-        endDate: debouncedEndDate
+        startDate: startDate,
+        endDate: endDate
       }, {
         withCredentials: true
       });
@@ -89,8 +73,8 @@ export default function Dashboard() {
       console.log("Analytics Data:", analyticsResponse.data);
 
       const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutReport>(`${baseURL}/api/analytics/atcreport/${brandId}`, {
-        startDate: debouncedStartDate,
-        endDate: debouncedEndDate
+        startDate: startDate,
+        endDate: endDate
       }, { withCredentials: true });
 
       console.log("Daily Analytics Data:", DailyAnalyticsResponse.data);
@@ -114,7 +98,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, debouncedStartDate, debouncedEndDate]);
+  }, [navigate, startDate, endDate]);
 
 
   useEffect(() => {

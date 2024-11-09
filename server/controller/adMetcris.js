@@ -172,6 +172,7 @@ export async function getAdLevelSpendAndROAS(req, res) {
                 "metrics.clicks",
                 "metrics.active_view_cpm",
                 "metrics.ctr",
+                "metrics.impressions"
             ],
             segments: ["segments.date"],
             from_date: startDate,
@@ -184,16 +185,33 @@ export async function getAdLevelSpendAndROAS(req, res) {
         let totalConversions = 0;
         let totalCPM = 0;
         let totalCTR = 0;
+        let newTotalCTR = 0;
+        let totalImpressions = 0;
         let adAccountName = "";
 
         // Process each row of the report
         for (const row of adsReport) {
+            const adId = row.ad_group_ad.ad.id;
             const costMicros = row.metrics.cost_micros || 0;
             const conversionsValue = row.metrics.conversions_value || 0;
             const conversions = row.metrics.conversions || 0;
-            const averageCPM = row.metrics.average_cpm || 0;
+            const impressions = row.metrics.impressions || 0;
+            const averageCPM = row.metrics.active_view_cpm || 0;
             const clicks = row.metrics.clicks || 0;
             const ctr = row.metrics.ctr || 0;
+           
+            const newCTR = clicks/impressions;
+
+            // Log each metric individually
+            console.log(`Ad ID: ${adId}`);
+            console.log(`Spend: ${(costMicros / 1_000_000).toFixed(2)}`);
+            console.log(`Conversions Value: ${conversionsValue}`);
+            console.log(`Conversions: ${conversions}`);
+            console.log(`Impressions: ${impressions}`);
+            console.log(`CPM: ${averageCPM}`);
+            console.log(`Clicks: ${clicks}`);
+            console.log(`CTR: ${newCTR}`);
+            console.log('-----------------------');
 
             // Capture the ad account name from the first row
             if (!adAccountName && row.customer && row.customer.descriptive_name) {
@@ -207,6 +225,9 @@ export async function getAdLevelSpendAndROAS(req, res) {
             totalClicks += clicks;
             totalCTR += ctr;
             totalCPM += averageCPM;
+            totalImpressions += impressions;
+            newTotalCTR += newCTR; // Include impressions in the response
+
         }
 
         // Calculate metrics
@@ -216,6 +237,7 @@ export async function getAdLevelSpendAndROAS(req, res) {
         totalSpend = totalSpend.toFixed(2);
         totalConversions = totalConversions.toFixed(2);
         totalConversionsValue = totalConversionsValue.toFixed(2);
+        totalImpressions = totalImpressions.toFixed(2);
 
         // Return the response with ad account name included
         return res.json({
@@ -229,7 +251,9 @@ export async function getAdLevelSpendAndROAS(req, res) {
                 totalCPC,
                 totalCPM,
                 totalCTR,
-                totalCostPerConversion   
+                totalCostPerConversion,
+                totalImpressions,
+                newTotalCTR // Include impressions in the response
             }
         });
     } catch (error) {
@@ -241,6 +265,7 @@ export async function getAdLevelSpendAndROAS(req, res) {
         });
     }
 }
+
 
   
 

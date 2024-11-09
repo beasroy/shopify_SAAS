@@ -54,6 +54,7 @@ dataOperationRouter.use("/report",excelReportRoutes);
 cron.schedule('0 3 * * *', async () => {
   console.log('Cron job started at:', new Date().toISOString());
   try {
+    console.log('Cron job is running at:', new Date().toISOString());
     await calculateMetricsForAllBrands();
     console.log('Cron job finished successfully at:', new Date().toISOString());
   } catch (error) {

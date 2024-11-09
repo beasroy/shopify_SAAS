@@ -315,6 +315,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
       {isExpanded && <span className="text-sm mr-2">{user?.username || 'user'}</span>}
     </div>
   );
+  
 
   const logoutContent = (
     <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>

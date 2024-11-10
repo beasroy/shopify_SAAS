@@ -51,7 +51,7 @@ dataOperationRouter.use("/report",excelReportRoutes);
 
 // initWebSocket(server);
 
-cron.schedule('50 9 * * *', async () => {
+cron.schedule('00 2 * * *', async () => {
   console.log('Cron job started at:', new Date().toISOString());
   try {
     console.log('Cron job is running at:', new Date().toISOString());

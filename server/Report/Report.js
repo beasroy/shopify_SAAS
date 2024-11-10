@@ -643,7 +643,7 @@ export const addReportData = async (brandId) => {
 //   }
 // }
 
-const calculateMetricsForAllBrands = async () => {
+export const calculateMetricsForAllBrands = async () => {
   try {
     const brands = await Brand.find({});
     logger.info(`Found ${brands.length} brands for metrics calculation.`);

@@ -643,14 +643,14 @@ export const addReportData = async (brandId) => {
 //   }
 // }
 
-export const calculateMetricsForAllBrands = async () => {
+const calculateMetricsForAllBrands = async () => {
   try {
     const brands = await Brand.find({});
     logger.info(`Found ${brands.length} brands for metrics calculation.`);
 
     const metricsPromises = brands.map(async (brand) => {
       const brandIdString = brand._id.toString();
-      logger.info(`Processing metrics for brand: ${brandIdString}`);
+      logger.info(`Starting metrics processing for brand: ${brandIdString}`);
       
       try {
         const result = await addReportData(brandIdString);
@@ -662,14 +662,18 @@ export const calculateMetricsForAllBrands = async () => {
       } catch (error) {
         logger.error(`Error in addReportData for brand ${brandIdString}: ${error.message}`);
       }
+
+      logger.info(`Completed metrics processing for brand: ${brandIdString}`);
     });
 
-    await Promise.allSettled(metricsPromises); // Using Promise.allSettled to catch all results
+    const settledResults = await Promise.allSettled(metricsPromises);
+    logger.info("All brand metrics promises settled:", settledResults);
     logger.info("Completed metrics calculation for all brands.");
   } catch (error) {
     logger.error('Error processing metrics for all brands:', error);
   }
 };
+
 
 
 

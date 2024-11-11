@@ -34,7 +34,7 @@ const EcommerceMetricsPage: React.FC = () => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [isListVisible, setIsListVisible] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(["Date", "Sessions", "AddToCarts", "AddToCartRate", "Checkouts", "PurchaseRate"]);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(["Date", "Sessions", "Add_To_Carts", "Add_To_Cart_Rate", "Checkouts","Checkouts_Rate", "Purchase_Rate"]);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 

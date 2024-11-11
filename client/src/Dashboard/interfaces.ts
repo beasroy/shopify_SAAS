@@ -20,7 +20,7 @@ export interface DashboardData {
 
 export interface DailyCartCheckoutData {
   Date: string;
-  AddToCarts: string;
+  Add_To_Carts: string;
   Checkouts: string;
   Sessions: string;
   Purchases: string;

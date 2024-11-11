@@ -353,11 +353,12 @@ console.log("Date Range:", startDate, "to", endDate);
       data.push({
         Date:formattedDate,
         Sessions: row.metricValues[0]?.value || 0,
-        AddToCarts: row.metricValues[1]?.value || 0,
-        AddToCartRate: ((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0,
+        Add_To_Carts: row.metricValues[1]?.value || 0,
+        Add_To_Cart_Rate: `${((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
         Checkouts: row.metricValues[2]?.value || 0,
+        Checkouts_Rate: `${((row.metricValues[2]?.value/ row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
         Purchases: row.metricValues[3]?.value || 0,
-        PurchaseRate:((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0,
+        Purchase_Rate:`${((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
       });
     });
 

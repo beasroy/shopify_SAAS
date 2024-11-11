@@ -14,6 +14,7 @@ import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfac
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
 import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
+import DashboardSelector from '@/components/dashboard_component/DashBoardSelector.tsx';
 
 
 
@@ -226,10 +227,11 @@ export default function Dashboard() {
     <>
       <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-6">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
-          </div>
+          </div> */}
+          <DashboardSelector brandId={brandId} />
           <div className="flex items-center space-x-4">
             <ReportsDropdown brandId={brandId} />
             <DatePickerWithRange date={date} setDate={setDate}

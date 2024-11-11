@@ -1,10 +1,10 @@
-'use client'
+
 
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios";
 import { format } from "date-fns"
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Columns, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, BriefcaseBusiness, ChevronLeft, ChevronRight, Columns, RefreshCw } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox"
@@ -15,12 +15,13 @@ import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
 
 interface EcommerceMetric {
   Date: string;
-  AddToCarts: string;
+  Add_To_Carts: string;
   Checkouts: string;
   Sessions: string;
   Purchases: string;
-  PurchaseRate: string;
-  AddToCartRate: string;
+  Purchase_Rate: string;
+  Add_To_Cart_Rate: string;
+  Checkouts_Rate: string;
 }
 
 const EcommerceMetricsPage: React.FC = () => {
@@ -100,6 +101,7 @@ const EcommerceMetricsPage: React.FC = () => {
 
   const totalPages = Math.ceil(data.length / rowsPerPage);
   const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  console.log(paginatedData);
 
   const parsedData = data.map(item => ({
     ...item,
@@ -115,6 +117,37 @@ const EcommerceMetricsPage: React.FC = () => {
   const getTextColor = (sessions: number, maxSessions: number) => {
     const intensity = sessions / maxSessions;
     return intensity > 0.7 ? 'white' : 'black';
+  };
+
+  const parsePercentage = (value: string): number => {
+    return parseFloat(value.replace('%', '').trim());
+  };
+  
+  const averageValues = {
+    Add_To_Cart_Rate: data.reduce((sum, item) => sum + parsePercentage(item.Add_To_Cart_Rate), 0) / data.length,
+    Checkouts_Rate: data.reduce((sum, item) => sum + parsePercentage(item.Checkouts_Rate), 0) / data.length,
+    Purchase_Rate: data.reduce((sum, item) => sum + parsePercentage(item.Purchase_Rate), 0) / data.length,
+  };
+
+  const getConditionalTextColor = (value: number, average: number) => {
+    if (value < average) {
+      return 'red';
+    } else if (value > average) {
+      return 'green';
+    } else {
+      return 'yellow';
+    }
+  };
+  
+  // Function to get the icon based on value and average
+  const getConditionalIcon = (value: number, average: number) => {
+    if (value < average) {
+      return <ArrowDown className="ml-1 text-red-500 w-3 h-3" />;
+    } else if (value > average) {
+      return <ArrowUp className="ml-1 text-green-500 w-3 h-3" />;
+    } else {
+      return null;
+    }
   };
 
   return (
@@ -213,19 +246,29 @@ const EcommerceMetricsPage: React.FC = () => {
               <TableBody>
                 {paginatedData.map((item, index) => (
                   <TableRow key={index}>
-                    {sortedSelectedColumns.map((column) => (
-                     <TableCell
-                     key={column}
-                     className="px-4 py-2 border-b w-[150px] font-medium"
-                     style={{
-                       width: '150px',
-                       backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
-                       color: column === "Sessions" ? getTextColor(Number(item.Sessions), maxSessions) : 'inherit', 
-                     }}
-                   >
-                        {item[column as keyof EcommerceMetric]}
-                      </TableCell>
-                    ))}
+                    {sortedSelectedColumns.map((column) => {
+                       const cellValue = column.includes('Rate') ? parsePercentage(item[column as keyof EcommerceMetric] as string) : item[column as keyof EcommerceMetric];
+                       const isComparisonColumn = ['Add_To_Cart_Rate', 'Checkouts_Rate', 'Purchase_Rate'].includes(column);
+                       return (
+                         <TableCell
+                           key={column}
+                           className="px-4 py-2 border-b w-[150px] font-medium"
+                           style={{
+                            width: '150px',
+                            backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
+                            color: column === "Sessions"
+                            ? getTextColor(Number(item.Sessions), maxSessions)
+                            : isComparisonColumn
+                            ? getConditionalTextColor(cellValue as number, averageValues[column as keyof typeof averageValues])
+                            : 'inherit',}}
+                         >
+                          <div className="flex flex-row items-center justify-center gap-1">
+                          {item[column as keyof EcommerceMetric]}
+                          {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column as keyof typeof averageValues])}
+                          </div>
+                          </TableCell>
+                       );
+                    })}
                   </TableRow>
                 ))}
               </TableBody>

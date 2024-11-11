@@ -6,6 +6,7 @@ const brandSchema = new mongoose.Schema({
     required: true,
     unique: true // Assuming brand names are unique
   },
+  logoUrl: String,
   fbAdAccounts: [{
     type: String, 
   }],

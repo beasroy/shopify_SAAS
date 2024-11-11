@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, LogOut, User2Icon, Store } from 'lucide-react';
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useBrand } from '@/context/BrandContext';
 import axios from 'axios';
@@ -17,6 +17,7 @@ export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
   const navigate = useNavigate();
+  const location = useLocation(); // To get the current URL path
 
   const baseURL =
     import.meta.env.PROD
@@ -66,11 +67,11 @@ export default function CollapsibleSidebar() {
               <SidebarItem
                 key={brand._id}
                 icon={<Store size={24} />}
-                //icon={<img src={brand.logoUrl} alt={brand.name} className="w-6 h-6 rounded-full" />}  
+                // icon={<img src={"https://houseofawadh.com/cdn/shop/files/HOA_Logo-06.png?v=1684394643&width=250"} alt={brand.name} className="w-8 h-8 rounded-full bg-white" style={{ width: '28px', height: '28px' }} />}  
                 //uncomment this when adding logos from db
                 text={brand.name.replace(/_/g, ' ')}
                 isExpanded={isExpanded}
-                isSelected={selectedBrandId === brand._id}
+                isSelected={location.pathname.includes(brand._id) || selectedBrandId === brand._id} // Selected if brandId in URL
                 tooltipContent={brand.name}
                 onClick={() => {
                   setSelectedBrandId(brand._id);
@@ -86,7 +87,7 @@ export default function CollapsibleSidebar() {
   );
 }
 
-function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent, onClick }: {
+function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipContent, onClick }: {
   icon?: React.ReactNode;
   text: string;
   isExpanded: boolean;
@@ -97,7 +98,7 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   tooltipContent: string;
   onClick?: () => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+
 
 
   const content = (
@@ -106,9 +107,8 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
       className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors
          duration-200 cursor-pointer ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}
     >
-      <span className="mr-4">{icon}</span>
+      <span className={isExpanded ? 'mr-2': 'mr-0'}>{icon}</span>
       {isExpanded && <span className="text-sm">{text}</span>}
-      {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
     </div>
   );
 
@@ -132,7 +132,7 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
       ) : (
         content
       )}
-      {isOpen && isExpanded && (
+      {isExpanded && (
         <div className="relative pl-8">
           <div className="absolute top-0 w-1 h-full bg-gray-500" />
           {React.Children.map(children, (child) => (

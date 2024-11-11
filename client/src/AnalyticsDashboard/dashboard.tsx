@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
-import { Blend, Filter, RefreshCw, Settings2Icon } from "lucide-react"
+import { Blend, Filter, RefreshCw} from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
+import DashboardSelector from '@/components/dashboard_component/DashBoardSelector.tsx';
 type DataSource = 'all' | 'facebook' | 'google'
 
 
@@ -220,10 +221,7 @@ export default function Dashboard() {
 
       <nav className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-2">
-            <Settings2Icon className="h-6 w-6 text-gray-500" />
-            <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
-          </div>
+         <DashboardSelector brandId={brandId} />
           <div className="flex items-center space-x-2">
             <ReportsDropdown brandId={brandId} />
             <DatePickerWithRange date={date} setDate={setDate}

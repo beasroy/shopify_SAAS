@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness, Sheet } from "lucide-react";
+import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness} from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
@@ -13,6 +13,7 @@ import TopPagesPieChart from '../components/dashboard_component/LandingPageChart
 import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
+import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
 
 
 
@@ -230,12 +231,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
-            <Link to={`/ad-metrics/${brandId}`}>
-              <Button className='flex items-center justify-between bg-cyan-600'>
-                <p>View Report</p>
-                <Sheet />
-              </Button>
-            </Link>
+            <ReportsDropdown brandId={brandId} />
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{
                 from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month

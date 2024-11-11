@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
 
 interface EcommerceMetric {
   Date: string;
@@ -127,21 +128,7 @@ const EcommerceMetricsPage: React.FC = () => {
               <h1 className="text-2xl font-bold">E-commerce Metrics Overview</h1>
             </div>
             <div className="flex flex-row space-x-3 items-center">
-              <div className="md:flex items-center hidden">
-                {lastUpdated && (
-                  <span className="text-sm text-gray-600 mr-4">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-                <Button
-                  onClick={handleManualRefresh}
-                  disabled={isLoading}
-                  className="flex items-center"
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
+            <ReportsDropdown brandId={brandId} />
               <div className="flex items-center space-x-4">
                 <DatePickerWithRange 
                   date={date} 
@@ -162,6 +149,22 @@ const EcommerceMetricsPage: React.FC = () => {
             <h1 className="text-lg font-semibold">
               Key performance indicators for your online store
             </h1>
+            <div className="flex flex-row items-center space-x-2">
+                 <div className="md:flex items-center hidden">
+                {lastUpdated && (
+                  <span className="text-sm text-gray-600 mr-4">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+                <Button
+                  onClick={handleManualRefresh}
+                  disabled={isLoading}
+                  className="flex items-center"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  
+                </Button>
+              </div> 
             <Button
               onClick={toggleList}
               variant="outline"
@@ -170,6 +173,7 @@ const EcommerceMetricsPage: React.FC = () => {
               <Columns className="h-4 w-4" />
               <span>Select Columns</span>
             </Button>
+          </div>
           </div>
 
           {isListVisible && (

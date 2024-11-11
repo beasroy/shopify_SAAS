@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
-import { Blend, Filter, Settings2Icon } from "lucide-react"
+import { Blend, Filter, RefreshCw, Settings2Icon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
@@ -14,6 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
 type DataSource = 'all' | 'facebook' | 'google'
 
 
@@ -27,7 +28,8 @@ export default function Dashboard() {
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [aggregatedMetrics, setAggregatedMetrics] = useState<AggregatedMetrics | null>(null)
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
-  const [dataSource, setDataSource] = useState<DataSource>('all')
+  const [dataSource, setDataSource] = useState<DataSource>('all');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const { brandId } = useParams();
   const navigate = useNavigate();
@@ -75,6 +77,7 @@ export default function Dashboard() {
         dataSource === 'google' ? [] : fbData,
         dataSource === 'facebook' ? undefined : googleData
       )
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching fb ad data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -207,6 +210,10 @@ export default function Dashboard() {
     },
   ]
 
+  const handleManualRefresh = () => {
+    fetchAdData();
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -218,6 +225,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
           </div>
           <div className="flex items-center space-x-2">
+            <ReportsDropdown brandId={brandId} />
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{ from: new Date(), to: new Date() }} />
           </div>
@@ -244,6 +252,22 @@ export default function Dashboard() {
                   </svg>
                 )}
               </div>
+              <div className="flex flex-row items-center space-x-2">
+                 <div className="md:flex items-center hidden">
+                {lastUpdated && (
+                  <span className="text-sm text-gray-600 mr-4">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+                <Button
+                  onClick={handleManualRefresh}
+                  disabled={isLoading}
+                  className="flex items-center"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  
+                </Button>
+              </div> 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className='bg-cyan-800'><Filter className="h-5 w-5 mr-2" />Filter</Button>
@@ -263,6 +287,8 @@ export default function Dashboard() {
                    >Google Ads</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
+              
             </h2>
             <AdAccountMetricsCard metrics={metrics} date={date || { from: new Date(), to: new Date() }} isLoading={isLoading} icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} />
           </section>

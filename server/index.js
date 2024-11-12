@@ -12,7 +12,7 @@ import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
 import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
-import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
+// import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 import cron from 'node-cron';
 
 

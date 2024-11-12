@@ -1,19 +1,24 @@
-import { useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, ChevronDown, BarChart, ShoppingCart, MapPin, Layout, Share2 } from "lucide-react"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, ChevronDown, BarChart, ShoppingCart, MapPin, Layout, Share2 } from "lucide-react";
+import { useCallback } from "react";
 
 interface ReportsDropdownProps {
-  brandId: string | undefined
+  brandId: string | undefined;
 }
 
 export default function ReportsDropdown({ brandId }: ReportsDropdownProps) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  const handleNavigate = useCallback((path: any) => {
+    navigate(path);
+  }, [navigate]);
 
   const reports = [
     { name: "Monthly Ad Metrics Reports", icon: BarChart, path: `/ad-metrics/${brandId}` },
@@ -21,7 +26,7 @@ export default function ReportsDropdown({ brandId }: ReportsDropdownProps) {
     { name: "City based Reports", icon: MapPin, path: `/city-metrics/${brandId}` },
     { name: "Landing Page based Reports", icon: Layout, path: `/page-metrics/${brandId}` },
     { name: "Referring Channel based Reports", icon: Share2, path: `/channel-metrics/${brandId}` },
-  ]
+  ];
 
   return (
     <DropdownMenu>
@@ -36,7 +41,7 @@ export default function ReportsDropdown({ brandId }: ReportsDropdownProps) {
         {reports.map((report) => (
           <DropdownMenuItem
             key={report.name}
-            onSelect={() => navigate(report.path)}
+            onClick={() => handleNavigate(report.path)}
             className="flex items-center"
           >
             <report.icon className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -45,5 +50,5 @@ export default function ReportsDropdown({ brandId }: ReportsDropdownProps) {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BriefcaseBusiness, BarChart, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,12 +31,13 @@ export default function DashboardSelector({ brandId }: DashboardDropdownProps) {
     if (activeDashboard) {
       setSelectedDashboard(activeDashboard);
     }
-  }, [location.pathname, dashboards]);
+  }, [location.pathname]);
 
-  const handleDashboardSelect = (dashboard: typeof dashboards[0]) => {
+  // Use useCallback to make the function stable
+  const handleDashboardSelect = useCallback((dashboard: typeof dashboards[0]) => {
     setSelectedDashboard(dashboard);
     navigate(dashboard.path);
-  };
+  }, [navigate]);
 
   return (
     <div className="flex items-center space-x-2">
@@ -51,7 +52,7 @@ export default function DashboardSelector({ brandId }: DashboardDropdownProps) {
           {dashboards.map((dashboard) => (
             <DropdownMenuItem
               key={dashboard.name}
-              onSelect={() => handleDashboardSelect(dashboard)}
+              onClick={() => handleDashboardSelect(dashboard)} // Use onClick instead of onSelect
               className="flex items-center"
             >
               <dashboard.icon className="h-5 w-5 mr-2 text-gray-500" aria-hidden="true" />

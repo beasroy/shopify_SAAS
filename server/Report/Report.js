@@ -5,6 +5,7 @@ import moment from "moment";
 import axios from "axios";
 import Metrics from "../models/Metrics.js";
 import logger from "../utils/logger.js";
+import { GoogleAdsApi } from "google-ads-api";
 
 
 config();
@@ -474,12 +475,99 @@ export const fetchFBAdReport = async (brandId) => {
 };
 
 
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_AD_CLIENT_ID,
+  client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+  refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+});
+export const getGoogleAdData = async (brandId) => {
+  try {
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return {
+        success: false,
+        message: 'Brand not found.',
+      };
+    }
+
+    const adAccountId = brand.googleAdAccount;
+    if (!adAccountId) {
+      return {
+        success: false,
+        message: 'No Google Ads accounts found for this brand.',
+        data: [],
+      };
+    }
+
+    const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
+    const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
+
+    const customer = client.Customer({
+      customer_id: adAccountId,
+      refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+      login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+    });
+
+    // Fetch the ad-level report using the ad_group_ad entity
+    const adsReport = await customer.report({
+      entity: "ad_group_ad",
+      attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+      metrics: [
+        "metrics.cost_micros",
+        "metrics.conversions_value",
+      ],
+      segments: ["segments.date"],
+      from_date: startDate,
+      to_date: endDate,
+    });
+
+    let totalSpend = 0;
+    let totalConversionsValue = 0;
+
+    // Process each row of the report
+    for (const row of adsReport) {
+      const costMicros = row.metrics.cost_micros || 0;
+      const spend = costMicros / 1_000_000;
+      totalSpend += spend;
+      totalConversionsValue += row.metrics.conversions_value || 0;
+    }
+
+    // Calculate aggregated metrics
+    const googleRoas = totalSpend > 0 ? (totalConversionsValue / totalSpend).toFixed(2) : 0;
+    const totalSales = googleRoas * totalSpend || 0;
+
+    const result = {
+      googleSpend: totalSpend.toFixed(2),
+      googleRoas,
+      googleSales: totalSales.toFixed(2),
+    }
+ 
+    // Return the result object
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (e) {
+    console.error('Error getting Google Ad data:', e);
+    return {
+      success: false,
+      message: 'An error occurred while fetching Google Ad data.',
+    };
+  }
+};
+
+
 export const addReportData = async (brandId) => {
   try {
 
     const fbDataResult = await fetchFBAdReport(brandId);
 
     const fbData = fbDataResult.data;
+
+    const googleDataResult = await getGoogleAdData(brandId);
+
+    const googleData = googleDataResult.data;
 
     // Initialize totals
     let totalMetaSpend = 0;
@@ -499,22 +587,40 @@ export const addReportData = async (brandId) => {
     }
     // Fetch Shopify sales data
     const shopifySales = await fetchTotalSales(brandId);
-    console.log(shopifySales)
+
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
     const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
-    const googleSpend = 0;
-    const googleROAS = 0;
+    const googleSpend = parseFloat(googleData.googleSpend);
+    const googleROAS = parseFloat(googleData.googleRoas);
     const totalSpend = metaSpend + googleSpend;
     const metaSales = metaSpend * metaROAS;
-    const googleSales = 0;
+    const googleSales = parseFloat(googleData.googleSales);
     const totalSales = metaSales + googleSales;
     const grossROI = totalSpend > 0 ? totalSales / totalSpend : 0;
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
     // Create a new Metrics document
-    const metricsEntry = new Metrics({
+    // const metricsEntry = new Metrics({
+    //   brandId,
+    //   date: moment().subtract(1, "days").toDate(),
+    //   metaSpend,
+    //   metaROAS,
+    //   googleSpend,
+    //   googleROAS,
+    //   shopifySales,
+    //   totalSpend: totalSpend.toFixed(2),
+    //   grossROI: grossROI.toFixed(2),
+    //   netROI: netROI.toFixed(2),
+    // });
+
+    // // Save the document
+    // await metricsEntry.save();
+
+    // console.log('Metrics entry saved:', metricsEntry);
+
+    console.log({
       brandId,
       date: moment().subtract(1, "days").toDate(),
       metaSpend,
@@ -527,16 +633,11 @@ export const addReportData = async (brandId) => {
       netROI: netROI.toFixed(2),
     });
 
-    // Save the document
-    await metricsEntry.save();
-
-    console.log('Metrics entry saved:', metricsEntry);
-
     // Return success response
     return {
       success: true,
       message: 'Metrics saved successfully.',
-      data: metricsEntry,
+      // data: metricsEntry,
     };
   } catch (error) {
     console.error('Error calculating and saving metrics:', error);

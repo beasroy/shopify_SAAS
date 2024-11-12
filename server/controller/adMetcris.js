@@ -129,7 +129,7 @@ const client = new GoogleAdsApi({
 
 
 
-export async function getAdLevelSpendAndROAS(req, res) {
+export async function getGoogleAdMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate } = req.body;
 
@@ -146,9 +146,11 @@ export async function getAdLevelSpendAndROAS(req, res) {
         const adAccountId = brand.googleAdAccount;
 
         if (!adAccountId || adAccountId.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No Google Ad accounts found for this brand.',
+            // Return an empty response if no Google Ads account is found
+            return res.json({
+                success: true,
+                data: {}, 
+                message: "No Google ads account found for this brand"
             });
         }
 

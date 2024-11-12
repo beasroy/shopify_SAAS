@@ -241,6 +241,102 @@ export async function getGoogleAdMetrics(req, res) {
     }
 }
 
+export async function getGoogleCampaignMetrics(req, res) {
+    const { brandId } = req.params;
+    let { startDate, endDate } = req.body;
+    try {
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Brand not found.',
+            });
+        }
+
+        const adAccountId = brand.googleAdAccount;
+
+        if (!adAccountId || adAccountId.length === 0) {
+            return res.json({
+                success: true,
+                data: {}, 
+                message: "No Google ads account found for this brand"
+            });
+        }
+
+        if (!startDate || !endDate) {
+            startDate = moment().startOf('month').format('YYYY-MM-DD');
+            endDate = moment().format('YYYY-MM-DD');
+        }
+
+        const customer = client.Customer({
+            customer_id: adAccountId,
+            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+        });
+
+        const adsReport = await customer.report({
+            entity: "campaign",
+            attributes: ["campaign.id", "campaign.name"],
+            metrics: [
+                "metrics.cost_micros",
+                "metrics.conversions_value",
+                "metrics.impressions",
+                "metrics.clicks"
+            ],
+            segments: ["segments.date"],
+            from_date: startDate,
+            to_date: endDate,
+        });
+
+        let totalSpend = 0;
+        let totalConversionsValue = 0;
+        const campaignData = []; // Array to store data for each campaign
+
+        // Process each row of the report
+        for (const row of adsReport) {
+            const costMicros = row.metrics.cost_micros || 0;
+            const spend = costMicros / 1_000_000;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const impressions = row.metrics.impressions || 0;
+            const clicks = row.metrics.clicks || 0;
+
+            totalSpend += spend;
+            totalConversionsValue += conversionsValue;
+
+            // Calculate ROAS for each campaign
+            const roas = spend > 0 ? (conversionsValue / spend).toFixed(2) : 0;
+
+            // Add each campaign's data to the array
+            campaignData.push({
+                campaignName: row.campaign.name,
+                spend: spend.toFixed(2),
+                conversionsValue: conversionsValue.toFixed(2),
+                impressions,
+                clicks,
+                roas,
+            });
+        }
+
+
+        // Return the response with all campaigns' data
+        return res.json({
+            success: true,
+            data: campaignData, // Include all campaigns data
+               
+        
+        });
+    } catch (error) {
+        console.error("Failed to fetch campaign-level spend and ROAS:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+}
+
+
 
 
   

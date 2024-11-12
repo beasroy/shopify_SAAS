@@ -627,6 +627,7 @@ export const addReportData = async (brandId) => {
       metaROAS,
       googleSpend,
       googleROAS,
+      googleSales,
       shopifySales,
       totalSpend: totalSpend.toFixed(2),
       grossROI: grossROI.toFixed(2),

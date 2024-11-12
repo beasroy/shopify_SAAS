@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea f
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
+  const { setUser } = useUser(); // Ensure setUser is correctly obtained from context
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null); // Reference for the sidebar
@@ -27,8 +28,25 @@ export default function CollapsibleSidebar() {
       : import.meta.env.VITE_LOCAL_API_URL;
 
   const toggleSidebar = () => {
+    if (isExpanded) {
+      // If the sidebar is being collapsed, trigger logout
+      handleLogout();
+    }
     setIsExpanded(prev => !prev);
   }
+
+  const handleLogout = async () => {
+    try {
+      const response = await axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true });
+      if (response.status === 200) {
+        setUser(null); // Clear user state
+        setSelectedBrandId(null); // Reset selected brand ID if necessary
+        navigate('/'); // Redirect to home or login page
+      }
+    } catch (error) {
+      console.error('Error logging out:', error); // Log any errors
+    }
+  };
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -161,21 +179,9 @@ export default function CollapsibleSidebar() {
         </div>
 
         {/* Fixed User Profile and Logout Section */}
-        <div className="flex flex-col p-4">
+        <div className="flex flex-col">
           <UserProfile isExpanded={isExpanded} />
-          <LogoutButton handleLogout={() => {
-            const baseURL = import.meta.env.PROD
-              ? import.meta.env.VITE_API_URL
-              : import.meta.env.VITE_LOCAL_API_URL;
-
-            axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true })
-              .then(() => {
-                setUser(null);
-                resetBrand();
-                navigate('/');
-              })
-              .catch(error => console.error('Error logging out:', error));
-          }} isExpanded={isExpanded} /> {/* Pass isExpanded prop here */}
+          <LogoutButton handleLogout={handleLogout} isExpanded={isExpanded} /> {/* Pass isExpanded prop here */}
         </div>
       </div>
     </TooltipProvider>
@@ -288,12 +294,11 @@ function SidebarChild({
   );
 }
 
-// ... existing code ...
 function UserProfile({ isExpanded }: { isExpanded: boolean }) {
   const { user } = useUser();
 
   const userProfileContent = (
-    <div className={'flex items-center gap-2 px-2 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+    <div className={'flex items-center gap-2 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
       <span className="text-gray-300 hover:text-white">
         <User2Icon size={24} />
       </span>
@@ -323,7 +328,7 @@ function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={'flex items-center gap-2 px-2 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+        <div className={'flex items-center gap-2 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
           <span className="text-gray-300 hover:text-white">
             <LogOut onClick={handleLogout} size={24} />
           </span>

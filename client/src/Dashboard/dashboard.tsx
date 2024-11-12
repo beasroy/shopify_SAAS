@@ -13,8 +13,7 @@ import TopPagesPieChart from '../components/dashboard_component/LandingPageChart
 import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
-import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
-import DashboardSelector from '@/components/dashboard_component/DashBoardSelector.tsx';
+
 
 
 
@@ -231,9 +230,9 @@ export default function Dashboard() {
             <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
             <h1 className="text-2xl font-bold">Business Dashboard</h1>
           </div> */}
-          <DashboardSelector brandId={brandId} />
+            <h1 className="text-2xl font-bold">Business Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <ReportsDropdown brandId={brandId} />
+            {/* <ReportsDropdown brandId={brandId} /> */}
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{
                 from: new Date(now.getFullYear(), now.getMonth(), 1), // First day of the current month

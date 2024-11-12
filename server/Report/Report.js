@@ -602,43 +602,43 @@ export const addReportData = async (brandId) => {
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
     // Create a new Metrics document
-    // const metricsEntry = new Metrics({
-    //   brandId,
-    //   date: moment().subtract(1, "days").toDate(),
-    //   metaSpend,
-    //   metaROAS,
-    //   googleSpend,
-    //   googleROAS,
-    //   shopifySales,
-    //   totalSpend: totalSpend.toFixed(2),
-    //   grossROI: grossROI.toFixed(2),
-    //   netROI: netROI.toFixed(2),
-    // });
-
-    // // Save the document
-    // await metricsEntry.save();
-
-    // console.log('Metrics entry saved:', metricsEntry);
-
-    console.log({
+    const metricsEntry = new Metrics({
       brandId,
       date: moment().subtract(1, "days").toDate(),
       metaSpend,
       metaROAS,
       googleSpend,
       googleROAS,
-      googleSales,
       shopifySales,
       totalSpend: totalSpend.toFixed(2),
       grossROI: grossROI.toFixed(2),
       netROI: netROI.toFixed(2),
     });
 
+    // Save the document
+    await metricsEntry.save();
+
+    console.log('Metrics entry saved:', metricsEntry);
+
+    // console.log({
+    //   brandId,
+    //   date: moment().subtract(1, "days").toDate(),
+    //   metaSpend,
+    //   metaROAS,
+    //   googleSpend,
+    //   googleROAS,
+    //   googleSales,
+    //   shopifySales,
+    //   totalSpend: totalSpend.toFixed(2),
+    //   grossROI: grossROI.toFixed(2),
+    //   netROI: netROI.toFixed(2),
+    // });
+
     // Return success response
     return {
       success: true,
       message: 'Metrics saved successfully.',
-      // data: metricsEntry,
+      data: metricsEntry,
     };
   } catch (error) {
     console.error('Error calculating and saving metrics:', error);

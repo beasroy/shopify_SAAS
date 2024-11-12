@@ -116,9 +116,7 @@ export const fetchFBAdAccountData = async(req,res)=>{
 
 
 
-// Google ADS API DATA
-
-
+// Google ADS API DATA 
 
 const client = new GoogleAdsApi({
   client_id: process.env.GOOGLE_AD_CLIENT_ID,
@@ -126,8 +124,6 @@ const client = new GoogleAdsApi({
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
   refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
-
-
 
 export async function getGoogleAdMetrics(req, res) {
     const { brandId } = req.params;
@@ -291,7 +287,7 @@ export async function getGoogleCampaignMetrics(req, res) {
 
         let totalSpend = 0;
         let totalConversionsValue = 0;
-        const campaignData = []; // Array to store data for each campaign
+        const campaignData = [];
 
         // Process each row of the report
         for (const row of adsReport) {
@@ -318,11 +314,9 @@ export async function getGoogleCampaignMetrics(req, res) {
             });
         }
 
-
-        // Return the response with all campaigns' data
         return res.json({
             success: true,
-            data: campaignData, // Include all campaigns data
+            data: campaignData, 
                
         
         });

@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
-import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
+// import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
 
 interface CityMetric {
   city: string;
@@ -160,7 +160,7 @@ const CitySessionPage: React.FC = () => {
               <h1 className="text-2xl font-bold">City Metrics Overview</h1>
             </div>
             <div className="flex flex-row space-x-3 items-center">
-              <ReportsDropdown brandId={brandId} />
+              {/* <ReportsDropdown brandId={brandId} /> */}
               <div className="flex items-center space-x-4">
                 <DatePickerWithRange 
                   date={date} 

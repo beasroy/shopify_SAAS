@@ -64,10 +64,6 @@ cron.schedule('00 2 * * *', async () => {
 }, { timezone: 'UTC' });
 
 
-
-const brandId='671b6925d3c4f462d681ef47';
-addReportData(brandId)
-// fetchTotalSales(brandId)
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

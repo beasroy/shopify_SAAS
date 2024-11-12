@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
-import ReportsDropdown from "@/components/dashboard_component/ReportDropDown"
+// import ReportsDropdown from "@/components/dashboard_component/ReportDropDown"
 
 
 interface DailyMetric {
@@ -173,7 +173,7 @@ console.log(processedData);
                             <h1 className="text-2xl font-bold">{brandName} Ad Metrics Overview</h1>
                         </div>
                         <div className="flex items-center gap-2">
-                        <ReportsDropdown brandId={brandId} />
+                        {/* <ReportsDropdown brandId={brandId} /> */}
                             <div className="flex items-center space-x-4">
                                 <DatePickerWithRange date={date} setDate={setDate}
                                 />

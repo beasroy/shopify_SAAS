@@ -15,8 +15,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
-import DashboardSelector from '@/components/dashboard_component/DashBoardSelector.tsx';
 type DataSource = 'all' | 'facebook' | 'google'
 
 
@@ -234,9 +232,9 @@ export default function Dashboard() {
 
       <nav className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <DashboardSelector brandId={brandId} />
+        <h1 className="text-2xl font-bold">Ad Metrics Dashboard</h1>
           <div className="flex items-center space-x-2">
-            <ReportsDropdown brandId={brandId} />
+            {/* <ReportsDropdown brandId={brandId} /> */}
             <DatePickerWithRange date={date} setDate={setDate}
               defaultDate={{ from: new Date(), to: new Date() }} />
           </div>

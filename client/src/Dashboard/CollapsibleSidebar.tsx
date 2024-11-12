@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, ShoppingCart, MapPin, Layout, Share2, Calendar } from 'lucide-react'; // Import Calendar icon
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -19,13 +19,13 @@ export default function CollapsibleSidebar() {
   const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
   const location = useLocation();
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLDivElement>(null); // Reference for the sidebar
 
   const baseURL =
     import.meta.env.PROD
       ? import.meta.env.VITE_API_URL
       : import.meta.env.VITE_LOCAL_API_URL;
 
-      
   const toggleSidebar = () => {
     setIsExpanded(prev => !prev);
   }
@@ -42,6 +42,20 @@ export default function CollapsibleSidebar() {
     fetchBrands();
   }, [setBrands]);
 
+  // Close sidebar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const reports = [
     { name: "Monthly Ad Metrics Reports", icon: <BarChart />, path: `/ad-metrics/${selectedBrandId}` },
     { name: "Daily E-Commerce Metrics Reports", icon: <ShoppingCart />, path: `/ecommerce-metrics/${selectedBrandId}` },
@@ -50,9 +64,12 @@ export default function CollapsibleSidebar() {
     { name: "Referring Channel based Reports", icon: <Share2 />, path: `/channel-metrics/${selectedBrandId}` },
   ];
 
+  const isReportSelected = reports.some(report => location.pathname === report.path); // Check if any report is selected
+
   return (
     <TooltipProvider>
       <div
+        ref={sidebarRef} // Attach the ref to the sidebar
         className={`bg-gray-800 text-white transition-all duration-300 ease-in-out flex flex-col ${isExpanded ? 'w-64' : 'w-16'}`}
         style={{ height: '100vh' }} // Ensure the sidebar takes full viewport height
       >
@@ -89,10 +106,13 @@ export default function CollapsibleSidebar() {
                 {brands.map(brand => (
                   <SidebarChild
                     key={brand._id}
-                    path={`/${brand._id}`}
+                    path={`/business-dashboard/${brand._id}`} // Navigate to the brand's business dashboard
                     text={brand.name.replace(/_/g, ' ')}
-                    onClick={() => setSelectedBrandId(brand._id)}
-                    selectedBrandId={selectedBrandId}
+                    onClick={() => {
+                      setSelectedBrandId(brand._id); // Set the selected brand ID
+                      navigate(`/business-dashboard/${brand._id}`); // Navigate to the brand's business dashboard
+                      // Do not toggle the sidebar
+                    }}
                     isSelected={selectedBrandId === brand._id} // Highlight selected brand
                   />
                 ))}
@@ -121,7 +141,7 @@ export default function CollapsibleSidebar() {
                 isExpanded={isExpanded}
                 openIcon={<ChevronUp />}
                 closeIcon={<ChevronDown />}
-                isSelected={false}
+                isSelected={isReportSelected} // Highlight if any report is selected
                 tooltipContent="Reports"
               >
                 {reports.map(report => (
@@ -130,7 +150,6 @@ export default function CollapsibleSidebar() {
                     path={report.path}
                     text={report.name}
                     onClick={() => navigate(report.path)} 
-                    selectedBrandId={selectedBrandId}
                     isSelected={location.pathname === report.path} // Check if the report is selected
                   >
                     {report.icon}
@@ -156,7 +175,7 @@ export default function CollapsibleSidebar() {
                 navigate('/');
               })
               .catch(error => console.error('Error logging out:', error));
-          }} isExpanded={isExpanded} /> {/* Pass isExpanded prop */}
+          }} isExpanded={isExpanded} /> {/* Pass isExpanded prop here */}
         </div>
       </div>
     </TooltipProvider>
@@ -225,25 +244,24 @@ function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, is
   );
 }
 
+// ... existing code ...
+
 function SidebarChild({
   path,
   text,
   onClick,
-  selectedBrandId,
   disabled,
-  isSelected, // New prop to determine if the child is selected
+  isSelected, 
 }: {
   path: string;
   text: string;
   onClick?: () => void;
-  selectedBrandId?: string | null;
   disabled?: boolean;
   isSelected?: boolean; // New prop
 }) {
   const { pathname } = useLocation();
-  const isSelectedChild = isSelected || pathname === path || (selectedBrandId === path.split('/').pop());
+  const isSelectedChild = isSelected || pathname === path;
 
-  // Apply styles conditionally based on whether the item is disabled or not
   const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${
     isSelectedChild ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'
   } ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
@@ -251,7 +269,7 @@ function SidebarChild({
   return disabled ? (
     <div className={baseClasses}>
       {text}
-      {isSelectedChild && <div className="absolute left-0 w-1 h-full bg-white" />}
+      {isSelectedChild && <div className="absolute left-0 w-1 h-full bg-white" />} {/* White indication */}
     </div>
   ) : (
     <NavLink
@@ -265,11 +283,12 @@ function SidebarChild({
       }}
     >
       {text}
-      {isSelectedChild && <div className="absolute left-0 w-1 h-full bg-white" />}
+      {isSelectedChild && <div className="absolute left-0 top-0 w-1 h-full bg-white" />} {/* Adjusted position */}
     </NavLink>
   );
 }
 
+// ... existing code ...
 function UserProfile({ isExpanded }: { isExpanded: boolean }) {
   const { user } = useUser();
 
@@ -300,7 +319,7 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
   );
 }
 
-function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) {
+function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) { // Added isExpanded prop
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -308,7 +327,7 @@ function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; 
           <span className="text-gray-300 hover:text-white">
             <LogOut onClick={handleLogout} size={24} />
           </span>
-          {isExpanded && <span className="text-sm">Logout</span>} {/* Show text only if expanded */}
+          {isExpanded && <span className="text-sm">Logout</span>} {/* Render text only when sidebar is expanded */}
         </div>
       </TooltipTrigger>
       <TooltipContent side="right">

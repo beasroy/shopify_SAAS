@@ -8,11 +8,11 @@ config();
 
 //FB ADS API DATA HERE
 
-export const fetchFBAdAccountData = async(req,res)=>{
+export const fetchFBAdAccountData = async (req, res) => {
 
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-    const { startDate, endDate } = req.body;
-    const {brandId} = req.params;
+    let { startDate, endDate } = req.body;
+    const { brandId } = req.params;
     try {
         const brand = await Brand.findById(brandId);
 
@@ -66,7 +66,7 @@ export const fetchFBAdAccountData = async(req,res)=>{
                 const result = JSON.parse(res.body);
                 if (result.data && result.data.length > 0) {
                     const insight = result.data[0];
-                    const purchase =  insight.actions ? insight.actions.find(action => action.action_type === 'purchase') : null;// Get the first entry of insights
+                    const purchase = insight.actions ? insight.actions.find(action => action.action_type === 'purchase') : null;// Get the first entry of insights
                     return {
                         adAccountId: accountId,
                         spend: insight.spend,
@@ -80,7 +80,7 @@ export const fetchFBAdAccountData = async(req,res)=>{
                         ctr: insight.ctr || 0,
                         cpc: (insight.spend / insight.clicks).toFixed(2) || 0,
                         cpp: purchase?.value ? (insight.spend / purchase.value).toFixed(2) : 0,
-                        account_name:insight.account_name || "",
+                        account_name: insight.account_name || "",
                         clicks: insight.clicks,
                         impressions: insight.impressions,
                         date_start: insight.date_start,
@@ -115,14 +115,123 @@ export const fetchFBAdAccountData = async(req,res)=>{
 }
 
 
+export const fetchFBCampaignData = async (req, res) => {
+
+    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+    let { startDate, endDate } = req.body;
+    const { brandId } = req.params;
+    try {
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return {
+                success: false,
+                message: 'Brand not found.'
+            };
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return {
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.'
+            };
+        }
+
+
+        if (!startDate || !endDate) {
+            startDate = moment().startOf('month').format('YYYY-MM-DD'); // First day of the current month
+            endDate = moment().format('YYYY-MM-DD'); // Current date
+        }
+
+
+        const batchRequests = adAccountIds.map((accountId) => ({
+            method: 'GET',
+            relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas}`,
+        }));
+
+
+        const response = await axios.post(
+            `https://graph.facebook.com/v21.0/`,
+            { batch: batchRequests },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                params: {
+                    access_token: accessToken,
+                },
+            }
+        );
+
+        const results = adAccountIds.map((adAccountId, index) => {
+            const adAccountResponse = response.data[index]; 
+            console.log(`Fetching data for Ad Account ID: ${adAccountId}`);
+        
+            try {
+                const parsedBody = JSON.parse(adAccountResponse.body);
+        
+            
+                if (Array.isArray(parsedBody.data)) {
+                    
+                    const filteredData = parsedBody.data.filter(item => item.insights);
+                    console.log(filteredData);
+        
+                    if (adAccountResponse.code === 200) {
+                        const accountInsights = filteredData.map((campaign) => {
+                            const insightsArray = campaign.insights.data; 
+                            return insightsArray.map((insight) => ({
+                                campaign_name: insight.campaign_name,  
+                                spend: insight.spend,
+                                purchase_roas: insight.purchase_roas,
+                            }));
+                        }).flat(); 
+        
+                        return accountInsights;
+                    } else {
+                        console.error(`Failed to fetch data for ad account with ID ${adAccountId}`);
+                        return {
+                            error: `Failed to fetch data for ad account with ID ${adAccountId}`,
+                        };
+                    }
+                } else {
+                    console.error("Parsed body doesn't contain a 'data' array:", parsedBody);
+                    return {
+                        error: `Parsed body doesn't contain valid data for ad account with ID ${adAccountId}`,
+                    };
+                }
+            } catch (error) {
+                console.error("Error parsing the response body:", error);
+                return {
+                    error: `Error parsing the response body for ad account with ID ${adAccountId}`,
+                };
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: results
+        });
+
+    } catch (e) {
+        console.error('Error fetching Facebook Ad Account data:', e);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching Facebook Ad Account data.',
+            error: e.message
+        });
+    }
+}
+
 
 // Google ADS API DATA 
 
 const client = new GoogleAdsApi({
-  client_id: process.env.GOOGLE_AD_CLIENT_ID,
-  client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
-  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-  refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+    client_id: process.env.GOOGLE_AD_CLIENT_ID,
+    client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
+    developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+    refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
 
 export async function getGoogleAdMetrics(req, res) {
@@ -145,7 +254,7 @@ export async function getGoogleAdMetrics(req, res) {
             // Return an empty response if no Google Ads account is found
             return res.json({
                 success: true,
-                data: {}, 
+                data: {},
                 message: "No Google ads account found for this brand"
             });
         }
@@ -255,7 +364,7 @@ export async function getGoogleCampaignMetrics(req, res) {
         if (!adAccountId || adAccountId.length === 0) {
             return res.json({
                 success: true,
-                data: {}, 
+                data: {},
                 message: "No Google ads account found for this brand"
             });
         }
@@ -316,9 +425,9 @@ export async function getGoogleCampaignMetrics(req, res) {
 
         return res.json({
             success: true,
-            data: campaignData, 
-               
-        
+            data: campaignData,
+
+
         });
     } catch (error) {
         console.error("Failed to fetch campaign-level spend and ROAS:", error);
@@ -333,5 +442,5 @@ export async function getGoogleCampaignMetrics(req, res) {
 
 
 
-  
+
 

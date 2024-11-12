@@ -49,13 +49,13 @@ export default function Dashboard() {
         import.meta.env.PROD
           ? import.meta.env.VITE_API_URL
           : import.meta.env.VITE_LOCAL_API_URL;
-  
+
       const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
       const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
-  
+
       let fbData = [];
       let googleData = [];
-  
+
       if (dataSource === 'all' || dataSource === 'facebook') {
         try {
           const fbAdResponse = await axios.post(
@@ -70,7 +70,7 @@ export default function Dashboard() {
           console.error('Error fetching Facebook ad data:', fbError);
         }
       }
-  
+
       if (dataSource === 'all' || dataSource === 'google') {
         try {
           const googleAdResponse = await axios.post(
@@ -85,7 +85,7 @@ export default function Dashboard() {
           console.error('Error fetching Google ad data:', googleError);
         }
       }
-  
+
       calculateAggregatedMetrics(
         dataSource === 'google' ? [] : fbData,
         dataSource === 'facebook' ? undefined : googleData
@@ -101,7 +101,7 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   }, [navigate, date, dataSource, brandId]);
-  
+
 
 
   useEffect(() => {
@@ -284,7 +284,7 @@ export default function Dashboard() {
                     <Button className='bg-cyan-800'><Filter className="h-5 w-5 mr-2" />Filter</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={dataSource} onValueChange={(value)=>handleDataSourceChange(value as DataSource)}>
+                    <DropdownMenuRadioGroup value={dataSource} onValueChange={(value) => handleDataSourceChange(value as DataSource)}>
                       <DropdownMenuRadioItem value="all">All Data</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="facebook">Facebook Ads</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="google">Google Ads</DropdownMenuRadioItem>
@@ -333,15 +333,34 @@ export default function Dashboard() {
           );
         })}
 
-        {(dataSource === 'all' || dataSource === 'google') && googleAdMetrics && (
-          <AdAccountMetricsCard
-            icon='Google'
-            title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
-            metrics={googleMetrics}
-            date={date || { from: new Date(), to: new Date() }}
-            isLoading={isLoading}
-          />
-        )}
+        {
+          (dataSource === 'all' || dataSource === 'google') && (
+            googleAdMetrics && Object.keys(googleAdMetrics).length > 0 ? (
+              <AdAccountMetricsCard
+                icon="Google"
+                title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
+                metrics={googleMetrics}
+                date={date || { from: new Date(), to: new Date() }}
+                isLoading={isLoading}
+              />
+            ) : (
+              <section>
+                <div className='flex flex-row gap-2 items-center'>
+                <h3 className="text-lg font-semibold">Google Ad Metrics</h3>
+                <svg viewBox="0 0 24 24" className="w-5 h-5">
+                <path d="M13.5437 4.24116L13.5441 4.24138C13.904 4.43971 14.2179 4.70303 14.4689 5.01529C14.7198 5.3275 14.903 5.68264 15.009 6.0601L15.4904 5.92486L15.009 6.0601C15.115 6.43752 15.1422 6.83078 15.0891 7.21776C15.0361 7.60457 14.9038 7.97861 14.6989 8.31855C14.6988 8.31873 14.6987 8.31891 14.6986 8.3191L8.41444 18.701C7.9918 19.3741 7.30557 19.868 6.49825 20.0687C5.68937 20.2699 4.83087 20.1586 4.10949 19.7614C3.38872 19.3646 2.86649 18.7168 2.64727 17.9633C2.42868 17.212 2.5264 16.4083 2.92214 15.7226L9.20689 5.33823C9.20695 5.33813 9.20702 5.33802 9.20708 5.33792C9.62451 4.65082 10.3142 4.14383 11.1301 3.93599C11.9464 3.72804 12.8151 3.83872 13.5437 4.24116Z" fill="#FFB70A" stroke="#FFB70A"></path>
+                <path d="M21.5404 15.4544L15.24 5.04127C14.7453 4.25097 13.9459 3.67817 13.0138 3.44633C12.0817 3.21448 11.0917 3.34215 10.2572 3.80182C9.4226 4.26149 8.8103 5.01636 8.55224 5.90372C8.29418 6.79108 8.41102 7.73988 8.87757 8.54562L15.178 18.9587C15.6726 19.749 16.4721 20.3218 17.4042 20.5537C18.3362 20.7855 19.3262 20.6579 20.1608 20.1982C20.9953 19.7385 21.6076 18.9836 21.8657 18.0963C22.1238 17.2089 22.0069 16.2601 21.5404 15.4544Z" fill="#3B8AD8"></path>
+                <path d="M9.23018 16.2447C9.07335 15.6884 8.77505 15.1775 8.36166 14.7572C7.94827 14.3369 7.43255 14.0202 6.86011 13.835C6.28768 13.6499 5.67618 13.6021 5.07973 13.6958C4.48328 13.7895 3.92026 14.0219 3.44049 14.3723C2.96071 14.7227 2.57898 15.1804 2.32906 15.7049C2.07914 16.2294 1.96873 16.8045 2.00762 17.3794C2.0465 17.9542 2.23347 18.5111 2.55199 19.0007C2.8705 19.4902 3.31074 19.8975 3.83376 20.1863C4.46363 20.5354 5.1882 20.6983 5.91542 20.6542C6.64264 20.6101 7.33969 20.361 7.91802 19.9386C8.49636 19.5162 8.92988 18.9395 9.16351 18.2817C9.39715 17.624 9.42035 16.915 9.23018 16.2447Z" fill="#2CAA14"></path>
+              </svg>
+                </div>
+           
+              <div className="text-center text-gray-500 mt-4 bg-white p-2">
+                No Google Ad Account for this brand.
+              </div>
+              </section>
+            )
+          )
+        }
       </main>
     </div>
   )

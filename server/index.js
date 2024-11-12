@@ -14,6 +14,7 @@ import excelReportRoutes from "./routes/report.js"
 import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
 // import { getAdLevelSpendAndROAS } from "./controller/adMetcris.js";
 import cron from 'node-cron';
+import { addReportData } from "./Report/Report.js";
 
 
 
@@ -62,7 +63,10 @@ cron.schedule('00 2 * * *', async () => {
   }
 }, { timezone: 'UTC' });
 
-// const brandId='671b68bed3c4f462d681ef45';
+
+
+const brandId='671b6925d3c4f462d681ef47';
+addReportData(brandId)
 // fetchTotalSales(brandId)
 const PORT = process.env.PORT || 5000;
 

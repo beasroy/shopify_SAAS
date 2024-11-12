@@ -674,7 +674,87 @@ export const calculateMetricsForAllBrands = async () => {
   }
 };
 
+export const getGoogleAdData =async (brandId)=>{
+  try {
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return {
+        success: false,
+        message: 'Brand not found.',
+      };
+    }
 
+    const adAccountId = brand.googleAdAccount;
+    if (!adAccountIds || adAccountIds.length === 0) {
+      return {
+        success: false,
+        message: 'No Google Ads accounts found for this brand.',
+        data: [],
+      };
+    }
+
+  const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
+    const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
+
+    const customer = client.Customer({
+      customer_id: adAccountId,
+      refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+      login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+  });
+
+  // Fetch the ad-level report using the ad_group_ad entity
+  const adsReport = await customer.report({
+      entity: "ad_group_ad",
+      attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+      metrics: [
+          "metrics.cost_micros",
+          "metrics.conversions_value",
+      ],
+      segments: ["segments.date"],
+      from_date: startDate,
+      to_date: endDate,
+  });
+
+  let totalSpend = 0;
+  let totalConversionsValue = 0;
+
+  // Process each row of the report
+  for (const row of adsReport) {
+      const costMicros = row.metrics.cost_micros || 0;
+      const spend = costMicros / 1_000_000;
+      totalSpend += spend;
+      totalConversionsValue += row.metrics.conversions_value || 0;
+  }
+
+  // Calculate aggregated metrics
+  const roas = totalSpend > 0 ? (totalConversionsValue / totalSpend).toFixed(2) : 0;
+ 
+
+  // Return the response with ad account name included
+  return res.json({
+      success: true,
+      data: {
+          adAccountName,  // Include the ad account name
+          totalSpend: totalSpend.toFixed(2),
+          roas,
+          totalConversionsValue: totalConversionsValue.toFixed(2),
+          totalConversions: totalConversions.toFixed(2),
+          totalCPC,
+          totalCPM,
+          totalCTR,
+          totalCostPerConversion,
+          totalClicks,
+          totalImpressions,
+      }
+  });
+  }catch(e){
+    console.error('Error getting Google Ad data:', e);
+    return {
+      success: false,
+      message: 'An error occurred while fetching Google Ad data.',
+    };
+  }
+}
 
 
 

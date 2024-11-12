@@ -199,11 +199,12 @@ export async function getBatchReports(req, res) {
               LandingPage: row.dimensionValues[0]?.value,
               Visitors: row.metricValues[0]?.value,
               Sessions: row.metricValues[1]?.value,
-              AddToCarts: row.metricValues[2]?.value,
-              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Add_To_Carts: row.metricValues[2]?.value,
+              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Checkouts: row.metricValues[3]?.value,
+              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Purchases:row.metricValues[4]?.value,
-              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 1: // Sessions by Location
@@ -215,11 +216,12 @@ export async function getBatchReports(req, res) {
               Region: row.dimensionValues[2]?.value,
               Visitors: row.metricValues[0]?.value,
               Sessions: row.metricValues[1]?.value,
-              AddToCarts: row.metricValues[2]?.value,
-              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Add_To_Carts: row.metricValues[2]?.value,
+              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Checkouts: row.metricValues[3]?.value,
+              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Purchases:row.metricValues[4]?.value,
-              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 2: // Sessions by Referring Channel
@@ -229,11 +231,12 @@ export async function getBatchReports(req, res) {
               Channel: row.dimensionValues[0]?.value,
               Visitors: row.metricValues[0]?.value,
               Sessions: row.metricValues[1]?.value,
-              AddToCarts: row.metricValues[2]?.value,
-              AddToCartRate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Add_To_Carts: row.metricValues[2]?.value,
+              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Checkouts: row.metricValues[3]?.value,
+              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
               Purchases:row.metricValues[4]?.value,
-              PurchaseRate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
+              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
             }))
           };
         case 3: // Returning Customer Rate

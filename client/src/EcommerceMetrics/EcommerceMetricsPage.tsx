@@ -135,7 +135,7 @@ const EcommerceMetricsPage: React.FC = () => {
     } else if (value > average) {
       return 'green';
     } else {
-      return 'yellow';
+      return '#FFB200';
     }
   };
   

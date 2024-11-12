@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios";
 import { format } from "date-fns"
-import { BriefcaseBusiness, Columns, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { BriefcaseBusiness, Columns, RefreshCw, ChevronLeft, ChevronRight, ArrowDown, ArrowUp } from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox"
@@ -13,19 +13,19 @@ import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
 
-interface CityMetric {
-  city: string;
-  country: string;
-  region: string;
-  addToCarts: string;
-  checkouts: string;
+interface ChannelMetric {
+  Add_To_Carts: string;
+  Add_To_Cart_Rate: string;
+  Checkouts: string;
+  Checkout_Rate: string;
+  Purchase_Rate: string;
   [key: string]: string;
 }
 
 const ChannelSessionPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const now = new Date();
-  const [data, setData] = useState<CityMetric[]>([]);
+  const [data, setData] = useState<ChannelMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
@@ -33,7 +33,7 @@ const ChannelSessionPage: React.FC = () => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [isListVisible, setIsListVisible] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(["Channel", "Sessions", "AddToCarts","AddToCartRate","Checkouts","PurchaseRate"]);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(["Channel", "Sessions", "Add_To_Carts","Add_To_Cart_Rate","Checkouts","Checkout_Rate","Purchase_Rate"]);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -116,6 +116,34 @@ const ChannelSessionPage: React.FC = () => {
   const getTextColor = (sessions: number, maxSessions: number) => {
     const intensity = sessions / maxSessions;
     return intensity > 0.7 ? 'white' : 'black';
+  };
+
+  const averageValues = {
+    Add_To_Cart_Rate: data.reduce((sum, item) => sum + parseFloat(item.Add_To_Cart_Rate), 0) / data.length,
+    Checkout_Rate: data.reduce((sum, item) => sum + parseFloat(item.Checkout_Rate), 0) / data.length,
+    Purchase_Rate: data.reduce((sum, item) => sum + parseFloat(item.Purchase_Rate), 0) / data.length,
+  }
+
+  const getConditionalTextColor = (value: number, average: number) => {
+    if (value > average) {
+      return 'green';
+    } else if (value < average) {
+      return 'red';
+    } else {
+      return '#FFB200';
+    }
+  }
+  const getConditionalIcon = (value: number, average: number) => {
+    if (value < average) {
+      return <ArrowDown className="ml-1 text-red-500 w-3 h-3" />;
+    } else if (value > average) {
+      return <ArrowUp className="ml-1 text-green-500 w-3 h-3" />;
+    } else {
+      return null;
+    }
+  };
+  const parsePercentage = (value: string): number => {
+    return parseFloat(value.replace('%', '').trim());
   };
 
 
@@ -215,19 +243,30 @@ const ChannelSessionPage: React.FC = () => {
               <TableBody>
                 {paginatedData.map((item, index) => (
                   <TableRow key={index}>
-                    {sortedSelectedColumns.map((column) => (
-                      <TableCell
-                        key={column}
-                        className="px-4 py-2 border-b w-[150px] font-medium"
-                        style={{
-                          width: '150px',
-                          backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
-                          color: column === "Sessions" ? getTextColor(Number(item.Sessions), maxSessions) : 'inherit', 
-                        }}
-                      >
-                        {item[column]}
-                      </TableCell>
-                    ))}
+                   {sortedSelectedColumns.map((column) => {
+                      const cellValue = column.includes('Rate')? parsePercentage(item[column as keyof ChannelMetric] as string) : item[column as keyof ChannelMetric]
+                      const isComparisonColumn = ['Add_To_Cart_Rate', 'Checkout_Rate', 'Purchase_Rate'].includes(column);
+                      return(
+                        <TableCell
+                          key={column}
+                          className="px-4 py-2 border-b w-[150px] font-medium"
+                          style={{
+                            width: '150px',
+                            backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
+                            color: column === "Sessions"
+                             ? getTextColor(Number(item.Sessions), maxSessions) 
+                             :isComparisonColumn
+                             ? getConditionalTextColor(cellValue as number, averageValues[column as keyof typeof averageValues])
+                             :'inherit',
+                          }}
+                        >
+                          <div className="flex flex-row items-center justify-center gap-1">
+                          {item[column]}
+                          {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column as keyof typeof averageValues])}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))}
               </TableBody>

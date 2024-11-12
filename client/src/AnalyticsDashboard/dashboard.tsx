@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
-import { Blend, Filter, RefreshCw} from "lucide-react"
+import { Blend, Filter, RefreshCw } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
@@ -10,8 +10,9 @@ import { DatePickerWithRange } from '@/components/dashboard_component/DatePicker
 import { Button } from '@/components/ui/button.tsx';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import ReportsDropdown from '@/components/dashboard_component/ReportDropDown.tsx';
@@ -36,8 +37,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const handleDataSourceChange = (newSource: DataSource) => {
-    setDataSource(newSource)
-  }
+    if (newSource !== dataSource) {
+      setDataSource(newSource);
+    }
+  };
 
   const fetchAdData = useCallback(async () => {
     setIsLoading(true);
@@ -46,41 +49,50 @@ export default function Dashboard() {
         import.meta.env.PROD
           ? import.meta.env.VITE_API_URL
           : import.meta.env.VITE_LOCAL_API_URL;
-
+  
       const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
       const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
-
+  
       let fbData = [];
       let googleData = [];
-
+  
       if (dataSource === 'all' || dataSource === 'facebook') {
-        const fbAdResponse = await axios.post(
-          `${baseURL}/api/metrics/fbad/${brandId}`,
-          { startDate, endDate },
-          { withCredentials: true }
-        );
-        fbData = fbAdResponse.data.data;
-        console.log(fbData);
-        setFbAdAccountsMetrics(fbData);
+        try {
+          const fbAdResponse = await axios.post(
+            `${baseURL}/api/metrics/fbad/${brandId}`,
+            { startDate, endDate },
+            { withCredentials: true }
+          );
+          fbData = fbAdResponse.data.data;
+          console.log(fbData);
+          setFbAdAccountsMetrics(fbData);
+        } catch (fbError) {
+          console.error('Error fetching Facebook ad data:', fbError);
+        }
       }
+  
       if (dataSource === 'all' || dataSource === 'google') {
-        const googleAdResponse = await axios.post(
-          `${baseURL}/api/metrics/googlead/${brandId}`,
-          { startDate, endDate },
-          { withCredentials: true }
-        );
-        googleData = googleAdResponse.data.data;
-        console.log(googleData);
-        setGoogleAdMetrics(googleData);
+        try {
+          const googleAdResponse = await axios.post(
+            `${baseURL}/api/metrics/googlead/${brandId}`,
+            { startDate, endDate },
+            { withCredentials: true }
+          );
+          googleData = googleAdResponse.data.data;
+          console.log(googleData);
+          setGoogleAdMetrics(googleData);
+        } catch (googleError) {
+          console.error('Error fetching Google ad data:', googleError);
+        }
       }
-
+  
       calculateAggregatedMetrics(
         dataSource === 'google' ? [] : fbData,
         dataSource === 'facebook' ? undefined : googleData
-      )
+      );
       setLastUpdated(new Date());
     } catch (error) {
-      console.error('Error fetching fb ad data:', error);
+      console.error('Error fetching ad data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert('Your session has expired. Please log in again.');
         navigate('/');
@@ -89,6 +101,7 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   }, [navigate, date, dataSource, brandId]);
+  
 
 
   useEffect(() => {
@@ -221,7 +234,7 @@ export default function Dashboard() {
 
       <nav className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
         <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-         <DashboardSelector brandId={brandId} />
+          <DashboardSelector brandId={brandId} />
           <div className="flex items-center space-x-2">
             <ReportsDropdown brandId={brandId} />
             <DatePickerWithRange date={date} setDate={setDate}
@@ -251,42 +264,36 @@ export default function Dashboard() {
                 )}
               </div>
               <div className="flex flex-row items-center space-x-2">
-                 <div className="md:flex items-center hidden">
-                {lastUpdated && (
-                  <span className="text-sm text-gray-600 mr-4">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-                <Button
-                  onClick={handleManualRefresh}
-                  disabled={isLoading}
-                  className="flex items-center"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  
-                </Button>
-              </div> 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className='bg-cyan-800'><Filter className="h-5 w-5 mr-2" />Filter</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuCheckboxItem
-                    checked={dataSource === 'all'}
-                    onCheckedChange={() => handleDataSourceChange('all')}
-                    >All Data</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={dataSource === 'facebook'}
-                    onCheckedChange={() => handleDataSourceChange('facebook')}
-                   >Facebook Ads</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={dataSource === 'google'}
-                    onCheckedChange={() => handleDataSourceChange('google')}
-                   >Google Ads</DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                <div className="md:flex items-center hidden">
+                  {lastUpdated && (
+                    <span className="text-sm text-gray-600 mr-4">
+                      Last updated: {lastUpdated.toLocaleTimeString()}
+                    </span>
+                  )}
+                  <Button
+                    onClick={handleManualRefresh}
+                    disabled={isLoading}
+                    className="flex items-center"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+
+                  </Button>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className='bg-cyan-800'><Filter className="h-5 w-5 mr-2" />Filter</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={dataSource} onValueChange={(value)=>handleDataSourceChange(value as DataSource)}>
+                      <DropdownMenuRadioItem value="all">All Data</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="facebook">Facebook Ads</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="google">Google Ads</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
               </div>
-              
+
             </h2>
             <AdAccountMetricsCard metrics={metrics} date={date || { from: new Date(), to: new Date() }} isLoading={isLoading} icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} />
           </section>

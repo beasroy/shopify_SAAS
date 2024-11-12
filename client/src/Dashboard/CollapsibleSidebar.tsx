@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, LogOut, User2Icon, Store } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, ShoppingCart, MapPin, Layout, Share2, Calendar } from 'lucide-react'; // Import Calendar icon
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useBrand } from '@/context/BrandContext';
 import axios from 'axios';
@@ -12,18 +12,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Logo from '@/components/dashboard_component/Logo';
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea from shadcn
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
+  const location = useLocation();
   const navigate = useNavigate();
-  const location = useLocation(); // To get the current URL path
 
   const baseURL =
     import.meta.env.PROD
       ? import.meta.env.VITE_API_URL
       : import.meta.env.VITE_LOCAL_API_URL;
 
+      
   const toggleSidebar = () => {
     setIsExpanded(prev => !prev);
   }
@@ -40,54 +42,130 @@ export default function CollapsibleSidebar() {
     fetchBrands();
   }, [setBrands]);
 
+  const reports = [
+    { name: "Monthly Ad Metrics Reports", icon: <BarChart />, path: `/ad-metrics/${selectedBrandId}` },
+    { name: "Daily E-Commerce Metrics Reports", icon: <ShoppingCart />, path: `/ecommerce-metrics/${selectedBrandId}` },
+    { name: "City based Reports", icon: <MapPin />, path: `/city-metrics/${selectedBrandId}` },
+    { name: "Landing Page based Reports", icon: <Layout />, path: `/page-metrics/${selectedBrandId}` },
+    { name: "Referring Channel based Reports", icon: <Share2 />, path: `/channel-metrics/${selectedBrandId}` },
+  ];
+
   return (
     <TooltipProvider>
       <div
-        className={`bg-gray-800 text-white transition-all duration-300 ease-in-out flex flex-col justify-between ${isExpanded ? 'w-64' : 'w-16'}`}
+        className={`bg-gray-800 text-white transition-all duration-300 ease-in-out flex flex-col ${isExpanded ? 'w-64' : 'w-16'}`}
+        style={{ height: '100vh' }} // Ensure the sidebar takes full viewport height
       >
-        <div>
-          <div className="flex justify-end p-4">
-            <button
-              onClick={toggleSidebar}
-              className="text-gray-300 hover:text-white focus:outline-none"
-              aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              {isExpanded ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
-            </button>
-          </div>
-          <nav className="mt-3 overflow-y-auto max-h-[calc(100vh-200px)]">
-            <SidebarItem
-              icon={<Logo />}
-              text={"Messold"}
-              isExpanded={isExpanded}
-              isSelected={true}
-              tooltipContent="Messold"
-            />
-            {brands.map(brand => (
+        <div className={`flex-1 overflow-y-auto ${isExpanded ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-16px)]'}`}>
+          <ScrollArea className="h-full">
+            <div className="flex justify-end p-4">
+              <button
+                onClick={toggleSidebar}
+                className="text-gray-300 hover:text-white focus:outline-none"
+                aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {isExpanded ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+              </button>
+            </div>
+            <nav className="mt-3">
               <SidebarItem
-                key={brand._id}
-                icon={<Store size={24} />}
-                // icon={<img src={"https://houseofawadh.com/cdn/shop/files/HOA_Logo-06.png?v=1684394643&width=250"} alt={brand.name} className="w-8 h-8 rounded-full bg-white" style={{ width: '28px', height: '28px' }} />}  
-                //uncomment this when adding logos from db
-                text={brand.name.replace(/_/g, ' ')}
+                icon={<Logo />}
+                text={"Messold"}
                 isExpanded={isExpanded}
-                isSelected={location.pathname.includes(brand._id) || selectedBrandId === brand._id} // Selected if brandId in URL
-                tooltipContent={brand.name}
-                onClick={() => {
-                  setSelectedBrandId(brand._id);
-                  navigate(`/business-dashboard/${brand._id}`);
-                }}
+                isSelected={true}
+                tooltipContent="Messold"
               />
-            ))}
-          </nav>
+            </nav>
+            <nav className="mt-3">
+              <SidebarItem
+                icon={<Store size={24} />}
+                text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') || "Unknown Brand" : "Your Brands"}
+                isExpanded={isExpanded}
+                openIcon={<ChevronUp />}
+                closeIcon={<ChevronDown />}
+                isSelected={!!selectedBrandId}
+                tooltipContent="Your Brands"
+              >
+                {brands.map(brand => (
+                  <SidebarChild
+                    key={brand._id}
+                    path={`/${brand._id}`}
+                    text={brand.name.replace(/_/g, ' ')}
+                    onClick={() => setSelectedBrandId(brand._id)}
+                    selectedBrandId={selectedBrandId}
+                    isSelected={selectedBrandId === brand._id} // Highlight selected brand
+                  />
+                ))}
+              </SidebarItem>
+              <SidebarItem
+                icon={<ChartColumn size={24} />}
+                text="Analytics"
+                isExpanded={isExpanded}
+                openIcon={<ChevronUp />}
+                closeIcon={<ChevronDown />}
+                isSelected={location.pathname.includes("/business-dashboard") || location.pathname.includes("/analytics-dashboard")}
+                tooltipContent="Analytics"
+              >
+                <SidebarChild path={`/business-dashboard/${selectedBrandId || ''}`} text="Business Dashboard" />
+                <SidebarChild path={`/analytics-dashboard/${selectedBrandId || ''}`} text="Metrics Dashboard"
+                  disabled={
+                    !selectedBrandId || 
+                    !brands || 
+                    brands.length === 0 || 
+                    !brands.find(b => b._id === selectedBrandId)?.fbAdAccounts?.length
+                  } />
+              </SidebarItem>
+              <SidebarItem
+                icon={<Calendar />}
+                text="Reports"
+                isExpanded={isExpanded}
+                openIcon={<ChevronUp />}
+                closeIcon={<ChevronDown />}
+                isSelected={false}
+                tooltipContent="Reports"
+              >
+                {reports.map(report => (
+                  <SidebarChild
+                    key={report.name}
+                    path={report.path}
+                    text={report.name}
+                    onClick={() => navigate(report.path)} 
+                    selectedBrandId={selectedBrandId}
+                    isSelected={location.pathname === report.path} // Check if the report is selected
+                  >
+                    {report.icon}
+                  </SidebarChild>
+                ))}
+              </SidebarItem>
+            </nav>
+          </ScrollArea>
         </div>
-        <UserProfile isExpanded={isExpanded} />
+
+        {/* Fixed User Profile and Logout Section */}
+        <div className="flex flex-col p-4">
+          <UserProfile isExpanded={isExpanded} />
+          <LogoutButton handleLogout={() => {
+            const baseURL = import.meta.env.PROD
+              ? import.meta.env.VITE_API_URL
+              : import.meta.env.VITE_LOCAL_API_URL;
+
+            axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true })
+              .then(() => {
+                setUser(null);
+                resetBrand();
+                navigate('/');
+              })
+              .catch(error => console.error('Error logging out:', error));
+          }} isExpanded={isExpanded} /> {/* Pass isExpanded prop */}
+        </div>
       </div>
     </TooltipProvider>
   );
 }
 
-function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipContent, onClick }: {
+// SidebarItem and SidebarChild components remain unchanged.
+
+function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent }: {
   icon?: React.ReactNode;
   text: string;
   isExpanded: boolean;
@@ -96,19 +174,22 @@ function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipConte
   children?: React.ReactNode;
   isSelected: boolean;
   tooltipContent: string;
-  onClick?: () => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
 
-
+  const handleToggle = () => {
+    setIsOpen(prev => !prev);
+  };
 
   const content = (
     <div
-      onClick={onClick}
+      onClick={handleToggle}
       className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors
          duration-200 cursor-pointer ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}
     >
-      <span className={isExpanded ? 'mr-2': 'mr-0'}>{icon}</span>
+      <span className="mr-4">{icon}</span>
       {isExpanded && <span className="text-sm">{text}</span>}
+      {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
     </div>
   );
 
@@ -120,7 +201,7 @@ function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipConte
             {content}
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p>{tooltipContent}</p>
+            <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>{tooltipContent}</p>
             {React.Children.map(children, (child) => (
               <div className="relative">
                 <div className="absolute top-0 w-1 h-full bg-gray-500" />
@@ -132,7 +213,7 @@ function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipConte
       ) : (
         content
       )}
-      {isExpanded && (
+      {isOpen && isExpanded && (
         <div className="relative pl-8">
           <div className="absolute top-0 w-1 h-full bg-gray-500" />
           {React.Children.map(children, (child) => (
@@ -144,44 +225,60 @@ function SidebarItem({ icon, text, isExpanded,children, isSelected, tooltipConte
   );
 }
 
+function SidebarChild({
+  path,
+  text,
+  onClick,
+  selectedBrandId,
+  disabled,
+  isSelected, // New prop to determine if the child is selected
+}: {
+  path: string;
+  text: string;
+  onClick?: () => void;
+  selectedBrandId?: string | null;
+  disabled?: boolean;
+  isSelected?: boolean; // New prop
+}) {
+  const { pathname } = useLocation();
+  const isSelectedChild = isSelected || pathname === path || (selectedBrandId === path.split('/').pop());
+
+  // Apply styles conditionally based on whether the item is disabled or not
+  const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${
+    isSelectedChild ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'
+  } ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+
+  return disabled ? (
+    <div className={baseClasses}>
+      {text}
+      {isSelectedChild && <div className="absolute left-0 w-1 h-full bg-white" />}
+    </div>
+  ) : (
+    <NavLink
+      to={path}
+      className={baseClasses}
+      onClick={(e) => {
+        if (onClick) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      {text}
+      {isSelectedChild && <div className="absolute left-0 w-1 h-full bg-white" />}
+    </NavLink>
+  );
+}
 
 function UserProfile({ isExpanded }: { isExpanded: boolean }) {
-  const { user, setUser } = useUser();
-  const { resetBrand } = useBrand();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
-      await axios.post(`${baseURL}/api/auth/logout`, {}, {
-        withCredentials: true
-      });
-
-      setUser(null);
-      resetBrand();
-      navigate('/');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
+  const { user } = useUser();
 
   const userProfileContent = (
-    <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+    <div className={'flex items-center gap-2 px-2 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
       <span className="text-gray-300 hover:text-white">
         <User2Icon size={24} />
       </span>
-      {isExpanded && <span className="text-sm mr-2">{user?.username || 'user'}</span>}
-    </div>
-  );
-
-  const logoutContent = (
-    <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
-      <span className="text-gray-300 hover:text-white">
-        <LogOut onClick={handleLogout} size={24} />
-      </span>
+      {isExpanded && <span className="text-sm">{user?.username || 'user'}</span>}
     </div>
   );
 
@@ -199,18 +296,24 @@ function UserProfile({ isExpanded }: { isExpanded: boolean }) {
       ) : (
         userProfileContent
       )}
-      {!isExpanded ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {logoutContent}
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Logout</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        logoutContent
-      )}
     </div>
+  );
+}
+
+function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={'flex items-center gap-2 px-2 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+          <span className="text-gray-300 hover:text-white">
+            <LogOut onClick={handleLogout} size={24} />
+          </span>
+          {isExpanded && <span className="text-sm">Logout</span>} {/* Show text only if expanded */}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>Logout</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

@@ -251,7 +251,7 @@ function SidebarChild({
   text,
   onClick,
   disabled,
-  isSelected, // New prop to determine if the child is selected
+  isSelected, 
 }: {
   path: string;
   text: string;
@@ -262,7 +262,6 @@ function SidebarChild({
   const { pathname } = useLocation();
   const isSelectedChild = isSelected || pathname === path;
 
-  // Apply styles conditionally based on whether the item is disabled or not
   const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${
     isSelectedChild ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'
   } ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;

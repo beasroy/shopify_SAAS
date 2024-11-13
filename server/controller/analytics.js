@@ -193,51 +193,51 @@ export async function getBatchReports(req, res) {
       // Add a unique report type for each report
       switch (index) {
         case 0: // Landing Page Report
-          return {
-            reportType: 'Landing Page Report',
-            data: report.rows.map(row => ({
-              LandingPage: row.dimensionValues[0]?.value,
-              Visitors: row.metricValues[0]?.value,
-              Sessions: row.metricValues[1]?.value,
-              Add_To_Carts: row.metricValues[2]?.value,
-              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Checkouts: row.metricValues[3]?.value,
-              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Purchases:row.metricValues[4]?.value,
-              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-            }))
-          };
+        return {
+          reportType: 'Landing Page Report',
+          data: report.rows.map(row => ({
+            "Landing Page": row.dimensionValues[0]?.value,
+            "Visitors": row.metricValues[0]?.value,
+            "Sessions": row.metricValues[1]?.value,
+            "Add To Carts": row.metricValues[2]?.value,
+            "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            "Checkouts": row.metricValues[3]?.value,
+            "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            "Purchases": row.metricValues[4]?.value,
+            "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+          }))
+        };
         case 1: // Sessions by Location
-          return {
-            reportType: 'Sessions by Location',
-            data: report.rows.map(row => ({
-              City: row.dimensionValues[0]?.value,
-              Country: row.dimensionValues[1]?.value,
-              Region: row.dimensionValues[2]?.value,
-              Visitors: row.metricValues[0]?.value,
-              Sessions: row.metricValues[1]?.value,
-              Add_To_Carts: row.metricValues[2]?.value,
-              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Checkouts: row.metricValues[3]?.value,
-              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Purchases:row.metricValues[4]?.value,
-              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-            }))
-          };
+        return {
+          reportType: 'Sessions by Location',
+          data: report.rows.map(row => ({
+            "City": row.dimensionValues[0]?.value,
+            "Country": row.dimensionValues[1]?.value,
+            "Region": row.dimensionValues[2]?.value,
+            "Visitors": row.metricValues[0]?.value,
+            "Sessions": row.metricValues[1]?.value,
+            "Add To Carts": row.metricValues[2]?.value,
+            "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            "Checkouts": row.metricValues[3]?.value,
+            "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            "Purchases": row.metricValues[4]?.value,
+            "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+          }))
+        };
         case 2: // Sessions by Referring Channel
           return {
-            reportType: 'Sessions by Referring Channel',
-            data: report.rows.map(row => ({
-              Channel: row.dimensionValues[0]?.value,
-              Visitors: row.metricValues[0]?.value,
-              Sessions: row.metricValues[1]?.value,
-              Add_To_Carts: row.metricValues[2]?.value,
-              Add_To_Cart_Rate: ((row.metricValues[2]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Checkouts: row.metricValues[3]?.value,
-              Checkout_Rate:((row.metricValues[3]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-              Purchases:row.metricValues[4]?.value,
-              Purchase_Rate:((row.metricValues[4]?.value/row.metricValues[1]?.value)*100).toFixed(2) || 0,
-            }))
+              reportType: 'Sessions by Referring Channel',
+              data: report.rows.map(row => ({
+                "Channel": row.dimensionValues[0]?.value,
+                "Visitors": row.metricValues[0]?.value,
+                "Sessions": row.metricValues[1]?.value,
+                "Add To Carts": row.metricValues[2]?.value,
+                "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+                "Checkouts": row.metricValues[3]?.value,
+                "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+                "Purchases": row.metricValues[4]?.value,
+                "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+              }))
           };
         case 3: // Returning Customer Rate
           return {
@@ -354,14 +354,14 @@ console.log("Date Range:", startDate, "to", endDate);
       const Date = row.dimensionValues[0]?.value;
       const formattedDate = moment(Date).format("DD-MM-YYYY");
       data.push({
-        Date:formattedDate,
-        Sessions: row.metricValues[0]?.value || 0,
-        Add_To_Carts: row.metricValues[1]?.value || 0,
-        Add_To_Cart_Rate: `${((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
-        Checkouts: row.metricValues[2]?.value || 0,
-        Checkouts_Rate: `${((row.metricValues[2]?.value/ row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
-        Purchases: row.metricValues[3]?.value || 0,
-        Purchase_Rate:`${((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Date":formattedDate,
+        "Sessions": row.metricValues[0]?.value || 0,
+        "Add To Carts": row.metricValues[1]?.value || 0,
+        "Add To Cart Rate": `${((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Checkouts": row.metricValues[2]?.value || 0,
+        "Checkout Rate": `${((row.metricValues[2]?.value/ row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Purchases": row.metricValues[3]?.value || 0,
+        "Purchase Rate":`${((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
       });
     });
 

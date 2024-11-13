@@ -1,24 +1,30 @@
-
-
-import { useState, useCallback, useEffect } from "react";
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from "axios";
+import { useState, useCallback, useEffect } from "react"
+import { useNavigate, useParams } from 'react-router-dom'
+import axios from "axios"
 import { format } from "date-fns"
-import { BriefcaseBusiness, Columns, RefreshCw, ChevronLeft, ChevronRight, ArrowDown, ArrowUp } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, Columns, RefreshCw } from "lucide-react"
 import { DateRange } from "react-day-picker"
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
-// import ReportsDropdown from "@/components/dashboard_component/ReportDropDown";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
+import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
+import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
+import ReportTable from "@/components/dashboard_component/ReportTable"
 
 interface PageMetric {
-  Add_To_Carts: string;
-  Add_To_Cart_Rate: string;
-  Checkouts: string;
-  Checkout_Rate: string;
-  Purchase_Rate: string;
+  "Add To Carts": string;
+  "Add To Cart Rate": string;
+  "Checkouts" : string;
+  "Checkout Rate": string;
+  "Purchases":string;
+  "Purchase Rate": string;
   [key: string]: string;
 }
 
@@ -32,18 +38,9 @@ const LandingPageSession: React.FC = () => {
   const navigate = useNavigate();
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
-  const [isListVisible, setIsListVisible] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(["LandingPage", "Sessions", "Add_To_Carts", "Add_To_Cart_Rate", "Checkouts", "Checkout_Rate", "Purchase_Rate"]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
-
-  const resetToFirstPage = () => {
-    setCurrentPage(1);
-  }
-
-  const toggleList = () => {
-    setIsListVisible(!isListVisible);
-  };
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [rowsToShow, setRowsToShow] = useState(50)
+  
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -69,8 +66,13 @@ const LandingPageSession: React.FC = () => {
         withCredentials: true
       });
 
-      setData(analyticsResponse.data[0].data || []);
+      const fetchedData = analyticsResponse.data[0].data || []
+
+      setData(fetchedData);
       setLastUpdated(new Date());
+      if (fetchedData.length > 0) {
+        setSelectedColumns(Object.keys(fetchedData[0]));
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -99,75 +101,26 @@ const LandingPageSession: React.FC = () => {
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
   const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
 
-  const totalPages = Math.ceil(data.length / rowsPerPage);
-  const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-
-  const parsedData = data.map(item => ({
-    ...item,
-    Sessions: Number(item.Sessions),
-  }));
-  // console.log('parseddata', parsedData);
-  const maxSessions = Math.max(...parsedData.map(item => item.Sessions));
-
-  const getBackgroundColor = (sessions: number, maxSessions: number) => {
-    const intensity = sessions / maxSessions;
-    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`;
-  };
-  const getTextColor = (sessions: number, maxSessions: number) => {
-    const intensity = sessions / maxSessions;
-    return intensity > 0.7 ? 'white' : 'black';
-  };
-
-  const averageValues = {
-    Add_To_Cart_Rate: data.reduce((sum, item) => sum + parseFloat(item.Add_To_Cart_Rate), 0) / data.length,
-    Checkout_Rate: data.reduce((sum, item) => sum + parseFloat(item.Checkout_Rate), 0) / data.length,
-    Purchase_Rate: data.reduce((sum, item) => sum + parseFloat(item.Purchase_Rate), 0) / data.length,
-  }
-
-  const getConditionalTextColor = (value: number, average: number) => {
-    if (value > average) {
-      return 'green';
-    } else if (value < average) {
-      return 'red';
-    } else {
-      return '#FFB200';
-    }
-  }
-  const getConditionalIcon = (value: number, average: number) => {
-    if (value < average) {
-      return <ArrowDown className="ml-1 text-red-500 w-3 h-3" />;
-    } else if (value > average) {
-      return <ArrowUp className="ml-1 text-green-500 w-3 h-3" />;
-    } else {
-      return null;
-    }
-  };
-  const parsePercentage = (value: string): number => {
-    return parseFloat(value.replace('%', '').trim());
-  };
-
 
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-auto">
+      <div className="flex-1 h-screen overflow-hidden">
         <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2">
               <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
               <h1 className="text-2xl font-bold">Landing Page Metrics Overview</h1>
             </div>
-            <div className="flex flex-row space-x-3 items-center">
-              {/* <ReportsDropdown brandId={brandId} /> */}
+            <div className="flex flex-col lg:flex-row lg:space-x-3 items-center">
               <div className="flex items-center space-x-4">
                 <DatePickerWithRange
                   date={date}
                   setDate={setDate}
                   defaultDate={{
                     from: new Date(now.getFullYear(), now.getMonth(), 1),
-                    to: now
+                    to: now,
                   }}
-                  resetToFirstPage={resetToFirstPage}
                 />
               </div>
             </div>
@@ -175,127 +128,73 @@ const LandingPageSession: React.FC = () => {
         </header>
 
         <div className="m-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-lg font-semibold">
-              Key performance indicators for your online store
-            </h1>
-            <div className="flex flex-row items-center space-x-2">
-              <div className="md:flex items-center hidden">
+          <div className="flex flex-col md:flex-row gap-5 justify-start items-start md:justify-between md:items-center mb-6">
+            <h1 className="text-lg font-semibold">Key performance indicators for your online store</h1>
+            <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:space-x-2">
+              <div className="lg:flex items-center hidden">
                 {lastUpdated && (
                   <span className="text-sm text-gray-600 mr-4">
                     Last updated: {lastUpdated.toLocaleTimeString()}
                   </span>
                 )}
-                <Button
-                  onClick={handleManualRefresh}
-                  disabled={isLoading}
-                  className="flex items-center"
-                >
+                <Button onClick={handleManualRefresh} disabled={isLoading} className="flex items-center">
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-
                 </Button>
               </div>
-              <Button
-                onClick={toggleList}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Columns className="h-4 w-4" />
-                <span>Select Columns</span>
-              </Button>
-            </div>
-          </div>
-
-          {isListVisible && (
-            <div className="mb-4 p-4 border rounded-md bg-background">
-              <h2 className="text-sm font-semibold mb-2">Select columns to display:</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                {allColumns.map((column) => (
-                  <div key={column} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`column-${column}`}
-                      checked={selectedColumns.includes(column)}
-                      onCheckedChange={() => toggleColumnSelection(column)}
-                    />
-                    <label
-                      htmlFor={`column-${column}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {column}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="border rounded-md">
-            <Table className="text-center">
-              <TableHeader className="bg-gray-200">
-                <TableRow>
-                  {sortedSelectedColumns.map((column) => (
-                    <TableCell key={column} className="font-bold px-4 text-black w-[150px]">
-                      {column}
-                    </TableCell>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Columns className="h-4 w-4" />
+                    <span>Select Columns</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-44">
+                  {allColumns.map((column) => (
+                    <div key={column} className="flex items-center space-x-2 p-2">
+                      <Checkbox
+                        id={`column-${column}`}
+                        checked={selectedColumns.includes(column)}
+                        onCheckedChange={() => toggleColumnSelection(column)}
+                      />
+                      <label
+                        htmlFor={`column-${column}`}
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {column}
+                      </label>
+                    </div>
                   ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.map((item, index) => (
-                  <TableRow key={index}>
-                    {sortedSelectedColumns.map((column) => {
-                      const cellValue = column.includes('Rate')? parsePercentage(item[column as keyof PageMetric] as string) : item[column as keyof PageMetric]
-                      const isComparisonColumn = ['Add_To_Cart_Rate', 'Checkout_Rate', 'Purchase_Rate'].includes(column);
-                      return(
-                        <TableCell
-                          key={column}
-                          className="px-4 py-2 border-b w-[150px] font-medium"
-                          style={{
-                            width: '150px',
-                            backgroundColor: column === "Sessions" ? getBackgroundColor(Number(item.Sessions), maxSessions) : '',
-                            color: column === "Sessions"
-                             ? getTextColor(Number(item.Sessions), maxSessions) 
-                             :isComparisonColumn
-                             ? getConditionalTextColor(cellValue as number, averageValues[column as keyof typeof averageValues])
-                             :'inherit',
-                          }}
-                        >
-                          <div className="flex flex-row items-center justify-center gap-1">
-                          {item[column]}
-                          {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column as keyof typeof averageValues])}
-                          </div>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-[180px]">
+                    Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-10 mt-4">
-            <Button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="flex items-center"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-            </Button>
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="flex items-center"
-            >
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
+          <div className="relative border rounded-md overflow-hidden" style={{ maxHeight: 'calc(100vh - 183px)' }}>
+            <div className="overflow-auto h-full">
+            {isLoading ? (
+                <TableSkeleton />
+              ) : (
+                <ReportTable columns={sortedSelectedColumns} data={data} rowsToShow={rowsToShow} />
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default LandingPageSession;

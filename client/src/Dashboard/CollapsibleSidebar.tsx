@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChartColumn, ChevronDown, ChevronUp, LogOut, User2Icon, Store, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, BarChart2, FileText, MapPin, Link2, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useBrand } from '@/context/BrandContext';
 import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import Logo from '@/components/dashboard_component/Logo';
+import Logo from "../assets/messold-icon.png"; // Ensure this path is correct
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function CollapsibleSidebar() {
@@ -55,20 +55,21 @@ export default function CollapsibleSidebar() {
         }
     }, [location.pathname]);
 
-    // Define report paths
+    // Define report paths and icons
     const reports = [
-        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}` },
-        { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}` },
-        { name: "City based Reports", path: `/city-metrics/${selectedBrandId}` },
-        { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}` },
-        { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}` },
+        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <BarChart2 size={24} /> },
+        { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <FileText size={24} /> },
+        { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={24} /> },
+        { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <Link2 size={24} /> },
+        { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Calendar size={24} /> },
     ];
 
-    // Check if any report is selected
-    const isReportSelected = reports.some(report => location.pathname === report.path);
+    // Define dashboard paths
+    const dashboards = [
+        { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={24} /> },
+        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={24} /> },
+    ];
 
-    // Determine if the analytics section is selected
-    const isAnalyticsSelected = location.pathname.includes("/business-dashboard") || location.pathname.includes("/analytics-dashboard");
 
     return (
         <TooltipProvider>
@@ -81,8 +82,24 @@ export default function CollapsibleSidebar() {
                             </button>
                         </div>
                         <nav className="mt-3">
-                            <SidebarItem icon={<Logo />} text={"Messold"} isExpanded={isExpanded} isSelected={true} tooltipContent="Messold" />
+                            <SidebarItem 
+                                icon={
+                                    <div className="flex items-center justify-center h-8 w-auto flex-shrink-0">
+                                        <img 
+                                            src={Logo} 
+                                            alt="Messold Logo" 
+                                            className="h-full w-auto max-w-none" 
+                                        />
+                                    </div>
+                                } 
+                                text={"Messold"} 
+                                isExpanded={isExpanded} 
+                                isSelected={true} 
+                                tooltipContent="Messold" 
+                                onClick={() => navigate('/dashboard')}
+                            />
                         </nav>
+
                         <nav className="mt-3">
                             <SidebarItem 
                                 icon={<Store size={24} />} 
@@ -102,37 +119,36 @@ export default function CollapsibleSidebar() {
                                             setSelectedBrandId(brand._id);
                                             navigate(`/business-dashboard/${brand._id}`);
                                         }} 
-                                        isSelected={selectedBrandId === brand._id || (location.pathname.includes(`/ad-metrics/${brand._id}`) || location.pathname.includes(`/ecommerce-metrics/${brand._id}`) || location.pathname.includes(`/city-metrics/${brand._id}`) || location.pathname.includes(`/page-metrics/${brand._id}`) || location.pathname.includes(`/channel-metrics/${brand._id}`))} // Highlight if on this brand's dashboard or any of its reports
+                                        isSelected={selectedBrandId === brand._id || (location.pathname.includes(`/ad-metrics/${brand._id}`) || location.pathname.includes(`/ecommerce-metrics/${brand._id}`) || location.pathname.includes(`/city-metrics/${brand._id}`) || location.pathname.includes(`/page-metrics/${brand._id}`) || location.pathname.includes(`/channel-metrics/${brand._id}`))}
                                     />
                                 ))}
                             </SidebarItem>
-                            <SidebarItem 
-                                icon={<ChartColumn size={24} />} 
-                                text="Analytics" 
-                                isExpanded={isExpanded} 
-                                openIcon={<ChevronUp />} 
-                                closeIcon={<ChevronDown />} 
-                                isSelected={isAnalyticsSelected} // Highlight if in analytics section
-                                tooltipContent="Analytics"
-                            >
-                                <SidebarChild 
-                                    path={`/business-dashboard/${selectedBrandId || ''}`} 
-                                    text="Business Dashboard" 
-                                    onClick={() => navigate(`/business-dashboard/${selectedBrandId || ''}`)} 
-                                    isSelected={location.pathname === `/business-dashboard/${selectedBrandId || ''}`} // Highlight if on business dashboard
+
+                            {/* Add Business and Analytics Dashboards */}
+                            {dashboards.map((dashboard, index) => (
+                                <SidebarItem 
+                                    key={index}
+                                    icon={dashboard.icon}
+                                    text={dashboard.name}
+                                    isExpanded={isExpanded}
+                                    isSelected={location.pathname === dashboard.path}
+                                    tooltipContent={dashboard.name}
+                                    onClick={() => navigate(dashboard.path)} 
                                 />
-                                <SidebarChild 
-                                    path={`/analytics-dashboard/${selectedBrandId || ''}`} 
-                                    text="Metrics Dashboard" 
-                                    disabled={!selectedBrandId || !brands.find(b => b._id === selectedBrandId)?.fbAdAccounts?.length} 
-                                    isSelected={location.pathname === `/analytics-dashboard/${selectedBrandId || ''}`} // Highlight if on analytics dashboard
+                            ))}
+
+                            {/* Move Reports directly as SidebarItems */}
+                            {reports.map((report, index) => (
+                                <SidebarItem 
+                                    key={index}
+                                    icon={report.icon}
+                                    text={report.name}
+                                    isExpanded={isExpanded}
+                                    isSelected={location.pathname === report.path}
+                                    tooltipContent={report.name}
+                                    onClick={() => navigate(report.path)} 
                                 />
-                            </SidebarItem>
-                            <SidebarItem icon={<Calendar />} text="Reports" isExpanded={isExpanded} openIcon={<ChevronUp />} closeIcon={<ChevronDown />} isSelected={isReportSelected} tooltipContent="Reports">
-                                {reports.map(report => (
-                                    <SidebarChild key={report.name} path={report.path} text={report.name} onClick={() => navigate(report.path)} isSelected={location.pathname === report.path} />
-                                ))}
-                            </SidebarItem>
+                            ))}
                         </nav>
                     </ScrollArea>
                 </div>
@@ -145,110 +161,90 @@ export default function CollapsibleSidebar() {
     );
 }
 
-function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent }: {
-    icon?: React.ReactNode; text: string; isExpanded: boolean; openIcon?: React.ReactNode; closeIcon?: React.ReactNode; children?: React.ReactNode; isSelected: boolean; tooltipContent: string; }) {
 
-    const [isOpen, setIsOpen] = useState(false);
+    function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent, onClick }: {
+        icon?: React.ReactNode; text: string; isExpanded: boolean; openIcon?: React.ReactNode; closeIcon?: React.ReactNode; children?: React.ReactNode; isSelected: boolean; tooltipContent: string; onClick?: () => void }) {
 
-    const handleToggle = () => {
-        setIsOpen(prev => !prev);
-    };
+        const [isOpen, setIsOpen] = useState(false);
 
-    const content = (
-        <div onClick={handleToggle} className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}>
-            <span className="mr-4">{icon}</span> 
-            {isExpanded && <span className="text-sm">{text}</span>} 
-            {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
-        </div>
-    );
+        const handleToggle = () => {
+            setIsOpen(prev => !prev);
+        };
 
-    return (
-        <div>
-            {!isExpanded ? (
-                <Tooltip>
-                    <TooltipTrigger asChild>{content}</TooltipTrigger>
-                    <TooltipContent side="right">
-                        <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>{tooltipContent}</p>
+        const content = (
+            <div onClick={onClick || handleToggle} className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isSelected ? 'text-white font-semibold relative' : 'text-gray-100'}`}>
+                <span className="mr-4">{icon}</span> 
+                {isExpanded && <span className="text-sm">{text}</span>} 
+                {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
+            </div>
+        );
+
+        return (
+            <div>
+                {!isExpanded ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>{content}</TooltipTrigger>
+                        <TooltipContent side="right">
+                            <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>{tooltipContent}</p>
+                            {React.Children.map(children, (child) => (
+                                <div className="relative">
+                                    <div className="absolute top-0 w-1 h-full bg-gray-500" />
+                                    {child}
+                                </div>
+                            ))}
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    content
+                )}
+                {isOpen && isExpanded && (
+                    <div className="relative pl-8">
+                        <div className="absolute top-0 w-1 h-full bg-gray-500" />
                         {React.Children.map(children, (child) => (
-                            <div className="relative">
-                                <div className="absolute top-0 w-1 h-full bg-gray-500" />
-                                {child}
-                            </div>
+                            <div>{child}</div>
                         ))}
-                    </TooltipContent>
-                </Tooltip>
-            ) : (
-                content
-            )}
-            {isOpen && isExpanded && (
-                <div className="relative pl-8">
-                    <div className="absolute top-0 w-1 h-full bg-gray-500" />
-                    {React.Children.map(children, (child) => (
-                        <div>{child}</div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
+                    </div>
+                )}
+            </div>
+        );
+    }
 
-function SidebarChild({ path, text, onClick, disabled = false, isSelected }: {
-    path: string; text: string; onClick?: () => void; disabled?: boolean; isSelected?: boolean; }): JSX.Element {
+    function SidebarChild({ path, text, onClick, disabled = false, isSelected }: {
+        path: string; text: string; onClick?: () => void; disabled?: boolean; isSelected?: boolean; }): JSX.Element {
 
-    const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+        const baseClasses = `flex items-center text-sm w-full p-3 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
 
-    return disabled ? (
-        <div className={baseClasses}>
-            {text}
-            {isSelected && <div className="absolute left-0 w-1 h-full bg-white" />}
-        </div>
-    ) : (
-        <NavLink to={path} className={baseClasses} onClick={(e) => {
-            if (onClick) {
-                e.preventDefault();
-                onClick();
-            }
-        }}>
-            {text}
-            {isSelected && <div className="absolute left-0 top-0 w-1 h-full bg-white" />}
-        </NavLink>
-    );
-}
+        return disabled ? (
+            <div className={baseClasses}>
+                {text}
+                {isSelected && <div className="absolute left-0 w-1 h-full bg-white" />}
+            </div>
+        ) : (
+            <NavLink to={path} className={baseClasses} onClick={(e) => {
+                if (onClick) {
+                    e.preventDefault();
+                    onClick();
+                }
+            }}>
+                {text}
+                {isSelected && <div className="absolute left-0 top-0 w-1 h-full bg-white" />}
+            </NavLink>
+        );
+    }
+    function UserProfile({ isExpanded }: { isExpanded: boolean }) {
+        return (
+            <div className={`flex items-center p-4 cursor-pointer ${isExpanded ? 'text-white' : 'text-gray-300'}`}>
+                <User2Icon size={24} />
+                {isExpanded && <span className="ml-4">User</span>}
+            </div>
+        );
+    }
 
-function UserProfile({ isExpanded }: { isExpanded: boolean }) {
-    const { user } = useUser();
-
-    const userProfileContent = (
-        <div className={'flex items-center gap-2 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
-            <span className="text-gray-300 hover:text-white"><User2Icon size={24} /></span> 
-            {isExpanded && <span className="text-sm">{user?.username || 'user'}</span>}
-        </div>
-    );
-
-    return (
-        <div>
-            {!isExpanded ? (
-                <Tooltip>
-                    <TooltipTrigger asChild>{userProfileContent}</TooltipTrigger>
-                    <TooltipContent side="right"><p>{user?.username || 'user'}</p></TooltipContent>
-                </Tooltip>
-            ) : (
-                userProfileContent
-            )}
-        </div>
-    );
-}
-
-function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) {
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <div className={'flex items-center gap-2 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'} onClick={handleLogout}>
-                    <span className="text-gray-300 hover:text-white"><LogOut size={24} /></span> 
-                    {isExpanded && <span className="text-sm">Logout</span>}
-                </div>
-            </TooltipTrigger>
-            <TooltipContent side="right"><p>Logout</p></TooltipContent>
-        </Tooltip>
-    );
-}
+    function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) {
+        return (
+            <div onClick={handleLogout} className={`flex items-center p-4 cursor-pointer ${isExpanded ? 'text-white' : 'text-gray-300'}`}>
+                <LogOut size={24} />
+                {isExpanded && <span className="ml-4">Logout</span>}
+            </div>
+        );
+    }

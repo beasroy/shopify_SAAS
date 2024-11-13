@@ -32,12 +32,12 @@ const colorPalette = [
 export default function EcommerceMetrics({ rawData }: EcommerceMetricsProps) {
   const aggregateData = () => {
     return rawData.reduce((acc, curr) => {
-      acc.Add_To_Carts += parseInt(curr.Add_To_Carts, 10);
+      acc["Add To Carts"] += parseInt(curr["Add To Carts"], 10);
       acc.Checkouts += parseInt(curr.Checkouts, 10);
       acc.Sessions += parseInt(curr.Sessions, 10);
       acc.Purchases += parseInt(curr.Purchases, 10);
       return acc;
-    }, { Add_To_Carts: 0, Checkouts: 0, Sessions: 0, Purchases: 0 });
+    }, { "Add To Carts": 0, Checkouts: 0, Sessions: 0, Purchases: 0 });
   };
 
   const aggregatedData = formatData(aggregateData());

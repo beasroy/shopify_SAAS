@@ -3,15 +3,15 @@ import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from 'recha
 
 //  interface for landingPage data
 interface PageData {
-  LandingPage: string;
-  Visitors: string;
+  "Landing Page": string;
+  "Visitors": string;
 }
 
 // Function to get top 5 Pages based on visitors from the data
 const getTopLandingPages = (data: PageData[]) => {
   return data
     .map(item => ({
-      LandingPage: item.LandingPage,
+      LandingPage: item['Landing Page'],
       Visitors: parseInt(item.Visitors, 10),
     }))
     .sort((a, b) => b.Visitors - a.Visitors)
@@ -26,7 +26,9 @@ interface TopPagesPieChartProps {
 const COLORS = ['#050C9C', '#3572EF', '#3ABEF9', '#577B8D', '#8dd1e1'];
 
 const TopPagesPieChart: React.FC<TopPagesPieChartProps> = ({ PageData }) => {
+  console.log(PageData);
   const topPages = getTopLandingPages(PageData);
+  console.log(topPages);
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth < 768);
 
   useEffect(() => {

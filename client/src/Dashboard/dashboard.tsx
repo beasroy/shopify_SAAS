@@ -211,7 +211,7 @@ export default function Dashboard() {
     if (!pageData) return [];
 
     return pageData.map(entry => ({
-      LandingPage: entry.LandingPage,
+      "Landing Page": entry["Landing Page"],
       Visitors: entry.Visitors,
 
     }));

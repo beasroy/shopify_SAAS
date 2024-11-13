@@ -148,7 +148,7 @@ export const fetchFBCampaignData = async (req, res) => {
 
         const batchRequests = adAccountIds.map((accountId) => ({
             method: 'GET',
-            relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas}`,
+            relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas,account_name}`,
         }));
 
 
@@ -185,6 +185,7 @@ export const fetchFBCampaignData = async (req, res) => {
                                 campaign_name: insight.campaign_name,  
                                 spend: insight.spend,
                                 purchase_roas: insight.purchase_roas,
+                                account_name: insight.account_name,
                             }));
                         }).flat(); 
         

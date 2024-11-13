@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, BarChart2, FileText, MapPin, Link2, LineChart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -57,11 +57,11 @@ export default function CollapsibleSidebar() {
 
     // Define report paths and icons
     const reports = [
-        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <BarChart2 size={24} /> },
-        { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <FileText size={24} /> },
+        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={24} /> },
+        { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <ShoppingCart size={24} /> },
         { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={24} /> },
-        { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <Link2 size={24} /> },
-        { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Calendar size={24} /> },
+        { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={24} /> },
+        { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={24} /> },
     ];
 
     // Define dashboard paths

@@ -3,9 +3,9 @@ import Brand from "../models/Brands.js";
 import Shopify from 'shopify-api-node'
 import moment from "moment";
 import axios from "axios";
-import Metrics from "../models/Metrics.js";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
+import AdMetrics from "../models/AdMetrics.js";
 
 
 config();
@@ -602,7 +602,7 @@ export const addReportData = async (brandId) => {
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
     // Create a new Metrics document
-    const metricsEntry = new Metrics({
+    const metricsEntry = new AdMetrics({
       brandId,
       date: moment().subtract(1, "days").toDate(),
       metaSpend,

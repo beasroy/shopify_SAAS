@@ -150,11 +150,18 @@ export const ExcelMetricsPage: React.FC<any> = () => {
     
             const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.metaSales, 0)
             const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0)
+            const totalSales = metaSales+ googleSales
+            
     
             return {
                 ...monthData,
                 metaSales,
                 googleSales,
+                totalSales,
+                metaROAS: (metaSales / monthData.metaSpend),
+                googleROAS: (googleSales / monthData.googleSpend),
+                grossROI: (totalSales / monthData.totalSpend),
+                netROI: (monthData.shopifySales / monthData.totalSpend),
                 dailyMetrics: processedDailyMetrics
             }
         })

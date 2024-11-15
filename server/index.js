@@ -13,7 +13,7 @@ import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
 import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
 import cron from 'node-cron';
-// import { monthlyCalculateMetricsForAllBrands, monthlyGoogleAdData } from "./Report/MonthlyReport.js";
+import { monthlyCalculateMetricsForAllBrands, monthlyGoogleAdData } from "./Report/MonthlyReport.js";
 
 
 

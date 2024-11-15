@@ -8,7 +8,7 @@ import AnalyticsDashboard from './AnalyticsDashboard/AnalyticsDashboard.tsx';
 import GeneralDashboard from './GeneralisedDashboard/GeneralDashboard.tsx';
 import { BrandProvider } from './context/BrandContext.tsx';
 import EcommerceMetricsPage from './EcommerceMetrics/EcommerceMetricsPage.tsx';
-import { ExcelMetricsPage } from './ExcelMetrics/ExcelMetrics.tsx';
+import { ExcelMetricsPage } from './MonthlyAdMetrics/ExcelMetrics.tsx';
 import CitySessionPage from './CitySessionPage/CitySessionPage.tsx';
 import ChannelSessionPage from './RefferingChannelPage/RefferingChannelPage.tsx';
 import LandingPageSession from './LandingPageSession/LandingPageSession.tsx';

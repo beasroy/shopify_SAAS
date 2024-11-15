@@ -1,4 +1,4 @@
-import Metrics from "../models/Metrics.js"
+import AdMetrics from "../models/AdMetrics.js";
 import mongoose from "mongoose";
 
 
@@ -16,11 +16,6 @@ export const getMetricsbyID = async (req, res) => {
             const targetStartDate = new Date(start);
             const targetEndDate = new Date(end);
 
-            // Adjust date range for specific case
-            if (start < new Date("2024-10-30T00:00:00Z")) {
-                targetStartDate.setUTCDate(targetStartDate.getUTCDate() - 1); 
-              
-            }
 
             const dayStart = new Date(targetStartDate);
             dayStart.setUTCHours(0, 0, 0, 0);
@@ -34,45 +29,18 @@ export const getMetricsbyID = async (req, res) => {
         console.log("Final query:", query);
 
         // Aggregate data by adjusted month
-        const metrics = await Metrics.aggregate([
+        const metrics = await AdMetrics.aggregate([
             { $match: query },
-            {
-                $addFields: {
-                    // Adjust date for data before October 30th, 2024
-                    adjustedDate: {
-                        $cond: {
-                            if: { 
-                                $lt: [
-                                    "$date", 
-                                    new Date("2024-10-30T00:00:00Z") // If the date is before 30th October 2024
-                                ]
-                            },
-                            then: { 
-                                $dateAdd: { 
-                                    startDate: "$date", 
-                                    unit: "day", 
-                                    amount: 1 
-                                } 
-                            },
-                            else: "$date" // Otherwise, leave the date as is
-                        }
-                    }
-                }
-            },
             {
                 $group: {
                     _id: {
-                        month: { $month: "$adjustedDate" },
-                        year: { $year: "$adjustedDate" }
+                        month: { $month: "$date" },
+                        year: { $year: "$date" }
                     },
                     metaSpend: { $sum: "$metaSpend" },
-                    metaROAS: { $sum: "$metaROAS" },
                     googleSpend: { $sum: "$googleSpend" },
-                    googleROAS: { $sum: "$googleROAS" },
                     totalSpend: { $sum: "$totalSpend" },
-                    grossROI: { $sum: "$grossROI" },
                     shopifySales: { $sum: "$shopifySales" },
-                    netROI: { $avg: "$netROI" },
                     dailyMetrics: { $push: "$$ROOT" } // Collect daily metrics in array
                 }
             },

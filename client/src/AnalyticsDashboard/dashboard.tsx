@@ -142,6 +142,7 @@ export default function Dashboard() {
       totalClicks += parseFloat(googleData.totalClicks || '0');
       totalImpressions += parseFloat(googleData.totalImpressions || '0');
     }
+    // console.log(totalR)
 
     setAggregatedMetrics({
       totalSpent: `₹ ${totalSpent.toLocaleString()}`,

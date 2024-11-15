@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from "axios"
 import { format } from "date-fns"
@@ -16,6 +16,7 @@ import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
+import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 
 interface CityMetric {
   "city": string;
@@ -32,6 +33,7 @@ interface CityMetric {
 
 export default function CitySessionPage() {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [filteredData, setFilteredData] = useState<CityMetric[]>([])
   const now = new Date();
   const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,13 +44,14 @@ export default function CitySessionPage() {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
+  const [filters, setFilters] = useState<FilterItem[]>([])
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
       const newColumns = prev.includes(column)
         ? prev.filter(col => col !== column)
         : [...prev, column];
-      
+
       return allColumns.filter(col => newColumns.includes(col));
     });
   };
@@ -70,10 +73,21 @@ export default function CitySessionPage() {
       const fetchedData = analyticsResponse.data[1].data || [];
 
       setData(fetchedData);
+      setFilteredData(fetchedData);
       setLastUpdated(new Date());
+
       if (fetchedData.length > 0) {
-        setSelectedColumns(Object.keys(fetchedData[0]));
+        if (selectedColumns.length === 0) {
+          const allColumns = Object.keys(fetchedData[0]);
+          setSelectedColumns(allColumns);
+        } else {
+          const newColumns = Object.keys(fetchedData[0]);
+          setSelectedColumns((prevSelected) =>
+            prevSelected.filter((col) => newColumns.includes(col))
+          );
+        }
       }
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -100,8 +114,41 @@ export default function CitySessionPage() {
   };
 
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
-  const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
 
+  const sortedSelectedColumns = useMemo(() => {
+    return allColumns.filter((col) => selectedColumns.includes(col));
+  }, [allColumns, selectedColumns]);
+  
+
+  const applyFilters = useCallback((filters: FilterItem[]) => {
+    let result = [...data];
+    
+    filters.forEach(filter => {
+      result = result.filter(item => {
+        const value = item[filter.column as keyof CityMetric] as string;
+        if (['>', '<', '='].includes(filter.operator)) {
+          const numValue = parseFloat(value);
+          const filterValue = parseFloat(filter.value);
+          switch (filter.operator) {
+            case '>': return numValue > filterValue;
+            case '<': return numValue < filterValue;
+            case '=': return numValue === filterValue;
+            default: return true;
+          }
+        }
+        return true; // Default case
+      });
+    });
+
+    setFilteredData(result); // Update filtered data
+  }, [data]);
+
+  const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
+
+  const numericColumns = ['Add To Carts', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const removeFilter = (index: number) => {
+    setFilters(filters.filter((_, i) => i !== index))
+  }
 
   return (
     <div className="flex h-screen">
@@ -169,7 +216,7 @@ export default function CitySessionPage() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-[180px]">
+                  <Button variant="outline" className="w-36">
                     Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -180,15 +227,32 @@ export default function CitySessionPage() {
                   <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <FilterComponent
+                columns={numericColumns}
+                onFiltersChange={applyFilters}
+                filters={filters}
+                setFilters={setFilters}
+              />
             </div>
           </div>
 
+          {filters.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {filters.map((filter, index) => (
+                <div key={index} className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center">
+                  <span>{`${filter.column} ${filter.operator} ${filter.value}`}</span>
+                  <button onClick={() => removeFilter(index)} className="ml-2 text-red-500">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="relative border rounded-md overflow-hidden" style={{ maxHeight: 'calc(100vh - 183px)' }}>
             <div className="overflow-auto h-full">
-            {isLoading ? (
+              {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={data} rowsToShow={rowsToShow} />)}
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />)}
             </div>
           </div>
         </div>

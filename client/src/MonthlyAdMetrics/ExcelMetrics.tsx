@@ -142,30 +142,33 @@ export const ExcelMetricsPage: React.FC<any> = () => {
     }
     const processedData = useMemo(() => {
         return metricsData.map((monthData: MonthlyAggregate) => {
-            const processedDailyMetrics = monthData.dailyMetrics.map(daily => ({
-                ...daily,
-                metaSales: daily.metaSpend * (daily.metaROAS),
-                googleSales: daily.googleSpend * (daily.googleROAS)
-            }))
-    
-            const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.metaSales, 0)
-            const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0)
-            const totalSales = metaSales+ googleSales
-            
-    
-            return {
-                ...monthData,
-                metaSales,
-                googleSales,
-                totalSales,
-                metaROAS: (metaSales / monthData.metaSpend),
-                googleROAS: (googleSales / monthData.googleSpend),
-                grossROI: (totalSales / monthData.totalSpend),
-                netROI: (monthData.shopifySales / monthData.totalSpend),
-                dailyMetrics: processedDailyMetrics
-            }
-        })
-    }, [metricsData])
+          const processedDailyMetrics = monthData.dailyMetrics.map(daily => ({
+            ...daily,
+            metaSales: daily.metaSpend * (daily.metaROAS || 0), 
+            googleSales: daily.googleSpend * (daily.googleROAS || 0), 
+          }));
+      
+          const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.metaSales, 0);
+          const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0);
+          const totalSales = metaSales + googleSales;
+      
+          const safeDivide = (numerator: number, denominator: number) => 
+            denominator ? numerator / denominator : 0;
+      
+          return {
+            ...monthData,
+            metaSales,
+            googleSales,
+            totalSales,
+            metaROAS: safeDivide(metaSales, monthData.metaSpend), 
+            googleROAS: safeDivide(googleSales, monthData.googleSpend), 
+            grossROI: safeDivide(totalSales, monthData.totalSpend), 
+            netROI: safeDivide(monthData.shopifySales, monthData.totalSpend), 
+            dailyMetrics: processedDailyMetrics,
+          };
+        });
+      }, [metricsData]);
+      
     
 console.log(processedData);
 
@@ -236,7 +239,7 @@ console.log(processedData);
                                             <>
                                                 <TableRow
                                                     key={monthYear}
-                                                    className="bg-muted/50 cursor-pointer hover:bg-muted"
+                                                    className={`${isExpanded?'bg-[#d1e7eb]':'bg-muted/50'} cursor-pointer hover:bg-mute`}
                                                     onClick={() => toggleMonth(monthYear)}
                                                 >
                                                     <TableCell className="w-[30px]">

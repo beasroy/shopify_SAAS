@@ -383,7 +383,7 @@ export async function getGoogleCampaignMetrics(req, res) {
 
         const adsReport = await customer.report({
             entity: "campaign",
-            attributes: ["campaign.id", "campaign.name"],
+            attributes: ["campaign.id", "campaign.name","customer.descriptive_name"],
             metrics: [
                 "metrics.cost_micros",
                 "metrics.conversions_value",
@@ -398,6 +398,7 @@ export async function getGoogleCampaignMetrics(req, res) {
         let totalSpend = 0;
         let totalConversionsValue = 0;
         const campaignData = [];
+        let adAccountName = "";
 
         // Process each row of the report
         for (const row of adsReport) {
@@ -412,21 +413,21 @@ export async function getGoogleCampaignMetrics(req, res) {
 
             // Calculate ROAS for each campaign
             const roas = spend > 0 ? (conversionsValue / spend).toFixed(2) : 0;
+            if (!adAccountName && row.customer && row.customer.descriptive_name) {
+                adAccountName = row.customer.descriptive_name;
+            }
 
             // Add each campaign's data to the array
             campaignData.push({
                 campaignName: row.campaign.name,
                 spend: spend.toFixed(2),
-                conversionsValue: conversionsValue.toFixed(2),
-                impressions,
-                clicks,
                 roas,
             });
         }
 
         return res.json({
             success: true,
-            data: campaignData,
+            data: {adAccountName,campaignData},
 
 
         });

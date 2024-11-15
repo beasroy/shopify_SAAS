@@ -172,43 +172,52 @@ export const fetchFBCampaignData = async (req, res) => {
             try {
                 const parsedBody = JSON.parse(adAccountResponse.body);
         
-            
                 if (Array.isArray(parsedBody.data)) {
                     
                     const filteredData = parsedBody.data.filter(item => item.insights);
                     console.log(filteredData);
         
                     if (adAccountResponse.code === 200) {
-                        const accountInsights = filteredData.map((campaign) => {
+                        // Initialize the account data structure
+                        const accountData = {
+                            account_name: filteredData[0]?.insights.data[0]?.account_name || `Unknown Account for ID ${adAccountId}`,
+                            campaigns: []
+                        };
+        
+                        // Map through filtered campaigns and add their insights to the campaigns array
+                        accountData.campaigns = filteredData.map((campaign) => {
                             const insightsArray = campaign.insights.data; 
                             return insightsArray.map((insight) => ({
-                                campaign_name: insight.campaign_name,  
+                                campaign_name: insight.campaign_name,
                                 spend: insight.spend,
                                 purchase_roas: insight.purchase_roas,
-                                account_name: insight.account_name,
                             }));
                         }).flat(); 
         
-                        return accountInsights;
+                        return accountData;
                     } else {
                         console.error(`Failed to fetch data for ad account with ID ${adAccountId}`);
                         return {
-                            error: `Failed to fetch data for ad account with ID ${adAccountId}`,
+                            account_name: `Unknown Account for ID ${adAccountId}`,
+                            error: `Failed to fetch data for ad account with ID ${adAccountId}`
                         };
                     }
                 } else {
                     console.error("Parsed body doesn't contain a 'data' array:", parsedBody);
                     return {
-                        error: `Parsed body doesn't contain valid data for ad account with ID ${adAccountId}`,
+                        account_name: `Unknown Account for ID ${adAccountId}`,
+                        error: `Parsed body doesn't contain valid data for ad account with ID ${adAccountId}`
                     };
                 }
             } catch (error) {
                 console.error("Error parsing the response body:", error);
                 return {
-                    error: `Error parsing the response body for ad account with ID ${adAccountId}`,
+                    account_name: `Unknown Account for ID ${adAccountId}`,
+                    error: `Error parsing the response body for ad account with ID ${adAccountId}`
                 };
             }
         });
+        
 
         return res.status(200).json({
             success: true,

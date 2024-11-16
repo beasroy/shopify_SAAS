@@ -26,10 +26,9 @@ export const fetchFBAdAccountData = async (req, res) => {
         const adAccountIds = brand.fbAdAccounts;
 
         if (!adAccountIds || adAccountIds.length === 0) {
-            return {
-                success: false,
-                message: 'No Facebook Ads accounts found for this brand.'
-            };
+            return res.json({
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
         }
 
 
@@ -133,10 +132,9 @@ export const fetchFBCampaignData = async (req, res) => {
         const adAccountIds = brand.fbAdAccounts;
 
         if (!adAccountIds || adAccountIds.length === 0) {
-            return {
-                success: false,
-                message: 'No Facebook Ads accounts found for this brand.'
-            };
+            return res.json({
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
         }
 
 

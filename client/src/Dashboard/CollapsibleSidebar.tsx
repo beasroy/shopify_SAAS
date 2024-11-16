@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart,ChartNetwork, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -8,6 +8,7 @@ import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "../assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MdCampaign } from "react-icons/md";
 
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -114,12 +115,12 @@ export default function CollapsibleSidebar() {
         { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={24} /> },
         { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={24} /> },
         { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={24} /> },
-        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <ChartNetwork size={24} />, requiresAdsData: true }
     ];
 
     const dashboards = [
         { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={24} /> },
-        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={24} />, requiresAdsData: true }
+        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={24} />, requiresAdsData: true },
+        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={24} />, requiresAdsData: true }
     ];
 
     const isItemDisabled = (item: any) => {

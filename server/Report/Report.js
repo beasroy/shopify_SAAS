@@ -9,8 +9,7 @@ import AdMetrics from "../models/AdMetrics.js";
 
 
 config();
-
-
+ 
 
 export const fetchTotalSales = async (brandId) => {
   try {

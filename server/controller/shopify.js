@@ -162,8 +162,111 @@ export const fetchShopifyData = async (req, res) => {
 };
 
 
+export const fetchShopifySales = async (req, res) => {
+  try {
+    console.log('Fetching orders and session data...');
+    const { brandId } = req.params;
 
-// Function to calculate total sales for a specific date range
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
+    }
+
+    const shopify = new Shopify({
+      shopName: brand.shopifyAccount?.shopName,
+      accessToken: access_token
+    });
+
+
+    let orders = [];
+    let queryParams = {
+      status: 'any',
+      limit: 250, // Fetch 250 orders per request
+    };
+
+
+    const utcOffset = 5.5 * 60 * 60 * 1000; 
+   
+   
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    queryParams.created_at_min = new Date(firstDayOfMonth.setHours(0, 0, 0, 0) - utcOffset).toISOString(); 
+    queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999) - utcOffset).toISOString(); 
+    
+  
+    console.log('Query Parameters:', queryParams);
+
+    // Pagination logic
+    let hasNextPage = true;
+    let pageInfo;
+
+    while (hasNextPage) {
+      // Add page_info to queryParams if it exists, otherwise remove it
+      if (pageInfo) {
+        queryParams = { page_info: pageInfo };
+      } else {
+        delete queryParams.page_info;
+      }
+      console.log('Query Parameters after pageInfo:', queryParams);
+
+      try {
+        const response = await shopify.order.list(queryParams);
+
+        // If response is empty, no need to continue
+        if (!response || response.length === 0) {
+          console.log('No more orders found.');
+          break; // Exit the loop if no orders are found
+        }
+
+        orders = orders.concat(response);
+        console.log(`Fetched ${response.length} orders from this page`);
+
+        // Check if there is a next page
+        pageInfo = response.nextPageParameters?.page_info || null;
+        hasNextPage = !!pageInfo; // No more pages to fetch
+      } catch (error) {
+        console.error('Error while fetching orders:', error);
+        hasNextPage = false; 
+        return res.status(500).json({ error: `Error fetching orders: ${error.message}` });
+      }
+    }
+
+    console.log(`Successfully fetched a total of ${orders.length} orders`);
+
+
+
+   
+    const totalSales = calculateTotalSales(orders,queryParams.created_at_min,queryParams.created_at_max)
+
+    // Respond with data including returns
+    res.json({
+      
+      totalSales,
+    
+    });
+  } catch (error) {
+    console.error('Error in fetchShopifyData:', error);
+    let errorMessage = 'Failed to fetch Shopify data';
+
+    // Improved error handling
+    if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Connection to Shopify API refused. Please check your network connection and Shopify store URL.';
+    } else if (error.message.includes('Failed to fetch orders')) {
+      errorMessage = `Error occurred while fetching orders: ${error.message}. Please verify your Shopify access token and API permissions.`;
+    } else if (error.response && error.response.body) {
+      errorMessage = `Shopify API error: ${error.response.body.errors}`;
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+};
+
+
 function calculateTotalSales(orders, startDate, endDate) {
   let startUTC, endUTC;
   if(startDate && endDate){// Parse start and end dates as
@@ -205,8 +308,6 @@ function calculateTotalSales(orders, startDate, endDate) {
 
   return totalSales;
 }
-
-
 
 
 

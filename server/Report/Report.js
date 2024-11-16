@@ -10,28 +10,7 @@ import AdMetrics from "../models/AdMetrics.js";
 
 config();
 
-const getAccestoken = (brandId) => {
-  switch (brandId) {
-    case '671b68bed3c4f462d681ef45':
-      return process.env.SHOPIFY_ACCESS_TOKEN_UDDSTUDIO;
-    case '671b6925d3c4f462d681ef47':
-      return process.env.SHOPIFY_ACCESS_TOKEN_FISHERMANHUB;
-    case '671b7d85f99634509a5f2693':
-      return process.env.SHOPIFY_ACCESS_TOKEN_REPRISE;
-    case '671b90c83aee55a69981a0c9':
-      return process.env.SHOPIFY_ACCESS_TOKEN_KOLORTHERAPI;
-    case '671cd209fc16e7d6a19da1fd':
-      return process.env.SHOPIFY_ACCESS_TOKEN_KASHMIRVILLA;
-    case '671cc01d00989c5fdf2dcb11':
-      return process.env.SHOPIFY_ACCESS_TOKEN_MAYINCLOTHING;
-    case '671ccd765d652cf6efc21eda':
-      return process.env.SHOPIFY_ACCESS_TOKEN_HOUSEOFAWADH;
-    case '671cceb19b58dac9e4e23280':
-      return process.env.SHOPIFY_ACCESS_TOKEN_FIBERWORLD;
-    default:
-      throw new Error('Invalid brand ID: No credentials path found');
-  }
-};
+
 
 export const fetchTotalSales = async (brandId) => {
   try {
@@ -42,9 +21,9 @@ export const fetchTotalSales = async (brandId) => {
       throw new Error('Brand not found.');
     }
 
-    const access_token = getAccestoken(brandId);
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
     if (!access_token) {
-      throw new Error('Access token is missing or invalid.');
+      return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
     }
 
     const shopify = new Shopify({

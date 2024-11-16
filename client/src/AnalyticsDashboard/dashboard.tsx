@@ -62,7 +62,7 @@ export default function Dashboard() {
             { withCredentials: true }
           );
           fbData = fbAdResponse.data.data;
-          console.log(fbData);
+          console.log("fbdata",fbData);
           setFbAdAccountsMetrics(fbData);
         } catch (fbError) {
           console.error('Error fetching Facebook ad data:', fbError);
@@ -125,7 +125,7 @@ export default function Dashboard() {
     let totalClicks = 0;
     let totalImpressions = 0;
 
-    if (fbData && fbData.length > 0) {
+    if (fbData?.length) {
       fbData.forEach(account => {
         totalSpent += parseFloat(account.spend || '0');
         totalRevenue += parseFloat(account.Revenue?.value || '0');
@@ -299,7 +299,7 @@ export default function Dashboard() {
         </div>
 
 
-        {(dataSource === 'all' || dataSource === 'facebook') && fbAdAccountsMetrics.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
+        {(dataSource === 'all' || dataSource === 'facebook') && fbAdAccountsMetrics?.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
           const fbmetrics = [
             { label: 'Amount Spent', value: `₹ ${accountMetrics.spend || '0'}` },
             {

@@ -39,14 +39,14 @@ export const fetchShopifyData = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    const access_token = getAccestoken(brandId);
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
     if (!access_token) {
       return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
     }
 
     const shopify = new Shopify({
       shopName: brand.shopifyAccount?.shopName,
-      accessToken: access_token,
+      accessToken: access_token
     });
 
     const { startDate, endDate } = req.query;

@@ -87,7 +87,7 @@ export default function Dashboard() {
       };
 
       setData(combinedData);
-      console.log(data)
+      console.log("data",shopifyResponse.data)
       setLastUpdated(new Date());
 
     } catch (error) {

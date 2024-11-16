@@ -4,7 +4,7 @@ const brandSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true // Assuming brand names are unique
+    unique: true 
   },
   logoUrl: String,
   fbAdAccounts: [{
@@ -20,6 +20,9 @@ const brandSchema = new mongoose.Schema({
   },
   shopifyAccount: {
     shopName: {
+      type: String,
+    },
+    shopifyAccessToken: {
       type: String,
     }
   },

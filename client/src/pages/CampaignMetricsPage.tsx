@@ -125,13 +125,13 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ summaryMetrics, startDate, 
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            <p className="text-3xl font-bold text-black-600">
+            <p className="text-3xl font-bold text-[#071952]">
               {formatValue(summaryMetrics.totalSpend)}
             </p>
           </div>
         </CardContent>
       </Card>
-      
+
       <Card className="transition-all duration-200 hover:shadow-lg hover:scale-105 hover:border-blue-600">
         <CardHeader>
           <div className="flex items-center space-x-2">
@@ -145,7 +145,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ summaryMetrics, startDate, 
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            <p className="text-3xl font-bold text-black-600">
+            <p className="text-3xl font-bold text-[#071952]">
               {summaryMetrics.averageRoas.toFixed(2)}
             </p>
           </div>
@@ -199,7 +199,7 @@ const CampaignMetricsPage: React.FC = () => {
 
   const fetchFacebookMetrics = async (accountName: string) => {
     if (!selectedBrandId) return;
-    
+
     setIsFacebookLoading(true);
     try {
       const baseURL = import.meta.env.PROD
@@ -227,31 +227,31 @@ const CampaignMetricsPage: React.FC = () => {
     }
   };
 
-  const fetchGoogleMetrics = async () => {
-    if (!selectedBrandId) return;
-    
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
+  // const fetchGoogleMetrics = async () => {
+  //   if (!selectedBrandId) return;
 
-      const response = await axios.post(
-        `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
-        { startDate, endDate },
-        { withCredentials: true }
-      );
+  //   try {
+  //     const baseURL = import.meta.env.PROD
+  //       ? import.meta.env.VITE_API_URL
+  //       : import.meta.env.VITE_LOCAL_API_URL;
 
-      setGoogleData(response.data.data);
-    } catch (error) {
-      console.error('Error fetching Google metrics:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
-      }
-    }
-  };
+  //     const response = await axios.post(
+  //       `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
+  //       { startDate, endDate },
+  //       { withCredentials: true }
+  //     );
 
-   const fetchMetrics = useCallback(async () => {
+  //     setGoogleData(response.data.data);
+  //   } catch (error) {
+  //     console.error('Error fetching Google metrics:', error);
+  //     if (axios.isAxiosError(error) && error.response?.status === 401) {
+  //       alert('Your session has expired. Please log in again.');
+  //       navigate('/');
+  //     }
+  //   }
+  // };
+
+  const fetchMetrics = useCallback(async () => {
     if (!selectedBrandId) return;
 
     setIsInitialLoading(true);
@@ -261,19 +261,19 @@ const CampaignMetricsPage: React.FC = () => {
         : import.meta.env.VITE_LOCAL_API_URL;
 
       const [googleResponse, facebookResponse] = await Promise.all([
-        axios.post(`${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`, 
-          { startDate, endDate }, 
+        axios.post(`${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
+          { startDate, endDate },
           { withCredentials: true }
         ),
-        axios.post(`${baseURL}/api/metrics/fbCampaign/${selectedBrandId}`, 
-          { startDate, endDate }, 
+        axios.post(`${baseURL}/api/metrics/fbCampaign/${selectedBrandId}`,
+          { startDate, endDate },
           { withCredentials: true }
         )
       ]);
 
       setGoogleData(googleResponse.data.data);
       setFacebookData(facebookResponse.data.data);
-      
+
       // Set initial Facebook account if available and none selected
       if (facebookResponse.data.data.length > 0 && !selectedFacebookAccount) {
         setSelectedFacebookAccount(facebookResponse.data.data[0].account_name);
@@ -305,7 +305,7 @@ const CampaignMetricsPage: React.FC = () => {
     const filteredCampaigns = filterCampaigns(campaigns);
 
     return (
-      <div className="mb-8">
+      <div className="mb-4">
         <MetricsCards
           summaryMetrics={summaryMetrics}
           startDate={startDate}
@@ -318,7 +318,7 @@ const CampaignMetricsPage: React.FC = () => {
                 <TableSkeleton />
               ) : (
                 <Table>
-                  <TableHeader className="sticky top-0 bg-gray-100 z-10">
+                  <TableHeader className="sticky top-0 bg-cyan-800 text-white font-medium z-10">
                     <TableRow>
                       <TableCell className="font-semibold">Campaign Name</TableCell>
                       <TableCell className="font-semibold">Spend</TableCell>
@@ -328,7 +328,7 @@ const CampaignMetricsPage: React.FC = () => {
                   <TableBody>
                     {filteredCampaigns.map((campaign, index) => (
                       <TableRow key={index}>
-                        <TableCell>{campaign.campaignName}</TableCell>
+                        <TableCell className="font-medium">{campaign.campaignName}</TableCell>
                         <TableCell>{formatValue(campaign.spend)}</TableCell>
                         <TableCell>{campaign.roas}</TableCell>
                       </TableRow>
@@ -371,10 +371,10 @@ const CampaignMetricsPage: React.FC = () => {
       );
     }
 
-    const selectedAccount = facebookData.find(account => 
+    const selectedAccount = facebookData.find(account =>
       account.account_name === selectedFacebookAccount
     );
-    
+
     // If no account is selected or the selected account has no campaigns
     if (!selectedAccount || !selectedAccount.campaigns || selectedAccount.campaigns.length === 0) {
       const emptyMetrics: SummaryMetrics = {
@@ -413,6 +413,16 @@ const CampaignMetricsPage: React.FC = () => {
               <h1 className="text-2xl font-bold">Campaign Metrics</h1>
             </div>
             <div className="flex items-center space-x-4">
+            <div className="relative">
+                <input
+                  type="text"
+                  className="border px-4 py-2 rounded-lg w-64"
+                  placeholder="Search Campaigns"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <MagnifyingGlassIcon className="absolute right-4 top-3 h-5 w-5 text-gray-500" />
+              </div>
               <DatePickerWithRange date={date} setDate={setDate}
                 defaultDate={{
                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -424,23 +434,13 @@ const CampaignMetricsPage: React.FC = () => {
                   Last updated: {lastUpdated.toLocaleTimeString()}
                 </span>
               )}
-              <Button 
-                variant="outline" 
+              <Button
                 size="icon"
                 onClick={() => fetchMetrics()}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <div className="relative">
-                <input
-                  type="text"
-                  className="border px-4 py-2 rounded-lg w-64"
-                  placeholder="Search Campaigns"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <MagnifyingGlassIcon className="absolute right-4 top-3 h-5 w-5 text-gray-500" />
-              </div>
+           
             </div>
           </div>
         </header>
@@ -449,22 +449,8 @@ const CampaignMetricsPage: React.FC = () => {
             <TableSkeleton />
           ) : (
             <>
-              {/* Google Metrics Section */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <GoogleLogo />
-                    <h2 className="text-xl font-bold">Google Campaigns</h2>
-                    <span className="text-black-500 font-bold md:uppercase">
-                      - {googleData?.adAccountName}
-                    </span>
-                  </div>
-                </div>
-                {renderGoogleMetrics()}
-              </div>
-
               {/* Facebook Metrics Section */}
-              <div>
+              <div className="mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <FacebookLogo />
@@ -496,6 +482,19 @@ const CampaignMetricsPage: React.FC = () => {
                   )}
                 </div>
                 {renderFacebookMetrics()}
+                </div>
+              {/* Google Metrics Section */}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <GoogleLogo />
+                    <h2 className="text-xl font-bold">Google Campaigns</h2>
+                    <span className="text-black-500 font-bold md:uppercase">
+                      - {googleData?.adAccountName}
+                    </span>
+                  </div>
+                </div>
+                {renderGoogleMetrics()}
               </div>
             </>
           )}

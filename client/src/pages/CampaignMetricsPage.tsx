@@ -25,6 +25,7 @@ import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useBrand } from '@/context/BrandContext';
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+
 // Facebook and Google Logos (SVGs)
 const FacebookLogo = () => (
   <svg viewBox="0 0 24 24" style={{ height: '1.25rem', width: '1.25rem', fill: '#1877F2' }}>
@@ -80,6 +81,17 @@ interface FacebookAccount {
   campaigns: FacebookCampaignMetric[];
 }
 
+// Helper function to format values
+const formatValue = (value: string | number | null): string => {
+  if (value === null || value === undefined) return '₹0.00';
+  const numberValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numberValue)) return '₹0.00';
+  return numberValue.toLocaleString('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+  });
+};
 
 // Helper function to format date
 const formatDate = (dateString: string) => {
@@ -91,70 +103,94 @@ const formatDate = (dateString: string) => {
     year: 'numeric'
   });
 };
-interface SummaryMetrics {
-  totalSpend: number;
-  averageRoas: number;
-}
 
-interface MetricsCardsProps {
+// MetricsCards Component
+const MetricsCards: React.FC<{
   summaryMetrics: SummaryMetrics;
   startDate: string;
   endDate: string;
-}
-// ... (keep all interface definitions and helper functions the same)
-const MetricsCards: React.FC<MetricsCardsProps> = ({ summaryMetrics, startDate, endDate }) => {
-  const formatValue = (value: any): string => {
-    if (typeof value === "number" || !isNaN(parseFloat(value))) {
-      return `₹${parseFloat(value).toFixed(2)}`;
-    }
-    return value?.toString() || "0";
-  };
+}> = ({ summaryMetrics, startDate, endDate }) => (
+  <div className="grid grid-cols-2 gap-6 mb-6">
+    <Card className="transition-all duration-200 hover:shadow-lg hover:scale-105 hover:border-blue-600">
+      <CardHeader>
+        <div className="flex items-center space-x-2">
+          <IndianRupee className="h-5 w-5 text-black-500" />
+          <CardTitle>Total Spend</CardTitle>
+        </div>
+        <CardDescription className="flex items-center mt-1">
+          <CalendarDays className="h-3 w-3 mr-1" />
+          {formatDate(startDate)} - {formatDate(endDate)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-1">
+          <p className="text-3xl font-bold text-black-600">
+            {formatValue(summaryMetrics.totalSpend)}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+    
+    <Card className="transition-all duration-200 hover:shadow-lg hover:scale-105 hover:border-blue-600">
+      <CardHeader>
+        <div className="flex items-center space-x-2">
+          <TrendingUp className="h-5 w-5 text-black-500" />
+          <CardTitle>Average ROAS</CardTitle>
+        </div>
+        <CardDescription className="flex items-center mt-1">
+          <CalendarDays className="h-3 w-3 mr-1" />
+          {formatDate(startDate)} - {formatDate(endDate)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-1">
+          <p className="text-3xl font-bold text-black-600">
+            {summaryMetrics.averageRoas.toFixed(2)}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
 
-  return (
-    <div className="grid grid-cols-2 gap-6 mb-6">
-      <Card className="transition-all duration-200 hover:shadow-lg hover:scale-105 hover:border-blue-600">
-        <CardHeader>
-          <div className="flex items-center space-x-2">
-            <IndianRupee className="h-5 w-5 text-black-500" />
-            <CardTitle>Total Spend</CardTitle>
-          </div>
-          <CardDescription className="flex items-center mt-1">
-            <CalendarDays className="h-3 w-3 mr-1" />
-            {formatDate(startDate)} - {formatDate(endDate)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1">
-            <p className="text-3xl font-bold text-black-600">
-              {formatValue(summaryMetrics.totalSpend)}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="transition-all duration-200 hover:shadow-lg hover:scale-105 hover:border-blue-600">
-        <CardHeader>
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-black-500" />
-            <CardTitle>Average ROAS</CardTitle>
-          </div>
-          <CardDescription className="flex items-center mt-1">
-            <CalendarDays className="h-3 w-3 mr-1" />
-            {formatDate(startDate)} - {formatDate(endDate)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1">
-            <p className="text-3xl font-bold text-black-600">
-              {summaryMetrics.averageRoas.toFixed(2)}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+// MetricsTable Component
+const MetricsTable: React.FC<{
+  campaigns: DisplayCampaignMetric[];
+  isLoading: boolean;
+}> = ({ campaigns, isLoading }) => (
+  <Card>
+    <CardContent className="p-0">
+      <ScrollArea className="h-[300px] rounded-lg">
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <Table>
+            <TableHeader className="sticky top-0 bg-gray-100 z-10">
+              <TableRow>
+                <TableCell className="font-semibold">Campaign Name</TableCell>
+                <TableCell className="font-semibold">Spend</TableCell>
+                <TableCell className="font-semibold">ROAS</TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {campaigns.map((campaign, index) => (
+                <TableRow key={index}>
+                  <TableCell>{campaign.campaignName}</TableCell>
+                  <TableCell>{formatValue(campaign.spend)}</TableCell>
+                  <TableCell>{campaign.roas}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </ScrollArea>
+    </CardContent>
+  </Card>
+);
+
+// Main Component
 const CampaignMetricsPage: React.FC = () => {
+  // State Management
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date()
@@ -162,7 +198,7 @@ const CampaignMetricsPage: React.FC = () => {
   const [googleData, setGoogleData] = useState<GoogleData | null>(null);
   const [facebookData, setFacebookData] = useState<FacebookAccount[]>([]);
   const [selectedFacebookAccount, setSelectedFacebookAccount] = useState<string>("");
-  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isFacebookLoading, setIsFacebookLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -172,19 +208,13 @@ const CampaignMetricsPage: React.FC = () => {
 
   const startDate = format(date?.from || new Date(), "yyyy-MM-dd");
   const endDate = format(date?.to || new Date(), "yyyy-MM-dd");
+  
+  // API Base URL
+  const baseURL = import.meta.env.PROD
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL;
 
-  const formatValue = (value: string | number | null): string => {
-    if (value === null || value === undefined) return '₹0.00';
-    const numberValue = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(numberValue)) return '₹0.00';
-    return numberValue.toLocaleString('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-    });
-  };
-
-
+  // Helper Functions
   const calculateSummaryMetrics = (campaigns: DisplayCampaignMetric[]): SummaryMetrics => ({
     totalSpend: campaigns.reduce((sum, item) => sum + parseFloat(item.spend || "0"), 0),
     averageRoas: campaigns.reduce((sum, item) => sum + parseFloat(item.roas || "0"), 0) / (campaigns.length || 1),
@@ -197,24 +227,45 @@ const CampaignMetricsPage: React.FC = () => {
     );
   };
 
-  const fetchFacebookMetrics = async (accountName: string) => {
+  // API Functions
+  const fetchGoogleMetrics = useCallback(async () => {
+    if (!selectedBrandId) return;
+    
+    setIsGoogleLoading(true);
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
+        { startDate, endDate },
+        { withCredentials: true }
+      );
+      setGoogleData(response.data.data);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching Google metrics:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        alert('Your session has expired. Please log in again.');
+        navigate('/');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [selectedBrandId, startDate, endDate, navigate, baseURL]);
+
+  const fetchFacebookMetrics = useCallback(async () => {
     if (!selectedBrandId) return;
     
     setIsFacebookLoading(true);
     try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
       const response = await axios.post(
         `${baseURL}/api/metrics/fbCampaign/${selectedBrandId}`,
         { startDate, endDate },
         { withCredentials: true }
       );
-
-      // Update only Facebook-related state
+      
       setFacebookData(response.data.data);
-      setSelectedFacebookAccount(accountName);
+      if (!selectedFacebookAccount && response.data.data.length > 0) {
+        setSelectedFacebookAccount(response.data.data[0].account_name);
+      }
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching Facebook metrics:', error);
@@ -225,124 +276,20 @@ const CampaignMetricsPage: React.FC = () => {
     } finally {
       setIsFacebookLoading(false);
     }
-  };
+  }, [selectedBrandId, startDate, endDate, navigate, baseURL]);
 
-  const fetchGoogleMetrics = async () => {
-    if (!selectedBrandId) return;
-    
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
-      const response = await axios.post(
-        `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
-        { startDate, endDate },
-        { withCredentials: true }
-      );
-
-      setGoogleData(response.data.data);
-    } catch (error) {
-      console.error('Error fetching Google metrics:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
-      }
-    }
-  };
-
-   const fetchMetrics = useCallback(async () => {
-    if (!selectedBrandId) return;
-
-    setIsInitialLoading(true);
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
-      const [googleResponse, facebookResponse] = await Promise.all([
-        axios.post(`${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`, 
-          { startDate, endDate }, 
-          { withCredentials: true }
-        ),
-        axios.post(`${baseURL}/api/metrics/fbCampaign/${selectedBrandId}`, 
-          { startDate, endDate }, 
-          { withCredentials: true }
-        )
-      ]);
-
-      setGoogleData(googleResponse.data.data);
-      setFacebookData(facebookResponse.data.data);
-      
-      // Set initial Facebook account if available and none selected
-      if (facebookResponse.data.data.length > 0 && !selectedFacebookAccount) {
-        setSelectedFacebookAccount(facebookResponse.data.data[0].account_name);
-      }
-
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('Error fetching metrics:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
-      }
-    } finally {
-      setIsInitialLoading(false);
-    }
-  }, [selectedBrandId, startDate, endDate, navigate, selectedFacebookAccount]);
-
+  // Initial Data Load and Refresh
   useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
+    const loadData = async () => {
+      await Promise.all([fetchGoogleMetrics(), fetchFacebookMetrics()]);
+    };
+
+    loadData();
+    const intervalId = setInterval(loadData, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
+  }, [fetchGoogleMetrics, fetchFacebookMetrics]);
 
-  const renderMetricsTable = (
-    campaigns: DisplayCampaignMetric[],
-    summaryMetrics: SummaryMetrics,
-    isLoading: boolean
-  ) => {
-    const filteredCampaigns = filterCampaigns(campaigns);
-
-    return (
-      <div className="mb-8">
-        <MetricsCards
-          summaryMetrics={summaryMetrics}
-          startDate={startDate}
-          endDate={endDate}
-        />
-        <Card>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[300px] rounded-lg">
-              {isLoading ? (
-                <TableSkeleton />
-              ) : (
-                <Table>
-                  <TableHeader className="sticky top-0 bg-gray-100 z-10">
-                    <TableRow>
-                      <TableCell className="font-semibold">Campaign Name</TableCell>
-                      <TableCell className="font-semibold">Spend</TableCell>
-                      <TableCell className="font-semibold">ROAS</TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCampaigns.map((campaign, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{campaign.campaignName}</TableCell>
-                        <TableCell>{formatValue(campaign.spend)}</TableCell>
-                        <TableCell>{campaign.roas}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
+  // Section Rendering Functions
   const renderGoogleMetrics = () => {
     if (!googleData) return null;
 
@@ -352,15 +299,25 @@ const CampaignMetricsPage: React.FC = () => {
       roas: campaign.roas
     }));
 
-    return renderMetricsTable(
-      campaigns,
-      calculateSummaryMetrics(campaigns),
-      false
+    const filteredCampaigns = filterCampaigns(campaigns);
+    const summaryMetrics = calculateSummaryMetrics(filteredCampaigns);
+
+    return (
+      <div className="mb-8">
+        <MetricsCards
+          summaryMetrics={summaryMetrics}
+          startDate={startDate}
+          endDate={endDate}
+        />
+        <MetricsTable
+          campaigns={filteredCampaigns}
+          isLoading={isGoogleLoading}
+        />
+      </div>
     );
   };
 
   const renderFacebookMetrics = () => {
-    // If there's no Facebook data at all, show empty state
     if (!facebookData || facebookData.length === 0) {
       return (
         <Card>
@@ -375,18 +332,8 @@ const CampaignMetricsPage: React.FC = () => {
       account.account_name === selectedFacebookAccount
     );
     
-    // If no account is selected or the selected account has no campaigns
-    if (!selectedAccount || !selectedAccount.campaigns || selectedAccount.campaigns.length === 0) {
-      const emptyMetrics: SummaryMetrics = {
-        totalSpend: 0,
-        averageRoas: 0
-      };
-
-      return renderMetricsTable(
-        [],
-        emptyMetrics,
-        isFacebookLoading
-      );
+    if (!selectedAccount || !selectedAccount.campaigns) {
+      return renderEmptyMetrics();
     }
 
     const campaigns: DisplayCampaignMetric[] = selectedAccount.campaigns.map(campaign => ({
@@ -395,13 +342,53 @@ const CampaignMetricsPage: React.FC = () => {
       roas: campaign.purchase_roas?.[0]?.value || "0"
     }));
 
-    return renderMetricsTable(
-      campaigns,
-      calculateSummaryMetrics(campaigns),
-      isFacebookLoading
+    const filteredCampaigns = filterCampaigns(campaigns);
+    const summaryMetrics = calculateSummaryMetrics(filteredCampaigns);
+
+    return (
+      <div>
+        <MetricsCards
+          summaryMetrics={summaryMetrics}
+          startDate={startDate}
+          endDate={endDate}
+        />
+        <MetricsTable
+          campaigns={filteredCampaigns}
+          isLoading={isFacebookLoading}
+        />
+      </div>
     );
   };
 
+  const renderEmptyMetrics = () => {
+    const emptyMetrics: SummaryMetrics = {
+      totalSpend: 0,
+      averageRoas: 0
+    };
+
+    return (
+      <div>
+        <MetricsCards
+          summaryMetrics={emptyMetrics}
+          startDate={startDate}
+          endDate={endDate}
+        />
+        <MetricsTable
+          campaigns={[]}
+          isLoading={isFacebookLoading}
+        />
+      </div>
+    );
+  };
+
+  // Handle Facebook Account Switch
+  const handleFacebookAccountSwitch = (accountName: string) => {
+    setIsFacebookLoading(true);
+    setSelectedFacebookAccount(accountName);
+    setTimeout(() => setIsFacebookLoading(false), 500);
+  };
+
+  // Main Render
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
@@ -413,7 +400,9 @@ const CampaignMetricsPage: React.FC = () => {
               <h1 className="text-2xl font-bold">Campaign Metrics</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <DatePickerWithRange date={date} setDate={setDate}
+              <DatePickerWithRange 
+                date={date}
+                setDate={setDate}
                 defaultDate={{
                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                   to: new Date(),
@@ -427,7 +416,10 @@ const CampaignMetricsPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="icon"
-                onClick={() => fetchMetrics()}
+                onClick={() => {
+                  fetchGoogleMetrics();
+                  fetchFacebookMetrics();
+                }}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -444,61 +436,52 @@ const CampaignMetricsPage: React.FC = () => {
             </div>
           </div>
         </header>
-        <div className="p-6 flex-1 overflow-auto">
-          {isInitialLoading ? (
-            <TableSkeleton />
-          ) : (
-            <>
-              {/* Google Metrics Section */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <GoogleLogo />
-                    <h2 className="text-xl font-bold">Google Campaigns</h2>
-                    <span className="text-black-500 font-bold md:uppercase">
-                      - {googleData?.adAccountName}
-                    </span>
-                  </div>
-                </div>
-                {renderGoogleMetrics()}
-              </div>
 
-              {/* Facebook Metrics Section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <FacebookLogo />
-                    <h2 className="text-xl font-bold">Facebook Campaigns</h2>
-                  </div>
-                  {facebookData && facebookData.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                          {selectedFacebookAccount || "Select Account"}
-                          <ChevronDown className="h-4 w-4 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {facebookData.map(account => (
-                          <DropdownMenuItem
-                            key={account.account_name}
-                            onClick={() => {
-                              setIsFacebookLoading(true);
-                              setSelectedFacebookAccount(account.account_name);
-                              fetchFacebookMetrics(account.account_name);
-                            }}
-                          >
-                            {account.account_name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-                {renderFacebookMetrics()}
+        <div className="p-6 flex-1 overflow-auto">
+          {/* Google Metrics Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <GoogleLogo/>
+                <h2 className="text-xl font-bold">Google Campaigns</h2>
+                <span className="text-black-500 font-bold md:uppercase">
+                  - {googleData?.adAccountName}
+                </span>
               </div>
-            </>
-          )}
+            </div>
+            {renderGoogleMetrics()}
+          </div>
+
+          {/* Facebook Metrics Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <FacebookLogo/>
+                <h2 className="text-xl font-bold">Facebook Campaigns</h2>
+              </div>
+              {facebookData && facebookData.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      {selectedFacebookAccount || "Select Account"}
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {facebookData.map(account => (
+                      <DropdownMenuItem
+                        key={account.account_name}
+                        onClick={() => handleFacebookAccountSwitch(account.account_name)}
+                      >
+                        {account.account_name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            {renderFacebookMetrics()}
+          </div>
         </div>
       </div>
     </div>

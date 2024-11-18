@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface Brand {
   _id: string;
   name: string;
-  brandId:string;
-  fbAdAccounts?: []; 
+  brandId: string;
+  fbAdAccounts?: [];
 }
 
 interface BrandContextType {
@@ -12,14 +12,29 @@ interface BrandContextType {
   setSelectedBrandId: (id: string | null) => void;
   resetBrand: () => void;
   brands: Brand[];
-  setBrands: (brands: Brand[]) => void; // New setter function for brands
+  setBrands: (brands: Brand[]) => void;
 }
 
 const BrandContext = createContext<BrandContextType | undefined>(undefined);
 
 export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [brands, setBrands] = useState<Brand[]>([]); // New state for brands
+  const [brands, setBrands] = useState<Brand[]>([]);
+
+  // Load brands from local storage when the component mounts
+  useEffect(() => {
+    const storedBrands = localStorage.getItem('brands');
+    if (storedBrands) {
+      setBrands(JSON.parse(storedBrands));
+    }
+  }, []);
+
+  // Whenever brands state changes, save them to local storage
+  useEffect(() => {
+    if (brands.length > 0) {
+      localStorage.setItem('brands', JSON.stringify(brands));
+    }
+  }, [brands]);
 
   const resetBrand = () => {
     setSelectedBrandId(null);

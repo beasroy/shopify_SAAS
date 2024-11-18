@@ -12,6 +12,7 @@ import { ExcelMetricsPage } from './MonthlyAdMetrics/ExcelMetrics.tsx';
 import CitySessionPage from './CitySessionPage/CitySessionPage.tsx';
 import ChannelSessionPage from './RefferingChannelPage/RefferingChannelPage.tsx';
 import LandingPageSession from './LandingPageSession/LandingPageSession.tsx';
+import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './BrandPerformanceDashboard/PerformanceDashboard.tsx';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path ="/city-metrics/:brandId" element={<CitySessionPage />} />
           <Route path ='/channel-metrics/:brandId' element={<ChannelSessionPage />} />
           <Route path ='/page-metrics/:brandId' element={<LandingPageSession />} />
+          <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
         </Routes>
       </Router>

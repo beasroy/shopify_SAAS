@@ -6,28 +6,7 @@ import moment from 'moment';
 
 config();
 
-const getAccestoken = (brandId) => {
-  switch (brandId) {
-    case '671b68bed3c4f462d681ef45':
-      return process.env.SHOPIFY_ACCESS_TOKEN_UDDSTUDIO;
-    case '671b6925d3c4f462d681ef47':
-      return process.env.SHOPIFY_ACCESS_TOKEN_FISHERMANHUB;
-    case '671b7d85f99634509a5f2693':
-      return process.env.SHOPIFY_ACCESS_TOKEN_REPRISE;
-    case '671b90c83aee55a69981a0c9':
-      return process.env.SHOPIFY_ACCESS_TOKEN_KOLORTHERAPI;
-    case '671cd209fc16e7d6a19da1fd':
-      return process.env.SHOPIFY_ACCESS_TOKEN_KASHMIRVILLA;
-    case '671cc01d00989c5fdf2dcb11':
-      return process.env.SHOPIFY_ACCESS_TOKEN_MAYINCLOTHING;
-    case '671ccd765d652cf6efc21eda':
-      return process.env.SHOPIFY_ACCESS_TOKEN_HOUSEOFAWADH;
-    case '671cceb19b58dac9e4e23280':
-      return process.env.SHOPIFY_ACCESS_TOKEN_FIBERWORLD;
-    default:
-      throw new Error('Invalid brand ID: No credentials path found');
-  }
-};
+
 
 export const fetchShopifyData = async (req, res) => {
   try {

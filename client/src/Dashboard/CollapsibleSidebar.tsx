@@ -27,6 +27,7 @@ export default function CollapsibleSidebar() {
             const response = await axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true });
             if (response.status === 200) {
                 setUser(null);
+                localStorage.removeItem('user');
                 setSelectedBrandId(null);
                 navigate('/');
             }

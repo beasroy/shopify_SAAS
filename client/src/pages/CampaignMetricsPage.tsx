@@ -170,6 +170,9 @@ const CampaignMetricsPage: React.FC = () => {
   const { selectedBrandId } = useBrand();
   const navigate = useNavigate();
 
+  const startDate = format(date?.from || new Date(), "yyyy-MM-dd");
+  const endDate = format(date?.to || new Date(), "yyyy-MM-dd");
+
   const formatValue = (value: string | number | null): string => {
     if (value === null || value === undefined) return '₹0.00';
     const numberValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -181,8 +184,6 @@ const CampaignMetricsPage: React.FC = () => {
     });
   };
 
-  const startDate = format(date?.from || new Date(), "yyyy-MM-dd");
-  const endDate = format(date?.to || new Date(), "yyyy-MM-dd");
 
   const calculateSummaryMetrics = (campaigns: DisplayCampaignMetric[]): SummaryMetrics => ({
     totalSpend: campaigns.reduce((sum, item) => sum + parseFloat(item.spend || "0"), 0),
@@ -211,6 +212,7 @@ const CampaignMetricsPage: React.FC = () => {
         { withCredentials: true }
       );
 
+      // Update only Facebook-related state
       setFacebookData(response.data.data);
       setSelectedFacebookAccount(accountName);
       setLastUpdated(new Date());
@@ -225,7 +227,31 @@ const CampaignMetricsPage: React.FC = () => {
     }
   };
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchGoogleMetrics = async () => {
+    if (!selectedBrandId) return;
+    
+    try {
+      const baseURL = import.meta.env.PROD
+        ? import.meta.env.VITE_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
+
+      const response = await axios.post(
+        `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
+        { startDate, endDate },
+        { withCredentials: true }
+      );
+
+      setGoogleData(response.data.data);
+    } catch (error) {
+      console.error('Error fetching Google metrics:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        alert('Your session has expired. Please log in again.');
+        navigate('/');
+      }
+    }
+  };
+
+   const fetchMetrics = useCallback(async () => {
     if (!selectedBrandId) return;
 
     setIsInitialLoading(true);
@@ -248,6 +274,7 @@ const CampaignMetricsPage: React.FC = () => {
       setGoogleData(googleResponse.data.data);
       setFacebookData(facebookResponse.data.data);
       
+      // Set initial Facebook account if available and none selected
       if (facebookResponse.data.data.length > 0 && !selectedFacebookAccount) {
         setSelectedFacebookAccount(facebookResponse.data.data[0].account_name);
       }
@@ -333,15 +360,38 @@ const CampaignMetricsPage: React.FC = () => {
   };
 
   const renderFacebookMetrics = () => {
+    // If there's no Facebook data at all, show empty state
+    if (!facebookData || facebookData.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-500">No Facebook campaign data available</p>
+          </CardContent>
+        </Card>
+      );
+    }
+
     const selectedAccount = facebookData.find(account => 
       account.account_name === selectedFacebookAccount
     );
     
-    if (!selectedAccount) return null;
+    // If no account is selected or the selected account has no campaigns
+    if (!selectedAccount || !selectedAccount.campaigns || selectedAccount.campaigns.length === 0) {
+      const emptyMetrics: SummaryMetrics = {
+        totalSpend: 0,
+        averageRoas: 0
+      };
+
+      return renderMetricsTable(
+        [],
+        emptyMetrics,
+        isFacebookLoading
+      );
+    }
 
     const campaigns: DisplayCampaignMetric[] = selectedAccount.campaigns.map(campaign => ({
       campaignName: campaign.campaign_name,
-      spend: campaign.spend,
+      spend: campaign.spend || "0",
       roas: campaign.purchase_roas?.[0]?.value || "0"
     }));
 
@@ -399,6 +449,7 @@ const CampaignMetricsPage: React.FC = () => {
             <TableSkeleton />
           ) : (
             <>
+              {/* Google Metrics Section */}
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
@@ -412,30 +463,37 @@ const CampaignMetricsPage: React.FC = () => {
                 {renderGoogleMetrics()}
               </div>
 
+              {/* Facebook Metrics Section */}
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <FacebookLogo />
                     <h2 className="text-xl font-bold">Facebook Campaigns</h2>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        {selectedFacebookAccount || "Select Account"}
-                        <ChevronDown className="h-4 w-4 ml-1" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {facebookData.map(account => (
-                        <DropdownMenuItem
-                          key={account.account_name}
-                          onClick={() => fetchFacebookMetrics(account.account_name)}
-                        >
-                          {account.account_name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {facebookData && facebookData.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          {selectedFacebookAccount || "Select Account"}
+                          <ChevronDown className="h-4 w-4 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {facebookData.map(account => (
+                          <DropdownMenuItem
+                            key={account.account_name}
+                            onClick={() => {
+                              setIsFacebookLoading(true);
+                              setSelectedFacebookAccount(account.account_name);
+                              fetchFacebookMetrics(account.account_name);
+                            }}
+                          >
+                            {account.account_name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 {renderFacebookMetrics()}
               </div>

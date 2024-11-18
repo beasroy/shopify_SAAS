@@ -11,6 +11,7 @@ import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
+import targetReportRoutes from "./routes/BrandPerformance.js"
 import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
 import cron from 'node-cron';
 import { monthlyCalculateMetricsForAllBrands, monthlyGoogleAdData } from "./Report/MonthlyReport.js";
@@ -42,6 +43,7 @@ dataOperationRouter.use("/analytics",analyticsRoutes);
 dataOperationRouter.use("/brands",brandRoutes);
 dataOperationRouter.use("/metrics",fbMetricrRoutes);
 dataOperationRouter.use("/report",excelReportRoutes);
+dataOperationRouter.use("/performance",targetReportRoutes);
 
 // monthlyGoogleAdData('671b6925d3c4f462d681ef47')
 

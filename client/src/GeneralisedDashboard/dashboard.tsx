@@ -15,26 +15,26 @@ export default function LandingPage() {
         <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.username.split(' ')[0] || 'user'}!</h1>
 
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          <Card className="bg-white shadow-lg border-t-4 border-t-blue-500">
+          <Card className="bg-white shadow-lg border-t-4 border-t-[#071952]">
             <CardHeader>
-              <CardTitle className="text-blue-700 flex items-center">
+              <CardTitle className="text-[#088395] flex items-center">
                 <Activity className="mr-2 h-5 w-5" />
                 Performance & Targets
               </CardTitle>
               <CardDescription>Overview of your brand performance and targets</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between bg-[#EBF4F6] p-4 rounded-lg">
                 <div className="flex items-center">
                   <Target className="h-8 w-8 text-blue-500 mr-3" />
                   <div>
-                    <p className="text-sm font-medium text-blue-700">Active Targets</p>
+                    <p className="text-sm font-medium text-[#088395]">Active Targets</p>
                     <p className="text-2xl font-bold text-blue-900">{brands.length}</p>
                   </div>
                 </div>
                 <BarChart3 className="h-12 w-12 text-blue-300" />
               </div>
-              <Button asChild className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white">
+              <Button asChild className="w-full justify-between bg-[#37B7C3] hover:bg-cyan-800 text-white">
                 <Link to="/performance-metrics">
                   <span>View Performance Dashboard</span>
                   <ArrowRight className="h-4 w-4" />
@@ -53,12 +53,12 @@ export default function LandingPage() {
             </CardHeader>
             <CardContent>
               <ol className="list-decimal list-inside space-y-2 text-sm">
-                <li className="text-blue-700">Select a brand from "Your Brands" section</li>
-                <li className="text-blue-700">Connect your brand's Shopify store</li>
-                <li className="text-blue-700">Set up Google Analytics 4 property</li>
-                <li className="text-blue-700">Link Facebook Ads account</li>
-                <li className="text-blue-700">Configure Google Ads integration</li>
-                <li className="text-blue-700">Explore your unified brand analytics</li>
+                <li>Select a brand from "Your Brands" section</li>
+                <li>Connect your brand's Shopify store</li>
+                <li>Set up Google Analytics 4 property</li>
+                <li>Link Facebook Ads account</li>
+                <li>Configure Google Ads integration</li>
+                <li>Explore your unified brand analytics</li>
               </ol>
             </CardContent>
           </Card>

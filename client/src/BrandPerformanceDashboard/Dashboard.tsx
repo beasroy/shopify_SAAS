@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { PlusCircle, Edit2, X } from 'lucide-react'
+import { PlusCircle, Edit2, X, Trash2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
+import { format, endOfMonth } from "date-fns"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 import { useBrand } from '@/context/BrandContext'
 import { cn } from "@/lib/utils"
@@ -28,7 +28,7 @@ export default function BrandPerformanceDashboard() {
     id: '', 
     source: '', 
     targetAmount: 0, 
-    targetDate: new Date() 
+    targetDate: endOfMonth(new Date()) 
   })
   const [editingBrand, setEditingBrand] = useState<string | null>(null)
   const [editData, setEditData] = useState<typeof newBrand | null>(null)
@@ -41,7 +41,7 @@ export default function BrandPerformanceDashboard() {
       const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
-      const response = await axios.get(`${baseURL}/api/shopify/dailysales/${brandId}`,{withCredentials:true});
+      const response = await axios.get(`${baseURL}/api/shopify/dailysales/${brandId}`, { withCredentials: true });
       return response.data.totalSales;
     } catch (error) {
       console.error('Error fetching sales data:', error);
@@ -84,7 +84,7 @@ export default function BrandPerformanceDashboard() {
         targetAmount: newBrand.targetAmount,
         targetDate: newBrand.targetDate
       }])
-      setNewBrand({ id: '', source: '', targetAmount: 0, targetDate: new Date() })
+      setNewBrand({ id: '', source: '', targetAmount: 0, targetDate: endOfMonth(new Date()) })
     }
   }
 
@@ -111,10 +111,18 @@ export default function BrandPerformanceDashboard() {
     setEditData(null)
   }
 
+  const handleDelete = (brandId: string) => {
+    setSelectedBrands(prev => prev.filter(brand => brand.id !== brandId))
+  }
+
   const calculateMetrics = (brand: typeof selectedBrands[0]) => {
     const achieved = achievedSales[brand.id] || 0
     const remainingTarget = Math.max(brand.targetAmount - achieved, 0)
-    const remainingDays = Math.max(Math.ceil((brand.targetDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)), 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Set to start of day
+    const targetDate = new Date(brand.targetDate)
+    targetDate.setHours(23, 59, 59, 999) // Set to end of day
+    const remainingDays = Math.max(Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0)
     const requiredSalesPerDay = remainingDays > 0 ? remainingTarget / remainingDays : 0
 
     return {
@@ -150,7 +158,7 @@ export default function BrandPerformanceDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <Label htmlFor="brandName">Brand Name</Label>
-                <Select onValueChange={(value) => setNewBrand(prev => ({ ...prev, id: value }))}>
+                <Select onValueChange={(value) => setNewBrand(prev => ({ ...prev, id: value, source: '' }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select brand" />
                   </SelectTrigger>
@@ -163,7 +171,7 @@ export default function BrandPerformanceDashboard() {
               </div>
               <div>
                 <Label htmlFor="source">Source</Label>
-                <Select onValueChange={handleSourceChange}>
+                <Select onValueChange={handleSourceChange} value={newBrand.source}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select source" />
                   </SelectTrigger>
@@ -264,7 +272,7 @@ export default function BrandPerformanceDashboard() {
                             onChange={(e) => setEditData(prev => prev ? { ...prev, targetAmount: Number(e.target.value) } : null)}
                           />
                         ) : (
-                          `$${brand.targetAmount.toLocaleString()}`
+                          `₹${brand.targetAmount.toLocaleString()}`
                         )}
                       </TableCell>
                       <TableCell>
@@ -288,10 +296,10 @@ export default function BrandPerformanceDashboard() {
                           format(brand.targetDate, "PPP")
                         )}
                       </TableCell>
-                      <TableCell>${achieved.toLocaleString()}</TableCell>
-                      <TableCell>${remainingTarget.toLocaleString()}</TableCell>
+                      <TableCell>₹{achieved.toLocaleString()}</TableCell>
+                      <TableCell>₹{remainingTarget.toLocaleString()}</TableCell>
                       <TableCell>{remainingDays}</TableCell>
-                      <TableCell>${requiredSalesPerDay.toLocaleString()}</TableCell>
+                      <TableCell>₹{requiredSalesPerDay.toLocaleString()}</TableCell>
                       <TableCell>
                         {isEditing ? (
                           <>
@@ -299,7 +307,10 @@ export default function BrandPerformanceDashboard() {
                             <Button onClick={handleCancelEdit} variant="outline"><X className="h-4 w-4" /></Button>
                           </>
                         ) : (
-                          <Button onClick={() => handleEdit(brand.id)}><Edit2 className="h-4 w-4" /></Button>
+                          <>
+                            <Button onClick={() => handleEdit(brand.id)} className="mr-2"><Edit2 className="h-4 w-4" /></Button>
+                            <Button onClick={() => handleDelete(brand.id)} variant="destructive"><Trash2 className="h-4 w-4" /></Button>
+                          </>
                         )}
                       </TableCell>
                     </TableRow>

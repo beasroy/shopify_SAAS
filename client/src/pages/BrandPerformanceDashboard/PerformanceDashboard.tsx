@@ -1,6 +1,6 @@
 import React from "react";
 import BrandPerformanceDashboard from "./Dashboard";
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar";
  const PerformanceDashboard : React.FC=()=>{
     return (
         <div className="flex h-screen"> 

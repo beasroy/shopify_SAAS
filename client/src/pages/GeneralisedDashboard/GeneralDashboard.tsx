@@ -1,6 +1,6 @@
 import React from "react";
 import LandingPage from "./dashboard";
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar";
  const GeneralDashboard : React.FC=()=>{
     return (
         <div className="flex h-screen"> 

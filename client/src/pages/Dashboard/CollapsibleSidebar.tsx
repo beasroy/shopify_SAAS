@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
+import { useUser } from '../../context/UserContext';
 import { useBrand } from '@/context/BrandContext';
 import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import Logo from "../assets/messold-icon.png";
+import Logo from "@/assets/messold-icon.png"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MdCampaign } from "react-icons/md";
 

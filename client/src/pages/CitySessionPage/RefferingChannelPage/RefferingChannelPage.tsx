@@ -12,30 +12,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 
-interface CityMetric {
-  "city": string;
-  "country": string;
-  "region": string;
+interface ChannelMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
-  "Checkouts": string;
+  "Checkouts" : string;
   "Checkout Rate": string;
-  "Purchases": string;
+  "Purchases":string;
   "Purchase Rate": string;
   [key: string]: string;
 }
 
-export default function CitySessionPage() {
+const ChannelSessionPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
-  const [filteredData, setFilteredData] = useState<CityMetric[]>([])
+  const [filteredData, setFilteredData] = useState<ChannelMetric[]>([])
+  const [filters, setFilters] = useState<FilterItem[]>([])
   const now = new Date();
-  const [data, setData] = useState<CityMetric[]>([]);
+  const [data, setData] = useState<ChannelMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
@@ -44,14 +42,14 @@ export default function CitySessionPage() {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
-  const [filters, setFilters] = useState<FilterItem[]>([])
+
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
       const newColumns = prev.includes(column)
         ? prev.filter(col => col !== column)
         : [...prev, column];
-
+      
       return allColumns.filter(col => newColumns.includes(col));
     });
   };
@@ -70,7 +68,7 @@ export default function CitySessionPage() {
         withCredentials: true
       });
 
-      const fetchedData = analyticsResponse.data[1].data || [];
+      const fetchedData = analyticsResponse.data[2].data || [];
 
       setData(fetchedData);
       setFilteredData(fetchedData);
@@ -78,7 +76,7 @@ export default function CitySessionPage() {
 
       if (fetchedData.length > 0) {
         if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]);
+          const allColumns = Object.keys(fetchedData[0]); 
           setSelectedColumns(allColumns);
         } else {
           const newColumns = Object.keys(fetchedData[0]);
@@ -114,18 +112,14 @@ export default function CitySessionPage() {
   };
 
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
-
-  const sortedSelectedColumns = useMemo(() => {
-    return allColumns.filter((col) => selectedColumns.includes(col));
-  }, [allColumns, selectedColumns]);
-  
+  const sortedSelectedColumns = allColumns.filter(col => selectedColumns.includes(col));
 
   const applyFilters = useCallback((filters: FilterItem[]) => {
     let result = [...data];
     
     filters.forEach(filter => {
       result = result.filter(item => {
-        const value = item[filter.column as keyof CityMetric] as string;
+        const value = item[filter.column as keyof ChannelMetric] as string;
         if (['>', '<', '='].includes(filter.operator)) {
           const numValue = parseFloat(value);
           const filterValue = parseFloat(filter.value);
@@ -150,6 +144,8 @@ export default function CitySessionPage() {
     setFilters(filters.filter((_, i) => i !== index))
   }
 
+
+
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
@@ -158,7 +154,7 @@ export default function CitySessionPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2">
               <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
-              <h1 className="text-2xl font-bold">City Metrics Overview</h1>
+              <h1 className="text-2xl font-bold">Channel Metrics Overview</h1>
             </div>
             <div className="flex flex-col lg:flex-row lg:space-x-3 items-center">
               <div className="flex items-center space-x-4">
@@ -216,7 +212,7 @@ export default function CitySessionPage() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-36">
+                  <Button variant="outline" className="w-[180px]">
                     Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -235,7 +231,6 @@ export default function CitySessionPage() {
               />
             </div>
           </div>
-
           {filters.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-2">
               {filters.map((filter, index) => (
@@ -247,12 +242,14 @@ export default function CitySessionPage() {
             </div>
           )}
 
+
           <div className="relative border rounded-md overflow-hidden" style={{ maxHeight: 'calc(100vh - 183px)' }}>
             <div className="overflow-auto h-full">
-              {isLoading ? (
+            {isLoading ? (
                 <TableSkeleton />
               ) : (
                 <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />)}
+              
             </div>
           </div>
         </div>
@@ -260,3 +257,5 @@ export default function CitySessionPage() {
     </div>
   )
 }
+
+export default ChannelSessionPage;

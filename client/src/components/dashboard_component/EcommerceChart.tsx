@@ -1,4 +1,4 @@
-import { DailyCartCheckoutData } from "@/Dashboard/interfaces";
+import { DailyCartCheckoutData } from "@/pages/Dashboard/interfaces";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 interface EcommerceMetricsProps {

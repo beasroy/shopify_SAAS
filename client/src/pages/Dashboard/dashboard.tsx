@@ -7,10 +7,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, DollarSign, PercentIcon, TrendingUp, FileChartColumn, RefreshCw, BriefcaseBusiness} from "lucide-react";
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
-import { ReferringChannelChart } from '../components/dashboard_component/ReferringChannelChart.tsx';
-import TopCitiesLineChart from '../components/dashboard_component/CityChart.tsx';
-import TopPagesPieChart from '../components/dashboard_component/LandingPageChart.tsx';
-import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces';
+import { ReferringChannelChart } from '../../components/dashboard_component/ReferringChannelChart.tsx';
+import TopCitiesLineChart from '../../components/dashboard_component/CityChart.tsx';
+import TopPagesPieChart from '../../components/dashboard_component/LandingPageChart.tsx';
+import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces.ts';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
 

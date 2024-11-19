@@ -5,7 +5,7 @@ import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
-import { AdAccountData, AggregatedMetrics, GoogleAdAccountData } from '@/Dashboard/interfaces.ts'
+import { AdAccountData, AggregatedMetrics, GoogleAdAccountData } from '@/pages/Dashboard/interfaces.ts'
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
 import { Button } from '@/components/ui/button.tsx';
 import {

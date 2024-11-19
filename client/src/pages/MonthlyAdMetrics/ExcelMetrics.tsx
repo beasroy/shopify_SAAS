@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table"
 
 import { useParams } from "react-router-dom"
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { BriefcaseBusiness, ChevronDown, ChevronRight, SearchX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DateRange } from "react-day-picker"

@@ -21,7 +21,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useBrand } from '@/context/BrandContext';
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";

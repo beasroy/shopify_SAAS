@@ -1,5 +1,5 @@
 import React from "react";
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar.tsx";
 import Dashboard from "./dashboard.tsx";
 
 const AnalyticsDashboard: React.FC = () => {

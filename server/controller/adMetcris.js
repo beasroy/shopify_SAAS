@@ -354,6 +354,7 @@ export async function getGoogleAdMetrics(req, res) {
     }
 }
 
+
 export async function getGoogleCampaignMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate } = req.body;
@@ -447,6 +448,9 @@ export async function getGoogleCampaignMetrics(req, res) {
         });
     }
 }
+
+
+
 
 
 

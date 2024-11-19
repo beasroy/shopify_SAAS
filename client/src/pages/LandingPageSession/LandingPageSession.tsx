@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"

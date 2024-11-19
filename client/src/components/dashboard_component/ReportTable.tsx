@@ -108,7 +108,7 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
   };
 
   return (
-    <div className="relative border rounded-md overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+    <div className="relative border rounded-md overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
       <div className="overflow-x-auto min-w-full">
         <Table className="text-center">
           <TableHeader className="bg-gray-200 sticky top-0 z-10">
@@ -116,7 +116,7 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
               {columns.map((column) => (
                 <TableCell
                   key={column}
-                  className={`font-bold px-4 text-black min-w-[180px] ${
+                  className={`font-bold px-4 text-black min-w-[170px] ${
                     isNumericColumn(column) ? 'cursor-pointer' : ''
                   }`}
                   onClick={() => handleSort(column)}
@@ -144,7 +144,7 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
                   return (
                     <TableCell
                       key={column}
-                      className={`px-4 py-2 w-[200px] font-medium ${
+                      className={`px-4 py-2 w-[160px] font-medium ${
                         column === 'Sessions'
                           ? getTextColor(Number(item.Sessions))
                           : isComparisonColumn

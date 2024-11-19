@@ -12,72 +12,73 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
-import CollapsibleSidebar from "@/Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
+import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 
-interface EcommerceMetric {
-  "Date": string
-  "Add To Carts": string
-  "Checkout": string
-  "Sessions": string
-  "Purchases": string
-  "Purchase Rate": string
-  "Add To Cart Rate": string
-  "Checkout Rate": string
+interface CityMetric {
+  "city": string;
+  "country": string;
+  "region": string;
+  "Add To Carts": string;
+  "Add To Cart Rate": string;
+  "Checkouts": string;
+  "Checkout Rate": string;
+  "Purchases": string;
+  "Purchase Rate": string;
+  [key: string]: string;
 }
 
-export default function EcommerceMetricsPage() {
-  const [date, setDate] = useState<DateRange | undefined>(undefined)
-  const [filteredData, setFilteredData] = useState<EcommerceMetric[]>([])
-  const now = new Date()
-  const [data, setData] = useState<EcommerceMetric[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const { brandId } = useParams()
-  const navigate = useNavigate()
-  const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
-  const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([])
+export default function CitySessionPage() {
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [filteredData, setFilteredData] = useState<CityMetric[]>([])
+  const now = new Date();
+  const [data, setData] = useState<CityMetric[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { brandId } = useParams();
+  const navigate = useNavigate();
+  const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
+  const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
   const [filters, setFilters] = useState<FilterItem[]>([])
 
   const toggleColumnSelection = (column: string) => {
-    setSelectedColumns((prev) => {
-      if (prev.includes(column)) {
-        return prev.filter((col) => col !== column)
-      } else {
-        return [...prev, column]
-      }
-    })
-  }
+    setSelectedColumns(prev => {
+      const newColumns = prev.includes(column)
+        ? prev.filter(col => col !== column)
+        : [...prev, column];
+
+      return allColumns.filter(col => newColumns.includes(col));
+    });
+  };
 
   const fetchMetrics = useCallback(async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
 
-      const DailyAnalyticsResponse = await axios.post(
-        `${baseURL}/api/analytics/atcreport/${brandId}`,
-        {
-          startDate: startDate,
-          endDate: endDate,
-        },
-        { withCredentials: true }
-      )
+      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+        startDate: startDate,
+        endDate: endDate
+      }, {
+        withCredentials: true
+      });
 
-      const fetchedData = DailyAnalyticsResponse.data.data || [];
-      setData(fetchedData)
-      setFilteredData(fetchedData)
-      setLastUpdated(new Date())
+      const fetchedData = analyticsResponse.data[1].data || [];
+
+      setData(fetchedData);
+      setFilteredData(fetchedData);
+      setLastUpdated(new Date());
 
       if (fetchedData.length > 0) {
         if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]); 
+          const allColumns = Object.keys(fetchedData[0]);
           setSelectedColumns(allColumns);
         } else {
           const newColumns = Object.keys(fetchedData[0]);
@@ -88,39 +89,43 @@ export default function EcommerceMetricsPage() {
       }
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('Error fetching dashboard data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.')
-        navigate('/')
+        alert('Your session has expired. Please log in again.');
+        navigate('/');
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [navigate, startDate, endDate, brandId])
+  }, [navigate, startDate, endDate, brandId]);
 
   useEffect(() => {
-    fetchMetrics()
-  }, [fetchMetrics])
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   useEffect(() => {
-    fetchMetrics()
-    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000)
-    return () => clearInterval(intervalId)
-  }, [fetchMetrics])
+    fetchMetrics();
+    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [fetchMetrics]);
 
   const handleManualRefresh = () => {
-    fetchMetrics()
-  }
+    fetchMetrics();
+  };
 
-  const allColumns = data.length > 0 ? Object.keys(data[0]) : []
-  const sortedSelectedColumns = allColumns.filter((col) => selectedColumns.includes(col))
+  const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
+
+  const sortedSelectedColumns = useMemo(() => {
+    return allColumns.filter((col) => selectedColumns.includes(col));
+  }, [allColumns, selectedColumns]);
+  
 
   const applyFilters = useCallback((filters: FilterItem[]) => {
     let result = [...data];
     
     filters.forEach(filter => {
       result = result.filter(item => {
-        const value = item[filter.column as keyof EcommerceMetric] as string;
+        const value = item[filter.column as keyof CityMetric] as string;
         if (['>', '<', '='].includes(filter.operator)) {
           const numValue = parseFloat(value);
           const filterValue = parseFloat(filter.value);
@@ -144,6 +149,7 @@ export default function EcommerceMetricsPage() {
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }
+
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
@@ -152,7 +158,7 @@ export default function EcommerceMetricsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2">
               <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
-              <h1 className="text-2xl font-bold">E-Commerce Metrics Overview</h1>
+              <h1 className="text-2xl font-bold">City Metrics Overview</h1>
             </div>
             <div className="flex flex-col lg:flex-row lg:space-x-3 items-center">
               <div className="flex items-center space-x-4">
@@ -229,24 +235,24 @@ export default function EcommerceMetricsPage() {
               />
             </div>
           </div>
-          {filters.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {filters.map((filter, index) => (
-            <div key={index} className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center">
-              <span>{`${filter.column} ${filter.operator} ${filter.value}`}</span>
-              <button onClick={() => removeFilter(index)} className="ml-2 text-red-500">×</button>
-            </div>
-          ))}
-        </div>
-      )}
 
-          <div className="relative border rounded-md overflow-hidden">
+          {filters.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {filters.map((filter, index) => (
+                <div key={index} className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center">
+                  <span>{`${filter.column} ${filter.operator} ${filter.value}`}</span>
+                  <button onClick={() => removeFilter(index)} className="ml-2 text-red-500">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="relative border rounded-md overflow-hidden" style={{ maxHeight: 'calc(100vh - 183px)' }}>
             <div className="overflow-auto h-full">
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
-              )}
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />)}
             </div>
           </div>
         </div>

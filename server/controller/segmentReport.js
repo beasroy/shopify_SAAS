@@ -10,9 +10,25 @@ const client = new GoogleAdsApi({
     refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
 
+const ProductStatusEnum = {
+    0: "UNSPECIFIED",
+    1: "UNKNOWN",
+    2: "NOT_ELIGIBLE",
+    3: "ELIGIBLE_LIMITED",
+    4: "ELIGIBLE",
+};
+const sanitizeForGoogleAds = (value) => {
+    // Check if the value is a string before calling replace
+    if (typeof value !== 'string') {
+        return value || ''; // Return an empty string or original value if it's not a string
+    }
+    // Escape special characters like single quotes
+    return value.replace(/'/g, "\\'");
+};
+
 export async function getGoogleProductMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate } = req.body;
+    let { startDate, endDate, brands, productType } = req.body;
 
     try {
         const brand = await Brand.findById(brandId);
@@ -30,7 +46,7 @@ export async function getGoogleProductMetrics(req, res) {
             return res.json({
                 success: true,
                 data: {},
-                message: "No Google ads account found for this brand",
+                message: "No Google Ads account found for this brand",
             });
         }
 
@@ -45,7 +61,19 @@ export async function getGoogleProductMetrics(req, res) {
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 
-        // Fetch product data
+        const queryBrand = sanitizeForGoogleAds(brands);
+        const queryProductType = sanitizeForGoogleAds(productType);
+
+        // Build dynamic constraints
+        const constraints = [];
+        if (brands) {
+            constraints.push(`shopping_product.brand = '${queryBrand}'`);
+        }
+        if (productType) {
+            constraints.push(`shopping_product.product_type_level1 = '${queryProductType}'`);
+        }
+
+        // Fetch product data with constraints
         const adsReport = await customer.report({
             entity: "shopping_product",
             attributes: [
@@ -64,6 +92,7 @@ export async function getGoogleProductMetrics(req, res) {
             ],
             from_date: startDate,
             to_date: endDate,
+            constraints, // Apply the dynamic constraints here
         });
 
         const productsData = [];
@@ -73,16 +102,17 @@ export async function getGoogleProductMetrics(req, res) {
             const merchantId = row.shopping_product.merchant_center_id || null;
             const itemId = row.shopping_product.item_id || null;
             const title = row.shopping_product.title || "Untitled";
-            const status = row.shopping_product.status || "UNKNOWN";
+            const statusCode = row.shopping_product.status || 0; // Default to 0 if not provided
+            const status = ProductStatusEnum[statusCode] || "UNKNOWN";
             const priceMicros = row.shopping_product.price_micros || 0;
             const price = (priceMicros / 1_000_000).toFixed(2);
-            const brand = row.shopping_product.brand;
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
             const ctr = row.metrics.ctr || 0;
             const costMicros = row.metrics.cost_micros || 0;
             const cost = (costMicros / 1_000_000).toFixed(2);
             const issues = row.shopping_product.issues || [];
+
             // Add each product's data to the array
             productsData.push({
                 merchantId,
@@ -97,12 +127,12 @@ export async function getGoogleProductMetrics(req, res) {
                 cost,
             });
         }
-        console.log(productsData.length)
+
+        console.log(productsData.length);
 
         return res.json({
             success: true,
             productsData,
-
         });
     } catch (error) {
         console.error("Failed to fetch product-level data:", error);
@@ -113,6 +143,8 @@ export async function getGoogleProductMetrics(req, res) {
         });
     }
 }
+
+
 
 export async function getGoogleProductMetricsByBrand(req, res) {
     const { brandId } = req.params;
@@ -179,23 +211,32 @@ export async function getGoogleProductMetricsByBrand(req, res) {
             // Initialize metrics for the brand if not already done
             if (!brandMetricsMap[brandName]) {
                 brandMetricsMap[brandName] = {
-                    brand: brandName,
-                    totalClicks: 0,
-                    totalImpressions: 0,
-                    totalCost: 0,
-                    productCount: 0,
+                    Brand: brandName,
+                    Products: 0,
+                    Clicks: 0,
+                    Impressions: 0,
+                    CTR: 0,
+                    Cost: 0,
                 };
             }
 
             // Update aggregated metrics
-            brandMetricsMap[brandName].totalClicks += clicks;
-            brandMetricsMap[brandName].totalImpressions += impressions;
-            brandMetricsMap[brandName].totalCost += cost;
-            brandMetricsMap[brandName].productCount += 1;
+            brandMetricsMap[brandName].Products += 1;
+            brandMetricsMap[brandName].Clicks += clicks;
+            brandMetricsMap[brandName].Impressions += impressions;
+            brandMetricsMap[brandName].CTR = 
+            brandMetricsMap[brandName].Impressions > 0
+                        ? ((brandMetricsMap[brandName].Clicks / brandMetricsMap[brandName].Impressions) * 100).toFixed(2)
+                        : 0;
+            brandMetricsMap[brandName].Cost += parseFloat(cost);
+         
         }
 
         // Convert the brand metrics map to an array
-        const brandsData = Object.values(brandMetricsMap);
+        const brandsData = Object.values(brandMetricsMap).map(brands=>({
+            ...brands,
+            Cost: brands.Cost.toFixed(2)
+        }));
         console.log(brandsData.length);
 
         return res.json({
@@ -277,23 +318,33 @@ export async function getGoogleProductMetricsByType(req, res) {
             // Initialize metrics for the brand if not already done
             if (!typeMetricsMap[typeName]) {
                 typeMetricsMap[typeName] = {
-                    type: typeName,
-                    totalClicks: 0,
-                    totalImpressions: 0,
-                    totalCost: 0,
-                    productCount: 0,
+                    Type: typeName,
+                    Products: 0,
+                    Clicks: 0,
+                    Impressions: 0,
+                    CTR:0,
+                    Cost: 0,
+                    
                 };
             }
 
             // Update aggregated metrics
-            typeMetricsMap[typeName].totalClicks += clicks;
-            typeMetricsMap[typeName].totalImpressions += impressions;
-            typeMetricsMap[typeName].totalCost += cost;
-            typeMetricsMap[typeName].productCount += 1;
+            typeMetricsMap[typeName].Products += 1;
+            typeMetricsMap[typeName].Clicks += clicks;
+            typeMetricsMap[typeName].Impressions += impressions;
+            typeMetricsMap[typeName].CTR = 
+            typeMetricsMap[typeName].Impressions > 0
+                        ? ((typeMetricsMap[typeName].Clicks / typeMetricsMap[typeName].Impressions) * 100).toFixed(2)
+                        : 0;
+            typeMetricsMap[typeName].Cost += parseFloat(cost);
+           
         }
 
         // Convert the brand metrics map to an array
-        const productTypesData = Object.values(typeMetricsMap);
+        const productTypesData = Object.values(typeMetricsMap).map(type => ({
+            ...type,
+            Cost: type.Cost.toFixed(2)
+        }));
         console.log(productTypesData.length);
 
         return res.json({
@@ -400,7 +451,6 @@ export async function getGoogleProductMetricsByCategory(req, res) {
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
-                "metrics.ctr",
                 "metrics.cost_micros",
             ],
             from_date: startDate,
@@ -419,46 +469,54 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                 row.shopping_product.category_level5 || "Unknown Level 5",
             ].map((level) => {
                 const categoryKey = level.split("/")[1];
-
+        
                 if (categoryKey) {
                     return categoryMapping[`productCategoryConstants/${categoryKey}`] || level;
                 }
                 return level;
             });
-
+        
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
             const costMicros = row.metrics.cost_micros || 0;
             const cost = costMicros / 1_000_000;
-
+        
             let currentLevel = categoryHierarchy;
             for (let i = 0; i < levels.length; i++) {
                 const levelName = levels[i];
-
-                // Only skip if the level is explicitly "Unknown" (not "Unnamed Category")
+        
                 if (levelName.startsWith("Unknown")) {
-                    break; // Skip this level and stop processing subcategories
+                    break;
                 }
-
+        
                 if (!currentLevel[levelName]) {
                     currentLevel[levelName] = {
                         metrics: {
+                            products: 0,
                             totalClicks: 0,
                             totalImpressions: 0,
                             totalCost: 0,
-                            productCount: 0,
+                            ctr: 0,
                         },
                         subcategories: {},
                     };
                 }
+        
+                currentLevel[levelName].metrics.products += 1;
                 currentLevel[levelName].metrics.totalClicks += clicks;
                 currentLevel[levelName].metrics.totalImpressions += impressions;
                 currentLevel[levelName].metrics.totalCost += cost;
-                currentLevel[levelName].metrics.productCount += 1;
-
+        
+                // Correct CTR calculation
+                currentLevel[levelName].metrics.ctr = 
+                    currentLevel[levelName].metrics.totalImpressions > 0
+                        ? (currentLevel[levelName].metrics.totalClicks / currentLevel[levelName].metrics.totalImpressions) * 100
+                        : 0;
+        
                 currentLevel = currentLevel[levelName].subcategories;
             }
         }
+        
 
         const convertToArray = (levelMap) => {
             return Object.entries(levelMap).map(([name, data]) => ({

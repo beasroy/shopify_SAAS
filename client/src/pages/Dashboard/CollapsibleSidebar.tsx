@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
+import { ChevronLeft, ChevronRight,Compass , Link2, ChevronDown, ChevronUp, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -121,7 +121,8 @@ export default function CollapsibleSidebar() {
     const dashboards = [
         { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={24} /> },
         { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={24} />, requiresAdsData: true },
-        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={24} />, requiresAdsData: true }
+        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={24} />, requiresAdsData: true },
+        { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={24} /> },
     ];
 
     const isItemDisabled = (item: any) => {

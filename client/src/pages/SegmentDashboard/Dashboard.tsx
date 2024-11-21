@@ -9,7 +9,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold">Segment Dashboard</h1>
         </div>
       </nav>
-      <div className="container flex flex-col mx-auto p-4">
+      <div className="container flex flex-col w-full p-4">
       <ProductTab />
       </div>
   

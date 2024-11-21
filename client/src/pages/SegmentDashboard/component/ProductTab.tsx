@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, Filter, ChevronLeft, X, CheckCircle, AlertCircle } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronRight, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
+import { GoogleLogo } from '@/pages/CampaignMetricsPage'
 
 type Metrics = {
     totalClicks: number
@@ -31,6 +33,7 @@ type TabConfig = {
     apiEndpoint: string
     columns: ColumnDef[]
     data: any[]
+    lastUpdated: number | null,
 }
 
 export default function ProductTab() {
@@ -38,10 +41,10 @@ export default function ProductTab() {
     const { brandId } = useParams()
 
     const [tabs, setTabs] = useState<TabConfig[]>([
-        { id: 'products', label: 'Products', apiEndpoint: `${baseURL}/api/segment/productMetrics/${brandId}`, columns: [], data: [] },
-        { id: 'categories', label: 'Categories', apiEndpoint: `${baseURL}/api/segment/categoryMetrics/${brandId}`, columns: [], data: [] },
-        { id: 'brands', label: 'Brands', apiEndpoint: `${baseURL}/api/segment/brandMetrics/${brandId}`, columns: [], data: [] },
-        { id: 'productTypes', label: 'Product types', apiEndpoint: `${baseURL}/api/segment/typeMetrics/${brandId}`, columns: [], data: [] },
+        { id: 'products', label: 'Products', apiEndpoint: `${baseURL}/api/segment/productMetrics/${brandId}`, columns: [], data: [], lastUpdated: null },
+        { id: 'categories', label: 'Categories', apiEndpoint: `${baseURL}/api/segment/categoryMetrics/${brandId}`, columns: [], data: [], lastUpdated: null },
+        { id: 'brands', label: 'Brands', apiEndpoint: `${baseURL}/api/segment/brandMetrics/${brandId}`, columns: [], data: [], lastUpdated: null },
+        { id: 'productTypes', label: 'Product types', apiEndpoint: `${baseURL}/api/segment/typeMetrics/${brandId}`, columns: [], data: [], lastUpdated: null },
     ])
     const [activeTab, setActiveTab] = useState(tabs[0].id)
     const [currentPage, setCurrentPage] = useState(1)
@@ -51,6 +54,9 @@ export default function ProductTab() {
     const rowsPerPage = 100
     const [prevActiveTab, setPrevActiveTab] = useState<string | null>(null);
     const [filterData, setFilterData] = useState<any>({});
+    const cacheRef = useRef<{ [key: string]: { data: any; timestamp: number } }>({});
+
+    const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 
 
@@ -58,42 +64,56 @@ export default function ProductTab() {
         setActiveTab(newTabId);
         setCurrentPage(1); // Reset pagination to the first page when switching tabs
         setExpandedCategories(new Set()); // Reset any expanded categories
-
-        // If you're switching to the 'products' tab, reset the filter
-        if (newTabId === 'products') {
-            setFilterApplied(false); // Reset filter state for products tab
-            fetchTabData('products', {}); // Call API to fetch all data for the 'products' tab without a filter
-        }
     };
 
-    const fetchTabData = async (tabId: string, body: Record<string, any> = {}) => {
-        if (loading) {
-            return; // Prevent making another request if the previous one is still in progress
-        }
-    
+    const fetchTabData = async (tabId: string, body: Record<string, any> = {}, isFilterApplied: boolean = false) => {
+        if (loading) return;
+
         setLoading(true);
-    
+
         const tab = tabs.find(t => t.id === tabId);
         if (!tab) {
             console.warn(`Tab not found for ID: ${tabId}`);
             return;
         }
-    
-        // If it's the 'products' tab, send the request only if the body is not empty
-        const requestBody = tabId === 'products' && Object.keys(body).length > 0 ? body : {}; // Check if body has keys
-    
-        try {
-            const response = await axios.post(
-                tab.apiEndpoint,
-                requestBody, // Dynamically pass the body
-                { withCredentials: true }
+
+        // Cache handling
+        const cachedData = cacheRef.current[tabId];
+        const now = Date.now();
+
+        // When no filter is applied, use cached data if it's fresh for every tab
+        if (!isFilterApplied && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
+            setTabs(prevTabs =>
+                prevTabs.map(t =>
+                    t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
+                )
             );
-    
+            setLoading(false);
+            return;
+        }
+
+        // If filter is applied, update the cache only for the 'products' tab (force data fetch)
+        if (isFilterApplied && tabId === 'products') {
+            cacheRef.current['products'] = null as any; // Clear cache for the 'products' tab
+        }
+
+        if (isFilterApplied && tabId !== 'products' && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
+            setTabs(prevTabs =>
+                prevTabs.map(t =>
+                    t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
+                )
+            );
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await axios.post(tab.apiEndpoint, body, { withCredentials: true });
+
             if (response.data.success) {
                 const result = response.data;
-                const Data = result[`${tabId}Data`]?.[0] || {};
-    
-                const columns: ColumnDef[] = Object.keys(Data).map(key => ({
+                const data = result[`${tabId}Data`] || [];
+                const columns: ColumnDef[] = Object.keys(data[0] || {}).map(key => ({
                     id: key,
                     header: key.charAt(0).toUpperCase() + key.slice(1),
                     accessorKey: key,
@@ -103,14 +123,17 @@ export default function ProductTab() {
                         }
                 
                         return String(value);
-                    },
+                    }
                 }));
-    
+
                 setTabs(prevTabs =>
                     prevTabs.map(t =>
-                        t.id === tabId ? { ...t, columns, data: result[`${tabId}Data`] } : t
+                        t.id === tabId ? { ...t, columns, data, lastUpdated: now } : t
                     )
                 );
+
+                // Cache the fetched data with a timestamp
+                cacheRef.current[tabId] = { data, timestamp: now };
             } else {
                 console.error(`Failed to fetch data for ${tabId}`);
             }
@@ -120,7 +143,30 @@ export default function ProductTab() {
             setLoading(false);
         }
     };
-    
+
+
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            // Only fetch data if it's been more than 5 minutes since last fetch
+            fetchTabData(activeTab, filterApplied ? filterData : {}, filterApplied ? true : false);
+        }, POLL_INTERVAL);
+
+        return () => clearInterval(intervalId); // Cleanup interval on unmount
+    }, [activeTab, filterApplied, filterData]);
+
+
+
+    // This will ensure the fetch happens on initial mount
+    useEffect(() => {
+        const requestBody = filterApplied ? filterData : {};
+        console.log(filterData)
+
+        if (prevActiveTab !== activeTab || filterApplied) {
+            fetchTabData(activeTab, requestBody, filterApplied ? true : false); // Fetch data for the current active tab with filter
+            setPrevActiveTab(activeTab); // Update the previous active tab to prevent unnecessary re-fetching
+        }
+    }, [activeTab, filterApplied, filterData, prevActiveTab]); // Add filterData as a dependency to re-fetch when filter changes
 
 
     const handleRowClick = (currentTab: string, rowData: Record<string, any>) => {
@@ -155,21 +201,6 @@ export default function ProductTab() {
             console.warn(`No column or body key mapping found for tab: ${currentTab}`);
         }
     };
-
-    // useEffect to trigger data fetch whenever activeTab or filterApplied changes
-    useEffect(() => {
-        const requestBody = filterApplied ? filterData : {};
-        console.log(filterData)
-
-        if (prevActiveTab !== activeTab || filterApplied) {
-            fetchTabData(activeTab, requestBody); // Fetch data for the current active tab with filter
-            setPrevActiveTab(activeTab); // Update the previous active tab to prevent unnecessary re-fetching
-        }
-    }, [activeTab, filterApplied, filterData, prevActiveTab]); // Add filterData as a dependency to re-fetch when filter changes
-
-
-
-
 
 
     const toggleCategory = (categoryPath: string) => {
@@ -270,7 +301,11 @@ export default function ProductTab() {
     }
 
     return (
-        <div className='max-w-full'>
+        <div className='w-full'>
+            <div className='flex flex-row gap-2 items-center mb-3'>
+                <GoogleLogo />
+            <h1 className='text-lg font-semibold'>Google Ads Product Insights</h1>
+            </div>
             <div className='bg-white p-3 rounded-xl shadow-md'>
                 <div className="flex items-center justify-between border-b">
                     <div className="flex" role="tablist">
@@ -295,9 +330,23 @@ export default function ProductTab() {
                         ))}
                     </div>
                     <div className="flex items-center gap-2 p-2">
-                        <button className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                            <Filter className={` ${filterApplied ? 'text-blue-600' : 'text-black'} h-4 w-4 inline-block`} />
+                        <button className="p-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100">
+                            <Filter className={` ${filterApplied ? 'text-blue-600' : 'text-black'} h-4 w-4`} />
                         </button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button className={`p-2 bg-black text-sm border border-gray-300 rounded-md hover:bg-gray-800`}>
+                                        <RefreshCw className={`h-4 w-4 text-white ${loading ? 'animate-spin' : ''}`} />
+                                    </button>
+                                </TooltipTrigger>
+                                {tabs.find(t => t.id === activeTab)?.lastUpdated && (
+                                    <TooltipContent className='mb-2 shadow-md'>
+                                        <p className='text-xs bg-white px-2 py-1 text-gray-700 rounded-xl'>Last updated: {new Date(tabs.find(t => t.id === activeTab)?.lastUpdated || 0).toLocaleString()}</p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -309,7 +358,9 @@ export default function ProductTab() {
                                 onClick={() => {
                                     setFilterApplied(false);
                                     setFilterData({});
-                                    fetchTabData(activeTab, {});
+                                    setActiveTab('products')
+                                    cacheRef.current['products'] = null as any;
+                                    fetchTabData('products', {}, false);
                                 }}
                                 className="text-red-500 hover:text-gray-700"
                             >
@@ -340,45 +391,45 @@ export default function ProductTab() {
                                     ) : (
                                         data.map((row, i) => (
                                             <tr key={i} className="max-w-[200px]">
-                                            {columns.map((column) => {
-                                              const value = row[column.accessorKey]; // Destructure the value
-                                              const isIssuesColumn = column.id === 'issues';
-                                              const isProductColumn = column.id === 'Products';
-                                              const isNoIssues = value === 'No issues';
-                                          
-                                              // Render the cell value based on the column type
-                                              const renderCell = () => {
-                                                if (isIssuesColumn) {
-                                                  // Check if the issue is 'No issues' or not
-                                                  const icon = isNoIssues ? (
-                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                  ) : (
-                                                    <AlertCircle className="w-4 h-4 mr-2" />
-                                                  );
-                                          
-                                                  return (
-                                                    <div className="flex items-center">
-                                                      {icon}
-                                                      {column.cell ? column.cell(value) : value}
-                                                    </div>
-                                                  );
-                                                }
-                                                return column.cell ? column.cell(value) : value;
-                                              };
-                                          
-                                              return (
-                                                <td
-                                                  key={column.id}
-                                                  className={`px-4 py-2.5 whitespace-nowrap text-sm ${isProductColumn ? 'cursor-pointer text-blue-700 underline' : 'cursor-default'}
+                                                {columns.map((column) => {
+                                                    const value = row[column.accessorKey]; // Destructure the value
+                                                    const isIssuesColumn = column.id === 'issues';
+                                                    const isProductColumn = column.id === 'Products';
+                                                    const isNoIssues = value === 'No issues';
+
+                                                    // Render the cell value based on the column type
+                                                    const renderCell = () => {
+                                                        if (isIssuesColumn) {
+                                                            // Check if the issue is 'No issues' or not
+                                                            const icon = isNoIssues ? (
+                                                                <CheckCircle className="w-4 h-4 mr-2" />
+                                                            ) : (
+                                                                <AlertCircle className="w-4 h-4 mr-2" />
+                                                            );
+
+                                                            return (
+                                                                <div className="flex items-center">
+                                                                    {icon}
+                                                                    {column.cell ? column.cell(value) : value}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return column.cell ? column.cell(value) : value;
+                                                    };
+
+                                                    return (
+                                                        <td
+                                                            key={column.id}
+                                                            className={`px-4 py-2.5 whitespace-nowrap text-sm ${isProductColumn ? 'cursor-pointer text-blue-700 underline' : 'cursor-default'}
                                                   ${isIssuesColumn ? (isNoIssues ? 'text-green-600' : 'text-red-600') : ''}`}
-                                                  onClick={() => isProductColumn && handleRowClick(activeTab, row)}
-                                                >
-                                                  {renderCell()}
-                                                </td>
-                                              );
-                                            })}
-                                          </tr>
-                                          
+                                                            onClick={() => isProductColumn && handleRowClick(activeTab, row)}
+                                                        >
+                                                            {renderCell()}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+
                                         ))
                                     )}
                                     {(activeTab === 'categories' ? tabs.find(tab => tab.id === 'categories')?.data.length === 0 : data.length === 0) && (

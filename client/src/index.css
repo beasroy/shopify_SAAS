@@ -85,8 +85,8 @@
 
 /* Style the scrollbar */
 ::-webkit-scrollbar {
-  width: 8px; /* Adjust the width for vertical scrollbars */
-  height: 8px; /* Adjust the height for horizontal scrollbars */
+  width: 5px; /* Adjust the width for vertical scrollbars */
+  height: 5px; /* Adjust the height for horizontal scrollbars */
   border-radius: 10px; /* Rounded corners for the scrollbar */
 }
 

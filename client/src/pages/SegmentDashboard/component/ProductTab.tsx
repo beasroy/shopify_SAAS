@@ -320,7 +320,7 @@ const fetchTabData = useCallback(
                 <GoogleLogo />
                 <h1 className='text-lg font-semibold'>Google Ads Product Insights</h1>
             </div>
-            <div className='bg-white p-3 rounded-xl shadow-md'>
+            <div className='bg-white p-3 rounded-xl shadow-md border-blue-800 border'>
                 <div className="flex items-center justify-between border-b">
                     <div className="flex" role="tablist">
                         {tabs.map(tab => (
@@ -364,7 +364,7 @@ const fetchTabData = useCallback(
                     </div>
                 </div>
 
-                <div className="p-4">
+                <div className='p-2'>
                     {filterApplied && (
                         <div className="flex items-center gap-2 mb-2 w-fit p-2 bg-gray-100 rounded-full">
                             <span className="text-xs font-medium">{Object.entries(filterData).map(([key, value]) => `${key}: ${value}`).join(', ')}</span>
@@ -382,7 +382,7 @@ const fetchTabData = useCallback(
                             </button>
                         </div>
                     )}
-                    <div className="rounded-md border">
+                    <div className="rounded-md">
                         <div className="max-h-[380px] overflow-auto">
                             {loading ? <TableSkeleton /> : (<table className="w-full">
                                 <thead className="sticky top-0 z-10 bg-[#134B70]">
@@ -483,7 +483,7 @@ const fetchTabData = useCallback(
                                 </tbody>
                             </table>)}
                         </div>
-                        <div className="flex items-center justify-between px-4 py-4 border-t">
+                        <div className="flex items-center justify-between px-4 pt-4 border-t">
                             <div className="text-sm text-gray-500">
                                 Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, tabs.find(t => t.id === activeTab)?.data.length || 0)} of {tabs.find(t => t.id === activeTab)?.data.length || 0} entries
                             </div>

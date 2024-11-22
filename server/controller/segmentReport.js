@@ -28,7 +28,7 @@ const sanitizeForGoogleAds = (value) => {
 
 export async function getGoogleProductMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, brands, productType, categoryName,categoryLevel } = req.body;
+    let { startDate, endDate, brands, productType, categoryName, categoryLevel } = req.body;
 
     try {
         // Fetch category mapping from Google Ads
@@ -88,11 +88,11 @@ export async function getGoogleProductMetrics(req, res) {
         if (productType) {
             constraints.push(`shopping_product.product_type_level1 = '${queryProductType}'`);
         }
-      
+
         if (queryCategory && queryCategoryLevel) {
             constraints.push(`${queryCategoryLevel} = '${queryCategory}'`);
         }
-        
+
 
         // Fetch product data with constraints
         const adsReport = await customer.report({
@@ -246,16 +246,16 @@ export async function getGoogleProductMetricsByBrand(req, res) {
             brandMetricsMap[brandName].Products += 1;
             brandMetricsMap[brandName].Clicks += clicks;
             brandMetricsMap[brandName].Impressions += impressions;
-            brandMetricsMap[brandName].CTR = 
-            brandMetricsMap[brandName].Impressions > 0
-                        ? ((brandMetricsMap[brandName].Clicks / brandMetricsMap[brandName].Impressions) * 100).toFixed(2)
-                        : 0;
+            brandMetricsMap[brandName].CTR =
+                brandMetricsMap[brandName].Impressions > 0
+                    ? ((brandMetricsMap[brandName].Clicks / brandMetricsMap[brandName].Impressions) * 100).toFixed(2)
+                    : 0;
             brandMetricsMap[brandName].Cost += parseFloat(cost);
-         
+
         }
 
         // Convert the brand metrics map to an array
-        const brandsData = Object.values(brandMetricsMap).map(brands=>({
+        const brandsData = Object.values(brandMetricsMap).map(brands => ({
             ...brands,
             Cost: brands.Cost.toFixed(2)
         }));
@@ -344,9 +344,9 @@ export async function getGoogleProductMetricsByType(req, res) {
                     Products: 0,
                     Clicks: 0,
                     Impressions: 0,
-                    CTR:0,
+                    CTR: 0,
                     Cost: 0,
-                    
+
                 };
             }
 
@@ -354,12 +354,12 @@ export async function getGoogleProductMetricsByType(req, res) {
             typeMetricsMap[typeName].Products += 1;
             typeMetricsMap[typeName].Clicks += clicks;
             typeMetricsMap[typeName].Impressions += impressions;
-            typeMetricsMap[typeName].CTR = 
-            typeMetricsMap[typeName].Impressions > 0
-                        ? ((typeMetricsMap[typeName].Clicks / typeMetricsMap[typeName].Impressions) * 100).toFixed(2)
-                        : 0;
+            typeMetricsMap[typeName].CTR =
+                typeMetricsMap[typeName].Impressions > 0
+                    ? ((typeMetricsMap[typeName].Clicks / typeMetricsMap[typeName].Impressions) * 100).toFixed(2)
+                    : 0;
             typeMetricsMap[typeName].Cost += parseFloat(cost);
-           
+
         }
 
         // Convert the brand metrics map to an array
@@ -491,26 +491,26 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                 row.shopping_product.category_level5 || "Unknown Level 5",
             ].map((level) => {
                 const categoryKey = level.split("/")[1];
-        
+
                 if (categoryKey) {
                     return categoryMapping[`productCategoryConstants/${categoryKey}`] || level;
                 }
                 return level;
             });
-        
+
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
             const costMicros = row.metrics.cost_micros || 0;
             const cost = costMicros / 1_000_000;
-        
+
             let currentLevel = categoryHierarchy;
             for (let i = 0; i < levels.length; i++) {
                 const levelName = levels[i];
-        
+
                 if (levelName.startsWith("Unknown")) {
                     break;
                 }
-        
+
                 if (!currentLevel[levelName]) {
                     currentLevel[levelName] = {
                         level: `category_level-Not Known`,
@@ -525,26 +525,26 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                     };
                 }
                 currentLevel[levelName].level = `category_level${i + 1}`,
-                currentLevel[levelName].metrics.products += 1;
+                    currentLevel[levelName].metrics.products += 1;
                 currentLevel[levelName].metrics.totalClicks += clicks;
                 currentLevel[levelName].metrics.totalImpressions += impressions;
                 currentLevel[levelName].metrics.totalCost += cost;
-        
+
                 // Correct CTR calculation
-                currentLevel[levelName].metrics.ctr = 
+                currentLevel[levelName].metrics.ctr =
                     currentLevel[levelName].metrics.totalImpressions > 0
                         ? (currentLevel[levelName].metrics.totalClicks / currentLevel[levelName].metrics.totalImpressions) * 100
                         : 0;
-        
+
                 currentLevel = currentLevel[levelName].subcategories;
             }
         }
-        
+
 
         const convertToArray = (levelMap) => {
             return Object.entries(levelMap).map(([name, data]) => ({
                 name,
-                level: data.level, 
+                level: data.level,
                 metrics: data.metrics,
                 subcategories: convertToArray(data.subcategories),
             }));
@@ -603,35 +603,6 @@ async function fetchProductCategoryResourceMapping() {
 }
 
 
-const fetchCampaignNameById = async (customer, campaignId) => {
-    try {
-        // Query for the campaign name
-        const campaignData = await customer.report({
-            entity: "campaign",
-            attributes: [
-                "campaign.id",
-                "campaign.name",
-            ],
-            constraints: [
-                `campaign.id = ${campaignId}`, // Filter by campaign ID
-            ],
-            limit: 1, // Since we are querying a specific campaign
-        });
-
-        if (campaignData.length > 0) {
-            const campaign = campaignData[0];
-            return campaign.campaign.name || "Unknown Campaign Name";
-        } else {
-            console.warn(`No campaign found for ID: ${campaignId}`);
-            return "Campaign Not Found";
-        }
-    } catch (error) {
-        console.error("Error fetching campaign name:", error);
-        throw new Error("Failed to fetch campaign name.");
-    }
-};
-
-
 const SearchTermStatusEnum = {
     0: "UNSPECIFIED",
     1: "UNKNOWN",
@@ -653,11 +624,7 @@ const SearchTermMatchEnum = {
 
 export async function getSearchTermMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, limit } = req.body;
-    const pageToken = req.query.pageToken;  // Extract pageToken from query parameters
-    
-    // Default to 100 rows per page if no limit is provided
-    limit = limit || 100;
+    let { startDate, endDate, limit, page, campaign, adGroup } = req.body;
 
     try {
         const brand = await Brand.findById(brandId);
@@ -674,11 +641,12 @@ export async function getSearchTermMetrics(req, res) {
         if (!adAccountId || adAccountId.length === 0) {
             return res.json({
                 success: true,
-                data: {},
+                data: [],
                 message: "No Google Ads account found for this brand",
             });
         }
 
+      // Default date range to current month if not provided
         if (!startDate || !endDate) {
             startDate = moment().startOf('month').format('YYYY-MM-DD');
             endDate = moment().format('YYYY-MM-DD');
@@ -689,7 +657,19 @@ export async function getSearchTermMetrics(req, res) {
             refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
+        const constraints = [];
+        const queryCampaign = sanitizeForGoogleAds(campaign);
+        const queryAdGroup = sanitizeForGoogleAds(adGroup);
 
+       
+        if (queryCampaign && queryAdGroup) {    
+            constraints.push(`campaign.name = '${queryCampaign}' AND ad_group.name = '${queryAdGroup}'`);
+        } else if (queryCampaign) {   
+            constraints.push(`campaign.name = '${queryCampaign}'`);
+        } else if (queryAdGroup) {
+            constraints.push(`ad_group.name = '${queryAdGroup}'`);
+        }
+        
         const adsReport = await customer.report({
             entity: "search_term_view",
             attributes: [
@@ -697,7 +677,7 @@ export async function getSearchTermMetrics(req, res) {
                 "search_term_view.status",
                 "campaign.name",
                 "search_term_view.ad_group",
-                "ad_group.name"
+                "ad_group.name",
             ],
             metrics: [
                 "metrics.impressions",
@@ -708,47 +688,59 @@ export async function getSearchTermMetrics(req, res) {
             from_date: startDate,
             to_date: endDate,
             segments: ["segments.search_term_match_type"],
-            page_token: pageToken,  // Use the pageToken from the query parameters
-            limit: limit,  // Set the limit to control how many rows to fetch per request
+            constraints
         });
 
-        const searchTermData = [];
+      
+        const searchTermData = adsReport.map(row => ({
+            searchTerm: row.search_term_view.search_term || " ",
+            matchType: SearchTermMatchEnum[row.segments.search_term_match_type] || "UNKNOWN",
+            status: SearchTermStatusEnum[row.search_term_view.status || 0] || "UNKNOWN",
+            campaignName: row.campaign.name || "Unknown Campaign",
+            adGroupName: row.ad_group.name || "Unknown Ad Group",
+            impressions: row.metrics.impressions || 0,
+            clicks: row.metrics.clicks || 0,
+            ctr: (row.metrics.ctr || 0).toFixed(2),
+            cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+        }));
 
-        for (const row of adsReport) {
-            const searchTerm = row.search_term_view.search_term || " ";
-            const matchTypeCode = row.segments.search_term_match_type;
-            const matchType = SearchTermMatchEnum[matchTypeCode] || "UNKNOWN";
-            const statusCode = row.search_term_view.status || 0; 
-            const status = SearchTermStatusEnum[statusCode] || "UNKNOWN";
-            const campaignName = row.campaign.name || "Unknown Campaign";
-            const adGroup = row.ad_group.name || "Unknown Ad Group";
-           
-            const impressions = row.metrics.impressions || 0;
-            const clicks = row.metrics.clicks || 0;
-            const ctr = row.metrics.ctr || 0;
-            const costMicros = row.metrics.cost_micros || 0;
-            const cost = (costMicros / 1_000_000).toFixed(2);
-         
-            searchTermData.push({
-                searchTerm,
-                matchType,
-                status,
-                campaignName,
-                adGroup,
-                impressions,
-                clicks,
-                ctr: ctr.toFixed(2),
-                cost,
-            });
-        }
 
-        // Check if there is a nextPageToken to support pagination
-        const nextPageToken = adsReport.nextPageToken || null;
+        const campaignAdGroupMap = {};
+
+        searchTermData.forEach((data) => {
+
+            const { campaignName, adGroupName } = data;
+
+            if (!campaignAdGroupMap[campaignName]) {
+                campaignAdGroupMap[campaignName] = [];
+            }
+
+            if (!campaignAdGroupMap[campaignName].includes(adGroupName)) {
+                campaignAdGroupMap[campaignName].push(adGroupName);
+            }
+        })
+
+        const campaignAdGroupPairs = Object.keys(campaignAdGroupMap).map(campaignName => ({
+            campaignName,
+            adGroups: campaignAdGroupMap[campaignName]
+        }))
+
+        
+
+        limit = limit || 100;
+        // Custom pagination logic
+        const totalRecords = searchTermData.length;
+        const totalPages = Math.ceil(totalRecords / limit);
+        const paginatedData = searchTermData.slice((page - 1) * limit, page * limit);
 
         return res.json({
             success: true,
-            searchTermData,
-            nextPageToken,  // Return the nextPageToken to the frontend for subsequent requests
+            currentPage: page,
+            totalPages,
+            totalRecords,
+            data: paginatedData,
+            campaignAdGroupPairs, // List of campaign names with their corresponding ad groups
+            constraints
         });
     } catch (error) {
         console.error("Failed to fetch Search Term data:", error);
@@ -759,6 +751,8 @@ export async function getSearchTermMetrics(req, res) {
         });
     }
 }
+
+
 
 
 

@@ -10,7 +10,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold">Segment Dashboard</h1>
         </div>
       </nav>
-      <div className="container flex flex-col w-full p-6 gap-6 overflow-auto">
+      <div className="flex flex-col p-6 gap-6 overflow-auto">
       <ProductTab />
       <SearchTermTable />
       </div>

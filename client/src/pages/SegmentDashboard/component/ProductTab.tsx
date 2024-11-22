@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { GoogleLogo } from '@/pages/CampaignMetricsPage'
+import { Button } from '@/components/ui/button'
+
 
 type Metrics = {
     totalClicks: number
@@ -55,97 +57,97 @@ export default function ProductTab() {
     const [prevActiveTab, setPrevActiveTab] = useState<string | null>(null);
     const [filterData, setFilterData] = useState<any>({});
     const cacheRef = useRef<{ [key: string]: { data: any; timestamp: number } }>({});
-    const POLL_INTERVAL = 5 * 60 * 1000; 
+    const POLL_INTERVAL = 5 * 60 * 1000;
 
 
     const handleTabChange = (newTabId: string) => {
         setActiveTab(newTabId);
-        setCurrentPage(1); 
-        setExpandedCategories(new Set()); 
+        setCurrentPage(1);
+        setExpandedCategories(new Set());
     };
 
 
 
-const fetchTabData = useCallback(
-    async (tabId: string, body: Record<string, any> = {}, isFilterApplied: boolean = false) => {
-        if (loading) return;
+    const fetchTabData = useCallback(
+        async (tabId: string, body: Record<string, any> = {}, isFilterApplied: boolean = false) => {
+            if (loading) return;
 
-        setLoading(true);
+            setLoading(true);
 
-        const tab = tabs.find(t => t.id === tabId);
-        if (!tab) {
-            console.warn(`Tab not found for ID: ${tabId}`);
-            return;
-        }
+            const tab = tabs.find(t => t.id === tabId);
+            if (!tab) {
+                console.warn(`Tab not found for ID: ${tabId}`);
+                return;
+            }
 
-        // Get cached data from cacheRef
-        const cachedData = cacheRef.current[tabId];
-        const now = Date.now();
+            // Get cached data from cacheRef
+            const cachedData = cacheRef.current[tabId];
+            const now = Date.now();
 
-        // Check if cached data is still valid and use it if necessary
-        if (!isFilterApplied && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
-            setTabs(prevTabs =>
-                prevTabs.map(t =>
-                    t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
-                )
-            );
-            setLoading(false);
-            return;
-        }
-
-        // If filter is applied, update the cache only for the 'products' tab (force data fetch)
-        if (isFilterApplied && tabId === 'products') {
-            cacheRef.current['products'] = null as any; // Clear cache for the 'products' tab
-        }
-
-        if (isFilterApplied && tabId !== 'products' && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
-            setTabs(prevTabs =>
-                prevTabs.map(t =>
-                    t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
-                )
-            );
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const response = await axios.post(tab.apiEndpoint, body, { withCredentials: true });
-
-            if (response.data.success) {
-                const result = response.data;
-                const data = result[`${tabId}Data`] || [];
-                const columns: ColumnDef[] = Object.keys(data[0] || {}).map(key => ({
-                    id: key,
-                    header: key.charAt(0).toUpperCase() + key.slice(1),
-                    accessorKey: key,
-                    cell: (value: any) => {
-                        if (key === 'issues' && Array.isArray(value)) {
-                            return value.length > 0 ? value[0].description : 'No issues';
-                        }
-
-                        return String(value);
-                    }
-                }));
-
+            // Check if cached data is still valid and use it if necessary
+            if (!isFilterApplied && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
                 setTabs(prevTabs =>
                     prevTabs.map(t =>
-                        t.id === tabId ? { ...t, columns, data, lastUpdated: now } : t
+                        t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
                     )
                 );
-
-                // Cache the fetched data with a timestamp
-                cacheRef.current[tabId] = { data, timestamp: now };
-            } else {
-                console.error(`Failed to fetch data for ${tabId}`);
+                setLoading(false);
+                return;
             }
-        } catch (error) {
-            console.error(`Error fetching data for ${tabId}:`, error);
-        } finally {
-            setLoading(false);
-        }
-    },
-    [tabs, loading, cacheRef, filterApplied] // Add dependencies that should trigger redefinition
-);
+
+            // If filter is applied, update the cache only for the 'products' tab (force data fetch)
+            if (isFilterApplied && tabId === 'products') {
+                cacheRef.current['products'] = null as any; // Clear cache for the 'products' tab
+            }
+
+            if (isFilterApplied && tabId !== 'products' && cachedData && now - cachedData.timestamp < POLL_INTERVAL) {
+                setTabs(prevTabs =>
+                    prevTabs.map(t =>
+                        t.id === tabId ? { ...t, data: cachedData.data, lastUpdated: cachedData.timestamp } : t
+                    )
+                );
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await axios.post(tab.apiEndpoint, body, { withCredentials: true });
+
+                if (response.data.success) {
+                    const result = response.data;
+                    const data = result[`${tabId}Data`] || [];
+                    const columns: ColumnDef[] = Object.keys(data[0] || {}).map(key => ({
+                        id: key,
+                        header: key.charAt(0).toUpperCase() + key.slice(1),
+                        accessorKey: key,
+                        cell: (value: any) => {
+                            if (key === 'issues' && Array.isArray(value)) {
+                                return value.length > 0 ? value[0].description : 'No issues';
+                            }
+
+                            return String(value);
+                        }
+                    }));
+
+                    setTabs(prevTabs =>
+                        prevTabs.map(t =>
+                            t.id === tabId ? { ...t, columns, data, lastUpdated: now } : t
+                        )
+                    );
+
+                    // Cache the fetched data with a timestamp
+                    cacheRef.current[tabId] = { data, timestamp: now };
+                } else {
+                    console.error(`Failed to fetch data for ${tabId}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching data for ${tabId}:`, error);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [tabs, loading, cacheRef, filterApplied] // Add dependencies that should trigger redefinition
+    );
 
 
 
@@ -156,17 +158,17 @@ const fetchTabData = useCallback(
             fetchTabData(activeTab, filterApplied ? filterData : {}, filterApplied ? true : false);
         }, POLL_INTERVAL);
 
-        return () => clearInterval(intervalId); 
+        return () => clearInterval(intervalId);
     }, [activeTab, filterApplied, filterData]);
 
 
     useEffect(() => {
         const requestBody = filterApplied ? filterData : {};
         if (prevActiveTab !== activeTab || filterApplied) {
-            fetchTabData(activeTab, requestBody, filterApplied ? true : false); 
-            setPrevActiveTab(activeTab); 
+            fetchTabData(activeTab, requestBody, filterApplied ? true : false);
+            setPrevActiveTab(activeTab);
         }
-    }, [activeTab, filterApplied, filterData, prevActiveTab]); 
+    }, [activeTab, filterApplied, filterData, prevActiveTab]);
 
 
     const handleRowClick = (currentTab: string, rowData: Record<string, any>) => {
@@ -175,29 +177,29 @@ const fetchTabData = useCallback(
             productTypes: 'Type', // Column name to fetch value when on Product types tab
             categories: 'name' // Column name to fetch value when on Categories tab
         };
-    
+
         const bodyKeyMapping: Record<string, string> = {
             brands: 'brands', // Key to send in the API request body when on Brand tab
             productTypes: 'productType', // Key to send in the API request body when on Product types tab
             categories: 'categoryName' // Key to send in the API request body when on Categories tab
         };
-    
+
         const columnToFetch = tabColumnMapping[currentTab];
         const bodyKey = bodyKeyMapping[currentTab];
-    
+
         if (columnToFetch && bodyKey) {
             const valueToSend = rowData[columnToFetch]; // Get value from the row based on the column name
-    
+
             if (valueToSend) {
                 const filterPayload: Record<string, any> = {
                     [bodyKey]: valueToSend, // Add the main key-value pair
                 };
-    
+
                 // Add the additional key for the 'categories' tab
                 if (currentTab === 'categories' && rowData.level) {
                     filterPayload['categoryLevel'] = rowData.level; // Add the additional key
                 }
-    
+
                 // Set filter state
                 setFilterData(filterPayload); // Set custom filter data
                 setFilterApplied(true); // Mark filter as applied
@@ -209,7 +211,7 @@ const fetchTabData = useCallback(
             console.warn(`No column or body key mapping found for tab: ${currentTab}`);
         }
     };
-    
+
 
 
     const toggleCategory = (categoryPath: string) => {
@@ -227,7 +229,7 @@ const fetchTabData = useCallback(
     const renderCategoryRow = (category: Category, depth: number = 0, path: string = '') => {
         const currentPath = path ? `${path}.${category.name}` : category.name
         const isExpanded = expandedCategories.has(currentPath)
-    
+
         return (
             <React.Fragment key={currentPath}>
                 <tr className={`${isExpanded ? 'bg-gray-100' : 'bg-white'}`}>
@@ -259,7 +261,7 @@ const fetchTabData = useCallback(
             </React.Fragment>
         )
     }
-    
+
 
     const getCurrentTabData = () => {
         const currentTab = tabs.find(tab => tab.id === activeTab)
@@ -299,7 +301,7 @@ const fetchTabData = useCallback(
                         </tr>
                     </thead>
                     <tbody>
-                        {Array.from({ length: 5 }).map((_, index) => (
+                        {Array.from({ length: 8 }).map((_, index) => (
                             <tr key={index}>
                                 {['w-24', 'w-32', 'w-32', 'w-24', 'w-24', 'w-24'].map((width, idx) => (
                                     <td key={idx} className="px-4 py-2 border-b">
@@ -316,47 +318,45 @@ const fetchTabData = useCallback(
 
     return (
         <div className='w-full'>
-            <div className='flex flex-row gap-2 items-center mb-3'>
+            <div className='flex flex-row gap-2 items-center mb-4'>
                 <GoogleLogo />
-                <h1 className='text-lg font-semibold'>Google Ads Product Insights</h1>
+                <h1 className='text-xl font-bold text-gray-800'>Google Ads Product Insights</h1>
             </div>
-            <div className='bg-white p-3 rounded-xl shadow-md border-blue-800 border'>
-                <div className="flex items-center justify-between border-b">
-                    <div className="flex" role="tablist">
+            <div className='bg-white p-6 rounded-xl shadow-lg border border-gray-200'>
+                <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
+                    <div className="flex space-x-2" role="tablist">
                         {tabs.map(tab => (
-                            <button
+                            <Button
                                 key={tab.id}
-                                role="tab"
-                                aria-selected={activeTab === tab.id}
-                                aria-controls={`tabpanel-${tab.id}`}
-                                id={`tab-${tab.id}`}
-                                onClick={() => {
-                                    handleTabChange(tab.id); // Call the handleTabChange function
-                                }}
-                                className={`relative px-4 py-2 bg-white shadow-none hover:bg-gray-100 ${activeTab === tab.id ? 'text-cyan-700 font-semibold' : 'text-gray-600'
-                                    }`}
+                                variant={activeTab === tab.id ? "default" : "ghost"}
+                                onClick={() => handleTabChange(tab.id)}
+                                className="relative"
                             >
+                                {tab.id === 'products' && <Package className="w-4 h-4 mr-2" />}
+                                {tab.id === 'categories' && <Layers className="w-4 h-4 mr-2" />}
+                                {tab.id === 'brands' && <Tag className="w-4 h-4 mr-2" />}
+                                {tab.id === 'productTypes' && <BarChart2 className="w-4 h-4 mr-2" />}
                                 {tab.label}
                                 {activeTab === tab.id && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-700" />
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                                 )}
-                            </button>
+                            </Button>
                         ))}
                     </div>
-                    <div className="flex items-center gap-2 p-2">
-                        <button className="p-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100">
-                            <Filter className={` ${filterApplied ? 'text-blue-600' : 'text-black'} h-4 w-4`} />
-                        </button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon">
+                            <Filter className={`h-4 w-4 ${filterApplied ? 'text-blue-600' : 'text-gray-600'}`} />
+                        </Button>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button className={`p-2 bg-black text-sm border border-gray-300 rounded-md hover:bg-gray-800`}>
-                                        <RefreshCw className={`h-4 w-4 text-white ${loading ? 'animate-spin' : ''}`} />
-                                    </button>
+                                    <Button variant="outline" size="icon" onClick={() => fetchTabData(activeTab, {}, false)}>
+                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                    </Button>
                                 </TooltipTrigger>
                                 {tabs.find(t => t.id === activeTab)?.lastUpdated && (
-                                    <TooltipContent className='mb-2 shadow-md'>
-                                        <p className='text-xs bg-white px-2 py-1 text-gray-700 rounded-xl'>Last updated: {new Date(tabs.find(t => t.id === activeTab)?.lastUpdated || 0).toLocaleString()}</p>
+                                    <TooltipContent>
+                                        <p>Last updated: {new Date(tabs.find(t => t.id === activeTab)?.lastUpdated || 0).toLocaleString()}</p>
                                     </TooltipContent>
                                 )}
                             </Tooltip>
@@ -364,11 +364,13 @@ const fetchTabData = useCallback(
                     </div>
                 </div>
 
-                <div className='p-2'>
+                <div className='space-y-4'>
                     {filterApplied && (
-                        <div className="flex items-center gap-2 mb-2 w-fit p-2 bg-gray-100 rounded-full">
-                            <span className="text-xs font-medium">{Object.entries(filterData).map(([key, value]) => `${key}: ${value}`).join(', ')}</span>
-                            <button
+                        <div className="flex items-center gap-2 w-fit p-2 bg-blue-50 rounded-full">
+                            <span className="text-xs font-medium text-blue-700">{Object.entries(filterData).map(([key, value]) => `${key}: ${value}`).join(', ')}</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => {
                                     setFilterApplied(false);
                                     setFilterData({});
@@ -376,143 +378,146 @@ const fetchTabData = useCallback(
                                     cacheRef.current['products'] = null as any;
                                     fetchTabData('products', {}, false);
                                 }}
-                                className="text-red-500 hover:text-gray-700"
+                                className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 p-1 h-auto"
                             >
                                 <X className="h-3 w-3" />
-                            </button>
+                            </Button>
                         </div>
                     )}
-                    <div className="rounded-md">
-                        <div className="max-h-[380px] overflow-auto">
-                            {loading ? <TableSkeleton /> : (<table className="w-full">
-                                <thead className="sticky top-0 z-10 bg-[#134B70]">
-                                    <tr>
-                                        {(activeTab === 'categories' ? categoryColumns : columns).map(column => (
-                                            <th key={column.id} className="px-4 py-3 text-left text-xs font-medium min-w-[150px] uppercase tracking-wider">
-                                                <div className="flex items-center gap-1 text-white">
-                                                    {column.header}
-                                                    <ChevronDown className="h-4 w-4" />
-                                                </div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {activeTab === 'categories' ? (
-                                        tabs.find(tab => tab.id === 'categories')?.data.map((category: Category) =>
-                                            renderCategoryRow(category)
-                                        )
-                                    ) : (
-                                        data.map((row, i) => (
-                                            <tr key={i} className="max-w-[200px]">
-                                            {columns.map((column) => {
-                                                const value = column.cell(row[column.accessorKey]); // Get the cell value
-                                                const isIssuesColumn = column.id === 'issues';
-                                                const isProductColumn = column.id === 'Products';
-                                                const isStatusColumn = column.id === 'status';
-                                                const isNoIssues = typeof value === 'string' && value.trim().toLowerCase() === 'no issues';
-                                        
-                                                const getStatusColor = (status: string) => {
-                                                    switch (status.trim().toUpperCase()) {
-                                                        case "UNSPECIFIED": return 'text-gray-800';  // UNSPECIFIED
-                                                        case "UNKNOWN": return 'text-yellow-800'; // UNKNOWN
-                                                        case "NOT_ELIGIBLE": return 'text-red-800'; // NOT_ELIGIBLE
-                                                        case "ELIGIBLE_LIMITED": return 'text-orange-800'; // ELIGIBLE_LIMITED
-                                                        case "ELIGIBLE": return 'text-green-800'; // ELIGIBLE
-                                                        default: return 'text-gray-700'; // Default color if status is unknown
-                                                    }
-                                                };
-                                        
-                                                // Render the cell value based on the column type
-                                                const renderCell = () => {
-                                                    if (isIssuesColumn) {
-                                                        const icon = isNoIssues ? (
-                                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                                        ) : (
-                                                            <AlertCircle className="w-4 h-4 mr-2" />
-                                                        );
-                                        
-                                                        return (
-                                                            <div className="flex items-center">
-                                                                {icon}
-                                                                {value}
-                                                            </div>
-                                                        );
-                                                    }
-                                        
-                                                    if (isStatusColumn) {
-                                                        const statusValue = value ? String(value) : ''; // Ensure value is treated as string and compare in uppercase
-                                                        const colorClass = getStatusColor(statusValue); // Get the appropriate color class
-                                        
-                                                        return (
-                                                            <div className={`px-2 py-1 rounded ${colorClass}`}>
-                                                                {statusValue}
-                                                            </div>
-                                                        );
-                                                    }
-                                        
-                                                    return column.cell ? column.cell(value) : value;
-                                                };
-                                        
-                                                return (
-                                                    <td
-                                                        key={column.id}
-                                                        className={`px-4 py-2.5 whitespace-nowrap text-sm ${isProductColumn ? 'cursor-pointer text-blue-700 underline' : 'cursor-default'}
-                                                        ${isIssuesColumn ? (isNoIssues ? 'text-green-600' : 'text-red-600') : ''}`}
-                                                        onClick={() => isProductColumn && handleRowClick(activeTab, row)}
-                                                    >
-                                                        {renderCell()}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                        
-                                        
-                                        ))
-                                    )}
-                                    {(activeTab === 'categories' ? tabs.find(tab => tab.id === 'categories')?.data.length === 0 : data.length === 0) && (
+                    <div className="rounded-md border border-gray-200 overflow-hidden">
+                        <div className="max-h-[350px] overflow-auto">
+                            {loading ? <TableSkeleton /> : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 z-10 bg-[#4A628A]">
                                         <tr>
-                                            <td
-                                                colSpan={(activeTab === 'categories' ? categoryColumns : columns).length}
-                                                className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-center"
-                                            >
-                                                No data available
-                                            </td>
+                                            {(activeTab === 'categories' ? categoryColumns : columns).map(column => (
+                                                <th key={column.id} className="px-4 py-3 text-left text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[150px]">
+                                                    <div className="flex items-center gap-1">
+                                                        {column.header}
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    </div>
+                                                </th>
+                                            ))}
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>)}
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {activeTab === 'categories' ? (
+                                            tabs.find(tab => tab.id === 'categories')?.data.map((category: Category) =>
+                                                renderCategoryRow(category)
+                                            )
+                                        ) : (
+                                            data.map((row, i) => (
+                                                <tr key={i} className="hover:bg-gray-50">
+                                                    {columns.map((column) => {
+                                                        const value = column.cell(row[column.accessorKey]);
+                                                        const isIssuesColumn = column.id === 'issues';
+                                                        const isProductColumn = column.id === 'Products';
+                                                        const isStatusColumn = column.id === 'status';
+                                                        const isNoIssues = typeof value === 'string' && value.trim().toLowerCase() === 'no issues';
+
+                                                        const getStatusColor = (status: string) => {
+                                                            switch (status.trim().toUpperCase()) {
+                                                                case "UNSPECIFIED": return 'bg-gray-100 text-gray-800';
+                                                                case "UNKNOWN": return 'bg-yellow-100 text-yellow-800';
+                                                                case "NOT_ELIGIBLE": return 'bg-red-100 text-red-800';
+                                                                case "ELIGIBLE_LIMITED": return 'bg-orange-100 text-orange-800';
+                                                                case "ELIGIBLE": return 'bg-green-100 text-green-800';
+                                                                default: return 'bg-gray-100 text-gray-700';
+                                                            }
+                                                        };
+
+                                                        const renderCell = () => {
+                                                            if (isIssuesColumn) {
+                                                                return (
+                                                                    <div className={`flex items-center ${isNoIssues ? 'text-green-600' : 'text-red-600'}`}>
+                                                                        {isNoIssues ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
+                                                                        {value}
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            if (isStatusColumn) {
+                                                                const statusValue = value ? String(value) : '';
+                                                                const colorClass = getStatusColor(statusValue);
+                                                                return (
+                                                                  <div className={`px-2 py-1.5 rounded-full text-xs font-medium w-full ${colorClass}`}>
+                                                                    {statusValue}
+                                                                  </div>
+                                                                );
+                                                              }
+                                                            return column.cell ? column.cell(value) : value;
+                                                        };
+
+                                                        return (
+                                                            <td
+                                                                key={column.id}
+                                                                className={`px-4 py-2.5 text-sm whitespace-nowrap min-w-[150px] ${isProductColumn ? 'cursor-pointer text-blue-600 hover:text-blue-800' : ''}`}
+                                                                onClick={() => isProductColumn && handleRowClick(activeTab, row)}
+                                                            >
+                                                                {renderCell()}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))
+                                        )}
+                                        {(activeTab === 'categories' ? tabs.find(tab => tab.id === 'categories')?.data.length === 0 : data.length === 0) && (
+                                            <tr>
+                                                <td
+                                                    colSpan={(activeTab === 'categories' ? categoryColumns : columns).length}
+                                                    className="px-4 py-2 text-sm text-gray-500 text-center"
+                                                >
+                                                    No data available
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
-                        <div className="flex items-center justify-between px-4 pt-4 border-t">
-                            <div className="text-sm text-gray-500">
+                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+                            <div className="text-sm text-gray-700">
                                 Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, tabs.find(t => t.id === activeTab)?.data.length || 0)} of {tabs.find(t => t.id === activeTab)?.data.length || 0} entries
                             </div>
                             <div className="flex items-center space-x-2">
-                                <button
-                                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
                                 >
-                                    <ChevronLeft className="h-4 w-4 inline-block mr-1" />
+                                    <ChevronLeft className="h-4 w-4 mr-1" />
                                     Previous
-                                </button>
-                                <div className="text-sm text-gray-500">
+                                </Button>
+                                <div className="text-sm text-gray-700">
                                     Page {currentPage} of {totalPages}
                                 </div>
-                                <button
-                                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
                                 >
                                     Next
-                                    <ChevronRight className="h-4 w-4 inline-block ml-1" />
-                                </button>
+                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     )
 }
+
+// function TableSkeleton() {
+//     return (
+//         <div className="animate-pulse">
+//             <div className="h-10 bg-gray-200 mb-4"></div>
+//             {[...Array(5)].map((_, i) => (
+//                 <div key={i} className="h-16 bg-gray-100 mb-2"></div>
+//             ))}
+//         </div>
+//     )
+// }
+

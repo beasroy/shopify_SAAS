@@ -10,7 +10,7 @@ import { BrandProvider } from './context/BrandContext.tsx';
 import EcommerceMetricsPage from './pages/EcommerceMetrics/EcommerceMetricsPage.tsx';
 import { ExcelMetricsPage } from './pages/MonthlyAdMetrics/ExcelMetrics.tsx';
 import CitySessionPage from './pages/CitySessionPage/CitySessionPage.tsx';
-import ChannelSessionPage from './pages/CitySessionPage/RefferingChannelPage/RefferingChannelPage.tsx';
+import ChannelSessionPage from './pages/RefferingChannelPage/RefferingChannelPage.tsx';
 import LandingPageSession from './pages/LandingPageSession/LandingPageSession.tsx';
 import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceDashboard.tsx';

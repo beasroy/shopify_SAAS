@@ -622,17 +622,307 @@ const SearchTermMatchEnum = {
     6: "NEAR_PHRASE"
 }
 
+import NodeCache from 'node-cache';
+
+const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+
+// Array to store cache keys for tracking
+let cacheKeys = [];
+
+// Helper function to generate a cache key
+const generateCacheKey = (brandId, startDate, endDate, campaign, adGroup) => {
+    const dates = {
+        startDate: startDate || moment().startOf('month').format('YYYY-MM-DD'),
+        endDate: endDate || moment().format('YYYY-MM-DD')
+    };
+    return `searchTerms:${brandId}:${dates.startDate}:${dates.endDate}:${campaign || ''}:${adGroup || ''}`;
+};
+
+// Main function to get search term metrics
 export async function getSearchTermMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, limit, page, campaign, adGroup } = req.body;
 
     try {
+        // Check if brandId is provided
+        if (!brandId) {
+            return res.status(400).json({ success: false, message: 'Brand ID is required' });
+        }
+
+        // Find the brand and validate its googleAdAccount
+        const brand = await Brand.findById(brandId).select('googleAdAccount').lean();
+        if (!brand?.googleAdAccount) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'No Google Ads account found for this brand',
+                data: []
+            });
+        }
+
+        const cacheKey = generateCacheKey(brandId, startDate, endDate, campaign, adGroup);
+        console.log('Cache Key:', cacheKey); // Debug log for cache key
+
+        // 2. Check if the cache exists
+        let cachedData = cache.get(cacheKey);
+        console.log('Cached Data:', cachedData); // Debug log for cached data
+
+        if (cachedData) {
+            // Cache exists, serve data
+            const totalRecords = cachedData.searchTermData.length;
+            const totalPages = Math.ceil(totalRecords / limit);
+            const startIndex = (page - 1) * limit;
+
+            return res.json({
+                success: true,
+                currentPage: page,
+                totalPages,
+                totalRecords,
+                data: cachedData.searchTermData.slice(startIndex, startIndex + limit),
+                campaignAdGroupPairs: cachedData.campaignAdGroupPairs,
+                fromCache: true
+            });
+        }
+
+        // 3. If cache is missing or expired, fetch new data
+        const dates = {
+            from_date: startDate || moment().startOf('month').format('YYYY-MM-DD'),
+            to_date: endDate || moment().format('YYYY-MM-DD')
+        };
+
+        const constraints = [];
+        if (campaign) {
+            const queryCampaign = sanitizeForGoogleAds(campaign);
+            if (adGroup) {
+                const queryAdGroup = sanitizeForGoogleAds(adGroup);
+                constraints.push(`campaign.name = '${queryCampaign}' AND ad_group.name = '${queryAdGroup}'`);
+            } else {
+                constraints.push(`campaign.name = '${queryCampaign}'`);
+            }
+        } else if (adGroup) {
+            constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
+        }
+
+        const customer = client.Customer({
+            customer_id: brand.googleAdAccount,
+            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+        });
+
+        const reportConfig = {
+            entity: "search_term_view",
+            attributes: [
+                "search_term_view.search_term",
+                "search_term_view.status",
+                "campaign.name",
+                "ad_group.name",
+            ],
+            metrics: [
+                "metrics.impressions",
+                "metrics.clicks",
+                "metrics.ctr",
+                "metrics.cost_micros",
+            ],
+            segments: ["segments.search_term_match_type"],
+            ...dates,
+            constraints
+        };
+
+        const adsReport = await customer.report(reportConfig);
+
+        // Process data
+        const processedData = adsReport.reduce((acc, row) => {
+            const campaignName = row.campaign.name || "Unknown Campaign";
+            const adGroupName = row.ad_group.name || "Unknown Ad Group";
+
+            acc.searchTermData.push({
+                searchTerm: row.search_term_view.search_term || " ",
+                matchType: SearchTermMatchEnum[row.segments.search_term_match_type] || "UNKNOWN",
+                status: SearchTermStatusEnum[row.search_term_view.status || 0] || "UNKNOWN",
+                campaignName,
+                adGroupName,
+                impressions: row.metrics.impressions || 0,
+                clicks: row.metrics.clicks || 0,
+                ctr: (row.metrics.ctr || 0).toFixed(2),
+                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+            });
+
+            if (!acc.campaignAdGroupMap[campaignName]) {
+                acc.campaignAdGroupMap[campaignName] = new Set();
+            }
+            acc.campaignAdGroupMap[campaignName].add(adGroupName);
+
+            return acc;
+        }, {
+            searchTermData: [],
+            campaignAdGroupMap: {}
+        });
+
+        // 4. Store the new data in the cache
+        cache.set(cacheKey, {
+            searchTermData: processedData.searchTermData,
+            campaignAdGroupPairs: Object.entries(processedData.campaignAdGroupMap).map(([campaignName, adGroups]) => ({
+                campaignName,
+                adGroups: Array.from(adGroups)
+            }))
+        });
+
+        // Track the cache key
+        cacheKeys.push(cacheKey);
+        console.log('Current Cache Keys:', cacheKeys); // Debug log for tracking keys
+
+        // Paginate and respond
+        const totalRecords = processedData.searchTermData.length;
+        const totalPages = Math.ceil(totalRecords / limit);
+        const startIndex = (page - 1) * limit;
+
+        return res.json({
+            success: true,
+            currentPage: page,
+            totalPages,
+            totalRecords,
+            data: processedData.searchTermData.slice(startIndex, startIndex + limit),
+            campaignAdGroupPairs: Object.entries(processedData.campaignAdGroupMap).map(([campaignName, adGroups]) => ({
+                campaignName,
+                adGroups: Array.from(adGroups)
+            })),
+            fromCache: false
+        });
+
+    } catch (error) {
+        console.error("Failed to fetch Search Term data:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message
+        });
+    }
+}
+
+// export async function getLocationMetrics(req, res) {
+//     const { brandId } = req.params;
+//     let { startDate, endDate, limit = 10, page = 1, campaign } = req.body;
+
+//     try {
+//         // Check if brandId is provided
+//         if (!brandId) {
+//             return res.status(400).json({ success: false, message: 'Brand ID is required' });
+//         }
+
+//         // Find the brand and validate its googleAdAccount
+//         const brand = await Brand.findById(brandId).select('googleAdAccount').lean();
+//         if (!brand?.googleAdAccount) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: !brand ? 'Brand not found.' : 'No Google Ads account found for this brand',
+//                 data: []
+//             });
+//         }
+
+//         const fromDate = startDate || moment().startOf('month').format('YYYY-MM-DD');
+//         const toDate = endDate || moment().format('YYYY-MM-DD');
+
+//         const customer = client.Customer({
+//             customer_id: brand.googleAdAccount,
+//             refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+//             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+//         });
+
+//         // Construct GAQL query
+//         let query = `
+//             SELECT geographic_view.country_criterion_id, 
+//             segments.geo_target_city, 
+//             segments.geo_target_county, 
+//             segments.geo_target_district, 
+//             segments.geo_target_postal_code, 
+//             segments.geo_target_region, 
+//             segments.geo_target_state, 
+//             campaign.name 
+//             FROM campaign
+//         `;
+
+//         // Add campaign filter if provided
+//         if (campaign) {
+//             query += ` AND campaign.name = '${campaign}'`;
+//         }
+
+//         console.log("GAQL Query:", query);
+
+//         // Execute the query
+//         const response = await customer.query(query);
+//         console.log(response);
+
+//         if (!response || response.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'No geographic data found for the given parameters.',
+//                 data: []
+//             });
+//         }
+
+//         console.log("Raw Response Sample:", response[0]);
+
+//         // Process the response
+//         const processedData = response.map(row => ({
+//             campaignName: row.campaign?.name || "Unknown Campaign",
+
+//                 country: row.segments.geo_target_country|| "Unknown Country",
+           
+//                 impressions: parseInt(row.metrics?.impressions) || 0,
+//                 clicks: parseInt(row.metrics?.clicks) || 0,
+//                 ctr: parseFloat(row.metrics?.ctr || 0).toFixed(2),
+//                 cost: (parseFloat(row.metrics?.costMicros || 0) / 1_000_000).toFixed(2)
+            
+//         }));
+
+//         // Paginate results
+//         const totalRecords = processedData.length;
+//         const totalPages = Math.ceil(totalRecords / limit);
+//         const startIndex = (page - 1) * limit;
+
+//         return res.json({
+//             success: true,
+//             currentPage: page,
+//             totalPages,
+//             totalRecords,
+//             data: processedData.slice(startIndex, startIndex + limit),
+//         });
+
+//     } catch (error) {
+//         console.error("Failed to fetch Location data:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error.',
+//             error: error.message
+//         });
+//     }
+// }
+
+
+
+const ageRanges = {
+    0: "UNSPECIFIED",
+    1: "UNKNOWN",
+    503001: "AGE_RANGE_18_24",
+    503002: "AGE_RANGE_25_34",
+    503003: "AGE_RANGE_35_44",
+    503004: "AGE_RANGE_45_54",
+    503005: "AGE_RANGE_55_64",
+    503006: "AGE_RANGE_65_UP",
+    503999: "AGE_RANGE_UNDETERMINED",
+};
+
+export async function getAudienceMetricsByAge(req, res) {
+    const { brandId } = req.params;
+    let { startDate, endDate } = req.body;
+
+    try {
+        // Find the brand by ID
         const brand = await Brand.findById(brandId);
 
         if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: 'Brand not found.',
+                message: "Brand not found.",
             });
         }
 
@@ -642,43 +932,27 @@ export async function getSearchTermMetrics(req, res) {
             return res.json({
                 success: true,
                 data: [],
-                message: "No Google Ads account found for this brand",
+                message: "No Google Ads account found for this brand.",
             });
         }
 
-      // Default date range to current month if not provided
+        // Default date range to current month if not provided
         if (!startDate || !endDate) {
-            startDate = moment().startOf('month').format('YYYY-MM-DD');
-            endDate = moment().format('YYYY-MM-DD');
+            startDate = moment().startOf("month").format("YYYY-MM-DD");
+            endDate = moment().format("YYYY-MM-DD");
         }
 
+        // Initialize Google Ads customer client
         const customer = client.Customer({
             customer_id: adAccountId,
             refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
-        const constraints = [];
-        const queryCampaign = sanitizeForGoogleAds(campaign);
-        const queryAdGroup = sanitizeForGoogleAds(adGroup);
 
-       
-        if (queryCampaign && queryAdGroup) {    
-            constraints.push(`campaign.name = '${queryCampaign}' AND ad_group.name = '${queryAdGroup}'`);
-        } else if (queryCampaign) {   
-            constraints.push(`campaign.name = '${queryCampaign}'`);
-        } else if (queryAdGroup) {
-            constraints.push(`ad_group.name = '${queryAdGroup}'`);
-        }
-        
+        // Fetch report data from Google Ads
         const adsReport = await customer.report({
-            entity: "search_term_view",
-            attributes: [
-                "search_term_view.search_term",
-                "search_term_view.status",
-                "campaign.name",
-                "search_term_view.ad_group",
-                "ad_group.name",
-            ],
+            entity: "age_range_view",
+            attributes: ["campaign.name","ad_group.name", "ad_group_criterion.age_range.type","campaign.status"],
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
@@ -687,72 +961,42 @@ export async function getSearchTermMetrics(req, res) {
             ],
             from_date: startDate,
             to_date: endDate,
-            segments: ["segments.search_term_match_type"],
-            constraints
         });
 
-      
-        const searchTermData = adsReport.map(row => ({
-            searchTerm: row.search_term_view.search_term || " ",
-            matchType: SearchTermMatchEnum[row.segments.search_term_match_type] || "UNKNOWN",
-            status: SearchTermStatusEnum[row.search_term_view.status || 0] || "UNKNOWN",
-            campaignName: row.campaign.name || "Unknown Campaign",
-            adGroupName: row.ad_group.name || "Unknown Ad Group",
-            impressions: row.metrics.impressions || 0,
-            clicks: row.metrics.clicks || 0,
-            ctr: (row.metrics.ctr || 0).toFixed(2),
-            cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
-        }));
+        // Initialize an aggregation object for age ranges
+        const aggregatedData = {};
 
+        // Map data to a readable format and aggregate by age range
+        const campaignBasedAgeData = adsReport.map((row) => {
+            const ageRangeKey = row.ad_group_criterion.age_range.type;
+            const ageRange = ageRanges[ageRangeKey] || "UNKNOWN";
 
-        const campaignAdGroupMap = {};
+            return {
+                campaignName: row.campaign.name,
+                ad_groupName:row.ad_group.name,
+                ageRange,
+                impressions: row.metrics.impressions || 0,
+                clicks: row.metrics.clicks || 0,
+                ctr: (row.metrics.ctr || 0).toFixed(2),
+                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+            };
+        });
 
-        searchTermData.forEach((data) => {
-
-            const { campaignName, adGroupName } = data;
-
-            if (!campaignAdGroupMap[campaignName]) {
-                campaignAdGroupMap[campaignName] = [];
-            }
-
-            if (!campaignAdGroupMap[campaignName].includes(adGroupName)) {
-                campaignAdGroupMap[campaignName].push(adGroupName);
-            }
-        })
-
-        const campaignAdGroupPairs = Object.keys(campaignAdGroupMap).map(campaignName => ({
-            campaignName,
-            adGroups: campaignAdGroupMap[campaignName]
-        }))
-
-        
-
-        limit = limit || 100;
-        // Custom pagination logic
-        const totalRecords = searchTermData.length;
-        const totalPages = Math.ceil(totalRecords / limit);
-        const paginatedData = searchTermData.slice((page - 1) * limit, page * limit);
 
         return res.json({
             success: true,
-            currentPage: page,
-            totalPages,
-            totalRecords,
-            data: paginatedData,
-            campaignAdGroupPairs, // List of campaign names with their corresponding ad groups
-            constraints
+            data: {
+                ageData: campaignBasedAgeData,
+               
+            },
         });
     } catch (error) {
-        console.error("Failed to fetch Search Term data:", error);
+        console.error("Failed to fetch brand metrics:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error.',
+            message: "Internal server error.",
             error: error.message,
         });
     }
 }
-
-
-
-
 

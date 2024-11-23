@@ -6,6 +6,9 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap,
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 interface SearchTerm {
   id: string;
@@ -38,7 +41,9 @@ export default function SearchTermTable() {
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
   const [selectedAdGroup, setSelectedAdGroup] = useState<string>('all');
-  const [filterApplied, setFilterApplied] = useState(false);
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
+  const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
 
   const rowsPerPage = 100;
@@ -60,83 +65,50 @@ export default function SearchTermTable() {
     setIsLoadingCampaigns(true);
 
     try {
-      // Access the cachedCampaignAdGroupPairs irrespective of filter state
-      const cachedCampaignAdGroupPairs = localStorage.getItem('campaignAdGroupPairs');
-      const parsedCampaignAdGroupPairs = cachedCampaignAdGroupPairs ? JSON.parse(cachedCampaignAdGroupPairs) : [];
+        // Prepare request body
+        const requestBody = {
+            limit: rowsPerPage,
+            page: currentPage,
+            startDate,
+            endDate,
+            ...(selectedCampaign && selectedCampaign !== 'all' && { campaign: selectedCampaign }),
+            ...(selectedAdGroup && selectedAdGroup !== 'all' && { adGroup: selectedAdGroup })
+        };
 
-      // Skip cache if filters are applied
-      if (!filterApplied) {
-        const cachedData = localStorage.getItem(`pageData-${currentPage}`);
-        const cachedTimestamp = localStorage.getItem(`pageDataTimestamp-${currentPage}`);
-        const cachedTotalRecords = localStorage.getItem(`pageDataTotalRecords`);
-        const cachedTotalPages = localStorage.getItem(`pageDataTotalPages`);
-        const cachedBrandId = localStorage.getItem(`pageDataBrandId-${currentPage}`); // Storing brandId in the cache
+        // Make API request
+        const { data: response } = await axios.post(
+            `${baseURL}/api/segment/searchTermMetrics/${brandId}`,
+            requestBody,
+            { withCredentials: true }
+        );
 
-        const isCacheExpired = cachedTimestamp && (Date.now() - Number(cachedTimestamp)) > 300000;
-
-        // Check if cached data is valid and brandId matches
-        if (cachedData && cachedBrandId === brandId && !isCacheExpired) {
-          setSearchTerms(JSON.parse(cachedData));
-          setTotalRecords(Number(cachedTotalRecords));
-          setTotalPages(Number(cachedTotalPages));
-          setCampaignAdGroupPairs(parsedCampaignAdGroupPairs);
-          return;
-        }
-      }
-
-      // Dynamically add filters to the API body
-      const requestBody: { limit: number; page: number; campaign?: string; adGroup?: string } = {
-        limit: rowsPerPage,
-        page: currentPage,
-      };
-
-      if (selectedCampaign && selectedCampaign !== 'all') {
-        requestBody.campaign = selectedCampaign;
-      }
-
-      if (selectedAdGroup && selectedAdGroup !== 'all') {
-        requestBody.adGroup = selectedAdGroup;
-      }
-
-      const response = await axios.post(
-        `${baseURL}/api/segment/searchTermMetrics/${brandId}`,
-        requestBody,
-        {
-          withCredentials: true,
-        }
-      );
-
-      if (response.data.success) {
-        const newData = response.data.data;
-        setSearchTerms(newData);
-        setTotalRecords(response.data.totalRecords);
-        setTotalPages(response.data.totalPages);
-        { !filterApplied && setCampaignAdGroupPairs(response.data.campaignAdGroupPairs) };
-
-        // Cache data only if filters are not applied
-        if (!filterApplied) {
-          localStorage.setItem(`pageData-${currentPage}`, JSON.stringify(newData));
-          localStorage.setItem(`pageDataTimestamp-${currentPage}`, Date.now().toString());
-          localStorage.setItem(`pageDataTotalRecords`, response.data.totalRecords.toString());
-          localStorage.setItem(`pageDataTotalPages`, response.data.totalPages.toString());
-          localStorage.setItem(`pageDataBrandId-${currentPage}`, brandId || 'defaultBrandId'); // Provide a default value
-          localStorage.setItem('campaignAdGroupPairs', JSON.stringify(response.data.campaignAdGroupPairs));
+        if (response.success) {
+            // Set data in state
+            setSearchTerms(response.data);
+            setTotalRecords(response.totalRecords);
+            setTotalPages(response.totalPages);
+            setHasMoreData(currentPage * rowsPerPage < response.totalRecords);
+            setCampaignAdGroupPairs(response.campaignAdGroupPairs);
+        } else {
+            console.error('Failed to fetch search term metrics:', response.message);
         }
 
-        setHasMoreData(currentPage * rowsPerPage < response.data.totalRecords);
-      } else {
-        console.log('Failed to fetch search term metrics: ', response.data.message);
-      }
-    } catch (err) {
-      console.log('Error fetching search term metrics:', err);
+    } catch (error) {
+        console.error('Error fetching search term metrics:', error);
     } finally {
-      setLoading(false);
-      setIsLoadingCampaigns(false);
+        setLoading(false);
+        setIsLoadingCampaigns(false);
     }
-  }, [baseURL, brandId, currentPage, rowsPerPage, selectedCampaign, selectedAdGroup, filterApplied]);
-
-
-
+}, [
+    baseURL,
+    brandId,
+    currentPage,
+    rowsPerPage,
+    selectedCampaign,
+    selectedAdGroup,
+    startDate,
+    endDate
+]);
 
 
 
@@ -150,13 +122,11 @@ export default function SearchTermTable() {
     setSelectedCampaign(value);
     setSelectedAdGroup('all');
     setCurrentPage(1)
-    setFilterApplied(value !== 'all');
   };
 
   const handleAdGroupChange = (value: string) => {
     setSelectedAdGroup(value);
     setCurrentPage(1)
-    setFilterApplied(value !== 'all');
   };
 
   const filteredAdGroups = selectedCampaign !== 'all'
@@ -171,7 +141,8 @@ export default function SearchTermTable() {
       </div>
       <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md">
         <div className="p-4">
-          <div className="flex space-x-4 mb-4">
+          <div className="flex justify-between mb-4">
+            <div className="flex space-x-4">
             <Select disabled={isLoadingCampaigns} onValueChange={handleCampaignChange} value={selectedCampaign}>
               <SelectTrigger className="w-[200px] bg-gray-50 border-gray-200">
                 <SelectValue placeholder={isLoadingCampaigns ? "Loading..." : "Select Campaign"} />
@@ -205,130 +176,141 @@ export default function SearchTermTable() {
                 </SelectContent>
               </Select>
             )}
-
-            <Button
-              variant="outline"
-              className="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-              onClick={fetchData}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-          <div className="rounded-md border border-gray-200 overflow-hidden">
-          <div className="max-h-[380px] overflow-auto rounded-lg">
-            {loading ? (
-              <TableSkeleton />
-            ) : (
-              <table className="w-full text-center">
-                <thead className="sticky top-0 z-10 bg-[#4A628A] rounded-t-lg">
-                  <tr>
-                    {columns.map((column) => (
-                      <th
-                        key={column.id}
-                        className="px-4 py-3 text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[200px]"
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          {column.icon}
-                          {column.header}
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {searchTerms.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50 transition-colors duration-150">
-                      {columns.map((column) => {
-                        const value = row[column.id as keyof SearchTerm];
-                        const isStatusColumn = column.id === 'status';
-
-                        const renderCell = () => {
-                          if (isStatusColumn) {
-                            const statusValue = value ? String(value) : '';
-                            const getStatusColor = (status: string) => {
-                              switch (status.trim().toUpperCase()) {
-                                case 'ADDED':
-                                  return 'bg-green-100 text-green-800';
-                                case 'NONE':
-                                  return 'bg-yellow-100 text-yellow-800';
-                                default:
-                                  return 'bg-gray-100 text-gray-800';
-                              }
-                            };
-                            const colorClass = getStatusColor(statusValue);
-
-                            return (
-                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-                                {statusValue}
-                              </div>
-                            );
-                          }
-
-                          return value;
-                        };
-
-                        return (
-                          <td
-                            key={column.id}
-                            className="px-4 py-2.5 text-sm text-gray-700 min-w-[200px]"
-                          >
-                            {renderCell()}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  {searchTerms.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="px-4 py-2 text-sm text-gray-500 text-center"
-                      >
-                        No data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * rowsPerPage) + 1} to{' '}
-              {Math.min(currentPage * rowsPerPage, totalRecords || 0)} of{' '}
-              {totalRecords || 0} entries
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              <DatePickerWithRange
+                date={date}
+                setDate={setDate}
+                defaultDate={{
+                  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                  to: new Date(),
+                }}
+              />
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                className="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                onClick={fetchData}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
               </Button>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-gray-200 overflow-hidden">
+            <div className="max-h-[380px] overflow-auto rounded-lg">
+              {loading ? (
+                <TableSkeleton />
+              ) : (
+                <table className="w-full text-center">
+                  <thead className="sticky top-0 z-10 bg-[#4A628A] rounded-t-lg">
+                    <tr>
+                      {columns.map((column) => (
+                        <th
+                          key={column.id}
+                          className="px-4 py-3 text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[200px]"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            {column.icon}
+                            {column.header}
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {searchTerms.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50 transition-colors duration-150">
+                        {columns.map((column) => {
+                          const value = row[column.id as keyof SearchTerm];
+                          const isStatusColumn = column.id === 'status';
+
+                          const renderCell = () => {
+                            if (isStatusColumn) {
+                              const statusValue = value ? String(value) : '';
+                              const getStatusColor = (status: string) => {
+                                switch (status.trim().toUpperCase()) {
+                                  case 'ADDED':
+                                    return 'bg-green-100 text-green-800';
+                                  case 'NONE':
+                                    return 'bg-yellow-100 text-yellow-800';
+                                  default:
+                                    return 'bg-gray-100 text-gray-800';
+                                }
+                              };
+                              const colorClass = getStatusColor(statusValue);
+
+                              return (
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+                                  {statusValue}
+                                </div>
+                              );
+                            }
+
+                            return value;
+                          };
+
+                          return (
+                            <td
+                              key={column.id}
+                              className="px-4 py-2.5 text-sm min-w-[200px]"
+                            >
+                              {renderCell()}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {searchTerms.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-4 py-2 text-sm text-gray-500 text-center"
+                        >
+                          No data available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
               <div className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages}
+                Showing {((currentPage - 1) * rowsPerPage) + 1} to{' '}
+                {Math.min(currentPage * rowsPerPage, totalRecords || 0)} of{' '}
+                {totalRecords || 0} entries
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-                disabled={!hasMoreData}
-                className="text-gray-600 border-gray-200 hover:bg-gray-50"
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                  disabled={!hasMoreData}
+                  className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

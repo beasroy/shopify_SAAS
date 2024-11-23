@@ -323,7 +323,7 @@ export default function ProductTab() {
                 <h1 className='text-xl font-bold text-gray-800'>Google Ads Product Insights</h1>
             </div>
             <div className='bg-white p-6 rounded-xl shadow-lg border border-gray-200'>
-                <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
                     <div className="flex space-x-2" role="tablist">
                         {tabs.map(tab => (
                             <Button

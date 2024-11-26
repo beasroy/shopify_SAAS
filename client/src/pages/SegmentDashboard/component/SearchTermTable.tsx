@@ -136,7 +136,7 @@ export default function SearchTermTable() {
   };
 
   const filteredAdGroups = selectedCampaign !== 'all'
-    ? campaignAdGroupPairs.find(pair => pair.campaignName === selectedCampaign)?.adGroups || []
+    ? campaignAdGroupPairs?.find(pair => pair.campaignName === selectedCampaign)?.adGroups || []
     : [];
 
   return (

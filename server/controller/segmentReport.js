@@ -54,6 +54,22 @@ const ageRanges = {
     503999: "AGE_RANGE_UNDETERMINED",
 };
 
+const genderTypes = {
+    0: "UNSPECIFIED",
+    1: "UNKNOWN",
+    10: "MALE",
+    11: "FEMALE",
+    20: "UNDETERMINED"
+}
+
+const campaignStatus = {
+    0: "UNSPECIFIED",
+    1: "UNKNOWN",
+    2: "ENABLED",
+    3: "PAUSED",
+    4: "REMOVED",
+}
+
 const sanitizeForGoogleAds = (value) => {
     // Check if the value is a string before calling replace
     if (typeof value !== 'string') {
@@ -832,7 +848,7 @@ export async function getSearchTermMetrics(req, res) {
                     adGroups: Array.from(adGroups)
                 }));
 
-                cache.set(pairsCacheKey, campaignAdGroupPairs, 5 * 60);
+                cache.set(pairsCacheKey, campaignAdGroupPairs);
                 console.log('Cached campaign-ad group pairs for brand:', brandId);
             }
 
@@ -842,7 +858,7 @@ export async function getSearchTermMetrics(req, res) {
                 statusOptions = Array.from(processedData.statusSet).map(status =>
                     SearchTermStatusEnum[status] || "UNKNOWN"
                 );
-                cache.set(statusCacheKey, statusOptions, 5 * 60);
+                cache.set(statusCacheKey, statusOptions);
                 console.log('Cached status labels for brand:', brandId);
             }
 
@@ -888,7 +904,7 @@ export async function getSearchTermMetrics(req, res) {
 
 export async function getAudienceMetricsByAge(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, campaign, adGroup, limit, page, agerange } = req.body;
+    let { startDate, endDate, campaign, adGroup, limit, page, agerange, status } = req.body;
 
     try {
         // Find the brand by ID
@@ -915,54 +931,67 @@ export async function getAudienceMetricsByAge(req, res) {
             endDate = moment().format("YYYY-MM-DD");
         }
 
-         // Initialize Google Ads customer client
-         const customer = client.Customer({
+        // Initialize Google Ads customer client
+        const customer = client.Customer({
             customer_id: adAccountId,
             refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 
-        const cacheKey = `audienceAgeMetrics:${brandId}:startDate:${startDate || "defaultStart"}:endDate:${endDate || "defaultEnd"}:campaign:${campaign || ''}:adGroup:${adGroup || ''}:agerange:${agerange || ''}`;
-        limit = parseInt(limit || 100)
-        page = parseInt(page || 1)
-        // Check if data is already in cache
-        const cachedData = cache.get(cacheKey);
-       
+        // Construct cache keys
+        const AudienceAgeCacheKey = `audienceAgeMetrics:${brandId}:startDate:${startDate || "defaultStart"}:endDate:${endDate || "defaultEnd"}:campaign:${campaign || ''}:adGroup:${adGroup || ''}:agerange:${agerange || ''}:status:${status || ''}`;
+        const audienceAgePairsCacheKey = `audienceAgeMetrics:pairs_${brandId}`;
+        const audienceAgeStatusCacheKey = `audienceAgeMetrics:status_${brandId}`;
+
+        // Parse pagination parameters
+        limit = parseInt(limit || 100);
+        page = parseInt(page || 1);
+
+        // Check if no filters are applied
+        const noFiltersApplied = !campaign && !adGroup && !status && !agerange;
+
+        // Check if data is cached
+        const cachedData = cache.get(AudienceAgeCacheKey);
+        let ageCampaignAdGroupPairs = null;
+        let ageStatusOptions = null;
+
+        ageCampaignAdGroupPairs = cache.get(audienceAgePairsCacheKey);
+        ageStatusOptions = cache.get(audienceAgeStatusCacheKey);
+    
 
         if (cachedData) {
             const { ageData, ageRangeAggregatedMetrics } = cachedData;
-        
             const totalRecords = ageData.length;
             const totalPages = Math.ceil(totalRecords / limit);
             const startIndex = (page - 1) * limit;
-        
+
             return res.json({
                 success: true,
                 totalRecords,
                 totalPages,
                 ageData: ageData.slice(startIndex, startIndex + limit),
                 ageRangeAggregatedMetrics,
+                campaignAdGroupPairs: ageCampaignAdGroupPairs || [],
+                statusOptions: ageStatusOptions || [],
                 fromCache: true
             });
         }
-       
+
+        // Construct constraints for Google Ads query
         const constraints = [];
+        if (agerange) constraints.push(`ad_group_criterion.age_range.type = '${sanitizeForGoogleAds(agerange)}'`);
+        
+        if (campaign) constraints.push(`campaign.name = '${sanitizeForGoogleAds(campaign)}'`);
+        
+        if (adGroup) constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
+        
+        if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
+        
 
-        if (agerange) {
-            constraints.push(`ad_group_criterion.age_range.type = '${sanitizeForGoogleAds(agerange)}'`);
-        }
-
-        if (campaign) {
-            constraints.push(`campaign.name = '${sanitizeForGoogleAds(campaign)}'`);
-        }
-
-        if (adGroup) {
-            constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
-        }
         // Fetch report data from Google Ads
         const adsReport = await customer.report({
             entity: "age_range_view",
-            attributes: ["campaign.name", "ad_group.name", "ad_group_criterion.age_range.type", "campaign.status","ad_group.status"],
+            attributes: ["campaign.name", "ad_group.name", "ad_group_criterion.age_range.type", "campaign.status", "ad_group.status"],
             metrics: ["metrics.conversions", "metrics.clicks", "metrics.ctr", "metrics.cost_micros"],
             from_date: startDate,
             to_date: endDate,
@@ -973,12 +1002,14 @@ export async function getAudienceMetricsByAge(req, res) {
         const ageData = adsReport.map((row) => {
             const ageRangeKey = row.ad_group_criterion.age_range.type;
             const ageRange = ageRanges[ageRangeKey] || "UNKNOWN";
-
+            const campaignName = row.campaign.name || "Unknown Campaign";
+            const adGroupName = row.ad_group.name || "Unknown Ad Group";
+            const currentStatus = row.campaign.status || 0;
             return {
-                campaignName: row.campaign.name,
-                adGroupName: row.ad_group.name,
-                campaignStatus:row.campaign.status,
-                adGroupStatus:row.ad_group.status,
+                campaignName,
+                adGroupName,
+                campaignStatus: campaignStatus[currentStatus],
+                adGroupStatus: row.ad_group.status,
                 ageRange,
                 conversions: row.metrics.conversions || 0,
                 clicks: row.metrics.clicks || 0,
@@ -986,8 +1017,9 @@ export async function getAudienceMetricsByAge(req, res) {
                 cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
             };
         });
-        const filteredData  = ageData.filter((data)=>data.campaignStatus === 2 && data.adGroupStatus ===2)
-        console.log(filteredData);
+
+        const filteredData = ageData.filter((data) => data.campaignStatus === "ENABLED" && data.adGroupStatus === 2);
+
         const ageRangeAggregatedMetrics = filteredData.reduce((acc, data) => {
             const { ageRange } = data;
         
@@ -1007,21 +1039,54 @@ export async function getAudienceMetricsByAge(req, res) {
         
             return acc;
         }, {});
-        
+
+        // Generate campaign-adgroup pairs and status options ONLY when:
+        // 1. No filters are applied AND
+        // 2. No cache exists for pairs or statuses
+        if (noFiltersApplied && (!ageCampaignAdGroupPairs || !ageStatusOptions)) {
+            const campaignAdGroupMap = ageData.reduce((acc, item) => {
+                if (!acc[item.campaignName]) {
+                    acc[item.campaignName] = {
+                        campaignName: item.campaignName,
+                        adGroups: []
+                    };
+                }
+                
+                // Add unique ad groups
+                if (!acc[item.campaignName].adGroups.includes(item.adGroupName)) {
+                    acc[item.campaignName].adGroups.push(item.adGroupName);
+                }
+                
+                return acc;
+            }, {});
+
+            // Update campaign-adgroup pairs if not cached
+            ageCampaignAdGroupPairs = Object.values(campaignAdGroupMap);
+            cache.set(audienceAgePairsCacheKey, ageCampaignAdGroupPairs);
+
+            // Update status options if not cached
+            ageStatusOptions = [
+                ...new Set(ageData.map(item => item.campaignStatus))
+            ];
+            cache.set(audienceAgeStatusCacheKey, ageStatusOptions);
+        }
         
         // Store data in cache
-        cache.set(cacheKey, {ageData,ageRangeAggregatedMetrics});
-         // Paginate and respond
-         const totalRecords = ageData.length;
-         const totalPages = Math.ceil(totalRecords / limit);
-         const startIndex = (page - 1) * limit;
+        cache.set(AudienceAgeCacheKey, { ageData, ageRangeAggregatedMetrics,ageCampaignAdGroupPairs,ageStatusOptions });
+
+        // Paginate and respond
+        const totalRecords = ageData.length;
+        const totalPages = Math.ceil(totalRecords / limit);
+        const startIndex = (page - 1) * limit;
 
         return res.json({
             success: true,
             totalRecords,
             totalPages,
-            ageData:ageData.slice(startIndex,startIndex + limit),
+            ageData: ageData.slice(startIndex, startIndex + limit),
             ageRangeAggregatedMetrics,
+            campaignAdGroupPairs: ageCampaignAdGroupPairs || [],
+            statusOptions: ageStatusOptions || [],
             fromCache: false
         });
     } catch (error) {
@@ -1035,12 +1100,193 @@ export async function getAudienceMetricsByAge(req, res) {
 }
 
 
-// export async function getAudienceMetricsByAge(req, res) {
-//     const { brandId } = req.params;
-//     let { startDate, endDate, campaign, adGroup, limit, page, agerange } = req.body;
+export async function getAudienceMetricsByGender(req,res){
+    const {brandId} = req.params;
+    let {startDate, endDate, campaign, adGroup,status,gender, limit, page} = req.body;
+    try {
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: "Brand not found.",
+            });
+        }
 
+        const adAccountId = brand.googleAdAccount;
+        if (!adAccountId || adAccountId.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google Ads account found for this brand.",
+            });
+        }
+
+        // Default date range to current month if not provided
+        if (!startDate || !endDate) {
+            startDate = moment().startOf("month").format("YYYY-MM-DD");
+            endDate = moment().format("YYYY-MM-DD");
+        }
+        
+        const customer = client.Customer({
+            customer_id: brand.googleAdAccount,
+            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+        });
+         // Construct cache keys
+        const AudienceGenderCacheKey = `audienceGenderMetrics:${brandId}:startDate:${startDate || "defaultStart"}:endDate:${endDate || "defaultEnd"}:campaign:${campaign || ''}:adGroup:${adGroup || ''}:gender:${gender || ''}:status:${status || ''}`;
+        const audienceGenderPairsCacheKey = `audienceGenderMetrics:pairs_${brandId}`;
+        const audienceGenderStatusCacheKey = `audienceGenderMetrics:status_${brandId}`;
+        const noFiltersApplied = !campaign && !adGroup && !status && !gender;
+
+        const cachedData = cache.get(AudienceGenderCacheKey);
+        let genderCampaignAdGroupPairs = null;
+        let genderStatusOptions = null;
+
+        genderCampaignAdGroupPairs = cache.get(audienceGenderPairsCacheKey);
+        genderStatusOptions = cache.get(audienceGenderStatusCacheKey);
+    
+
+        if (cachedData) {
+            const { genderData, aggregatedMetrics } = cachedData;
+            const totalRecords = genderData.length;
+            const totalPages = Math.ceil(totalRecords / limit);
+            const startIndex = (page - 1) * limit;
+
+            return res.json({
+                success: true,
+                totalRecords,
+                totalPages,
+                genderData: genderData.slice(startIndex, startIndex + limit),
+                aggregatedMetrics,
+                campaignAdGroupPairs: genderCampaignAdGroupPairs || [],
+                statusOptions: genderStatusOptions || [],
+                fromCache: true
+            });
+        }
+
+        const constraints = [];
+        if (gender) constraints.push(`ad_group_criterion.gender.type = '${sanitizeForGoogleAds(gender)}'`);
+        
+        if (campaign) constraints.push(`campaign.name = '${sanitizeForGoogleAds(campaign)}'`);
+        
+        if (adGroup) constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
+        
+        if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
+        
+
+        const reportConfig = {
+            entity: "gender_view",
+            attributes: ["campaign.name", "ad_group.name", "ad_group_criterion.gender.type", "campaign.status", "ad_group.status"],
+            metrics: ["metrics.conversions", "metrics.clicks", "metrics.ctr", "metrics.cost_micros"],
+            from_date: startDate,
+            to_date: endDate,
+            constraints
+        }
+
+        const adsReport = await customer.report(reportConfig);
+        const genderData = adsReport.map((row) => {
+            const genderKey = row.ad_group_criterion.gender.type;
+            const campaignName = row.campaign.name || "Unknown Campaign";
+            const adGroupName = row.ad_group.name || "Unknown Ad Group";
+            const currentStatus = row.campaign.status || 0;
+            return {
+                campaignName,
+                adGroupName,
+                campaignStatus: campaignStatus[currentStatus],
+                adGroupStatus: row.ad_group.status,
+                gender:genderTypes[genderKey],
+                conversions: row.metrics.conversions || 0,
+                clicks: row.metrics.clicks || 0,
+                ctr: (row.metrics.ctr || 0).toFixed(2),
+                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+            };
+        });
+    
+        const totalRecords = genderData.length;
+        const totalPages = Math.ceil(totalRecords / limit);
+        const startIndex = (page - 1) * limit;
+
+        const filteredData = genderData.filter(
+            (data) => data.campaignStatus === 'ENABLED' && data.adGroupStatus === 2
+        );
+     
+
+        const  aggregatedRecords = filteredData.reduce((acc,data)=>{
+            const {gender} = data;
+
+            if(!acc[gender]){
+                acc[gender]={
+                    totalConversions: 0,
+                    totalClicks: 0,
+                    totalCost: 0,
+                    totalCTR: 0,
+                }
+            }
+           
+            acc[gender].totalConversions += data.conversions;
+            acc[gender].totalClicks += data.clicks;
+            acc[gender].totalCost += parseFloat(data.cost);
+            acc[gender].totalCTR += parseFloat(data.ctr);
+        
+            return acc;
+        },{})
+
+        if (noFiltersApplied && (!genderCampaignAdGroupPairs || !genderStatusOptions)) {
+            const campaignAdGroupMap = genderData.reduce((acc, item) => {
+                if (!acc[item.campaignName]) {
+                    acc[item.campaignName] = {
+                        campaignName: item.campaignName,
+                        adGroups: []
+                    };
+                }
+                
+                // Add unique ad groups
+                if (!acc[item.campaignName].adGroups.includes(item.adGroupName)) {
+                    acc[item.campaignName].adGroups.push(item.adGroupName);
+                }
+                
+                return acc;
+            }, {});
+
+            // Update campaign-adgroup pairs if not cached
+            genderCampaignAdGroupPairs = Object.values(campaignAdGroupMap);
+            cache.set(audienceGenderPairsCacheKey, genderCampaignAdGroupPairs);
+
+            // Update status options if not cached
+            genderStatusOptions = [
+                ...new Set(genderData.map(item => item.campaignStatus))
+            ];
+            cache.set(audienceGenderStatusCacheKey, genderStatusOptions);
+        }
+
+        cache.set(AudienceGenderCacheKey, { genderData, aggregatedRecords,genderCampaignAdGroupPairs,genderStatusOptions });
+
+        return res.json({
+            success: true,
+            totalRecords,
+            totalPages,
+            genderData: genderData.slice(startIndex, startIndex + limit),
+            aggregatedRecords:aggregatedRecords || [],
+            genderCampaignAdGroupPairs:genderCampaignAdGroupPairs || [],
+            genderStatusOptions:genderStatusOptions || [],
+            fromCache: false
+        });
+
+    } catch (error) {
+        console.error("Failed to fetch brand metrics:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message,
+        });
+    }
+}
+
+
+// export async function getAudienceView(req,res){
+//     const {brandId} = req.params;
+//     let {startDate, endDate, campaign, adGroup,status,gender, limit, page} = req.body;
 //     try {
-//         // Find the brand by ID
 //         const brand = await Brand.findById(brandId);
 //         if (!brand) {
 //             return res.status(404).json({
@@ -1063,90 +1309,45 @@ export async function getAudienceMetricsByAge(req, res) {
 //             startDate = moment().startOf("month").format("YYYY-MM-DD");
 //             endDate = moment().format("YYYY-MM-DD");
 //         }
-
-//          // Initialize Google Ads customer client
-//          const customer = client.Customer({
-//             customer_id: adAccountId,
+        
+//         const customer = client.Customer({
+//             customer_id: brand.googleAdAccount,
 //             refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 //             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
 //         });
 
-//         const cacheKey = `audienceAgeMetrics:${brandId}:startDate:${startDate || "defaultStart"}:endDate:${endDate || "defaultEnd"}:campaign:${campaign || ''}:adGroup:${adGroup || ''}:agerange:${agerange || ''}`;
-//         limit = parseInt(limit || 100)
-//         page = parseInt(page || 1)
-//         // Check if data is already in cache
-//         const cachedData = cache.get(cacheKey);
-       
-
-//         if (cachedData) {
-//             const totalRecords = cachedData.length;
-//             const totalPages = Math.ceil(totalRecords / limit);
-//             const startIndex = (page - 1) * limit;
-
-//             return res.json({
-//                 success: true,
-//                 totalRecords,
-//                 totalPages,
-//                 ageData: cachedData.slice(startIndex, startIndex + limit),
-//                 fromCache: true
-//             });
-//         }
-       
-//         const constraints = [];
-
-//         if (agerange) {
-//             constraints.push(`ad_group_criterion.age_range.type = '${sanitizeForGoogleAds(agerange)}'`);
-//         }
-
-//         if (campaign) {
-//             constraints.push(`campaign.name = '${sanitizeForGoogleAds(campaign)}'`);
-//         }
-
-//         if (adGroup) {
-//             constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
-//         }
-//         // Fetch report data from Google Ads
-//         const adsReport = await customer.report({
-//             entity: "age_range_view",
-//             attributes: ["campaign.name", "ad_group.name", "ad_group_criterion.age_range.type", "campaign.status"],
+//         const reportConfig = {
+//             entity: "campaign_audience_view",
+//             attributes: ["campaign.name", "campaign_criterion.display_name", "campaign.status"],
 //             metrics: ["metrics.conversions", "metrics.clicks", "metrics.ctr", "metrics.cost_micros"],
 //             from_date: startDate,
 //             to_date: endDate,
-//             constraints
-//         });
+//         }
 
-//         // Map data to a readable format
-//         const ageData = adsReport.map((row) => {
-//             const ageRangeKey = row.ad_group_criterion.age_range.type;
-//             const ageRange = ageRanges[ageRangeKey] || "UNKNOWN";
-
+//         const adsReport = await customer.report(reportConfig);
+//         const audienceData = adsReport.map((row) => {
+//             const campaignName = row.campaign.name || "Unknown Campaign";
+//             const currentStatus = row.campaign.status || 0;
 //             return {
-//                 campaignName: row.campaign.name,
-//                 adGroupName: row.ad_group.name,
-//                 ageRange,
-//                 conversions: row.metrics.conversions|| 0,
+//                 campaignName,
+//                 campaignStatus: campaignStatus[currentStatus],
+//                 name:row.campaign_criterion.display_name,
+//                 conversions: row.metrics.conversions || 0,
 //                 clicks: row.metrics.clicks || 0,
 //                 ctr: (row.metrics.ctr || 0).toFixed(2),
 //                 cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
 //             };
-//         });
-
-//         // Store data in cache
-//         cache.set(cacheKey, ageData);
-//          // Paginate and respond
-//          const totalRecords = ageData.length;
-//          const totalPages = Math.ceil(totalRecords / limit);
-//          const startIndex = (page - 1) * limit;
-
-//         return res.json({
-//             success: true,
-//             totalRecords,
-//             totalPages,
-//             ageData:ageData.slice(startIndex,startIndex + limit),
-//             fromCache: false
-//         });
-//     } catch (error) {
-//         console.error("Failed to fetch brand metrics:", error);
+//         })
+//         return(
+//             res.json({
+//                 success: true,
+//                 data: audienceData,
+//                 message: "Audience view data fetched successfully.",
+//             })
+//         )
+//         ;
+//     }catch(error){
+//         console.error("Failed to fetch brand data:", error);
 //         return res.status(500).json({
 //             success: false,
 //             message: "Internal server error.",

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getGoogleProductMetricsByBrand, getGoogleProductMetrics,getGoogleProductMetricsByType, getGoogleProductMetricsByCategory, getSearchTermMetrics, getAudienceMetricsByAge, getAudienceMetricsByGender,getAudienceView } from '../controller/segmentReport.js';
+import { getGoogleProductMetricsByBrand, getGoogleProductMetrics,getGoogleProductMetricsByType, getGoogleProductMetricsByCategory, getSearchTermMetrics, getAudienceMetricsByAge, getAudienceMetricsByGender } from '../controller/segmentReport.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 const router = express.Router();
 
@@ -10,5 +10,5 @@ router.post('/categoryMetrics/:brandId',verifyAuth,getGoogleProductMetricsByCate
 router.post('/searchTermMetrics/:brandId',verifyAuth,getSearchTermMetrics);
 router.post('/ageMetrics/:brandId',verifyAuth,getAudienceMetricsByAge);
 router.post('/genderMetrics/:brandId',verifyAuth,getAudienceMetricsByGender);
-router.post('/audienceMetrics/:brandId',verifyAuth,getAudienceView);
+// router.post('/audienceMetrics/:brandId',verifyAuth,getAudienceView);
 export default router;

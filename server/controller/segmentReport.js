@@ -81,7 +81,7 @@ const sanitizeForGoogleAds = (value) => {
 
 export async function getGoogleProductMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, brands, productType, categoryName, categoryLevel } = req.body;
+    let { startDate, endDate, brands, productType, categoryName, categoryLevel,status } = req.body;
 
     try {
         // Fetch category mapping from Google Ads
@@ -129,6 +129,7 @@ export async function getGoogleProductMetrics(req, res) {
         const queryProductType = sanitizeForGoogleAds(productType);
         const queryCategory = sanitizeForGoogleAds(mappedCategoryResourceName); // Use the mapped resource name
         const queryCategoryLevel = categoryLevel ? `shopping_product.${categoryLevel}` : null;
+        const queryStatus = sanitizeForGoogleAds(status);
         // Build dynamic constraints
         const constraints = [];
 
@@ -146,6 +147,9 @@ export async function getGoogleProductMetrics(req, res) {
             constraints.push(`${queryCategoryLevel} = '${queryCategory}'`);
         }
 
+        if(queryStatus){
+            constraints.push(`shopping_product.status = '${queryStatus}'`);
+        }
 
         // Fetch product data with constraints
         const adsReport = await customer.report({
@@ -165,8 +169,10 @@ export async function getGoogleProductMetrics(req, res) {
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
-                "metrics.ctr",
                 "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"
             ],
             from_date: startDate,
             to_date: endDate,
@@ -186,10 +192,15 @@ export async function getGoogleProductMetrics(req, res) {
             const price = (priceMicros / 1_000_000).toFixed(2);
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
-            const ctr = row.metrics.ctr || 0;
             const costMicros = row.metrics.cost_micros || 0;
             const cost = (costMicros / 1_000_000).toFixed(2);
             const issues = row.shopping_product.issues || [];
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const avg_cpc = clicks > 0?((cost/clicks)).toFixed(2):0 || 0;
+            const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : 0;
+            const conversion_rate = row.metrics.conversions_from_interactions_rate || 0;
+            const roas = cost > 0 ? (conversionsValue / cost).toFixed(2) : 0.00;
 
             // Add each product's data to the array
             productsData.push({
@@ -199,16 +210,25 @@ export async function getGoogleProductMetrics(req, res) {
                 status,
                 issues,
                 price,
-                impressions,
-                clicks,
-                ctr: ctr.toFixed(2),
                 cost,
+                roas,
+                conversions,
+                conversionsValue,
+                conversionsRate: conversion_rate,
+                clicks,
+                ctr: ctr,
+                avg_cpc 
             });
         }
+
+        const ProductStatusOptions = [
+            ...new Set(productsData.map(item => item.status))
+        ];
 
         return res.json({
             success: true,
             productsData,
+            ProductStatusOptions
         });
     } catch (error) {
         console.error("Failed to fetch product-level data:", error);
@@ -266,8 +286,10 @@ export async function getGoogleProductMetricsByBrand(req, res) {
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
-                "metrics.ctr",
                 "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"
             ],
             from_date: startDate,
             to_date: endDate,
@@ -281,38 +303,63 @@ export async function getGoogleProductMetricsByBrand(req, res) {
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
             const costMicros = row.metrics.cost_micros || 0;
-            const cost = costMicros / 1_000_000;
+            const cost = (costMicros / 1_000_000).toFixed(2);
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const conversion_rate = row.metrics.conversions_from_interactions_rate || 0;
 
             // Initialize metrics for the brand if not already done
             if (!brandMetricsMap[brandName]) {
                 brandMetricsMap[brandName] = {
-                    Brand: brandName,
-                    Products: 0,
-                    Clicks: 0,
-                    Impressions: 0,
-                    CTR: 0,
-                    Cost: 0,
+                    "Brand": brandName,
+                    "Products": 0,
+                    "Cost": 0,
+                    "ROAS":0,
+                    "Conversions":0,
+                    "Conv. Value": 0,
+                    "Conv. Rate": 0,
+                    "Clicks": 0,
+                    "CTR": 0,
+                    "Avg. CPC": 0
                 };
             }
 
             // Update aggregated metrics
             brandMetricsMap[brandName].Products += 1;
-            brandMetricsMap[brandName].Clicks += clicks;
             brandMetricsMap[brandName].Impressions += impressions;
-            brandMetricsMap[brandName].CTR =
-                brandMetricsMap[brandName].Impressions > 0
-                    ? ((brandMetricsMap[brandName].Clicks / brandMetricsMap[brandName].Impressions) * 100).toFixed(2)
-                    : 0;
             brandMetricsMap[brandName].Cost += parseFloat(cost);
+            brandMetricsMap[brandName].Conversions = Number(
+                (brandMetricsMap[brandName].Conversions + conversions).toFixed(2)
+              );
+              
+            brandMetricsMap[brandName]["Conv. Value"] = Number(
+                (brandMetricsMap[brandName]["Conv. Value"] + conversionsValue).toFixed(2)
+            );
+              
+            brandMetricsMap[brandName]["Conv. Rate"] = Number(
+                (brandMetricsMap[brandName]["Conv. Rate"] + conversion_rate).toFixed(2)
+            );
+            brandMetricsMap[brandName].ROAS=
+            brandMetricsMap[brandName].Cost > 0
+            ? ((brandMetricsMap[brandName]["Conv. Value"] / brandMetricsMap[brandName].Cost) * 100).toFixed(2)
+            : 0;
+            brandMetricsMap[brandName].Clicks += clicks;
+            brandMetricsMap[brandName].CTR =
+            brandMetricsMap[brandName].Impressions > 0
+                ? ((brandMetricsMap[brandName].Clicks / brandMetricsMap[brandName].Impressions) * 100).toFixed(2)
+                : 0;
+            brandMetricsMap[brandName]["Avg. CPC"]=
+            brandMetricsMap[brandName].Clicks > 0
+            ? ((brandMetricsMap[brandName].Cost / brandMetricsMap[brandName].Clicks)).toFixed(2)
+            : 0.00;
 
         }
 
         // Convert the brand metrics map to an array
-        const brandsData = Object.values(brandMetricsMap).map(brands => ({
+        const brandsData = Object.values(brandMetricsMap).map(({ Impressions, ...brands }) => ({
             ...brands,
             Cost: brands.Cost.toFixed(2)
         }));
-        console.log(brandsData.length);
 
         return res.json({
             success: true,
@@ -373,8 +420,10 @@ export async function getGoogleProductMetricsByType(req, res) {
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
-                "metrics.ctr",
                 "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"
             ],
             from_date: startDate,
             to_date: endDate,
@@ -388,40 +437,63 @@ export async function getGoogleProductMetricsByType(req, res) {
             const impressions = row.metrics.impressions || 0;
             const clicks = row.metrics.clicks || 0;
             const costMicros = row.metrics.cost_micros || 0;
-            const cost = costMicros / 1_000_000;
+            const cost = (costMicros / 1_000_000).toFixed(2);
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const conversion_rate = row.metrics.conversions_from_interactions_rate || 0;
 
             // Initialize metrics for the brand if not already done
             if (!typeMetricsMap[typeName]) {
                 typeMetricsMap[typeName] = {
-                    Type: typeName,
-                    Products: 0,
-                    Clicks: 0,
-                    Impressions: 0,
-                    CTR: 0,
-                    Cost: 0,
-
+                    "Type": typeName,
+                    "Products": 0,
+                    "Cost": 0,
+                    "ROAS":0,
+                    "Conversions":0,
+                    "Conv. Value": 0,
+                    "Conv. Rate": 0,
+                    "Clicks": 0,
+                    "CTR": 0,
+                    "Avg. CPC": 0
                 };
             }
 
             // Update aggregated metrics
             typeMetricsMap[typeName].Products += 1;
-            typeMetricsMap[typeName].Clicks += clicks;
             typeMetricsMap[typeName].Impressions += impressions;
-            typeMetricsMap[typeName].CTR =
-                typeMetricsMap[typeName].Impressions > 0
-                    ? ((typeMetricsMap[typeName].Clicks / typeMetricsMap[typeName].Impressions) * 100).toFixed(2)
-                    : 0;
             typeMetricsMap[typeName].Cost += parseFloat(cost);
+            typeMetricsMap[typeName].Conversions = Number(
+                (typeMetricsMap[typeName].Conversions + conversions).toFixed(2)
+              );
+              
+              typeMetricsMap[typeName]["Conv. Value"] = Number(
+                (typeMetricsMap[typeName]["Conv. Value"] + conversionsValue).toFixed(2)
+              );
+              
+              typeMetricsMap[typeName]["Conv. Rate"] = Number(
+                (typeMetricsMap[typeName]["Conv. Rate"] + conversion_rate).toFixed(2)
+              );
+            typeMetricsMap[typeName].ROAS=
+            typeMetricsMap[typeName].Cost > 0
+            ? ((typeMetricsMap[typeName]["Conv. Value"] / typeMetricsMap[typeName].Cost) * 100).toFixed(2)
+            : 0;
+            typeMetricsMap[typeName].Clicks += clicks;
+            typeMetricsMap[typeName].CTR =
+            typeMetricsMap[typeName].Impressions > 0
+                ? ((typeMetricsMap[typeName].Clicks / typeMetricsMap[typeName].Impressions) * 100).toFixed(2)
+                : 0;
+            typeMetricsMap[typeName]["Avg. CPC"]=
+            typeMetricsMap[typeName].Clicks > 0
+            ? ((typeMetricsMap[typeName].Cost / typeMetricsMap[typeName].Clicks)).toFixed(2)
+            : 0.00;
 
         }
-
-        // Convert the brand metrics map to an array
-        const productTypesData = Object.values(typeMetricsMap).map(type => ({
+        const productTypesData = Object.values(typeMetricsMap).map(({ Impressions, ...type }) => ({
             ...type,
             Cost: type.Cost.toFixed(2)
         }));
-        console.log(productTypesData.length);
 
+      
         return res.json({
             success: true,
             productTypesData
@@ -589,6 +661,9 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                 "metrics.impressions",
                 "metrics.clicks",
                 "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"
             ],
             from_date: startDate,
             to_date: endDate,
@@ -617,6 +692,9 @@ export async function getGoogleProductMetricsByCategory(req, res) {
             const clicks = row.metrics.clicks || 0;
             const costMicros = row.metrics.cost_micros || 0;
             const cost = costMicros / 1_000_000;
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const conversion_rate = row.metrics.conversions_from_interactions_rate || 0;
 
             let currentLevel = categoryHierarchy;
             for (let i = 0; i < levels.length; i++) {
@@ -631,26 +709,39 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                         level: `category_level-Not Known`,
                         metrics: {
                             products: 0,
-                            totalClicks: 0,
-                            totalImpressions: 0,
                             totalCost: 0,
+                            ROAS: 0,
+                            conversions,
+                            ConversionValue: 0,
+                            ConversionRate: 0,
+                            totalClicks: 0,
                             ctr: 0,
+                            AvgCPC: 0,
                         },
                         subcategories: {},
                     };
                 }
                 currentLevel[levelName].level = `category_level${i + 1}`,
-                    currentLevel[levelName].metrics.products += 1;
-                currentLevel[levelName].metrics.totalClicks += clicks;
+                currentLevel[levelName].metrics.products += 1;
                 currentLevel[levelName].metrics.totalImpressions += impressions;
-                currentLevel[levelName].metrics.totalCost += cost;
-
-                // Correct CTR calculation
+                currentLevel[levelName].metrics.totalCost = (currentLevel[levelName].metrics.totalCost + cost).toFixed(2);
+                currentLevel[levelName].metrics.totalCost = parseFloat(currentLevel[levelName].metrics.totalCost);
+                currentLevel[levelName].metrics.conversions += conversions;
+                currentLevel[levelName].metrics.ConversionValue += conversionsValue;
+                currentLevel[levelName].metrics.ConversionRate += conversion_rate;
+                currentLevel[levelName].metrics.ROAS=
+                    currentLevel[levelName].metrics.totalCost > 0
+                    ? ((currentLevel[levelName].metrics.ConversionValue / currentLevel[levelName].metrics.totalCost) * 100).toFixed(2)
+                    : 0;
+                currentLevel[levelName].metrics.totalClicks += clicks;
                 currentLevel[levelName].metrics.ctr =
                     currentLevel[levelName].metrics.totalImpressions > 0
-                        ? (currentLevel[levelName].metrics.totalClicks / currentLevel[levelName].metrics.totalImpressions) * 100
-                        : 0;
-
+                    ? (currentLevel[levelName].metrics.totalClicks / currentLevel[levelName].metrics.totalImpressions) * 100
+                    : 0;
+                currentLevel[levelName].metrics.AvgCPC=
+                        currentLevel[levelName].metrics.totalClicks > 0
+                        ? ((currentLevel[levelName].metrics.totalCost / currentLevel[levelName].metrics.totalClicks)).toFixed(2)
+                        : 0.00;
                 currentLevel = currentLevel[levelName].subcategories;
             }
         }
@@ -660,10 +751,13 @@ export async function getGoogleProductMetricsByCategory(req, res) {
             return Object.entries(levelMap).map(([name, data]) => ({
                 name,
                 level: data.level,
-                metrics: data.metrics,
+                metrics: Object.fromEntries(
+                    Object.entries(data.metrics).filter(([key]) => key !== 'totalImpressions')
+                ),
                 subcategories: convertToArray(data.subcategories),
             }));
         };
+        
 
         const categoriesData = convertToArray(categoryHierarchy);
 
@@ -790,8 +884,10 @@ export async function getSearchTermMetrics(req, res) {
             metrics: [
                 "metrics.impressions",
                 "metrics.clicks",
-                "metrics.ctr",
                 "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"
             ],
             segments: ["segments.search_term_match_type"],
             ...dates,
@@ -805,6 +901,16 @@ export async function getSearchTermMetrics(req, res) {
             const campaignName = row.campaign.name || "Unknown Campaign";
             const adGroupName = row.ad_group.name || "Unknown Ad Group";
             const currentStatus = row.search_term_view.status || 0;
+            const clicks = row.metrics.clicks || 0;
+            const cost = ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2);
+            const impressions = row.metrics.impressions || 0;
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const avg_cpc = clicks > 0?((cost/clicks)).toFixed(2):0 || 0;
+            const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : 0;
+            const conversionsRate = row.metrics.conversions_from_interactions_rate || 0;
+            const roas = cost > 0 ? (conversionsValue / cost).toFixed(2) : 0.00;
+          
 
             acc.searchTermData.push({
                 searchTerm: row.search_term_view.search_term || " ",
@@ -812,10 +918,14 @@ export async function getSearchTermMetrics(req, res) {
                 status: SearchTermStatusEnum[currentStatus] || "UNKNOWN",
                 campaignName,
                 adGroupName,
-                impressions: row.metrics.impressions || 0,
-                clicks: row.metrics.clicks || 0,
-                ctr: (row.metrics.ctr || 0).toFixed(2),
-                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+                cost,
+                roas,
+                conversions,
+                conversionsValue,
+                conversionsRate,
+                clicks,
+                ctr,
+                avg_cpc   
             });
 
             // Only collect status if no cached status exists and no filters applied
@@ -992,7 +1102,12 @@ export async function getAudienceMetricsByAge(req, res) {
         const adsReport = await customer.report({
             entity: "age_range_view",
             attributes: ["campaign.name", "ad_group.name", "ad_group_criterion.age_range.type", "campaign.status", "ad_group.status"],
-            metrics: ["metrics.conversions", "metrics.clicks", "metrics.ctr", "metrics.cost_micros"],
+            metrics: ["metrics.impressions",
+                "metrics.clicks",
+                "metrics.cost_micros",
+                "metrics.conversions",
+                "metrics.conversions_value",
+                "metrics.conversions_from_interactions_rate"],
             from_date: startDate,
             to_date: endDate,
             constraints
@@ -1005,16 +1120,22 @@ export async function getAudienceMetricsByAge(req, res) {
             const campaignName = row.campaign.name || "Unknown Campaign";
             const adGroupName = row.ad_group.name || "Unknown Ad Group";
             const currentStatus = row.campaign.status || 0;
+            const clicks = row.metrics.clicks || 0;
+            const cost = ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2);
+            const impressions = row.metrics.impressions || 0;
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const avg_cpc = clicks > 0?((cost/clicks)).toFixed(2):0 || 0;
+            const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : 0;
+            const conversionsRate = row.metrics.conversions_from_interactions_rate || 0;
+            const roas = cost > 0 ? (conversionsValue / cost).toFixed(2) : 0.00;
             return {
                 campaignName,
                 adGroupName,
                 campaignStatus: campaignStatus[currentStatus],
                 adGroupStatus: row.ad_group.status,
                 ageRange,
-                conversions: row.metrics.conversions || 0,
-                clicks: row.metrics.clicks || 0,
-                ctr: (row.metrics.ctr || 0).toFixed(2),
-                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+                cost,roas,conversions,conversionsValue,conversionsRate,clicks,ctr,avg_cpc
             };
         });
 
@@ -1189,16 +1310,22 @@ export async function getAudienceMetricsByGender(req,res){
             const campaignName = row.campaign.name || "Unknown Campaign";
             const adGroupName = row.ad_group.name || "Unknown Ad Group";
             const currentStatus = row.campaign.status || 0;
+            const clicks = row.metrics.clicks || 0;
+            const cost = ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2);
+            const impressions = row.metrics.impressions || 0;
+            const conversions = row.metrics.conversions || 0;
+            const conversionsValue = row.metrics.conversions_value || 0;
+            const avg_cpc = clicks > 0?((cost/clicks)).toFixed(2):0 || 0;
+            const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : 0;
+            const conversionsRate = row.metrics.conversions_from_interactions_rate || 0;
+            const roas = cost > 0 ? (conversionsValue / cost).toFixed(2) : 0.00;
             return {
                 campaignName,
                 adGroupName,
                 campaignStatus: campaignStatus[currentStatus],
                 adGroupStatus: row.ad_group.status,
                 gender:genderTypes[genderKey],
-                conversions: row.metrics.conversions || 0,
-                clicks: row.metrics.clicks || 0,
-                ctr: (row.metrics.ctr || 0).toFixed(2),
-                cost: ((row.metrics.cost_micros || 0) / 1_000_000).toFixed(2),
+               cost,roas,conversions,conversionsValue,conversionsRate,clicks,ctr,avg_cpc
             };
         });
     

@@ -2,7 +2,7 @@ import { GoogleLogo } from "@/pages/CampaignMetricsPage";
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, Eye, MousePointer } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone} from 'lucide-react';
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -53,13 +53,16 @@ export default function SearchTermTable() {
     { id: 'searchTerm', header: 'Search Term', icon: <Search className="w-4 h-4" /> },
     { id: 'matchType', header: 'Match Type', icon: <Zap className="w-4 h-4" /> },
     { id: 'status', header: 'Status', icon: <Filter className="w-4 h-4" /> },
-    { id: 'campaignName', header: 'Campaign Name', icon: <Zap className="w-4 h-4" /> },
-    { id: 'adGroupName', header: 'Ad Group', icon: <Zap className="w-4 h-4" /> },
-    { id: 'impressions', header: 'Impressions', icon: <Eye className="w-4 h-4" /> },
+    { id: 'campaignName', header: 'Campaign Name', icon: <Megaphone className="w-4 h-4" /> },
+    { id: 'adGroupName', header: 'Ad Group', icon: <Users className="w-4 h-4" /> },
+    { id: 'cost', header: 'Cost', icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'conversions', header: 'Conversions', icon: <Target className="w-4 h-4" /> },
+    { id: 'conversionsValue', header: 'Conv. Value', icon: <TrendingUp className="w-4 h-4" /> },
+    { id: 'conversionsRate', header: 'Conv. Rate', icon: <Percent className="w-4 h-4" /> },
     { id: 'clicks', header: 'Clicks', icon: <MousePointer className="w-4 h-4" /> },
     { id: 'ctr', header: 'CTR', icon: <Percent className="w-4 h-4" /> },
-    { id: 'cost', header: 'Cost', icon: <DollarSign className="w-4 h-4" /> },
-  ];
+    { id: 'avg_cpc', header: 'Avg. CPC', icon: <CreditCard className="w-4 h-4" /> },
+  ]
 
   const fetchData = useCallback(async () => {
     setLoading(true);

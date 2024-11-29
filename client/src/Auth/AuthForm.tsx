@@ -68,7 +68,7 @@ export default function AuthForm() {
 
       if (isLogin) {
         response = await axios.post(
-          `${baseURL}/api/auth/login`,
+          `${baseURL}/api/auth/login/normal`,
           { email, password },
           { withCredentials: true }
         );
@@ -239,4 +239,3 @@ export default function AuthForm() {
     </div>
   )
 }
-

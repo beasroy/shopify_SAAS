@@ -146,29 +146,44 @@ export const userLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
         const { type } = req.params;
-        const { auth_token } = req.query
 
-        const decoded_token = jwt.verify(auth_token,SECRET_KEY);
+        let decoded_token;
 
-        console.log(decoded_token)
-        if(!decoded_token){
-            return res.status(403).json({
-                success: false,
-                message: 'Invalid token'
-            });
+        if (type === 'oauth') {
+            const { auth_token } = req.query;
+
+            if (!auth_token) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing authentication token for OAuth login.'
+                });
+            }
+
+            try {
+                decoded_token = jwt.verify(auth_token, process.env.JWT_SECRET);
+            } catch (err) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Invalid or expired token'
+                });
+            }
         }
-        const user = await User.findOne({ email: email ?? decoded_token.email });
+
+        const user = await User.findOne({
+            email: type === 'oauth' ? decoded_token?.email : email
+        });
+
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found. Please check your email or register.'
             });
         }
-        if (type == 'oauth') {
 
+        if (type === 'oauth') {
             return res.status(200).json({
                 success: true,
-                message: 'Login successful',
+                message: 'OAuth login successful',
                 user: {
                     id: user._id,
                     username: user.username,
@@ -177,6 +192,7 @@ export const userLogin = async (req, res) => {
             });
         }
 
+        // Handle normal login
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
@@ -198,13 +214,12 @@ export const userLogin = async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        // Configure cookies for production (HTTPS)
         const isProduction = process.env.NODE_ENV === 'production';
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: isProduction, // Use true if running on HTTPS in production
-            sameSite: isProduction ? 'strict' : 'lax', // 'strict' is more secure; 'lax' allows standard behavior
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -227,6 +242,7 @@ export const userLogin = async (req, res) => {
         });
     }
 };
+
 
 export const userLogout = (req, res) => {
     try {

@@ -72,7 +72,7 @@ export const handleGoogleCallback = async (req, res) => {
             sameSite: isProduction ? 'strict' : 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
-        const clientURL = process.env.NODE_ENV === 'production' ? "https://paralles.messold.com/google/callback" : "http://localhost:5173/google/callback";
+        const clientURL = process.env.NODE_ENV === 'production' ? "https://parallels.messold.com/google/callback" : "http://localhost:5173/google/callback";
 
         return res.redirect(clientURL + `?token=${jwtToken}`);
        

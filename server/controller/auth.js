@@ -2,13 +2,90 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
+import { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis'
+
 
 config();
+
+const oauth2Client = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.REDIRECT_URI
+);
+const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
+
+export const getGoogleAuthURL = (req, res) => {
+    const scopes = [
+        'https://www.googleapis.com/auth/adwords',
+        'https://www.googleapis.com/auth/analytics.readonly',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile'
+    ];
+
+    const url = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent'
+    });
+
+    res.status(200).json({ authUrl: url });
+};
+
+export const handleGoogleCallback = async (req, res) => {
+    const { code } = req.query;
+
+    try {
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
+        const userInfo = await oauth2.userinfo.get();
+
+        const { email, name, id } = userInfo.data;
+
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = new User({
+                username: name,
+                email,
+                googleId: id,
+                method: 'google',
+                googleAccessToken: tokens.access_token,
+                googleRefreshToken: tokens.refresh_token,
+                isAdmin: true,
+            });
+            await user.save();
+        }
+
+        const jwtToken = jwt.sign(
+            { id: user._id, email: user.email, method: user.method },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        res.cookie('token', jwtToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        const clientURL = process.env.NODE_ENV === 'production' ? "https://paralles.messold.com/google/callback" : "http://localhost:5173/google/callback";
+
+        return res.redirect(clientURL + `?token=${jwtToken}`);
+       
+    } catch (error) {
+        console.error('Error during Google OAuth callback:', error);
+        res.status(500).json({ success: false, message: 'Google OAuth failed', error: error.message });
+    }
+};
+
 
 export const userRegistration = async (req, res) => {
     try {
         const { username, email, password } = req.body;
-
 
         if (!username || !email || !password) {
             return res.status(400).json({
@@ -16,7 +93,6 @@ export const userRegistration = async (req, res) => {
                 message: 'Please provide username, email, and password.'
             });
         }
-
 
         const existingUser = await User.findOne({ $or: [{ username }, { email }] });
         if (existingUser) {
@@ -35,16 +111,14 @@ export const userRegistration = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-
         const newUser = new User({
             username,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            method:'password'
         });
 
-
         await newUser.save();
-
 
         const userResponse = {
             id: newUser._id,
@@ -71,19 +145,42 @@ export const userRegistration = async (req, res) => {
 export const userLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const { type } = req.params;
+        const { auth_token } = req.query
+
+        const decoded_token = jwt.verify(auth_token,SECRET_KEY);
+
+        console.log(decoded_token)
+        if(!decoded_token){
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid token'
+            });
+        }
+        const user = await User.findOne({ email: email ?? decoded_token.email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found. Please check your email or register.'
+            });
+        }
+        if (type == 'oauth') {
+
+            return res.status(200).json({
+                success: true,
+                message: 'Login successful',
+                user: {
+                    id: user._id,
+                    username: user.username,
+                    email: user.email
+                }
+            });
+        }
 
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
                 message: 'Please provide both email and password.'
-            });
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found. Please check your email or register.'
             });
         }
 
@@ -108,7 +205,7 @@ export const userLogin = async (req, res) => {
             httpOnly: true,
             secure: isProduction, // Use true if running on HTTPS in production
             sameSite: isProduction ? 'strict' : 'lax', // 'strict' is more secure; 'lax' allows standard behavior
-            maxAge: 7 * 24 * 60 * 60 * 1000 
+            maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
         return res.status(200).json({

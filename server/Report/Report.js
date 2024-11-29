@@ -454,8 +454,8 @@ export const fetchFBAdReport = async (brandId) => {
 
 
 const client = new GoogleAdsApi({
-  client_id: process.env.GOOGLE_AD_CLIENT_ID,
-  client_secret: process.env.GOOGLE_AD_CLIENT_SECRET,
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
   refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });

@@ -218,9 +218,9 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                         <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
                         <div className="h-[calc(100vh-200px)] overflow-auto">
                             <table className="w-full border-collapse">
-                                <thead className="sticky top-0 z-20 bg-cyan-950 border border-gray-500">
+                                <thead className="sticky top-0 z-20 bg-cyan-900 border border-gray-500 text-sm">
                                     <tr>
-                                        <th className="w-5 bg-cyan-950 border border-gray-500" rowSpan={2} />
+                                        <th className="w-5 bg-cyan-900 border border-gray-500" rowSpan={2} />
                                         <TooltipHeader 
                                             title="Date" 
                                             tooltip="Date" 
@@ -300,7 +300,7 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                     className={`
                                                         ${isExpanded ? 'bg-gray-200' : 'bg-gray-50'} 
                                                         border-b border-gray-100 cursor-pointer 
-                                                        transition-colors
+                                                        transition-colors text-sm 
                                                     `}
                                                     onClick={() => toggleMonth(monthYear)}
                                                 >
@@ -311,19 +311,19 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                             <ChevronRight className="h-4 w-4 text-gray-500" />
                                                         )}
                                                     </td>
-                                                    <td className="py-2 font-medium text-gray-900">
+                                                    <td className="py-3 font-medium text-gray-900">
                                                         {format(new Date(monthData.year, monthData.month - 1), 'MMMM yyyy')}
                                                     </td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.metaSpend)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.metaSales)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.metaROAS)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.googleSpend)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.googleSales)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.googleROAS)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.totalSpend)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.grossROI)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.shopifySales)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.netROI)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.metaSpend)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.metaSales)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatPercentage(monthData.metaROAS)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.googleSpend)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.googleSales)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatPercentage(monthData.googleROAS)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.totalSpend)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatPercentage(monthData.grossROI)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(monthData.shopifySales)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatPercentage(monthData.netROI)}</td>
                                                 </tr>
                                                 {isExpanded && monthData.dailyMetrics.map((daily: any) => (
                                                     <tr 

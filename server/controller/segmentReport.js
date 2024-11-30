@@ -944,6 +944,9 @@ export async function getSearchTermMetrics(req, res) {
                 avg_cpc   
             });
 
+     
+            acc.totalCost += parseFloat(cost);
+
             // Only collect status if no cached status exists and no filters applied
             if (!statusOptions && noFiltersApplied) {
                 acc.statusSet.add(currentStatus);
@@ -962,8 +965,19 @@ export async function getSearchTermMetrics(req, res) {
         }, {
             searchTermData: [],
             campaignAdGroupMap: {},
-            statusSet: new Set()
+            statusSet: new Set(),
+            totalCost: 0,
         });
+
+        const averageCost = processedData.searchTermData.length > 0 ? (processedData.totalCost / processedData.searchTermData.length).toFixed(2) : 0;
+
+        // Add a new field for each search term based on the average cost
+        processedData.searchTermData = processedData.searchTermData.map(term => {
+            term.performance = parseFloat(term.cost) < parseFloat(averageCost) ? "Non Performing Keyword" : "Best Performing Keyword";
+             return term;
+        });
+
+        console.log("Average Cost for All Search Terms:", averageCost);
 
         // If no filters applied and no cached data exists, create and cache the data
         if (noFiltersApplied) {

@@ -290,7 +290,7 @@ export async function getGoogleAdMetrics(req, res) {
                 "metrics.clicks",
                 "metrics.impressions"
             ],
-            segments: ["segments.date"],
+       
             from_date: startDate,
             to_date: endDate,
         });
@@ -398,7 +398,6 @@ export async function getGoogleCampaignMetrics(req, res) {
                 "metrics.impressions",
                 "metrics.clicks"
             ],
-            segments: ["segments.date"],
             from_date: startDate,
             to_date: endDate,
         });

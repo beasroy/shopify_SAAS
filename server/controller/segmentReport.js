@@ -150,6 +150,7 @@ export async function getGoogleProductMetrics(req, res) {
         if(queryStatus){
             constraints.push(`shopping_product.status = '${queryStatus}'`);
         }
+        constraints.push(`metrics.cost_micros > 1000000`);
 
         // Fetch product data with constraints
         const adsReport = await customer.report({
@@ -866,6 +867,7 @@ export async function getSearchTermMetrics(req, res) {
         if (adGroup) {
             constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
         }
+        constraints.push(`metrics.cost_micros > 1000000`);
 
         const customer = client.Customer({
             customer_id: brand.googleAdAccount,
@@ -1096,6 +1098,8 @@ export async function getAudienceMetricsByAge(req, res) {
         if (adGroup) constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
         
         if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
+
+        constraints.push(`metrics.cost_micros > 1000000`);
         
 
         // Fetch report data from Google Ads
@@ -1268,7 +1272,7 @@ export async function getAudienceMetricsByGender(req,res){
     
 
         if (cachedData) {
-            const { genderData, aggregatedMetrics } = cachedData;
+            const { genderData, aggregatedRecords } = cachedData;
             const totalRecords = genderData.length;
             const totalPages = Math.ceil(totalRecords / limit);
             const startIndex = (page - 1) * limit;
@@ -1278,7 +1282,7 @@ export async function getAudienceMetricsByGender(req,res){
                 totalRecords,
                 totalPages,
                 genderData: genderData.slice(startIndex, startIndex + limit),
-                aggregatedMetrics,
+                aggregatedRecords,
                 campaignAdGroupPairs: genderCampaignAdGroupPairs || [],
                 statusOptions: genderStatusOptions || [],
                 fromCache: true
@@ -1294,6 +1298,7 @@ export async function getAudienceMetricsByGender(req,res){
         
         if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
         
+        constraints.push(`metrics.cost_micros > 1000000`);
 
         const reportConfig = {
             entity: "gender_view",

@@ -13,9 +13,7 @@ import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
-import { calculateMetricsForAllBrands,fetchTotalSales} from "./Report/Report.js";
-import cron from 'node-cron';
-import { monthlyCalculateMetricsForAllBrands, monthlyGoogleAdData } from "./Report/MonthlyReport.js";
+import { setupCronJobs } from "./controller/cron-job.js";
 
 
 
@@ -57,17 +55,7 @@ dataOperationRouter.use("/segment",segmentReportRoutes);
 
 // initWebSocket(server);
 
-cron.schedule('00 2 * * *', async () => {
-  console.log('Cron job started at:', new Date().toISOString());
-  try {
-    console.log('Cron job is running at:', new Date().toISOString());
-    await calculateMetricsForAllBrands();
-    console.log('Cron job finished successfully at:', new Date().toISOString());
-  } catch (error) {
-    console.error('Error executing metrics calculation:', error);
-  }
-}, { timezone: 'UTC' });
-
+setupCronJobs();
 
 const PORT = process.env.PORT || 5000;
 

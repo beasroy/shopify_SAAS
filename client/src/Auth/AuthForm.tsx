@@ -126,7 +126,6 @@ export default function AuthForm() {
       const response = await axios.get(`${baseURL}/api/auth/google`);
       const { authUrl } = response.data;
 
-      // Redirect the user to the Google Auth URL
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error getting Google Auth URL:', error);

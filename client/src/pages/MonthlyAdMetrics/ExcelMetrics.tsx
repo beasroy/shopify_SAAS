@@ -1,17 +1,6 @@
-
-
 import { useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { BriefcaseBusiness, ChevronDown, ChevronRight, SearchX } from "lucide-react"
@@ -19,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
-// import ReportsDropdown from "@/components/dashboard_component/ReportDropDown"
+import React from "react"
+
 
 
 interface DailyMetric {
@@ -52,24 +42,42 @@ interface MonthlyAggregate {
     month: number
     year: number
 }
-function TooltipHeader({ title, tooltip }: { title: string; tooltip: string }) {
+function TooltipHeader({ title, tooltip, colSpan = 1, rowSpan, isSubHeader = false }: { 
+    title: string; 
+    tooltip: string; 
+    colSpan?: number;
+    rowSpan?: number;
+    isSubHeader?: boolean;
+}) {
     return (
-      <TableHead className="font-bold text-primary-foreground text-center w-[120px]">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild >
-              <span className="flex items-center justify-center gap-1 cursor-help">
-                {title} 
-              </span>
-            </TooltipTrigger>
-            <TooltipContent className="mb-3">
-              <div className=" text-gray-500 bg-white p-1 rounded-md text-xs border">{tooltip}</div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </TableHead>
+        <th 
+            className={`${
+                isSubHeader 
+                    ? 'text-sm font-medium' 
+                    : 'font-semibold'
+            } text-center whitespace-nowrap border border-gray-500 text-white z-50`}
+            colSpan={colSpan}
+            rowSpan={rowSpan}
+        >
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center gap-1 cursor-help">
+                            {title}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="mb-3">
+                        <div className="text-gray-700 bg-white p-3 rounded-md text-sm border shadow-lg max-w-xs">
+                            {tooltip}
+                        </div>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </th>
     )
-  }
+}
+
+
 
 
 export const ExcelMetricsPage: React.FC<any> = () => {
@@ -170,125 +178,187 @@ export const ExcelMetricsPage: React.FC<any> = () => {
       }, [metricsData]);
       
     
-console.log(processedData);
 
-    return (
-        <div className="flex h-screen ">
+      return (
+        <div className="flex h-screen">
             <CollapsibleSidebar />
-            <div className="flex-1 h-screen overflow-hidden">
-                <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
-                    <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                        <div className="flex items-center space-x-2">
-                            <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
-                            <h1 className="text-2xl font-bold">{brandName} Ad Metrics Overview</h1>
+            <div className="flex-1 h-screen overflow-hidden bg-gray-50">
+                <header className="bg-white border-b border-gray-200 px-6 py-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                        <div className="flex items-center space-x-3">
+                            <BriefcaseBusiness className="h-7 w-7" />
+                            <h1 className="text-2xl font-bold text-gray-900">{brandName} Ad Metrics Overview</h1>
                         </div>
-                        <div className="flex items-center gap-2">
-                        {/* <ReportsDropdown brandId={brandId} /> */}
-                            <div className="flex items-center space-x-4">
-                                <DatePickerWithRange date={date} setDate={setDate}
-                                />
-                            </div>
-                            {date &&
-                                <Button onClick={() => setDate(undefined)} className="px-4 py-2 text-white bg-red-500 hover:bg-red-600">
-                                    <SearchX className="w-6 h-6" />
+                        <div className="flex items-center gap-3">
+                            <DatePickerWithRange date={date} setDate={setDate} />
+                            {date && (
+                                <Button 
+                                    onClick={() => setDate(undefined)} 
+                                    className="px-3 py-2 bg-red-500 hover:bg-red-600 transition-colors"
+                                >
+                                    <SearchX className="w-5 h-5" />
                                 </Button>
-                            }
+                            )}
                         </div>
                     </div>
                 </header>
 
-                <h1 className="text-lg font-semibold flex flex-col items-start space-x-3 m-6">
-
-                    Key performance indicators for your Ad Accounts
-                </h1>
-                {loading ? (
-                    <div className="flex items-baseline justify-center h-screen">
-                        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                ) : error ? (
-                    <p className="text-red-500">{error}</p>
-                ) : (
-                    <div className="border rounded-md overflow-auto m-6 lg:mt-3">
-                        <div className="max-h-[90vh] overflow-auto">
-                            <Table>
-                                <TableHeader className="bg-cyan-900 sticky top-0 z-10">
-                                    <TableRow className="hover:bg-cyan-900">
-                                        <TableHead className="w-[30px]" />
-                                        <TooltipHeader title="Date" tooltip="Date"/>
-                                        <TooltipHeader title='Meta Spend'tooltip="Meta spend"/>
-                                        <TooltipHeader title='Meta Sales'tooltip="Meta Sales = Meta Spend * Meta ROAS"/>
-                                        <TooltipHeader title='Meta ROAS'tooltip="Meta ROAS"/>
-                                        <TooltipHeader title='Google Spend'tooltip="Google Spend"/>
-                                        <TooltipHeader title='Google Sales'tooltip="Google Sales = Google Spend * Google ROAS"/>
-                                        <TooltipHeader title='Google ROAS'tooltip="Google ROAS"/>
-                                        <TooltipHeader title='Total Spend'tooltip="Total Spend = Meta Spend + Google Spend"/>
-                                        <TooltipHeader title='Gross ROI'tooltip="Gross ROI =(MetaSales + GoogleSales)/ Total Spend"/>
-                                        <TooltipHeader title='Shopify Sales' tooltip='Shopify Sales'/> 
-                                        <TooltipHeader title='Net ROI' tooltip='Net ROI = Shopify Sales / Total Spend'/>                                          
-                                        {expandedMonths.length > 0 && <TableHead className="w-[15px]" />}
-                                    </TableRow>
-                                </TableHeader>
-                                </Table>
-                                <div className="max-h-[70vh] md:max-h-[calc(75vh-2.5rem)]  overflow-y-auto ">
-                                    <Table>
-                                <TableBody>
-                                    {processedData.map((monthData: any,_) => {
-                                        const monthYear = `${monthData.year}-${monthData.month.toString().padStart(2, '0')}`
-                                        const isExpanded = expandedMonths.includes(monthYear)
+                <div className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                        Key performance indicators for your Ad Accounts
+                    </h2>
+                    
+                    {loading ? (
+                        <div className="flex items-center justify-center h-[calc(100vh-300px)]">
+                            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-cyan-600"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="rounded-lg bg-red-50 p-4 text-red-600">{error}</div>
+                    ) : (
+                        <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
+                        <div className="h-[calc(100vh-200px)] overflow-auto">
+                            <table className="w-full border-collapse">
+                                <thead className="sticky top-0 z-20 bg-cyan-950 border border-gray-500">
+                                    <tr>
+                                        <th className="w-5 bg-cyan-950 border border-gray-500" rowSpan={2} />
+                                        <TooltipHeader 
+                                            title="Date" 
+                                            tooltip="Date" 
+                                            rowSpan={2} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Meta" 
+                                            tooltip="Meta Metrics" 
+                                            colSpan={3} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Google" 
+                                            tooltip="Google Metrics" 
+                                            colSpan={3} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Total Spent" 
+                                            tooltip="Total Spent = Meta Spent + Google Spent" 
+                                            rowSpan={2} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Gross ROI" 
+                                            tooltip="Gross ROI = (MetaSales + GoogleSales)/ Total Spent" 
+                                            rowSpan={2} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Shopify Sales" 
+                                            tooltip="Shopify Sales" 
+                                            rowSpan={2} 
+                                        />
+                                        <TooltipHeader 
+                                            title="Net ROI" 
+                                            tooltip="Net ROI = Shopify Sales / Total Spend" 
+                                            rowSpan={2} 
+                                        />
+                                    </tr>
+                                    <tr>
+                                        <TooltipHeader 
+                                            title="Spent" 
+                                            tooltip="Meta spent" 
+                                            isSubHeader 
+                                        />
+                                        <TooltipHeader 
+                                            title="Sales" 
+                                            tooltip="Meta Sales = Meta Spent * Meta ROAS" 
+                                            isSubHeader 
+                                        />
+                                        <TooltipHeader 
+                                            title="ROAS" 
+                                            tooltip="Meta ROAS" 
+                                            isSubHeader 
+                                        />
+                                        <TooltipHeader 
+                                            title="Spent" 
+                                            tooltip="Google Spent" 
+                                            isSubHeader 
+                                        />
+                                        <TooltipHeader 
+                                            title="Sales" 
+                                            tooltip="Google Sales = Google Spent * Google ROAS" 
+                                            isSubHeader 
+                                        />
+                                        <TooltipHeader 
+                                            title="ROAS" 
+                                            tooltip="Google ROAS" 
+                                            isSubHeader 
+                                        />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {processedData.map((monthData: any) => {
+                                        const monthYear = `${monthData.year}-${monthData.month.toString().padStart(2, '0')}`;
+                                        const isExpanded = expandedMonths.includes(monthYear);
                                         return (
-                                            <>
-                                                <TableRow
-                                                    key={monthYear}
-                                                    className={`${isExpanded?'bg-[#d1e7eb]':'bg-muted/50'} cursor-pointer hover:bg-mute`}
+                                            <React.Fragment key={monthYear}>
+                                                <tr
+                                                    className={`
+                                                        ${isExpanded ? 'bg-gray-200' : 'bg-gray-50'} 
+                                                        border-b border-gray-100 cursor-pointer 
+                                                        transition-colors
+                                                    `}
                                                     onClick={() => toggleMonth(monthYear)}
                                                 >
-                                                    <TableCell className="w-[30px]">
+                                                    <td className="w-5 px-4 py-2">
                                                         {isExpanded ? (
-                                                            <ChevronDown className="h-4 w-4" />
+                                                            <ChevronDown className="h-4 w-4 text-gray-500" />
                                                         ) : (
-                                                            <ChevronRight className="h-4 w-4" />
+                                                            <ChevronRight className="h-4 w-4 text-gray-500" />
                                                         )}
-                                                    </TableCell>
-                                                    <TableCell className="font-medium text-cyan-950  w-[120px]">{format(new Date(monthData.year, monthData.month - 1), 'MMMM yyyy')}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.metaSpend)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.metaSales)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatPercentage(monthData.metaROAS)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.googleSpend)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.googleSales)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatPercentage(monthData.googleROAS)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.totalSpend)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatPercentage(monthData.grossROI)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatCurrency(monthData.shopifySales)}</TableCell>
-                                                    <TableCell className=" w-[120px] text-center">{formatPercentage(monthData.netROI)}</TableCell>
-                                                </TableRow>
+                                                    </td>
+                                                    <td className="py-2 font-medium text-gray-900">
+                                                        {format(new Date(monthData.year, monthData.month - 1), 'MMMM yyyy')}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.metaSpend)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.metaSales)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.metaROAS)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.googleSpend)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.googleSales)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.googleROAS)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.totalSpend)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.grossROI)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(monthData.shopifySales)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatPercentage(monthData.netROI)}</td>
+                                                </tr>
                                                 {isExpanded && monthData.dailyMetrics.map((daily: any) => (
-                                                    <TableRow key={daily._id} className="bg-background">
-                                                        <TableCell />
-                                                        <TableCell className=" w-[120px] text-center">{format(new Date(daily.date), 'dd/MM/yyyy')}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.metaSpend)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.metaSales)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatPercentage(daily.metaROAS)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.googleSpend)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.googleSales)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatPercentage(daily.googleROAS)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.totalSpend)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatPercentage(daily.grossROI)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatCurrency(daily.shopifySales)}</TableCell>
-                                                        <TableCell className=" w-[120px] text-center">{formatPercentage(daily.netROI)}</TableCell>
-                                                    </TableRow>
+                                                    <tr 
+                                                        key={daily._id} 
+                                                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <td className="w-5 px-4 py-2" />
+                                                        <td className="py-2 text-sm text-gray-600">
+                                                            {format(new Date(daily.date), 'dd/MM/yyyy')}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.metaSpend)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.metaSales)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatPercentage(daily.metaROAS)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.googleSpend)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.googleSales)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatPercentage(daily.googleROAS)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.totalSpend)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatPercentage(daily.grossROI)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatCurrency(daily.shopifySales)}</td>
+                                                        <td className="px-4 py-2 text-sm text-right">{formatPercentage(daily.netROI)}</td>
+                                                    </tr>
                                                 ))}
-                                            </>
-                                        )
+                                            </React.Fragment>
+                                        );
                                     })}
-                                </TableBody>
-                                </Table>
-                                </div>
-                     
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                )}
+                    
+                    )}
+                </div>
             </div>
         </div>
     )
 }
+
 

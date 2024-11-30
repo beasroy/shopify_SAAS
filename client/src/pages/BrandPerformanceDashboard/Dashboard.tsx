@@ -33,6 +33,7 @@ export default function BrandPerformanceDashboard() {
   const [editingBrand, setEditingBrand] = useState<string | null>(null)
   const [editData, setEditData] = useState<typeof newBrand | null>(null)
   const [achievedSales, setAchievedSales] = useState<{ [key: string]: number }>({})
+  const [isLoading, setIsLoading] = useState(false);
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
   const navigate = useNavigate()
@@ -50,21 +51,27 @@ export default function BrandPerformanceDashboard() {
       return 0;
     }
   }, [navigate]);
-
-  // Function to fetch sales data for all selected brands
-  const fetchSalesData = async () => {
-    const salesData: { [key: string]: number } = {};
-    for (const brand of selectedBrands) {
-      salesData[brand.brandId] = await getAchievedSales(brand.brandId);
-    }
-    setAchievedSales(salesData);
-  };
-
-  useEffect(() => {
   
+  const fetchSalesData = useCallback(async () => {
+    setIsLoading(true); // Start the loader
+    try {
+      const salesData: { [key: string]: number } = {};
+      await Promise.all(
+        selectedBrands.map(async (brand) => {
+          salesData[brand.brandId] = await getAchievedSales(brand.brandId);
+        })
+      );
+      setAchievedSales(salesData); // Update state only after all API calls finish
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+    } finally {
+      setIsLoading(false); // Stop the loader
+    }
+  }, [selectedBrands, getAchievedSales]);
+  
+  useEffect(() => {
     fetchSalesData();
-   
-  }, [selectedBrands, getAchievedSales]);  
+  }, [fetchSalesData]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,11 +97,7 @@ export default function BrandPerformanceDashboard() {
           targetDate: newBrand.targetDate,
         };
 
-        console.log('Sending request to API:', newBrandTarget); // Log data being sent
-
         const response = await axios.post(`${baseURL}/api/performance/addTarget`, newBrandTarget, { withCredentials: true });
-
-        console.log('API Response:', response); // Log the API response
 
         setSelectedBrands(prev => [...prev, response.data]);
         setNewBrand({ brandId: '', source: '', targetAmount: 0, targetDate: endOfMonth(new Date()) });
@@ -145,16 +148,18 @@ export default function BrandPerformanceDashboard() {
     try {
       // Make the API call to delete the brand from the database
       await axios.delete(`${baseURL}/api/performance/deleteTarget/${brandId}`, { withCredentials: true });
-  
+
       // Remove the brand from the selected brands in state
       setSelectedBrands(prev => prev.filter(brand => brand.brandId !== brandId));
-  
+
       console.log('Brand deleted successfully');
     } catch (error) {
       console.error('Error deleting brand:', error);
     }
   };
-  
+  const Loader = () => (
+    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-blue-500"></div>
+  )
 
   const calculateMetrics = (brand: typeof selectedBrands[0]) => {
     const achieved = achievedSales[brand.brandId] || 0
@@ -352,8 +357,8 @@ export default function BrandPerformanceDashboard() {
                           format(brand.targetDate, "PPP")
                         )}
                       </TableCell>
-                      <TableCell>₹{achieved.toLocaleString()}</TableCell>
-                      <TableCell>₹{remainingTarget.toLocaleString()}</TableCell>
+                      <TableCell>{isLoading?<Loader />:`₹${achieved.toLocaleString()}`}</TableCell>
+                      <TableCell>{isLoading?<Loader />:`₹${remainingTarget.toLocaleString()}`}</TableCell>
                       <TableCell>{remainingDays}</TableCell>
                       <TableCell>₹{requiredSalesPerDay.toLocaleString()}</TableCell>
                       <TableCell>

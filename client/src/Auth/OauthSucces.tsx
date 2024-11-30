@@ -15,12 +15,10 @@ const GoogleCallback = () => {
             try {
                 const queryParams = new URLSearchParams(window.location.search);
                 const googletoken = queryParams.get('token');
-                // const state = queryParams.get('state');
                 if (!googletoken) {
                     navigate('/');
                     return;
                 }
-
                 const login = await axios.post(`${baseURL}/api/auth/login/oauth?auth_token=${googletoken}`,{email:null,password:null})
                 setUser(login.data.user);
 
@@ -42,7 +40,6 @@ const GoogleCallback = () => {
         handleGoogleCallback();
     }, [navigate, setUser, toast]);
 
-    // Optionally, you can render nothing on the page.
     return null;
 };
 

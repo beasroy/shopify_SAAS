@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, RefreshCw, Package, Layers, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, RefreshCw, Package, Layers, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { GoogleLogo } from '@/pages/CampaignMetricsPage';
 
@@ -19,13 +19,6 @@ type TabConfig = {
     totalPages?: number;
     currentPage?: number;
 };
-
-interface DatePickerWithRangeProps {
-    date: DateRange | undefined;
-    setDate: React.Dispatch<React.SetStateAction<DateRange | undefined>>;
-    defaultDate: { from: Date; to: Date };
-    onChange?: (range: { startDate: Date | null, endDate: Date | null }) => void;
-}
 
 type ColumnDef = {  
     id: string;
@@ -244,6 +237,20 @@ useEffect(() => {
     }
 }, [brandId, activeTab, startDate, endDate]);
 
+const [sortColumn, setSortColumn] = useState<string | null>(null);
+const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+const handleSort = (column: string) => {
+    console.log('Sorting Column:', column);
+    console.log('Sort Order:', sortOrder);
+    if (sortColumn === column) {
+        setSortOrder(prevOrder => prevOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+        setSortColumn(column);
+        setSortOrder('asc');
+    }
+};
+
 const { columns, data } = (() => {
     const currentTab = tabs.find(tab => tab.id === activeTab);
     if (!currentTab) return { columns: [], data: [] };
@@ -256,6 +263,32 @@ const { columns, data } = (() => {
         data: currentTab.data.slice(startIndex, endIndex)
     };
 })();
+
+const sortedData = useMemo(() => {
+    if (!sortColumn) return data;
+
+    return [...data].sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+
+        // Handle numeric comparisons
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortOrder === 'asc' 
+                ? aValue - bValue 
+                : bValue - aValue;
+        }
+
+        // String comparison (case-insensitive)
+        const stringA = String(aValue).toLowerCase();
+        const stringB = String(bValue).toLowerCase();
+
+        if (stringA < stringB) return sortOrder === 'asc' ? -1 : 1;
+        if (stringA > stringB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+}, [data, sortColumn, sortOrder]);
+
+const sortableColumns = ['cost', 'roas', 'conversions', 'conversionsValue', 'conversionsRate', 'clicks'];
 
 const totalPages = Math.ceil((tabs.find(tab => tab.id === activeTab)?.data.length || 0) / rowsPerPage);
 
@@ -355,11 +388,20 @@ return (
                                         {columns.map(column => (
                                             <th 
                                                 key={column.id} 
-                                                className="px-4 py-3 text-left text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[150px]"
+                                                className="px-4 py-3 text-left text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[150px] cursor-pointer"
+                                                onClick={() => sortableColumns.includes(column.id.toLowerCase()) && handleSort(column.id)}
                                             >
                                                 <div className="flex items-center gap-1">
                                                     {column.header}
-                                                    <ChevronDown className="h-4 w-4" />
+                                                    {sortableColumns.includes(column.id.toLowerCase()) && (
+                                                        console.log('Column ID:', column.id),
+                                                        console.log('Sort Column:', sortColumn),
+                                                        sortColumn === column.id ? (
+                                                            sortOrder === 'asc' ? <ArrowUp className="ml-1 w-4 h-6 text-[#ffffff]" /> : <ArrowDown className="ml-1 w-4 h-6 text-[#ffffff]" />
+                                                        ) : (
+                                                            <ArrowUpDown className="ml-1 w-4 h-6 text-gray-300" />
+                                                        )
+                                                    )}
                                                 </div>
                                             </th>
                                         ))}
@@ -368,8 +410,8 @@ return (
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {loading ? (
                                         <TableSkeleton />
-                                    ) : data.length > 0 ? (
-                                        data.map((row, rowIndex) => (
+                                    ) : sortedData.length > 0 ? (
+                                        sortedData.map((row, rowIndex) => (
                                             <tr 
                                                 key={rowIndex} 
                                                 className="hover:bg-gray-50"

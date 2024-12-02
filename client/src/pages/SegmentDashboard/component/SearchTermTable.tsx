@@ -1,8 +1,8 @@
 import { GoogleLogo } from "@/pages/CampaignMetricsPage";
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,6 @@ export default function SearchTermTable() {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
-
   const rowsPerPage = 100;
 
   const columns = [
@@ -65,6 +64,42 @@ export default function SearchTermTable() {
     { id: 'ctr', header: 'CTR', icon: <Percent className="w-4 h-4" /> },
     { id: 'avg_cpc', header: 'Avg. CPC', icon: <CreditCard className="w-4 h-4" /> },
   ]
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortOrder(prevOrder => prevOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedSearchTerms = useMemo(() => {
+    if (!sortColumn) return searchTerms;
+
+    return [...searchTerms].sort((a, b) => {
+      const aValue = a[sortColumn as keyof SearchTerm];
+      const bValue = b[sortColumn as keyof SearchTerm];
+
+      // Handle numeric comparisons
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortOrder === 'asc' 
+          ? aValue - bValue 
+          : bValue - aValue;
+      }
+
+      // String comparison (case-insensitive)
+      const stringA = String(aValue).toLowerCase();
+      const stringB = String(bValue).toLowerCase();
+
+      if (stringA < stringB) return sortOrder === 'asc' ? -1 : 1;
+      if (stringA > stringB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [searchTerms, sortColumn, sortOrder]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -117,7 +152,6 @@ export default function SearchTermTable() {
   ]);
 
 
-
   useEffect(() => {
     fetchData();
     const intervalId = setInterval(fetchData, 300000);
@@ -153,75 +187,75 @@ export default function SearchTermTable() {
       <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md">
         <div className="p-4">
           <div className="flex justify-between mb-4">
-          <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Status</h3>
-                      <Select onValueChange={handleStatusChange} value={selectedStatus}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          {statusOptions.map((status) => (
-                            <SelectItem key={status} value={status}>{status}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Campaign</h3>
-                      <Select onValueChange={handleCampaignChange} value={selectedCampaign}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Campaign" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Campaigns</SelectItem>
-                          {campaignAdGroupPairs.map((pair) => (
-                            <SelectItem key={pair.campaignName} value={pair.campaignName}>{pair.campaignName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selectedCampaign !== 'all' && (
-                      <div>
-                        <h3 className="font-medium mb-2">Ad Group</h3>
-                        <Select
-                          disabled={selectedCampaign === 'all'}
-                          onValueChange={handleAdGroupChange}
-                          value={selectedAdGroup}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select Ad Group" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Ad Groups</SelectItem>
-                            {filteredAdGroups.map((adGroup) => (
-                              <SelectItem key={adGroup} value={adGroup}>{adGroup}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filter
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Status</h3>
+                    <Select onValueChange={handleStatusChange} value={selectedStatus}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        {statusOptions.map((status) => (
+                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </PopoverContent>
-              </Popover>
+                  <div>
+                    <h3 className="font-medium mb-2">Campaign</h3>
+                    <Select onValueChange={handleCampaignChange} value={selectedCampaign}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Campaign" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Campaigns</SelectItem>
+                        {campaignAdGroupPairs.map((pair) => (
+                          <SelectItem key={pair.campaignName} value={pair.campaignName}>{pair.campaignName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {selectedCampaign !== 'all' && (
+                    <div>
+                      <h3 className="font-medium mb-2">Ad Group</h3>
+                      <Select
+                        disabled={selectedCampaign === 'all'}
+                        onValueChange={handleAdGroupChange}
+                        value={selectedAdGroup}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Ad Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Ad Groups</SelectItem>
+                          {filteredAdGroups.map((adGroup) => (
+                            <SelectItem key={adGroup} value={adGroup}>{adGroup}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="flex items-center space-x-4">
-            <DatePickerWithRange
-              date={date}
-              setDate={setDate}
-              defaultDate={{
-                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                to: new Date(),
-              }}
-            />
+              <DatePickerWithRange
+                date={date}
+                setDate={setDate}
+                defaultDate={{
+                  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                  to: new Date(),
+                }}
+              />
               <Button
                 variant="outline"
                 className="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
@@ -232,7 +266,6 @@ export default function SearchTermTable() {
               </Button>
             </div>
           </div>
-
 
           <div className="rounded-md border border-gray-200 overflow-hidden">
             <div className="max-h-[380px] overflow-auto rounded-lg">
@@ -245,19 +278,24 @@ export default function SearchTermTable() {
                       {columns.map((column) => (
                         <th
                           key={column.id}
-                          className="px-4 py-3 text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[200px]"
+                          className="px-4 py-3 text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[200px] cursor-pointer"
+                          onClick={() => handleSort(column.id)}
                         >
                           <div className="flex items-center justify-center gap-1">
                             {column.icon}
                             {column.header}
-                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                            {sortColumn === column.id ? (
+                              sortOrder === 'asc' ? <ArrowUp className="ml-1 w-4 h-6 text-[#ffffff]" /> : <ArrowDown className="ml-1 w-4 h-6 text-[#ffffff]" />
+                            ) : (
+                              <ArrowUpDown className="ml-1 w-4 h-6 text-gray-300" />
+                            )}
                           </div>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {searchTerms.map((row, i) => (
+                    {sortedSearchTerms.map((row, i) => (
                       <tr key={i} className="hover:bg-gray-50 transition-colors duration-150">
                         {columns.map((column) => {
                           const value = row[column.id as keyof SearchTerm];
@@ -367,4 +405,3 @@ export default function SearchTermTable() {
     </div>
   );
 }
-

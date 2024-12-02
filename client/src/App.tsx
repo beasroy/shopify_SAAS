@@ -16,6 +16,7 @@ import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceDashboard.tsx';
 import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
+import GoogleAccountsSetup from './pages/page.tsx';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
           <Route path="/google/callback" element={<GoogleCallback />} />
+          <Route path = '/page' element={<GoogleAccountsSetup />} />
         </Routes>
       </Router>
       </BrandProvider>

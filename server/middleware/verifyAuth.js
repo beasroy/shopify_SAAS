@@ -1,12 +1,14 @@
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
+import User from "../models/User.js";
 
 config();
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
-export const verifyAuth = (req, res, next) => {
+export const verifyAuth =async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+   
+    const token = req.cookies.token ;
 
     if (!token) {
       return res.status(401).json({
@@ -17,8 +19,14 @@ export const verifyAuth = (req, res, next) => {
 
     const decoded = jwt.verify(token, SECRET_KEY);
 
+    const user = await User.findById(decoded.id);
+        
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
 
-    req.user = decoded; 
+    req.user = user; // Attach user to the request
+
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -30,3 +38,5 @@ export const verifyAuth = (req, res, next) => {
     res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };
+
+

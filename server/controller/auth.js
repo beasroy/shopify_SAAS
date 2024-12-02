@@ -44,8 +44,10 @@ export const handleGoogleCallback = async (req, res) => {
 
         const { email, name, id } = userInfo.data;
 
+        // Check if the user already exists
         let user = await User.findOne({ email });
         if (!user) {
+            // Create a new user if one does not exist
             user = new User({
                 username: name,
                 email,
@@ -56,8 +58,19 @@ export const handleGoogleCallback = async (req, res) => {
                 isAdmin: true,
             });
             await user.save();
+        } else {
+            // Update the existing user's tokens
+            user.googleAccessToken = tokens.access_token;
+
+            // Only update the refresh token if a new one is returned
+            if (tokens.refresh_token) {
+                user.googleRefreshToken = tokens.refresh_token;
+            }
+
+            await user.save();
         }
 
+        // Generate a JWT token for the session
         const jwtToken = jwt.sign(
             { id: user._id, email: user.email, method: user.method },
             process.env.JWT_SECRET,
@@ -66,21 +79,27 @@ export const handleGoogleCallback = async (req, res) => {
 
         const isProduction = process.env.NODE_ENV === 'production';
 
+        // Set JWT token in cookies
         res.cookie('token', jwtToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'strict' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-        const clientURL = process.env.NODE_ENV === 'production' ? "https://parallels.messold.com/google/callback" : "http://localhost:5173/google/callback";
+
+        // Redirect to client with the token
+        const clientURL =
+            process.env.NODE_ENV === 'production'
+                ? 'https://parallels.messold.com/google/callback'
+                : 'http://localhost:5173/google/callback';
 
         return res.redirect(clientURL + `?token=${jwtToken}`);
-       
     } catch (error) {
         console.error('Error during Google OAuth callback:', error);
         res.status(500).json({ success: false, message: 'Google OAuth failed', error: error.message });
     }
 };
+
 
 
 export const userRegistration = async (req, res) => {
@@ -179,6 +198,7 @@ export const userLogin = async (req, res) => {
                 message: 'User not found. Please check your email or register.'
             });
         }
+
 
         if (type === 'oauth') {
             return res.status(200).json({

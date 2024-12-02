@@ -2,13 +2,14 @@ import { GoogleLogo } from "@/pages/CampaignMetricsPage";
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone} from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone } from 'lucide-react';
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface SearchTerm {
   id: string;
@@ -21,6 +22,7 @@ interface SearchTerm {
   clicks: number
   ctr: string
   cost: string
+  performance: string
 }
 
 interface CampaignAdGroupPair {
@@ -39,7 +41,7 @@ export default function SearchTermTable() {
   const [totalPages, setTotalPages] = useState(0);
   const [campaignAdGroupPairs, setCampaignAdGroupPairs] = useState<CampaignAdGroupPair[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
-  const [statusOptions , setStatusOptions] = useState<[]>([]);
+  const [statusOptions, setStatusOptions] = useState<[]>([]);
   const [selectedAdGroup, setSelectedAdGroup] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [date, setDate] = useState<DateRange | undefined>(undefined);
@@ -67,42 +69,42 @@ export default function SearchTermTable() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        // Prepare request body
-        const requestBody = {
-            limit: rowsPerPage,
-            page: currentPage,
-            startDate,
-            endDate,
-            ...(selectedCampaign && selectedCampaign !== 'all' && { campaign: selectedCampaign }),
-            ...(selectedAdGroup && selectedAdGroup !== 'all' && { adGroup: selectedAdGroup }),
-            ...(selectedStatus && selectedStatus !== 'all' && { status: selectedStatus}),
-        };
+      // Prepare request body
+      const requestBody = {
+        limit: rowsPerPage,
+        page: currentPage,
+        startDate,
+        endDate,
+        ...(selectedCampaign && selectedCampaign !== 'all' && { campaign: selectedCampaign }),
+        ...(selectedAdGroup && selectedAdGroup !== 'all' && { adGroup: selectedAdGroup }),
+        ...(selectedStatus && selectedStatus !== 'all' && { status: selectedStatus }),
+      };
 
-        // Make API request
-        const { data: response } = await axios.post(
-            `${baseURL}/api/segment/searchTermMetrics/${brandId}`,
-            requestBody,
-            { withCredentials: true }
-        );
+      // Make API request
+      const { data: response } = await axios.post(
+        `${baseURL}/api/segment/searchTermMetrics/${brandId}`,
+        requestBody,
+        { withCredentials: true }
+      );
 
-        if (response.success) {
-            // Set data in state
-            setSearchTerms(response.data);
-            setTotalRecords(response.totalRecords);
-            setTotalPages(response.totalPages);
-            setHasMoreData(currentPage * rowsPerPage < response.totalRecords);
-            setCampaignAdGroupPairs(response.campaignAdGroupPairs);
-            setStatusOptions(response.statusOptions)
-        } else {
-            console.error('Failed to fetch search term metrics:', response.message);
-        }
+      if (response.success) {
+        // Set data in state
+        setSearchTerms(response.data);
+        setTotalRecords(response.totalRecords);
+        setTotalPages(response.totalPages);
+        setHasMoreData(currentPage * rowsPerPage < response.totalRecords);
+        setCampaignAdGroupPairs(response.campaignAdGroupPairs);
+        setStatusOptions(response.statusOptions)
+      } else {
+        console.error('Failed to fetch search term metrics:', response.message);
+      }
 
     } catch (error) {
-        console.error('Error fetching search term metrics:', error);
+      console.error('Error fetching search term metrics:', error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-}, [
+  }, [
     baseURL,
     brandId,
     currentPage,
@@ -112,7 +114,7 @@ export default function SearchTermTable() {
     selectedStatus,
     startDate,
     endDate
-]);
+  ]);
 
 
 
@@ -151,62 +153,75 @@ export default function SearchTermTable() {
       <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md">
         <div className="p-4">
           <div className="flex justify-between mb-4">
-            <div className="flex space-x-4">
-            <Select onValueChange={handleStatusChange} value={selectedStatus}>
-              <SelectTrigger className="w-[200px] bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px] overflow-y-auto">
-                <SelectItem value="all" className="py-2 px-4 hover:bg-blue-50">All Status</SelectItem>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status} className="py-2 px-4 hover:bg-blue-50">
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={handleCampaignChange} value={selectedCampaign}>
-              <SelectTrigger className="w-[200px] bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <SelectValue placeholder="Select Campaign" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px] overflow-y-auto">
-                <SelectItem value="all" className="py-2 px-4 hover:bg-blue-50">All Campaigns</SelectItem>
-                {campaignAdGroupPairs.map((pair) => (
-                  <SelectItem key={pair.campaignName} value={pair.campaignName} className="py-2 px-4 hover:bg-blue-50">
-                    {pair.campaignName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedCampaign !== 'all' && (
-              <Select
-                disabled={selectedCampaign === 'all'}
-                onValueChange={handleAdGroupChange}
-                value={selectedAdGroup}
-              >
-                <SelectTrigger className="w-[200px] bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <SelectValue placeholder="Select Ad Group" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  <SelectItem value="all" className="py-2 px-4 hover:bg-blue-50">All Ad Groups</SelectItem>
-                  {filteredAdGroups.map((adGroup) => (
-                    <SelectItem key={adGroup} value={adGroup} className="py-2 px-4 hover:bg-blue-50">
-                      {adGroup}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            </div>
+          <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="bg-white border-gray-300 hover:bg-gray-50 transition-colors duration-200">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filter
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">Status</h3>
+                      <Select onValueChange={handleStatusChange} value={selectedStatus}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          {statusOptions.map((status) => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <h3 className="font-medium mb-2">Campaign</h3>
+                      <Select onValueChange={handleCampaignChange} value={selectedCampaign}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Campaign" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Campaigns</SelectItem>
+                          {campaignAdGroupPairs.map((pair) => (
+                            <SelectItem key={pair.campaignName} value={pair.campaignName}>{pair.campaignName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedCampaign !== 'all' && (
+                      <div>
+                        <h3 className="font-medium mb-2">Ad Group</h3>
+                        <Select
+                          disabled={selectedCampaign === 'all'}
+                          onValueChange={handleAdGroupChange}
+                          value={selectedAdGroup}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Ad Group" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Ad Groups</SelectItem>
+                            {filteredAdGroups.map((adGroup) => (
+                              <SelectItem key={adGroup} value={adGroup}>{adGroup}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             <div className="flex items-center space-x-4">
-              <DatePickerWithRange
-                date={date}
-                setDate={setDate}
-                defaultDate={{
-                  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                  to: new Date(),
-                }}
-              />
+            <DatePickerWithRange
+              date={date}
+              setDate={setDate}
+              defaultDate={{
+                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                to: new Date(),
+              }}
+            />
               <Button
                 variant="outline"
                 className="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
@@ -217,6 +232,7 @@ export default function SearchTermTable() {
               </Button>
             </div>
           </div>
+
 
           <div className="rounded-md border border-gray-200 overflow-hidden">
             <div className="max-h-[380px] overflow-auto rounded-lg">
@@ -246,6 +262,7 @@ export default function SearchTermTable() {
                         {columns.map((column) => {
                           const value = row[column.id as keyof SearchTerm];
                           const isStatusColumn = column.id === 'status';
+                          const isSearchTermColumn = column.id === 'searchTerm'
 
                           const renderCell = () => {
                             if (isStatusColumn) {
@@ -265,6 +282,21 @@ export default function SearchTermTable() {
                               return (
                                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
                                   {statusValue}
+                                </div>
+                              );
+                            }
+
+                            if (isSearchTermColumn) {
+                              const searchTermValue = value ? String(value) : '';
+                              const performance = row.performance;
+                              const isPerformingWell = performance === 'Best Performing Keyword';
+
+                              return (
+                                <div className="px-2 py-1 rounded-full font-medium flex flex-col items-center">
+                                  <span className={`text-xs ${isPerformingWell ? 'text-green-600' : 'text-red-600'}`}>
+                                    {performance}
+                                  </span>
+                                  <span className="text-sm mt-1">{searchTermValue}</span>
                                 </div>
                               );
                             }

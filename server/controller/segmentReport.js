@@ -280,6 +280,10 @@ export async function getGoogleProductMetricsByBrand(req, res) {
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 
+        const constraints = [];
+
+        constraints.push(`metrics.cost_micros > 1000000`);
+
         // Fetch report data from Google Ads
         const adsReport = await customer.report({
             entity: "shopping_product",
@@ -292,6 +296,7 @@ export async function getGoogleProductMetricsByBrand(req, res) {
                 "metrics.conversions_value",
                 "metrics.conversions_from_interactions_rate"
             ],
+            constraints,
             from_date: startDate,
             to_date: endDate,
         });
@@ -414,6 +419,10 @@ export async function getGoogleProductMetricsByType(req, res) {
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 
+        const constraints = [];
+
+        constraints.push(`metrics.cost_micros > 1000000`);
+
         // Fetch report data from Google Ads
         const adsReport = await customer.report({
             entity: "shopping_product",
@@ -428,6 +437,7 @@ export async function getGoogleProductMetricsByType(req, res) {
             ],
             from_date: startDate,
             to_date: endDate,
+            constraints
         });
 
         // Aggregate metrics by type
@@ -648,6 +658,9 @@ export async function getGoogleProductMetricsByCategory(req, res) {
         }
 
         const categoryMapping = await fetchProductCategoryMapping();
+        const constraints = [];
+
+        constraints.push(`metrics.cost_micros > 1000000`);
 
         const adsReport = await customer.report({
             entity: "shopping_product",
@@ -666,6 +679,7 @@ export async function getGoogleProductMetricsByCategory(req, res) {
                 "metrics.conversions_value",
                 "metrics.conversions_from_interactions_rate"
             ],
+            constraints,
             from_date: startDate,
             to_date: endDate,
         });
@@ -930,6 +944,9 @@ export async function getSearchTermMetrics(req, res) {
                 avg_cpc   
             });
 
+     
+            acc.totalCost += parseFloat(cost);
+
             // Only collect status if no cached status exists and no filters applied
             if (!statusOptions && noFiltersApplied) {
                 acc.statusSet.add(currentStatus);
@@ -948,8 +965,19 @@ export async function getSearchTermMetrics(req, res) {
         }, {
             searchTermData: [],
             campaignAdGroupMap: {},
-            statusSet: new Set()
+            statusSet: new Set(),
+            totalCost: 0,
         });
+
+        const averageCost = processedData.searchTermData.length > 0 ? (processedData.totalCost / processedData.searchTermData.length).toFixed(2) : 0;
+
+        // Add a new field for each search term based on the average cost
+        processedData.searchTermData = processedData.searchTermData.map(term => {
+            term.performance = parseFloat(term.cost) < parseFloat(averageCost) ? "Non Performing Keyword" : "Best Performing Keyword";
+             return term;
+        });
+
+        console.log("Average Cost for All Search Terms:", averageCost);
 
         // If no filters applied and no cached data exists, create and cache the data
         if (noFiltersApplied) {

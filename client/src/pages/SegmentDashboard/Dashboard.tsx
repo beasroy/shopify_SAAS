@@ -1,8 +1,15 @@
 import ProductTab from "./component/ProductTab";
 import SearchTermTable from "./component/SearchTermTable";
-
+import { useParams } from 'react-router-dom'
+import AgeGenderMetrics from "./component/AgeGenderMetrics";
 
 export default function Dashboard() {
+  const { brandId } = useParams()
+
+    if (!brandId) {
+        console.error("Brand ID is not defined");
+        return <div>Error: Brand ID is missing</div>;
+    }
   return (
     <div className="bg-gray-100 min-h-screen overflow-hidden">
        <nav className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
@@ -13,6 +20,7 @@ export default function Dashboard() {
       <div className="flex flex-col p-6 gap-6 overflow-auto">
       <ProductTab />
       <SearchTermTable />
+      <AgeGenderMetrics />
       </div>
   
     </div>

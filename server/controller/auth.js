@@ -19,6 +19,7 @@ export const getGoogleAuthURL = (req, res) => {
     const scopes = [
         'https://www.googleapis.com/auth/adwords',
         'https://www.googleapis.com/auth/analytics.readonly',
+        'https://www.googleapis.com/auth/analytics.edit',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile'
     ];

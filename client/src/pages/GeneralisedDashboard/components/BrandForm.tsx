@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Upload, ShoppingBag, Facebook, Target, BarChart, Check } from 'lucide-react'
+import { Upload, Check } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -7,12 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast'
 import ShopifyModalContent from './ShopifyModalContent'
 import OtherPlatformModalContent from './OtherPlatformModalContent'
+import { FacebookLogo, GoogleLogo } from '@/pages/CampaignMetricsPage'
+import { ga4Logo, shopifyLogo } from './OtherPlatformModalContent'
 
 const platforms = [
-  { name: 'Shopify', color: 'from-green-200 to-green-400', icon: ShoppingBag , border: 'border-green-800'},
-  { name: 'Facebook', color: 'from-blue-200 to-blue-400', icon: Facebook , border: 'border-blue-800'},
-  { name: 'Google Ads', color: 'from-yellow-200 to-yellow-400', icon: Target , border: 'border-yellow-800'},
-  { name: 'Google Analytics', color: 'from-indigo-200 to-indigo-400', icon: BarChart, border: 'border-indigo-800' },
+  { name: 'Shopify', color: 'from-green-50 to-green-200', icon: shopifyLogo , border: 'border-green-800'},
+  { name: 'Facebook', color: 'from-blue-50 to-blue-200', icon: FacebookLogo , border: 'border-blue-800'},
+  { name: 'Google Ads', color: 'from-green-50 to-green-200', icon: GoogleLogo , border: 'border-green-800'},
+  { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-200', icon: ga4Logo, border: 'border-yellow-800' },
 ]
 
 export default function BrandSetup() {
@@ -88,7 +90,7 @@ export default function BrandSetup() {
                 <DialogTrigger asChild>
                   <Button className={`w-full h-24 bg-gradient-to-br ${platform.color} border ${platform.border} text-black relative`}>
                     <div className="flex flex-col items-center">
-                      <platform.icon className="h-8 w-8 mb-2" />
+                      <platform.icon width="1.75rem" height="1.75rem" />
                       <span>{platform.name}</span>
                     </div>
                     {isConnected(platform.name) && (

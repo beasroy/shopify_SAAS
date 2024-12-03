@@ -63,13 +63,13 @@ const SetupGuide: React.FC = () => {
             <div key={index} className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full bg-gray-100`}>{step.icon}</div>
-                <h3 className={`text-lg font-semibold ${step.color}`}>
+                <h3 className={`text-base font-semibold ${step.color}`}>
                   Step {index + 1}: {step.title}
                 </h3>
               </div>
               <ul className="list-disc list-inside pl-4 space-y-1">
                 {step.instructions.map((instruction, i) => (
-                  <li key={i} className="text-gray-600">{instruction}</li>
+                  <li key={i} className="text-gray-600 text-sm">{instruction}</li>
                 ))}
               </ul>
             </div>

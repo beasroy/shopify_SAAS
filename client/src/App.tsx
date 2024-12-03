@@ -16,7 +16,7 @@ import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceDashboard.tsx';
 import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
-import GoogleAccountsSetup from './pages/page.tsx';
+import GoogleAccountsSetup from './pages/GeneralisedDashboard/BrandSetUpDashboard.tsx';
 
 function App() {
   return (

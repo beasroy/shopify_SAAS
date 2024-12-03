@@ -20,6 +20,7 @@ const GoogleCallback = () => {
                     return;
                 }
                 const login = await axios.post(`${baseURL}/api/auth/login/oauth?auth_token=${googletoken}`,{email:null,password:null})
+              
                 setUser(login.data.user);
 
                 if(login.data.success){

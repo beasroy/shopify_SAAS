@@ -8,7 +8,7 @@ import { google } from 'googleapis'
 
 config();
 
-const oauth2Client = new OAuth2Client(
+export const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.REDIRECT_URI
@@ -208,7 +208,8 @@ export const userLogin = async (req, res) => {
                 user: {
                     id: user._id,
                     username: user.username,
-                    email: user.email
+                    email: user.email,
+                    brands: user.brands
                 }
             });
         }

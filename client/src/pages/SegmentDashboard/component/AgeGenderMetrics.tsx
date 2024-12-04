@@ -136,7 +136,7 @@ export default function AgeAndGenderMetrics() {
             startDate,
             endDate,
             page: 1,
-            limit: 1000
+            limit: 100
         };
         fetchData(newTabId, requestBody);
     };
@@ -146,7 +146,7 @@ export default function AgeAndGenderMetrics() {
             startDate,
             endDate,
             page: currentPage,
-            limit: 1000
+            limit: 100
         };
         fetchData(activeTab, requestBody); // Initial fetch
 

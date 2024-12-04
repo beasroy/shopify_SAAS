@@ -2,7 +2,7 @@ import { GoogleLogo } from "@/pages/CampaignMetricsPage";
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Filter, RefreshCw, Zap, DollarSign, Percent, MousePointer, CreditCard, TrendingUp, Target, Users, Megaphone, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";

@@ -881,7 +881,6 @@ export async function getSearchTermMetrics(req, res) {
         if (adGroup) {
             constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
         }
-        constraints.push(`metrics.cost_micros > 1000000`);
 
         const customer = client.Customer({
             customer_id: brand.googleAdAccount,
@@ -1126,10 +1125,7 @@ export async function getAudienceMetricsByAge(req, res) {
         if (adGroup) constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
         
         if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
-
-        constraints.push(`metrics.cost_micros > 1000000`);
         
-
         // Fetch report data from Google Ads
         const adsReport = await customer.report({
             entity: "age_range_view",
@@ -1185,13 +1181,20 @@ export async function getAudienceMetricsByAge(req, res) {
                 };
             }
         
-            acc[ageRange].totalConversions += data.conversions;
+            acc[ageRange].totalConversions = parseFloat(
+                (acc[ageRange].totalConversions + data.conversions).toFixed(2)
+            );
             acc[ageRange].totalClicks += data.clicks;
-            acc[ageRange].totalCost += parseFloat(data.cost);
-            acc[ageRange].totalCTR += parseFloat(data.ctr);
+            acc[ageRange].totalCost = parseFloat(
+                (acc[ageRange].totalCost + parseFloat(data.cost)).toFixed(2)
+            );
+            acc[ageRange].totalCTR = parseFloat(
+                (acc[ageRange].totalCTR + parseFloat(data.ctr)).toFixed(2) // Ensure `data.ctr` is a number
+            );
         
             return acc;
         }, {});
+        
 
         // Generate campaign-adgroup pairs and status options ONLY when:
         // 1. No filters are applied AND
@@ -1243,7 +1246,7 @@ export async function getAudienceMetricsByAge(req, res) {
             fromCache: false
         });
     } catch (error) {
-        console.error("Failed to fetch brand metrics:", error);
+        console.error("Failed to fetch age metrics:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error.",
@@ -1325,8 +1328,6 @@ export async function getAudienceMetricsByGender(req,res){
         if (adGroup) constraints.push(`ad_group.name = '${sanitizeForGoogleAds(adGroup)}'`);
         
         if (status) constraints.push(`campaign.status = '${sanitizeForGoogleAds(status)}'`);
-        
-        constraints.push(`metrics.cost_micros > 1000000`);
 
         const reportConfig = {
             entity: "gender_view",
@@ -1383,10 +1384,16 @@ export async function getAudienceMetricsByGender(req,res){
                 }
             }
            
-            acc[gender].totalConversions += data.conversions;
+            acc[gender].totalConversions = parseFloat(
+                (acc[gender].totalConversions + data.conversions).toFixed(2)
+            );
             acc[gender].totalClicks += data.clicks;
-            acc[gender].totalCost += parseFloat(data.cost);
-            acc[gender].totalCTR += parseFloat(data.ctr);
+            acc[gender].totalCost = parseFloat(
+                (acc[gender].totalCost + parseFloat(data.cost)).toFixed(2)
+            );
+            acc[gender].totalCTR = parseFloat(
+                (acc[gender].totalCTR + data.ctr).toFixed(2)
+            );
         
             return acc;
         },{})
@@ -1433,7 +1440,7 @@ export async function getAudienceMetricsByGender(req,res){
         });
 
     } catch (error) {
-        console.error("Failed to fetch brand metrics:", error);
+        console.error("Failed to fetch gender metrics:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error.",

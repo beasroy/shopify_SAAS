@@ -62,7 +62,7 @@ export const getGoogleAdAccounts = async (req, res) => {
 
         const clientAccounts = response.map(row => ({
             name: row.customer_client.descriptive_name,
-            clientId: row.customer_client.client_customer,
+            clientId: row.customer_client.client_customer.split('/')[1],
             hidden: row.customer_client.hidden,
         }));
 

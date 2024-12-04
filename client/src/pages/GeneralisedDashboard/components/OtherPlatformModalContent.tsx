@@ -63,45 +63,38 @@ export default function OtherPlatformModalContent({
   const [googleAnalyticsAccounts, setGoogleAnalyticsAccounts] = useState<GoogleAnalyticsAccount[]>([]);
   const [facebookAdsAccounts, setFacebookAdsAccounts] = useState<FacebookAdsAccount[]>([]);
   const [showLoginButton, setShowLoginButton] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const user = useUser();
 
   useEffect(() => {
     const fetchGoogleAdsAccounts = async () => {
+      setLoading(true); // Start loading
       try {
-          const userId = user.user?.id;
-          const response = await axios.post(
-              'http://localhost:8000/api/setup/google-accounts',
-              { userId },
-              { withCredentials: true }
+        const userId = user.user?.id;
+        const response = await axios.post(
+          'http://localhost:8000/api/setup/google-accounts',
+          { userId },
+          { withCredentials: true }
+        );
+
+        if (response.status === 200) {
+          setShowLoginButton(false);
+          setGoogleAdsAccounts(
+            response.data?.clientAccounts.filter((account: GoogleAdsAccount) => !account.hidden)
           );
-  
-          if (response.status === 200) {
-              setShowLoginButton(false);
-              setGoogleAdsAccounts(
-                  response.data?.clientAccounts.filter((account: GoogleAdsAccount) => !account.hidden)
-              );
-          } else {
-              console.log('Unexpected status code:', response.status);
-          }
+        } else {
+          console.log('Unexpected status code:', response.status);
+        }
       } catch (error) {
-        const axiosError = error as AxiosError;
-          if (axiosError.response) {
-              if (axiosError.response.status === 403) {
-                  setShowLoginButton(true);
-              } else {
-                  console.error('Error status:', axiosError.response.status);
-                  console.error('Error message:', axiosError.response.data);
-              }
-          } else {
-              console.error('Error fetching Google Ads accounts:', axiosError.message);
-          }
+        handleError(error, setShowLoginButton);
+      } finally {
+        setLoading(false); // End loading
       }
-  };
-  
-    
+    };
 
     const fetchGoogleAnalyticsAccounts = async () => {
+      setLoading(true); // Start loading
       try {
         const userId = user.user?.id;
         const response = await axios.post(
@@ -109,28 +102,22 @@ export default function OtherPlatformModalContent({
           { userId },
           { withCredentials: true }
         );
+
         if (response.status === 200) {
           setShowLoginButton(false);
           setGoogleAnalyticsAccounts(response.data.propertiesList || []);
-        }  else {
-          console.log('Unexpected status code:', response.status);
-      }
-      } catch (error) {
-        const axiosError = error as AxiosError;
-        if (axiosError.response) {
-            if (axiosError.response.status === 403) {
-                setShowLoginButton(true);
-            } else {
-                console.error('Error status:', axiosError.response.status);
-                console.error('Error message:', axiosError.response.data);
-            }
         } else {
-            console.error('Error fetching Google Analytics accounts:', axiosError.message);
+          console.log('Unexpected status code:', response.status);
         }
+      } catch (error) {
+        handleError(error, setShowLoginButton);
+      } finally {
+        setLoading(false); // End loading
       }
     };
 
     const fetchFacebookAdsAccounts = async () => {
+      setLoading(true); // Start loading
       try {
         const userId = user.user?.id;
         const response = await axios.post(
@@ -138,9 +125,12 @@ export default function OtherPlatformModalContent({
           { userId },
           { withCredentials: true }
         );
+
         setFacebookAdsAccounts(response.data.accounts || []);
       } catch (error) {
         console.error('Error fetching Facebook Ads accounts:', error);
+      } finally {
+        setLoading(false); // End loading
       }
     };
 
@@ -148,6 +138,20 @@ export default function OtherPlatformModalContent({
     if (platform.toLowerCase() === 'google analytics') fetchGoogleAnalyticsAccounts();
     if (platform.toLowerCase() === 'facebook ads') fetchFacebookAdsAccounts();
   }, [platform, user]);
+
+  const handleError = (error: unknown, setShowLoginButton: (value: boolean) => void) => {
+    const axiosError = error as AxiosError;
+    if (axiosError.response) {
+      if (axiosError.response.status === 403) {
+        setShowLoginButton(true);
+      } else {
+        console.error('Error status:', axiosError.response.status);
+        console.error('Error message:', axiosError.response.data);
+      }
+    } else {
+      console.error('Error:', axiosError.message);
+    }
+  };
 
   const filteredAccounts = () => {
     if (platform.toLowerCase() === 'google ads') {
@@ -192,73 +196,76 @@ export default function OtherPlatformModalContent({
   };
 
   return (
-    <>
-      {showLoginButton ? (
-        <Button size="sm" className="bg-green-600">Login</Button>
-      ) : (
-        <>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search accounts..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="max-h-[50vh] overflow-auto">
-            {filteredAccounts()?.map((account) => (
-              <div
-                key={
-                  platform.toLowerCase() === 'google ads'
-                    ? (account as GoogleAdsAccount).clientId
-                    : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                }
-                className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
-              >
-                <span>
-                  {platform.toLowerCase() === 'google ads' ? (
-                    <div className="flex flex-row gap-3">
-                      <GoogleLogo height="1rem" width="1rem" />
-                      {`${(account as GoogleAdsAccount).name} (${(account as GoogleAdsAccount).clientId})`}
-                    </div>
-                  ) : (
-                    <div className="flex flex-row gap-3">
-                      <Ga4Logo height="1rem" width="1rem" />
-                      {`${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyName} (${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId})`}
-                    </div>
-                  )}
-                </span>
-                <Button
-                  size="sm"
-                  onClick={() => handleConnect(account)}
-                  disabled={connectedId.includes(
+    loading ? <div>Loading...</div> : (
+      <>
+        {showLoginButton ? (
+          <Button size="sm" className="bg-green-600">Login</Button>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search accounts..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[50vh] overflow-auto">
+              {filteredAccounts()?.map((account) => (
+                <div
+                  key={
                     platform.toLowerCase() === 'google ads'
                       ? (account as GoogleAdsAccount).clientId
                       : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                  )}
-                  className="bg-blue-600"
+                  }
+                  className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                 >
-                  {connectedId.includes(
-                    platform.toLowerCase() === 'google ads'
-                      ? (account as GoogleAdsAccount).clientId
-                      : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                  ) ? (
-                    <Check className="h-4 w-4 mr-2" />
-                  ) : null}
-                  {connectedId.includes(
-                    platform.toLowerCase() === 'google ads'
-                      ? (account as GoogleAdsAccount).clientId
-                      : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                  )
-                    ? 'Connected'
-                    : 'Connect'}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  )}
+                  <span>
+                    {platform.toLowerCase() === 'google ads' ? (
+                      <div className="flex flex-row items-center gap-3">
+                        <GoogleLogo height="1rem" width="1rem" />
+                        {`${(account as GoogleAdsAccount).name} (${(account as GoogleAdsAccount).clientId})`}
+                      </div>
+                    ) : (
+                      <div className="flex flex-row items-center gap-3">
+                        <Ga4Logo height="1rem" width="1rem" />
+                        {`${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyName} (${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId})`}
+                      </div>
+                    )}
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={() => handleConnect(account)}
+                    disabled={connectedId.includes(
+                      platform.toLowerCase() === 'google ads'
+                        ? (account as GoogleAdsAccount).clientId
+                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
+                    )}
+                    className="bg-blue-600"
+                  >
+                    {connectedId.includes(
+                      platform.toLowerCase() === 'google ads'
+                        ? (account as GoogleAdsAccount).clientId
+                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
+                    ) ? (
+                      <Check className="h-4 w-4 mr-2" />
+                    ) : null}
+                    {connectedId.includes(
+                      platform.toLowerCase() === 'google ads'
+                        ? (account as GoogleAdsAccount).clientId
+                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
+                    )
+                      ? 'Connected'
+                      : 'Connect'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </>
+    )
+  );
+}

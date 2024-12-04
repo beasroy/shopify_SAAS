@@ -1,10 +1,12 @@
 import Brand from "../models/Brands.js";
 
 export const addBrands = async(req,res) =>{
-    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount,logoUrl } = req.body;
+    const sanitizedLogoUrl = typeof logoUrl === 'string' ? logoUrl : '';
     try{
         const newBrand = new Brand ({
             name,
+            logoUrl:sanitizedLogoUrl,
             fbAdAccounts,
             googleAdAccount,
             ga4Account,

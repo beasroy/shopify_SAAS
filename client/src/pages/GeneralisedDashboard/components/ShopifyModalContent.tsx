@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface ShopifyModalContentProps {
-  onConnect: (platform: string, account: string) => void
+  onConnect: (platform: string, account: string,accountId:string) => void
 }
 
 export default function ShopifyModalContent({ onConnect }: ShopifyModalContentProps) {
@@ -13,7 +13,7 @@ export default function ShopifyModalContent({ onConnect }: ShopifyModalContentPr
     // Here you would typically initiate the Shopify OAuth flow
     // For now, we'll just simulate a connection
     if (storeName) {
-      onConnect('Shopify', storeName)
+      onConnect('Shopify', storeName,'')
     }
   }
 

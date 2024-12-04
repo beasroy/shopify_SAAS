@@ -8,13 +8,14 @@ import { useToast } from '@/hooks/use-toast'
 import ShopifyModalContent from './ShopifyModalContent'
 import OtherPlatformModalContent from './OtherPlatformModalContent'
 import { FacebookLogo, GoogleLogo } from '@/pages/CampaignMetricsPage'
-import { ga4Logo, shopifyLogo } from './OtherPlatformModalContent'
+import { Ga4Logo, shopifyLogo } from './OtherPlatformModalContent'
+import axios from 'axios'
 
 const platforms = [
   { name: 'Shopify', color: 'from-green-50 to-green-200', icon: shopifyLogo , border: 'border-green-800'},
   { name: 'Facebook', color: 'from-blue-50 to-blue-200', icon: FacebookLogo , border: 'border-blue-800'},
   { name: 'Google Ads', color: 'from-green-50 to-green-200', icon: GoogleLogo , border: 'border-green-800'},
-  { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-200', icon: ga4Logo, border: 'border-yellow-800' },
+  { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-200', icon: Ga4Logo, border: 'border-yellow-800' },
 ]
 
 export default function BrandSetup() {
@@ -22,13 +23,20 @@ export default function BrandSetup() {
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>({})
   const [brandName, setBrandName] = useState('')
   const [brandLogo, setBrandLogo] = useState<File | null>(null)
+  const [googleAdId , setGoogleAdId] = useState<string>('')
+  const [ga4Id , setGa4Id] = useState<string>('')
   const { toast } = useToast()
 
-  const handleConnect = (platform: string, account: string) => {
+  const handleConnect = (platform: string, account: string, accountId: string) => {
     setConnectedAccounts(prev => ({
       ...prev,
       [platform]: [...(prev[platform] || []), account]
     }))
+    if (platform.toLowerCase() === 'google ads') {
+      setGoogleAdId(accountId);
+    } else if (platform.toLowerCase() === 'google analytics') {
+      setGa4Id(accountId);
+    }
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" })
   }
 
@@ -43,6 +51,49 @@ export default function BrandSetup() {
   const isConnected = (platform: string) => {
     return (connectedAccounts[platform]?.length || 0) > 0
   }
+
+  function getConnectedId(platformName: string) {
+    switch (platformName.toLowerCase()) {
+      case 'google ads':
+        return googleAdId; // Replace with your state or variable holding Google Ads ID
+      case 'google analytics':
+        return ga4Id; // Replace with your state or variable holding GA4 ID
+    // Replace with your state or variable holding Facebook Ad ID
+      default:
+        return null;
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!brandName || Object.keys(connectedAccounts).length === 0) {
+      return toast({ description: 'Please complete all fields before submitting.', variant: "destructive" });
+    }
+
+    const payload = {
+      name: brandName,
+      logoUrl: brandLogo || '',
+      googleAdAccount: googleAdId || '',
+      ga4Account: { PropertyID: ga4Id || '' },
+    };
+  
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/api/brands/add',
+        payload, // Send the payload directly as JSON
+        {
+          headers: { 'Content-Type': 'application/json' }, // Set JSON content type
+          withCredentials: true,
+        }
+      );
+  
+      toast({ description: 'Brand setup completed successfully!', variant: "default" });
+      console.log(response.data);
+    } catch (error) {
+      console.error(error);
+      toast({ description: 'Error creating brand. Please try again.', variant: "destructive" });
+    }
+  };
+  
 
   return (
     <div>
@@ -112,7 +163,7 @@ export default function BrandSetup() {
                   {platform.name === 'Shopify' ? (
                     <ShopifyModalContent onConnect={handleConnect} />
                   ) : (
-                    <OtherPlatformModalContent platform={platform.name} onConnect={handleConnect} />
+                    <OtherPlatformModalContent platform={platform.name} onConnect={handleConnect} connectedId={getConnectedId(platform.name) || ''} />
                   )}
                 </DialogContent>
               </Dialog>
@@ -120,8 +171,9 @@ export default function BrandSetup() {
           </div>
 
           <Button 
-            className="w-full" 
+            className={`w-full `} 
             disabled={!brandName || !brandLogo || Object.keys(connectedAccounts).length === 0}
+            onClick={handleSubmit}
           >
             Complete Setup
           </Button>

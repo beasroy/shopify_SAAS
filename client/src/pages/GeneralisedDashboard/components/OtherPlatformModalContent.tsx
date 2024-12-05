@@ -141,17 +141,25 @@ export default function OtherPlatformModalContent({
 
   const handleError = (error: unknown, setShowLoginButton: (value: boolean) => void) => {
     const axiosError = error as AxiosError;
+  
     if (axiosError.response) {
-      if (axiosError.response.status === 403) {
+      const { status, data } = axiosError.response;
+  
+      if (status === 400) {
+        setShowLoginButton(true);
+      } else if (status === 403) {
         setShowLoginButton(true);
       } else {
-        console.error('Error status:', axiosError.response.status);
-        console.error('Error message:', axiosError.response.data);
+        console.error('Unhandled Error Status:', status);
+        console.error('Error Message:', data);
       }
+    } else if (axiosError.request) {
+      console.error('No response received:', axiosError.request);
     } else {
-      console.error('Error:', axiosError.message);
+      console.error('Unexpected Error:', axiosError.message);
     }
   };
+  
 
   const filteredAccounts = () => {
     if (platform.toLowerCase() === 'google ads') {
@@ -195,12 +203,37 @@ export default function OtherPlatformModalContent({
     onConnect(platform, displayName, accountId);
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
+      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`);
+      const { authUrl } = response.data;
+
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error getting Google Auth URL:', error);
+    }
+  }
+
   return (
     loading ? <div>Loading...</div> : (
       <>
         {showLoginButton ? (
-          <Button size="sm" className="bg-green-600">Login</Button>
-        ) : (
+        <Button size="sm" onClick={handleGoogleLogin} className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50">
+          {platform.toLowerCase() === 'google ads' && (
+            <>
+              <GoogleLogo height="1rem" width="1rem" />
+              Connect to your Google Ads account
+            </>
+          )}
+          {platform.toLowerCase() === 'google analytics' && (
+            <>
+              <Ga4Logo height="1rem" width="1rem" />
+              Connect to your GA4 account
+            </>
+          )}
+        </Button>
+      ) : (
           <>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />

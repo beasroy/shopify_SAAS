@@ -123,7 +123,7 @@ export default function AuthForm() {
   const handleGoogleLogin = async () => {
     try {
       const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
-      const response = await axios.get(`${baseURL}/api/auth/google`);
+      const response = await axios.get(`${baseURL}/api/auth/google?context=userLogin`);
       const { authUrl } = response.data;
 
       window.location.href = authUrl;

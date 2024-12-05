@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { config } from "dotenv";
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis'
+import { verifyAuth } from "../middleware/verifyAuth.js";
 
 
 config();
@@ -16,6 +17,8 @@ export const oauth2Client = new OAuth2Client(
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
 export const getGoogleAuthURL = (req, res) => {
+    const { context } = req.query; 
+
     const scopes = [
         'https://www.googleapis.com/auth/adwords',
         'https://www.googleapis.com/auth/analytics.readonly',
@@ -27,80 +30,100 @@ export const getGoogleAuthURL = (req, res) => {
     const url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: scopes,
-        prompt: 'consent'
+        prompt: 'consent',
+        state: context || 'default', 
     });
 
     res.status(200).json({ authUrl: url });
 };
 
+
 export const handleGoogleCallback = async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    if (!code) return res.status(400).send('Missing code from Google.');
 
     try {
         const { tokens } = await oauth2Client.getToken(code);
         oauth2Client.setCredentials(tokens);
 
-        const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
-        const userInfo = await oauth2.userinfo.get();
-
-        const { email, name, id } = userInfo.data;
-
-        // Check if the user already exists
-        let user = await User.findOne({ email });
-        if (!user) {
-            // Create a new user if one does not exist
-            user = new User({
-                username: name,
-                email,
-                googleId: id,
-                method: 'google',
-                googleAccessToken: tokens.access_token,
-                googleRefreshToken: tokens.refresh_token,
-                isAdmin: true,
-            });
-            await user.save();
-        } else {
-            // Update the existing user's tokens
-            user.googleAccessToken = tokens.access_token;
-
-            // Only update the refresh token if a new one is returned
-            if (tokens.refresh_token) {
-                user.googleRefreshToken = tokens.refresh_token;
-            }
-
-            await user.save();
-        }
-
-        // Generate a JWT token for the session
-        const jwtToken = jwt.sign(
-            { id: user._id, email: user.email, method: user.method },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-
+        const context = state || 'default';
         const isProduction = process.env.NODE_ENV === 'production';
 
-        // Set JWT token in cookies
-        res.cookie('token', jwtToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        if (context === 'brandSetup') {
+            const token = req.cookies.token;
 
-        // Redirect to client with the token
-        const clientURL =
-            process.env.NODE_ENV === 'production'
+            if (!token) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Access denied. No token provided.',
+                });
+            }
+      
+            const decoded = jwt.verify(token, SECRET_KEY);
+            const user = await User.findById(decoded.id);
+          
+            if (!user) return res.status(401).send('User not authenticated.');
+
+            const userId = user._id;
+            await User.findByIdAndUpdate(userId, {
+                googleRefreshToken: tokens.refresh_token,
+            });
+
+            const clientURL = isProduction
                 ? 'https://parallels.messold.com/google/callback'
                 : 'http://localhost:5173/google/callback';
 
-        return res.redirect(clientURL + `?token=${jwtToken}`);
+                return res.redirect(clientURL + `?brand-setup`);
+        } else if (context === 'userLogin') {
+   
+            const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
+            const userInfo = await oauth2.userinfo.get();
+            const { email, name, id } = userInfo.data;
+
+            let user = await User.findOne({ email });
+            if (!user) {
+                user = new User({
+                    username: name,
+                    email,
+                    googleId: id,
+                    method: 'google',
+                    googleRefreshToken: tokens.refresh_token,
+                    isAdmin: true,
+                });
+                await user.save();
+            } else {
+                if (tokens.refresh_token) {
+                    user.googleRefreshToken = tokens.refresh_token;
+                }
+                await user.save();
+            }
+
+            const jwtToken = jwt.sign(
+                { id: user._id, email: user.email, method: user.method },
+                SECRET_KEY,
+                { expiresIn: '7d' }
+            );
+
+            res.cookie('token', jwtToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: isProduction ? 'strict' : 'lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+
+            const clientURL = isProduction
+                ? 'https://parallels.messold.com/google/callback'
+                : 'http://localhost:5173/google/callback';
+
+            return res.redirect(clientURL + `?token=${jwtToken}`);
+        } else {
+            return res.status(400).send('Invalid context in Google callback.');
+        }
     } catch (error) {
         console.error('Error during Google OAuth callback:', error);
         res.status(500).json({ success: false, message: 'Google OAuth failed', error: error.message });
     }
 };
-
 
 
 export const userRegistration = async (req, res) => {
@@ -135,7 +158,7 @@ export const userRegistration = async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            method:'password'
+            method: 'password'
         });
 
         await newUser.save();
@@ -200,7 +223,6 @@ export const userLogin = async (req, res) => {
             });
         }
 
-
         if (type === 'oauth') {
             return res.status(200).json({
                 success: true,
@@ -252,7 +274,7 @@ export const userLogin = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                brands: user.brands
+                brands: user.brands 
             }
         });
 
@@ -265,6 +287,7 @@ export const userLogin = async (req, res) => {
         });
     }
 };
+
 
 
 export const userLogout = (req, res) => {

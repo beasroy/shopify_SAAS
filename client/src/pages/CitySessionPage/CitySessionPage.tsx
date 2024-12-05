@@ -45,59 +45,89 @@ export default function CitySessionPage() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
   const [filters, setFilters] = useState<FilterItem[]>([])
+  const [removedColumns, setRemovedColumns] = useState<string[]>([]);
 
-  const toggleColumnSelection = (column: string) => {
-    setSelectedColumns(prev => {
-      const newColumns = prev.includes(column)
-        ? prev.filter(col => col !== column)
-        : [...prev, column];
+const allColumns = useMemo(() => 
+  data.length > 0 ? Object.keys(data[0]) : []
+, [data]);
 
-      return allColumns.filter(col => newColumns.includes(col));
+const toggleColumnSelection = (column: string) => {
+  setSelectedColumns(prev => {
+    const newColumns = prev.includes(column)
+      ? prev.filter(col => col !== column)  // Remove the column if already selected
+      : [...prev, column];  // Add the column if not already selected
+
+    // Update the removed columns state based on the change
+    setRemovedColumns(prevRemoved => {
+      if (newColumns.includes(column)) {
+        // If the column is now selected, remove it from removedColumns
+        return prevRemoved.filter(col => col !== column);
+      } else {
+        // If the column is now deselected, add it to removedColumns
+        return [column];
+      }
     });
-  };
 
-  const fetchMetrics = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
+    // Return the updated selected columns, filtered by existing columns
+    return allColumns.filter(col => newColumns.includes(col));
+  });
+};
+useEffect(() => {
+  if (allColumns.length > 0) {
+    setSelectedColumns(allColumns);
+  }
+}, [allColumns]);
 
-      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
-        startDate: startDate,
-        endDate: endDate
-      }, {
-        withCredentials: true
-      });
+const fetchMetrics = useCallback(async () => {
+  setIsLoading(true);
+  try {
+    const baseURL = import.meta.env.PROD
+      ? import.meta.env.VITE_API_URL
+      : import.meta.env.VITE_LOCAL_API_URL;
 
-      const fetchedData = analyticsResponse.data[1].data || [];
+    // Determine location filters dynamically based on removed columns
+    const locationFilters = removedColumns.length > 0 ? removedColumns : undefined;
 
-      setData(fetchedData);
-      setFilteredData(fetchedData);
-      setLastUpdated(new Date());
+    const requestBody = {
+      startDate: startDate,
+      endDate: endDate,
+      ...(locationFilters ? { 
+        filters: { 
+          location: locationFilters 
+        } 
+      } : {})
+    };
 
-      if (fetchedData.length > 0) {
-        if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]);
-          setSelectedColumns(allColumns);
-        } else {
-          const newColumns = Object.keys(fetchedData[0]);
-          setSelectedColumns((prevSelected) =>
-            prevSelected.filter((col) => newColumns.includes(col))
-          );
-        }
-      }
+    const analyticsResponse = await axios.post(
+      `${baseURL}/api/analytics/report/${brandId}`, 
+      requestBody, 
+      { withCredentials: true }
+    );
 
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
-      }
-    } finally {
-      setIsLoading(false);
+    const fetchedData = analyticsResponse.data[1]?.data || [];
+    setData(fetchedData);
+    setFilteredData(fetchedData);
+    setLastUpdated(new Date());
+
+    if (fetchedData.length > 0) {
+      const newColumns = Object.keys(fetchedData[0]);
+      setSelectedColumns((prevSelected) =>
+        prevSelected.filter((col) => newColumns.includes(col))
+      );
     }
-  }, [navigate, startDate, endDate, brandId]);
+
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      alert('Your session has expired. Please log in again.');
+      navigate('/');
+    }
+  } finally {
+    setIsLoading(false);
+  }
+}, [navigate, startDate, endDate, brandId, removedColumns]);
+
+  
 
   useEffect(() => {
     fetchMetrics();
@@ -112,8 +142,6 @@ export default function CitySessionPage() {
   const handleManualRefresh = () => {
     fetchMetrics();
   };
-
-  const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
 
   const sortedSelectedColumns = useMemo(() => {
     return allColumns.filter((col) => selectedColumns.includes(col));

@@ -337,9 +337,9 @@ export const handleFbCallback =async (req,res)=>{
         }
         const tokenResponse = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
             params: {
-                client_id: FACEBOOK_APP_ID,
-                client_secret: FACEBOOK_APP_SECRET,
-                redirect_uri: FACEBOOK_REDIRECT_URI,
+                client_id: process.env.FACEBOOK_APP_ID,
+                client_secret: process.env.FACEBOOK_APP_SECRET,
+                redirect_uri: process.env.FACEBOOK_REDIRECT_URI,
                 code
             }
         });

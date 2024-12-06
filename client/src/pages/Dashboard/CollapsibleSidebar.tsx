@@ -72,8 +72,8 @@ export default function CollapsibleSidebar() {
 
     const dashboards = [
         { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={20} /> },
-        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />, requiresAdsData: true },
-        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />, requiresAdsData: true },
+        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
+        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />},
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
     ];
 
@@ -242,7 +242,7 @@ function SidebarChild({ path, text, onClick, disabled = false, isSelected = fals
     isSelected?: boolean;
     hasAdsData?: boolean;  // Add hasAdsData here
 }): JSX.Element {
-    const baseClasses = `flex items-center text-xs w-full p-2 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+    const baseClasses = `flex items-center text-xs w-full p-2.5 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
 
     return disabled ? (
         <div className={baseClasses}>

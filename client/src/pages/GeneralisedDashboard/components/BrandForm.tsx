@@ -78,7 +78,7 @@ export default function BrandSetup() {
       logoUrl: brandLogo || '',
       googleAdAccount: googleAdId || '',
       ga4Account: { PropertyID: ga4Id || '' },
-      fbAdAccounts: fbAdId.map((accountId) => ({ accountId })), 
+      fbAdAccounts: fbAdId.map((accountId) => ( accountId )), 
     };
   
     try {

@@ -122,7 +122,10 @@ const fetchMetrics = useCallback(async () => {
   }
 }, [navigate, brandId, removedColumns]);
 
-
+useEffect(() => {
+  // Set all columns as selected when the component loads
+  setSelectedColumns(allColumns);
+}, [])
 
 
   

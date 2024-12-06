@@ -25,6 +25,7 @@ export default function BrandSetup() {
   const [brandLogo, setBrandLogo] = useState<File | null>(null)
   const [googleAdId , setGoogleAdId] = useState<string>('')
   const [ga4Id , setGa4Id] = useState<string>('')
+  const [fbAdId , setFBAdId] = useState<string[]>([])
   const { toast } = useToast()
 
   const handleConnect = (platform: string, account: string, accountId: string) => {
@@ -36,6 +37,8 @@ export default function BrandSetup() {
       setGoogleAdId(accountId);
     } else if (platform.toLowerCase() === 'google analytics') {
       setGa4Id(accountId);
+    } else {
+      setFBAdId(prev => [...prev, accountId]);
     }
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" })
   }
@@ -52,15 +55,16 @@ export default function BrandSetup() {
     return (connectedAccounts[platform]?.length || 0) > 0
   }
 
-  function getConnectedId(platformName: string) {
+  function getConnectedId(platformName: string): string {
     switch (platformName.toLowerCase()) {
       case 'google ads':
-        return googleAdId; // Replace with your state or variable holding Google Ads ID
+        return googleAdId;
       case 'google analytics':
-        return ga4Id; // Replace with your state or variable holding GA4 ID
-    // Replace with your state or variable holding Facebook Ad ID
+        return ga4Id;
+      case 'facebook':
+        return fbAdId.join(',');
       default:
-        return null;
+        return '';
     }
   }
 
@@ -74,6 +78,7 @@ export default function BrandSetup() {
       logoUrl: brandLogo || '',
       googleAdAccount: googleAdId || '',
       ga4Account: { PropertyID: ga4Id || '' },
+      fbAdAccounts: fbAdId.map((accountId) => ({ accountId })), 
     };
   
     try {

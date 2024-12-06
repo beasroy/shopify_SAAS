@@ -117,8 +117,8 @@ export const getGa4PropertyIds = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        if (user.method !== 'google' || !user.googleRefreshToken) {
-            return res.status(403).json({ message: 'This user is not using Google authentication or refresh token is missing.' });
+        if (user.method !== 'google' && user.googleRefreshToken == null) {
+            return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
         // Initialize OAuth client with the refresh token only
@@ -166,6 +166,25 @@ export const getGa4PropertyIds = async (req, res) => {
     }
 };
 
+export const getFbAdAccountIds = async (req, res)=>{
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required.' });
+        }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        if (user.fbRefreshToken == null) {
+            return res.status(403).json({ message: 'This user is not using Fb authentication.' });
+        }
+    } catch (error) {
+        console.error('Error fetching Fb Ad Accounts:', error.message);
+        res.status(500).json({ message: 'Error fetching Fb Ad accounts.', error: error.message });
+    }
+}
 
 
 

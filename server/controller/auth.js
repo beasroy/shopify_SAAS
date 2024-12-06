@@ -4,8 +4,7 @@ import jwt from "jsonwebtoken";
 import { config } from "dotenv";
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis'
-import { verifyAuth } from "../middleware/verifyAuth.js";
-
+import crypto from 'crypto';
 
 config();
 
@@ -36,7 +35,6 @@ export const getGoogleAuthURL = (req, res) => {
 
     res.status(200).json({ authUrl: url });
 };
-
 
 export const handleGoogleCallback = async (req, res) => {
     const { code, state } = req.query;
@@ -70,10 +68,10 @@ export const handleGoogleCallback = async (req, res) => {
             });
 
             const clientURL = isProduction
-                ? 'https://parallels.messold.com/google/callback'
-                : 'http://localhost:5173/google/callback';
+            ? 'https://parallels.messold.com/dashboard'
+            : 'http://localhost:5173/dashboard';
 
-                return res.redirect(clientURL + `?brand-setup`);
+            return res.redirect(clientURL);
         } else if (context === 'userLogin') {
    
             const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
@@ -124,7 +122,6 @@ export const handleGoogleCallback = async (req, res) => {
         res.status(500).json({ success: false, message: 'Google OAuth failed', error: error.message });
     }
 };
-
 
 export const userRegistration = async (req, res) => {
     try {
@@ -287,9 +284,6 @@ export const userLogin = async (req, res) => {
         });
     }
 };
-
-
-
 export const userLogout = (req, res) => {
     try {
         // Configure cookies for production (HTTPS)
@@ -315,3 +309,71 @@ export const userLogout = (req, res) => {
     }
 };
 
+const state = crypto.randomBytes(16).toString('hex');
+export const getFbAuthURL = (req , res)=>{
+    const authURL = `https://www.facebook.com/v21.0/dialog/oauth?` + 
+        `client_id=${process.env.FACEBOOK_APP_ID}` +
+        `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
+        `&state=${state}` +
+        `&scope=public_profile,email,ads_management,business_management,ads_read`;
+    res.redirect(authURL);
+}
+
+export const handleFbCallback =async (req,res)=>{
+    try {
+        const { code, state: receivedState } = req.query;
+        if (receivedState !== state) {
+            return res.status(400).send('Invalid state parameter');
+        }
+        if (!code) {
+            return res.status(400).send('Authorization code not provided');
+        }
+        const tokenResponse = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
+            params: {
+                client_id: FACEBOOK_APP_ID,
+                client_secret: FACEBOOK_APP_SECRET,
+                redirect_uri: FACEBOOK_REDIRECT_URI,
+                code
+            }
+        });
+        const { access_token } = tokenResponse.data;
+
+        const longLivedTokenResponse = await axios.get('https://graph.facebook.com/v17.0/oauth/access_token', {
+            params: {
+                grant_type: 'fb_exchange_token',
+                client_id: process.env.FACEBOOK_APP_ID,
+                client_secret: process.env.FACEBOOK_APP_SECRET,
+                fb_exchange_token: access_token
+            }
+        });
+
+        const longLivedAccessToken = longLivedTokenResponse.data.access_token;
+
+        const token = req.cookies.token;
+
+            if (!token) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Access denied. No token provided.',
+                });
+            }
+      
+            const decoded = jwt.verify(token, SECRET_KEY);
+            const user = await User.findById(decoded.id);
+          
+            if (!user) return res.status(401).send('User not authenticated.');
+
+            const userId = user._id;
+            await User.findByIdAndUpdate(userId, {
+                fbAccessToken: longLivedAccessToken,
+            });
+            const clientURL = isProduction
+            ? 'https://parallels.messold.com/dashboard'
+            : 'http://localhost:5173/dashboard';
+
+            return res.redirect(clientURL);
+    }catch(err){
+        console.error('Error during Facebook OAuth callback:', err);
+        return res.status(500).json({ success: false, message: 'Failed to handle Facebook callback', error: err.message });
+    }
+}

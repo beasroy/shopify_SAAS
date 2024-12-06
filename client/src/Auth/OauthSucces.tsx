@@ -17,16 +17,6 @@ const GoogleCallback = () => {
             try {
                 const queryParams = new URLSearchParams(window.location.search);
                 const googletoken = queryParams.get('token');
-                const isBrandSetup = queryParams.has('brand-setup'); // Checks for the presence of the parameter
-
-                console.log('Token:', googletoken);
-                console.log('Is Brand Setup:', isBrandSetup);
-
-                if (isBrandSetup) {
-                    console.log('Brand-setup is present, redirecting to /dashboard');
-                    navigate('/dashboard', { replace: true });
-                    return;
-                }
 
                 if (googletoken) {
                     console.log('Token is present, proceeding with login');

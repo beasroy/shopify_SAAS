@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String },
     googleRefreshToken: { type: String }, 
+    fbAccessToken: {type: String},
     isClient: { type: Boolean, default: false }, 
     isAdmin: { type: Boolean, default: false },  
     method: { 

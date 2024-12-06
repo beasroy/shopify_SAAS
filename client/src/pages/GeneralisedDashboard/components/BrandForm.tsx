@@ -86,7 +86,6 @@ export default function BrandSetup() {
         'http://localhost:8000/api/brands/add',
         payload, // Send the payload directly as JSON
         {
-          headers: { 'Content-Type': 'application/json' }, // Set JSON content type
           withCredentials: true,
         }
       );

@@ -208,7 +208,7 @@ export default function OtherPlatformModalContent({
   const handleGoogleLogin = async () => {
     try {
 
-      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`);
+      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`,{withCredentials:true});
       const { authUrl } = response.data;
 
       window.location.href = authUrl;
@@ -219,7 +219,7 @@ export default function OtherPlatformModalContent({
 
   const handleFbLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/facebook`);
+      const response = await axios.get(`${baseURL}/api/auth/facebook`,{withCredentials:true});
       if (response.data.success) {
         window.location.href = response.data.authURL;
       } else {

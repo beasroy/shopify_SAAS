@@ -47,36 +47,33 @@ export default function CitySessionPage() {
   const [filters, setFilters] = useState<FilterItem[]>([])
   const [removedColumns, setRemovedColumns] = useState<string[]>([]);
 
-const allColumns = useMemo(() => 
-  data.length > 0 ? Object.keys(data[0]) : []
-, [data]);
+const allColumns =['city','country','region','Visitors','Sessions','Add To Carts','Add To Cart Rate','Checkouts','Checkout Rate','Purchases','Purchase Rate']
 
 const toggleColumnSelection = (column: string) => {
   setSelectedColumns(prev => {
     const newColumns = prev.includes(column)
-      ? prev.filter(col => col !== column)  // Remove the column if already selected
-      : [...prev, column];  // Add the column if not already selected
+      ? prev.filter(col => col !== column) // Remove column from selected
+      : [...prev, column]; // Add column to selected
 
-    // Update the removed columns state based on the change
     setRemovedColumns(prevRemoved => {
-      if (newColumns.includes(column)) {
-        // If the column is now selected, remove it from removedColumns
-        return prevRemoved.filter(col => col !== column);
-      } else {
-        // If the column is now deselected, add it to removedColumns
-        return [column];
+      // Add or remove from removedColumns only if column is 'city', 'region', or 'country'
+      if (['city', 'region', 'country'].includes(column)) {
+        if (newColumns.includes(column)) {
+          // If re-selected, remove from removedColumns
+          return prevRemoved.filter(col => col !== column);
+        } else {
+          // If deselected, add to removedColumns
+          return [...prevRemoved, column];
+        }
       }
+      // For other columns, keep removedColumns unchanged
+      return prevRemoved;
     });
 
-    // Return the updated selected columns, filtered by existing columns
     return allColumns.filter(col => newColumns.includes(col));
   });
 };
-useEffect(() => {
-  if (allColumns.length > 0) {
-    setSelectedColumns(allColumns);
-  }
-}, [allColumns]);
+
 
 const fetchMetrics = useCallback(async () => {
   setIsLoading(true);
@@ -85,22 +82,20 @@ const fetchMetrics = useCallback(async () => {
       ? import.meta.env.VITE_API_URL
       : import.meta.env.VITE_LOCAL_API_URL;
 
-    // Determine location filters dynamically based on removed columns
-    const locationFilters = removedColumns.length > 0 ? removedColumns : undefined;
-
+    // Prepare location filters based on removed columns
     const requestBody = {
       startDate: startDate,
       endDate: endDate,
-      ...(locationFilters ? { 
-        filters: { 
-          location: locationFilters 
-        } 
+      ...(removedColumns.length > 0 ? {
+        filters: {
+          location: removedColumns
+        }
       } : {})
     };
 
     const analyticsResponse = await axios.post(
-      `${baseURL}/api/analytics/report/${brandId}`, 
-      requestBody, 
+      `${baseURL}/api/analytics/report/${brandId}`,
+      requestBody,
       { withCredentials: true }
     );
 
@@ -109,13 +104,13 @@ const fetchMetrics = useCallback(async () => {
     setFilteredData(fetchedData);
     setLastUpdated(new Date());
 
+    // Ensure selected columns match fetched data
     if (fetchedData.length > 0) {
       const newColumns = Object.keys(fetchedData[0]);
       setSelectedColumns((prevSelected) =>
         prevSelected.filter((col) => newColumns.includes(col))
       );
     }
-
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -125,7 +120,10 @@ const fetchMetrics = useCallback(async () => {
   } finally {
     setIsLoading(false);
   }
-}, [navigate, startDate, endDate, brandId, removedColumns]);
+}, [navigate, brandId, removedColumns]);
+
+
+
 
   
 

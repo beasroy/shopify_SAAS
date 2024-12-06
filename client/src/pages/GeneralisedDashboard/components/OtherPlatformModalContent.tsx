@@ -50,8 +50,8 @@ interface GoogleAnalyticsAccount {
 }
 
 interface FacebookAdsAccount {
-  propertyName: string
-  propertyId: string
+  adname: string
+  id: string
 }
 
 export default function OtherPlatformModalContent({
@@ -128,7 +128,7 @@ export default function OtherPlatformModalContent({
           { withCredentials: true }
         );
 
-        setFacebookAdsAccounts(response.data.accounts || []);
+        setFacebookAdsAccounts(response.data.adAccounts || []);
       } catch (error) {
         handleError(error, setShowLoginButton);
       } finally {
@@ -183,7 +183,7 @@ export default function OtherPlatformModalContent({
         return null; // Return null if there are no Facebook Ads accounts
       }
       return facebookAdsAccounts.filter((account) =>
-        account.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
+        account.adname.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } else {
       return [];
@@ -197,9 +197,15 @@ export default function OtherPlatformModalContent({
     if ('clientId' in account) {
       accountId = account.clientId;
       displayName = `${account.name} (${accountId})`;
-    } else {
+    } else if ('propertyId' in account) {
       accountId = account.propertyId;
       displayName = `${account.propertyName} (${accountId})`;
+    } else if ('id' in account) {
+      accountId = account.id;
+      displayName = `${account.adname}`;
+    } else {
+      accountId = '';
+      displayName = '';
     }
 
     onConnect(platform, displayName, accountId);
@@ -208,7 +214,7 @@ export default function OtherPlatformModalContent({
   const handleGoogleLogin = async () => {
     try {
 
-      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`,{withCredentials:true});
+      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`, { withCredentials: true });
       const { authUrl } = response.data;
 
       window.location.href = authUrl;
@@ -219,7 +225,7 @@ export default function OtherPlatformModalContent({
 
   const handleFbLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/facebook`,{withCredentials:true});
+      const response = await axios.get(`${baseURL}/api/auth/facebook`, { withCredentials: true });
       if (response.data.success) {
         window.location.href = response.data.authURL;
       } else {
@@ -272,55 +278,57 @@ export default function OtherPlatformModalContent({
               />
             </div>
             <div className="max-h-[50vh] overflow-auto">
-              {filteredAccounts()?.map((account) => (
-                <div
-                  key={
-                    platform.toLowerCase() === 'google ads'
-                      ? (account as GoogleAdsAccount).clientId
-                      : (account as GoogleAnalyticsAccount).propertyId
-                  }
-                  className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
-                >
-                  <span>
-                    {platform.toLowerCase() === 'google ads' ? (
-                      <div className="flex flex-row items-center gap-3">
-                        <GoogleLogo height="1rem" width="1rem" />
-                        {`${(account as GoogleAdsAccount).name} (${(account as GoogleAdsAccount).clientId})`}
-                      </div>
-                    ) : (
-                      <div className="flex flex-row items-center gap-3">
-                        <Ga4Logo height="1rem" width="1rem" />
-                        {`${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyName} (${(account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId})`}
-                      </div>
-                    )}
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => handleConnect(account)}
-                    disabled={connectedId.includes(
-                      platform.toLowerCase() === 'google ads'
-                        ? (account as GoogleAdsAccount).clientId
-                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                    )}
-                    className="bg-blue-600"
+              {filteredAccounts()?.map((account) => {
+                // Extract platform-specific details
+                const isGoogleAds = platform.toLowerCase() === 'google ads';
+                const isFacebook = platform.toLowerCase() === 'facebook';
+                // const isGoogleAnalytics = platform.toLowerCase() === 'google analytics';
+
+                const accountId = isGoogleAds
+                  ? (account as GoogleAdsAccount).clientId
+                  : isFacebook
+                    ? (account as FacebookAdsAccount).id
+                    : (account as GoogleAnalyticsAccount).propertyId;
+
+                const accountName = isGoogleAds
+                  ? (account as GoogleAdsAccount).name
+                  : isFacebook
+                    ? (account as FacebookAdsAccount).adname
+                    : (account as GoogleAnalyticsAccount).propertyName;
+
+                const platformLogo = isGoogleAds ? (
+                  <GoogleLogo height="1rem" width="1rem" />
+                ) : isFacebook ? (
+                  <FacebookLogo height="1rem" width="1rem" />
+                ) : (
+                  <Ga4Logo height="1rem" width="1rem" />
+                );
+
+                return (
+                  <div
+                    key={accountId}
+                    className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                   >
-                    {connectedId.includes(
-                      platform.toLowerCase() === 'google ads'
-                        ? (account as GoogleAdsAccount).clientId
-                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                    ) ? (
-                      <Check className="h-4 w-4 mr-2" />
-                    ) : null}
-                    {connectedId.includes(
-                      platform.toLowerCase() === 'google ads'
-                        ? (account as GoogleAdsAccount).clientId
-                        : (account as GoogleAnalyticsAccount | FacebookAdsAccount).propertyId
-                    )
-                      ? 'Connected'
-                      : 'Connect'}
-                  </Button>
-                </div>
-              ))}
+                    <span>
+                      <div className="flex flex-row items-center gap-3">
+                        {platformLogo}
+                        {isFacebook
+                          ? `${accountName}`
+                          : `${accountName} (${accountId})`} 
+                      </div>
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => handleConnect(account)}
+                      disabled={connectedId.includes(accountId)}
+                      className="bg-blue-600"
+                    >
+                      {connectedId.includes(accountId) && <Check className="h-4 w-4 mr-2" />}
+                      {connectedId.includes(accountId) ? 'Connected' : 'Connect'}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

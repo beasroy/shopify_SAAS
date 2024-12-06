@@ -66,7 +66,7 @@ export async function getBatchReports(req, res) {
     const propertyId = brand.ga4Account?.PropertyID;
 
  
-    let { startDate, endDate } = req.body;
+    let { startDate, endDate, filters } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -88,7 +88,27 @@ export async function getBatchReports(req, res) {
       endDate = formatToLocalDateString(currentDayOfMonth);
     }
     
-    console.log("Date Range:", startDate, "to", endDate);
+    const locationDimensionsSet = new Set();
+
+// Add default dimensions if no filters are provided
+if (!filters || !filters.location) {
+  locationDimensionsSet.add('city');
+  locationDimensionsSet.add('country');
+  locationDimensionsSet.add('region');
+} else {
+  // Add dimensions dynamically based on filters
+  if (filters.location.includes('city')) {
+    locationDimensionsSet.add('country');
+  }
+  if (filters.location.includes('region')) {
+    locationDimensionsSet.add('city');
+    // locationDimensionsSet.add('country');
+  }
+}
+
+// Convert the Set to an array of objects if needed
+const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name }));
+
 
     // Construct the batch request with individual report requests
     const [batchResponse] = await client.batchRunReports({
@@ -121,11 +141,7 @@ export async function getBatchReports(req, res) {
               endDate,   // Using endDate from req.body
             },
           ],
-          dimensions: [
-            { name: 'city' },                        // City of the user
-            { name: 'country' },                     // Country of the user
-            { name: 'region' }                       // Region within the country
-          ],
+          dimensions: locationDimensions,
           metrics: [
             { name: 'totalUsers' },
             { name: 'sessions' },
@@ -144,8 +160,6 @@ export async function getBatchReports(req, res) {
             },
           ],
           dimensions: [
-            // { name: "source" },
-            // { name: "medium" },                  // Group by month
             { name: 'sessionDefaultChannelGroup' }   // Referring channel
           ],
           metrics: [
@@ -210,19 +224,23 @@ export async function getBatchReports(req, res) {
         case 1: // Sessions by Location
         return {
           reportType: 'Sessions by Location',
-          data: report.rows.map(row => ({
-            "City": row.dimensionValues[0]?.value,
-            "Country": row.dimensionValues[1]?.value,
-            "Region": row.dimensionValues[2]?.value,
-            "Visitors": row.metricValues[0]?.value,
-            "Sessions": row.metricValues[1]?.value,
-            "Add To Carts": row.metricValues[2]?.value,
-            "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            "Checkouts": row.metricValues[3]?.value,
-            "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            "Purchases": row.metricValues[4]?.value,
-            "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-          }))
+          data: report.rows.map(row => {
+            const rowData = {};
+            locationDimensions.forEach((dim, idx) => {
+              rowData[dim.name] = row.dimensionValues[idx]?.value;
+            });
+            return {
+              ...rowData,
+              "Visitors": row.metricValues[0]?.value,
+              "Sessions": row.metricValues[1]?.value,
+              "Add To Carts": row.metricValues[2]?.value,
+              "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+              "Checkouts": row.metricValues[3]?.value,
+              "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+              "Purchases": row.metricValues[4]?.value,
+              "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            };
+          })
         };
         case 2: // Sessions by Referring Channel
           return {

@@ -310,14 +310,17 @@ export const userLogout = (req, res) => {
 };
 
 const state = crypto.randomBytes(16).toString('hex');
-export const getFbAuthURL = (req , res)=>{
-    const authURL = `https://www.facebook.com/v21.0/dialog/oauth?` + 
+export const getFbAuthURL = (req, res) => {
+    const state = 'some_random_string_for_csrf_protection'; // Replace with your own logic
+    const authURL = `https://www.facebook.com/v21.0/dialog/oauth?` +
         `client_id=${process.env.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
         `&state=${state}` +
         `&scope=public_profile,email,ads_management,business_management,ads_read`;
-    res.redirect(authURL);
-}
+    
+    // Send the URL to the frontend
+    return res.status(200).json({ success: true, authURL });
+};
 
 export const handleFbCallback =async (req,res)=>{
     try {

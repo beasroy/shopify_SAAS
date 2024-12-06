@@ -75,7 +75,7 @@ export default function OtherPlatformModalContent({
       try {
         const userId = user.user?.id;
         const response = await axios.post(
-          'http://localhost:8000/api/setup/google-accounts',
+          `${baseURL}/api/setup/google-accounts`,
           { userId },
           { withCredentials: true }
         );
@@ -100,7 +100,7 @@ export default function OtherPlatformModalContent({
       try {
         const userId = user.user?.id;
         const response = await axios.post(
-          'http://localhost:8000/api/setup/ga4-propertyIds',
+          `${baseURL}/api/setup/ga4-propertyIds`,
           { userId },
           { withCredentials: true }
         );
@@ -123,7 +123,7 @@ export default function OtherPlatformModalContent({
       try {
         const userId = user.user?.id;
         const response = await axios.post(
-          'http://localhost:8000/api/setup/fb-ad-accounts',
+          `${baseURL}/api/setup/fb-ad-accounts`,
           { userId },
           { withCredentials: true }
         );

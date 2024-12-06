@@ -5,6 +5,7 @@ interface Brand {
   name: string;
   brandId: string;
   fbAdAccounts?: [];
+  googleAdAccount?: string;
 }
 
 interface BrandContextType {

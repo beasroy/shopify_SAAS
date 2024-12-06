@@ -10,9 +10,14 @@ import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MdCampaign } from "react-icons/md";
 
+export interface Brand {
+    _id: string;
+    name: string;
+    fbAdAccounts?: string[];
+    googleAdAccount?: string;
+}
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
-    const [brandMetricsData, setBrandMetricsData] = useState<{ [key: string]: boolean }>({});
     const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
     const { user, setUser } = useUser();  
     const location = useLocation();
@@ -20,59 +25,6 @@ export default function CollapsibleSidebar() {
     const sidebarRef = useRef<HTMLDivElement>(null);
     const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
-    // Fetch campaign data when a brand is selected
-    useEffect(() => {
-        const checkBrandMetrics = async () => {
-            if (!selectedBrandId) return;
-
-            try {
-                const [googleResponse, facebookResponse] = await Promise.all([
-                    axios.post(
-                        `${baseURL}/api/metrics/googleCampaign/${selectedBrandId}`,
-                        { 
-                            startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                            endDate: new Date().toISOString().split('T')[0]
-                        },
-                        { withCredentials: true }
-                    ),
-                    axios.post(
-                        `${baseURL}/api/metrics/fbCampaign/${selectedBrandId}`,
-                        {
-                            startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                            endDate: new Date().toISOString().split('T')[0]
-                        },
-                        { withCredentials: true }
-                    )
-                ]);
-
-                // Check if either Google or Facebook data exists and has campaign metrics
-                const hasGoogleData = googleResponse.data.data && 
-                    Object.keys(googleResponse.data.data).length > 0 &&
-                    googleResponse.data.data.campaignData?.some((campaign: any) => 
-                        campaign.spend || campaign.roas
-                    );
-
-                const hasFacebookData = facebookResponse.data.data && 
-                    facebookResponse.data.data.length > 0 &&
-                    facebookResponse.data.data.some((campaign: any) => 
-                        campaign.spend || campaign.roas
-                    );
-
-                setBrandMetricsData(prev => ({
-                    ...prev,
-                    [selectedBrandId]: hasGoogleData || hasFacebookData
-                }));
-            } catch (error) {
-                console.error('Error checking brand metrics:', error);
-                setBrandMetricsData(prev => ({
-                    ...prev,
-                    [selectedBrandId]: false
-                }));
-            }
-        };
-
-        checkBrandMetrics();
-    }, [selectedBrandId, baseURL]);
 
     // Fetch brands
     useEffect(() => {
@@ -127,7 +79,14 @@ export default function CollapsibleSidebar() {
 
     const isItemDisabled = (item: any) => {
         if (!selectedBrandId) return true;
-        if (item.requiresAdsData && !brandMetricsData[selectedBrandId]) return true;
+        
+        const currentBrand = brands.find(b => b._id === selectedBrandId);
+        if (
+            (item.name === 'Analytics Dashboard' || item.name === 'Campaign Metrics') &&
+            (!currentBrand?.fbAdAccounts && !currentBrand?.googleAdAccount)
+        ) {
+            return true;
+        }
         return false;
     };
 
@@ -178,7 +137,6 @@ export default function CollapsibleSidebar() {
                                             navigate(`/business-dashboard/${brand._id}`);
                                         }} 
                                         isSelected={selectedBrandId === brand._id}
-                                        hasAdsData={brandMetricsData[brand._id]}
                                     />
                                 ))} 
                             </SidebarItem>

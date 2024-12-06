@@ -17,7 +17,7 @@ export const oauth2Client = new OAuth2Client(
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
 export const getGoogleAuthURL = (req, res) => {
-    const { context } = req.query; 
+    const { context } = req.query;
 
     const scopes = [
         'https://www.googleapis.com/auth/adwords',
@@ -31,7 +31,7 @@ export const getGoogleAuthURL = (req, res) => {
         access_type: 'offline',
         scope: scopes,
         prompt: 'consent',
-        state: context || 'default', 
+        state: context || 'default',
     });
 
     res.status(200).json({ authUrl: url });
@@ -49,32 +49,15 @@ export const handleGoogleCallback = async (req, res) => {
         const isProduction = process.env.NODE_ENV === 'production';
 
         if (context === 'brandSetup') {
-            const token = req.cookies.token;
-
-            if (!token) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Access denied. No token provided.',
-                });
-            }
-      
-            const decoded = jwt.verify(token, SECRET_KEY);
-            const user = await User.findById(decoded.id);
-          
-            if (!user) return res.status(401).send('User not authenticated.');
-
-            const userId = user._id;
-            await User.findByIdAndUpdate(userId, {
-                googleRefreshToken: tokens.refresh_token,
-            });
+            const googleRefreshToken = tokens.refresh_token;
 
             const clientURL = isProduction
-            ? 'https://parallels.messold.com/dashboard'
-            : 'http://localhost:5173/dashboard';
+                ? 'https://parallels.messold.com/callback'
+                : 'http://localhost:5173/callback';
 
-            return res.redirect(clientURL);
+            return res.redirect(clientURL + `?googleRefreshToken=${googleRefreshToken}`);
         } else if (context === 'userLogin') {
-   
+
             const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
             const userInfo = await oauth2.userinfo.get();
             const { email, name, id } = userInfo.data;
@@ -111,8 +94,8 @@ export const handleGoogleCallback = async (req, res) => {
             });
 
             const clientURL = isProduction
-                ? 'https://parallels.messold.com/google/callback'
-                : 'http://localhost:5173/google/callback';
+                ? 'https://parallels.messold.com/callback'
+                : 'http://localhost:5173/callback';
 
             return res.redirect(clientURL + `?token=${jwtToken}`);
         } else {
@@ -272,7 +255,7 @@ export const userLogin = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                brands: user.brands 
+                brands: user.brands
             }
         });
 
@@ -323,7 +306,7 @@ export const getFbAuthURL = (req, res) => {
     return res.status(200).json({ success: true, authURL });
 };
 
-export const handleFbCallback =async (req,res)=>{
+export const handleFbCallback = async (req, res) => {
     try {
         const { code, state: receivedState } = req.query;
         const storedState = req.cookies.fb_state; // Retrieve the state from cookies
@@ -356,31 +339,93 @@ export const handleFbCallback =async (req,res)=>{
 
         const longLivedAccessToken = longLivedTokenResponse.data.access_token;
 
-        const token = req.cookies.token;
+        const isProduction = process.env.NODE_ENV === 'production';
 
-            if (!token) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Access denied. No token provided.',
-                });
-            }
-      
-            const decoded = jwt.verify(token, SECRET_KEY);
-            const user = await User.findById(decoded.id);
-          
-            if (!user) return res.status(401).send('User not authenticated.');
+        const clientURL = isProduction
+            ? 'https://parallels.messold.com/callback'
+            : 'http://localhost:5173/callback';
 
-            const userId = user._id;
-            await User.findByIdAndUpdate(userId, {
-                fbAccessToken: longLivedAccessToken,
-            });
-            const clientURL = isProduction
-            ? 'https://parallels.messold.com/dashboard'
-            : 'http://localhost:5173/dashboard';
-
-            return res.redirect(clientURL);
-    }catch(err){
+        return res.redirect(clientURL + `?fbToken=${longLivedAccessToken}`);
+    } catch (err) {
         console.error('Error during Facebook OAuth callback:', err);
         return res.status(500).json({ success: false, message: 'Failed to handle Facebook callback', error: err.message });
     }
 }
+
+export const updateTokensForGoogleAndFb = async (req, res) => {
+    try {
+        const { type } = req.params;
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'Access denied. No token provided.',
+            });
+        }
+
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(401).send('User not authenticated.');
+        }
+
+        const userId = user._id;
+
+        if (type === 'facebook') {
+            const { fbToken } = req.query;
+
+            if (!fbToken) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Facebook token is required.',
+                });
+            }
+
+            await User.findByIdAndUpdate(userId, {
+                fbAccessToken: fbToken,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Facebook access token updated successfully.',
+            });
+        }
+
+        if (type === 'google') {
+            const { googleRefreshToken } = req.query;
+
+            if (!googleRefreshToken) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Google refresh token is required.',
+                });
+            }
+
+            await User.findByIdAndUpdate(userId, {
+                googleRefreshToken: googleRefreshToken,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Google refresh token updated successfully.',
+            });
+        }
+
+        return res.status(400).json({
+            success: false,
+            message: `Unsupported token type: ${type}`,
+        });
+
+    } catch (err) {
+        
+        console.error(`Error updating ${type} token:`, err);
+
+        return res.status(500).json({
+            success: false,
+            message: `Failed to update ${type} token.`,
+            error: err.message,
+        });
+    }
+};

@@ -8,37 +8,85 @@ const GoogleCallback = () => {
     const navigate = useNavigate();
     const { setUser } = useUser();
     const { toast } = useToast();
-    const baseURL = import.meta.env.PROD? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
+    const baseURL = import.meta.env.PROD
+        ? import.meta.env.VITE_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
 
-    useEffect(() => {
-        const handleGoogleCallback = async () => {
-            try {
-                const queryParams = new URLSearchParams(window.location.search);
-                const googletoken = queryParams.get('token');
-                if (!googletoken) {
+        useEffect(() => {
+            const handleOauthCallback = async () => {
+                try {
+                    const queryParams = new URLSearchParams(window.location.search);
+                    const googletoken = queryParams.get('token');
+                    const fbToken = queryParams.get('fbToken');
+                    const googleRefreshToken = queryParams.get('googleRefreshToken');
+        
+                    // Helper function for token update
+                    const updateToken = async (url: string, token: string, type: string) => {
+                        const response = await axios.get(`${baseURL}${url}?${type}=${token}`, { withCredentials: true });
+                        if (response.data.success) {
+                            console.log(`${type} token updated successfully, redirecting to /dashboard`);
+                            navigate('/dashboard');
+                            return true;
+                        } else {
+                            console.error(`Failed to update ${type} token`);
+                            toast({
+                                title: 'Update Failed',
+                                description: `Unable to update ${type} token.`,
+                                variant: 'destructive',
+                            });
+                            navigate('/');
+                            return false;
+                        }
+                    };
+        
+                    if (googletoken) {
+                        console.log('Token found, proceeding with login');
+                        const login = await axios.post(`${baseURL}/api/auth/login/oauth?auth_token=${googletoken}`, { email: null, password: null });
+        
+                        if (login.data.success) {
+                            console.log('Login successful, redirecting to /dashboard');
+                            setUser(login.data.user);
+                            navigate('/dashboard');
+                            return;
+                        } else {
+                            console.log('Login failed, redirecting to /');
+                            toast({
+                                title: 'Login Failed',
+                                description: 'Unable to authenticate with Google.',
+                                variant: 'destructive',
+                            });
+                            navigate('/');
+                            return;
+                        }
+                    }
+        
+                    if (fbToken) {
+                        await updateToken('/api/auth/updateTokens/facebook', fbToken, 'fbToken');
+                        return;
+                    }
+        
+                    if (googleRefreshToken) {
+                        await updateToken('/api/auth/updateTokens/google', googleRefreshToken, 'googleRefreshToken');
+                        return;
+                    }
+        
+                    console.log('No token present, redirecting to /');
                     navigate('/');
-                    return;
+        
+                } catch (error) {
+                    console.error('Error during OAuth callback:', error);
+                    toast({
+                        title: 'Error',
+                        description: 'An error occurred while handling the login callback.',
+                        variant: 'destructive',
+                    });
+                    navigate('/');
                 }
-                const login = await axios.post(`${baseURL}/api/auth/login/oauth?auth_token=${googletoken}`,{email:null,password:null})
-                setUser(login.data.user);
-
-                if(login.data.success){
-                    navigate('/dashboard');
-                }
-               
-            } catch (error) {
-                console.error('Google callback error:', error);
-                toast({
-                    title: 'Error',
-                    description: 'An error occurred while handling the Google login callback.',
-                    variant: 'destructive',
-                });
-                navigate('/');
-            }
-        };
-
-        handleGoogleCallback();
-    }, [navigate, setUser, toast]);
+            };
+        
+            handleOauthCallback();
+        }, [navigate, setUser, toast, baseURL]);
+        
 
     return null;
 };

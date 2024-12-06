@@ -4,8 +4,8 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String },
-    googleAccessToken: { type: String }, 
     googleRefreshToken: { type: String }, 
+    fbAccessToken: {type: String},
     isClient: { type: Boolean, default: false }, 
     isAdmin: { type: Boolean, default: false },  
     method: { 

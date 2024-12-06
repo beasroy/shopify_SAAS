@@ -1,8 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import http from "http";
-import { initWebSocket } from "./webhook/shopifyWebhook.js";
 import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.js"
@@ -14,6 +12,7 @@ import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import { setupCronJobs } from "./controller/cron-job.js";
+import setupBrandRoutes from "./routes/BrandSetup.js";
 
 
 
@@ -44,16 +43,8 @@ dataOperationRouter.use("/metrics",fbMetricrRoutes);
 dataOperationRouter.use("/report",excelReportRoutes);
 dataOperationRouter.use("/performance",targetReportRoutes);
 dataOperationRouter.use("/segment",segmentReportRoutes);
+dataOperationRouter.use("/setup",setupBrandRoutes);
 
-// monthlyGoogleAdData('671b6925d3c4f462d681ef47')
-
-// monthlyCalculateMetricsForAllBrands();
-
-//websocket connection
-
-// const server = http.createServer(app);
-
-// initWebSocket(server);
 
 setupCronJobs();
 

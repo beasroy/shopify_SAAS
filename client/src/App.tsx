@@ -36,7 +36,7 @@ function App() {
           <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
-          <Route path="/google/callback" element={<GoogleCallback />} />
+          <Route path="/callback" element={<GoogleCallback />} />
         </Routes>
       </Router>
       </BrandProvider>

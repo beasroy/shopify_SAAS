@@ -121,49 +121,67 @@ export default function AgeAndGenderMetrics() {
         );
     };
 
+    // State variables for caching filter options
+    const [cachedAgeRanges, setCachedAgeRanges] = useState<string[]>([]);
+    const [cachedGenders, setCachedGenders] = useState<string[]>([]);
+    
     const fetchData = async (
-tabId: string, requestData?: {
-    startDate: string;
-    endDate: string;
-    page: number;
-    limit: number;
-}, _p0?: boolean    ) => {
+        tabId: string, 
+        requestData?: {
+            startDate: string;
+            endDate: string;
+            page: number;
+            limit: number;
+        }, 
+        _forceRefresh?: boolean
+    ) => {
         try {
             setLoading(true);
             const apiEndpoint = tabId === 'gender' 
                 ? `${baseURL}/api/segment/genderMetrics/${brandId}`
                 : `${baseURL}/api/segment/ageMetrics/${brandId}`;
-
+    
             const requestBody = requestData || {
                 startDate: date?.from ? format(date.from, "yyyy-MM-dd") : "",
                 endDate: date?.to ? format(date.to, "yyyy-MM-dd") : "",
                 page: currentPage,
                 limit: ROWS_PER_PAGE
             };
-
-            const response = await axios.post(apiEndpoint, {
-                ...requestBody,
-                ...(filters.campaign !== 'all' && { campaign: filters.campaign }),
+    
+            // Always pass the campaign names, even if the filter is "all"
+            const filtersToApply = {
+                campaigns: filterOptions.campaigns,
                 ...(tabId === 'age' && filters.ageRange !== 'all' && { agerange: filters.ageRange }),
                 ...(tabId === 'gender' && filters.gender !== 'all' && { gender: filters.gender })
+            };
+    
+            const response = await axios.post(apiEndpoint, {
+                ...requestBody,
+                ...filtersToApply
             }, { withCredentials: true });
-
+    
             if (response.data.success) {
-                // Ensure campaign names are extracted correctly
-                const campaignNames = response.data.campaignAdGroupPairs 
-                    ? Array.from(new Set(response.data.campaignAdGroupPairs.map((pair: { campaignName: string }) => pair.campaignName)))
-                    : [];
-
-                const data = tabId === 'gender' ? response.data.genderData || [] : response.data.ageData || [];
+                // Extract campaign names for both age and gender metrics
+                const campaignNames: string[] = response.data.campaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
+                const genderCampaignNames: string[] = response.data.genderCampaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
                 
-                // Extract unique values for filters
+                console.log("whole data");
+                console.log("Extracted Campaign Names:", campaignNames); // Debugging log
+            
+                const data = tabId === 'gender' ? response.data.genderData || [] : response.data.ageData || [];
+            
                 if (tabId === 'age') {
                     const ageRanges = new Set(data.map((item: any) => item.ageRange));
-                    
+            
+                    if (cachedAgeRanges.length === 0) {
+                        setCachedAgeRanges(Array.from(ageRanges) as string[]);
+                    }
+            
                     setFilterOptions(prevOptions => ({
                         ...prevOptions,
-                        campaigns: campaignNames as string[],
-                        ageRanges: Array.from(ageRanges) as string[]
+                        campaigns: campaignNames, // Update campaigns for age tab
+                        ageRanges: cachedAgeRanges.length > 0 ? cachedAgeRanges : Array.from(ageRanges) as string[],
+                        genders: prevOptions.genders
                     }));
                 } else {
                     const genders = new Set(data.map((item: any) => 
@@ -171,16 +189,21 @@ tabId: string, requestData?: {
                         item.gender === 'FEMALE' ? 'FEMALE' : 
                         item.gender
                     ));
-                    
+            
+                    if (cachedGenders.length === 0) {
+                        setCachedGenders(Array.from(genders) as string[]);
+                    }
+            
                     setFilterOptions(prevOptions => ({
                         ...prevOptions,
-                        genders: Array.from(genders) as string[]
+                        campaigns: [...new Set([...campaignNames, ...genderCampaignNames])], // Combine both sets of campaign names
+                        genders: cachedGenders.length > 0 ? cachedGenders : Array.from(genders) as string[],
+                        ageRanges: prevOptions.ageRanges
                     }));
                 }
-
+            
                 setData(data);
-
-                // Set table columns dynamically
+    
                 const columns: ColumnDef[] = data.length > 0
                     ? Object.keys(data[0] || {})
                         .filter(key => key !== 'adGroupStatus')
@@ -207,8 +230,7 @@ tabId: string, requestData?: {
                             : t
                     )
                 );
-
-                // Process graph data
+    
                 const aggregatedData = tabId === 'gender' 
                     ? response.data.aggregatedRecords 
                     : response.data.ageRangeAggregatedMetrics;
@@ -234,7 +256,7 @@ tabId: string, requestData?: {
                     }
                     return baseEntry;
                 });
-
+    
                 setGraphData(processedGraphData);
                 setTotalRecords(response.data.totalRecords || 0);
                 setTotalPages(response.data.totalPages || 1);

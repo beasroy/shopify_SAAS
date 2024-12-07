@@ -18,6 +18,7 @@ const platforms = [
   { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-200', icon: Ga4Logo, border: 'border-yellow-800' },
 ]
 
+
 export default function BrandSetup() {
   const [openModal, setOpenModal] = useState<string | null>(null)
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>({})
@@ -27,6 +28,7 @@ export default function BrandSetup() {
   const [ga4Id , setGa4Id] = useState<string>('')
   const [fbAdId , setFBAdId] = useState<string[]>([])
   const { toast } = useToast()
+  const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
 
   const handleConnect = (platform: string, account: string, accountId: string) => {
     setConnectedAccounts(prev => ({
@@ -83,8 +85,8 @@ export default function BrandSetup() {
   
     try {
       const response = await axios.post(
-        'http://localhost:8000/api/brands/add',
-        payload, // Send the payload directly as JSON
+        `${baseURL}/api/brands/add`,
+        payload, 
         {
           withCredentials: true,
         }

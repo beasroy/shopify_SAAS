@@ -850,3 +850,69 @@
 2024-12-07T02:00:02.854Z [info]: Completed metrics processing for brand: 671b7d85f99634509a5f2693
 2024-12-07T02:00:02.856Z [info]: All brand metrics promises settled:
 2024-12-07T02:00:02.856Z [info]: Completed metrics calculation for all brands.
+2024-12-08T02:00:00.901Z [info]: Found 10 brands for metrics calculation.
+2024-12-08T02:00:00.925Z [info]: Starting metrics processing for brand: 671b68bed3c4f462d681ef45
+2024-12-08T02:00:00.925Z [info]: Starting metrics processing for brand: 671b6925d3c4f462d681ef47
+2024-12-08T02:00:00.926Z [info]: Starting metrics processing for brand: 671b7d85f99634509a5f2693
+2024-12-08T02:00:00.926Z [info]: Starting metrics processing for brand: 671b90c83aee55a69981a0c9
+2024-12-08T02:00:00.926Z [info]: Starting metrics processing for brand: 671cc01d00989c5fdf2dcb11
+2024-12-08T02:00:00.926Z [info]: Starting metrics processing for brand: 671ccd765d652cf6efc21eda
+2024-12-08T02:00:00.927Z [info]: Starting metrics processing for brand: 671cceb19b58dac9e4e23280
+2024-12-08T02:00:00.927Z [info]: Starting metrics processing for brand: 671cd209fc16e7d6a19da1fd
+2024-12-08T02:00:00.928Z [info]: Starting metrics processing for brand: 67386682a32728aa040776c7
+2024-12-08T02:00:00.928Z [info]: Starting metrics processing for brand: 673867cea32728aa040776d1
+2024-12-08T02:00:01.645Z [error]: Failed to save metrics for brand 671cceb19b58dac9e4e23280: An error occurred while calculating and saving metrics.
+2024-12-08T02:00:01.655Z [info]: Completed metrics processing for brand: 671cceb19b58dac9e4e23280
+2024-12-08T02:00:02.481Z [error]: Failed to save metrics for brand 671cc01d00989c5fdf2dcb11: An error occurred while calculating and saving metrics.
+2024-12-08T02:00:02.485Z [info]: Completed metrics processing for brand: 671cc01d00989c5fdf2dcb11
+2024-12-08T02:00:02.639Z [error]: Failed to save metrics for brand 671cd209fc16e7d6a19da1fd: An error occurred while calculating and saving metrics.
+2024-12-08T02:00:02.644Z [info]: Completed metrics processing for brand: 671cd209fc16e7d6a19da1fd
+2024-12-08T02:00:03.114Z [info]: Metrics successfully saved for brand 671b90c83aee55a69981a0c9
+2024-12-08T02:00:03.124Z [info]: Completed metrics processing for brand: 671b90c83aee55a69981a0c9
+2024-12-08T02:00:03.292Z [info]: Metrics successfully saved for brand 671b6925d3c4f462d681ef47
+2024-12-08T02:00:03.292Z [info]: Completed metrics processing for brand: 671b6925d3c4f462d681ef47
+2024-12-08T02:00:03.359Z [info]: Metrics successfully saved for brand 67386682a32728aa040776c7
+2024-12-08T02:00:03.359Z [info]: Completed metrics processing for brand: 67386682a32728aa040776c7
+2024-12-08T02:00:03.412Z [info]: Metrics successfully saved for brand 671b7d85f99634509a5f2693
+2024-12-08T02:00:03.415Z [info]: Completed metrics processing for brand: 671b7d85f99634509a5f2693
+2024-12-08T02:00:03.451Z [info]: Metrics successfully saved for brand 673867cea32728aa040776d1
+2024-12-08T02:00:03.451Z [info]: Completed metrics processing for brand: 673867cea32728aa040776d1
+2024-12-08T02:00:03.509Z [info]: Metrics successfully saved for brand 671b68bed3c4f462d681ef45
+2024-12-08T02:00:03.509Z [info]: Completed metrics processing for brand: 671b68bed3c4f462d681ef45
+2024-12-08T02:00:03.525Z [info]: Metrics successfully saved for brand 671ccd765d652cf6efc21eda
+2024-12-08T02:00:03.525Z [info]: Completed metrics processing for brand: 671ccd765d652cf6efc21eda
+2024-12-08T02:00:03.525Z [info]: All brand metrics promises settled:
+2024-12-08T02:00:03.535Z [info]: Completed metrics calculation for all brands.
+2024-12-09T02:00:00.807Z [info]: Found 10 brands for metrics calculation.
+2024-12-09T02:00:00.815Z [info]: Starting metrics processing for brand: 671b68bed3c4f462d681ef45
+2024-12-09T02:00:00.815Z [info]: Starting metrics processing for brand: 671b6925d3c4f462d681ef47
+2024-12-09T02:00:00.815Z [info]: Starting metrics processing for brand: 671b7d85f99634509a5f2693
+2024-12-09T02:00:00.815Z [info]: Starting metrics processing for brand: 671b90c83aee55a69981a0c9
+2024-12-09T02:00:00.816Z [info]: Starting metrics processing for brand: 671cc01d00989c5fdf2dcb11
+2024-12-09T02:00:00.816Z [info]: Starting metrics processing for brand: 671ccd765d652cf6efc21eda
+2024-12-09T02:00:00.816Z [info]: Starting metrics processing for brand: 671cceb19b58dac9e4e23280
+2024-12-09T02:00:00.817Z [info]: Starting metrics processing for brand: 671cd209fc16e7d6a19da1fd
+2024-12-09T02:00:00.817Z [info]: Starting metrics processing for brand: 67386682a32728aa040776c7
+2024-12-09T02:00:00.817Z [info]: Starting metrics processing for brand: 673867cea32728aa040776d1
+2024-12-09T02:00:01.495Z [error]: Failed to save metrics for brand 671cceb19b58dac9e4e23280: An error occurred while calculating and saving metrics.
+2024-12-09T02:00:01.505Z [info]: Completed metrics processing for brand: 671cceb19b58dac9e4e23280
+2024-12-09T02:00:02.414Z [error]: Failed to save metrics for brand 671cc01d00989c5fdf2dcb11: An error occurred while calculating and saving metrics.
+2024-12-09T02:00:02.424Z [info]: Completed metrics processing for brand: 671cc01d00989c5fdf2dcb11
+2024-12-09T02:00:02.614Z [error]: Failed to save metrics for brand 671cd209fc16e7d6a19da1fd: An error occurred while calculating and saving metrics.
+2024-12-09T02:00:02.615Z [info]: Completed metrics processing for brand: 671cd209fc16e7d6a19da1fd
+2024-12-09T02:00:03.045Z [info]: Metrics successfully saved for brand 67386682a32728aa040776c7
+2024-12-09T02:00:03.055Z [info]: Completed metrics processing for brand: 67386682a32728aa040776c7
+2024-12-09T02:00:03.341Z [info]: Metrics successfully saved for brand 671b90c83aee55a69981a0c9
+2024-12-09T02:00:03.345Z [info]: Completed metrics processing for brand: 671b90c83aee55a69981a0c9
+2024-12-09T02:00:03.378Z [info]: Metrics successfully saved for brand 671b68bed3c4f462d681ef45
+2024-12-09T02:00:03.379Z [info]: Completed metrics processing for brand: 671b68bed3c4f462d681ef45
+2024-12-09T02:00:03.394Z [info]: Metrics successfully saved for brand 671b6925d3c4f462d681ef47
+2024-12-09T02:00:03.395Z [info]: Completed metrics processing for brand: 671b6925d3c4f462d681ef47
+2024-12-09T02:00:03.413Z [info]: Metrics successfully saved for brand 673867cea32728aa040776d1
+2024-12-09T02:00:03.413Z [info]: Completed metrics processing for brand: 673867cea32728aa040776d1
+2024-12-09T02:00:03.631Z [info]: Metrics successfully saved for brand 671b7d85f99634509a5f2693
+2024-12-09T02:00:03.634Z [info]: Completed metrics processing for brand: 671b7d85f99634509a5f2693
+2024-12-09T02:00:04.310Z [info]: Metrics successfully saved for brand 671ccd765d652cf6efc21eda
+2024-12-09T02:00:04.315Z [info]: Completed metrics processing for brand: 671ccd765d652cf6efc21eda
+2024-12-09T02:00:04.315Z [info]: All brand metrics promises settled:
+2024-12-09T02:00:04.315Z [info]: Completed metrics calculation for all brands.

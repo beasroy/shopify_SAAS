@@ -4,12 +4,31 @@ import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 interface TableProps {
   columns: string[];
   data: any[];
-  rowsToShow: number;
+  rowsToShow?: number; 
 }
 
-const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
+const getConditionalTextColor = (value: number, average: number) => {
+  if (value > average) return 'text-green-600';
+  if (value < average) return 'text-red-600';
+  return 'text-gray-600';
+};
+
+
+
+const getConditionalIcon = (value: number, average: number) => {
+  if (value > average) return <ArrowUp className="w-4 h-4 text-green-600" />;
+  if (value < average) return <ArrowDown className="w-4 h-4 text-red-600" />;
+  return null;
+};
+
+const ReportTable: React.FC<TableProps> = ({ 
+  columns, 
+  data, 
+  rowsToShow, 
+}) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [filterLabel, setFilterLabel] = useState<'top' | 'worst' | null>(null);
 
   const comparisonColumns = ['Add To Cart Rate', 'Checkout Rate', 'Purchase Rate'];
 
@@ -17,7 +36,6 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
     return parseFloat(value?.replace('%', '').trim()) || 0;
   };
 
-  // Calculate averages for specific columns
   const averageValues = useMemo(() => {
     const averages: Record<string, number> = {};
     comparisonColumns.forEach((key) => {
@@ -27,37 +45,36 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
     return averages;
   }, [data]);
 
+  const rowPerformanceLabels = useMemo(() => {
+    return data.map((item) => {
+      const isTopPerforming = comparisonColumns.some(column => {
+        const value = parsePercentage(item?.[column] || '0');
+        const average = averageValues[column];
+        return value > average;
+      });
+
+      const isWorstPerforming = comparisonColumns.every(column => {
+        const value = parsePercentage(item?.[column] || '0');
+        const average = averageValues[column];
+        return value < average;
+      });
+
+      if (isTopPerforming) return 'top';
+      if (isWorstPerforming) return 'worst';
+      return null;
+    });
+  }, [data, averageValues]);
+
   const parsedData = useMemo(() =>
-    data.map((item) => ({
+    data.map((item, index) => ({
       ...item,
+      performanceLabel: rowPerformanceLabels?.[index] || null,
       Sessions: Number(item?.Sessions || 0),
       'Add To Cart Rate': parsePercentage(item?.['Add To Cart Rate'] || '0'),
       'Checkout Rate': parsePercentage(item?.['Checkout Rate'] || '0'),
       'Purchase Rate': parsePercentage(item?.['Purchase Rate'] || '0'),
-    })), [data]);
+    })), [data, rowPerformanceLabels]);
 
-  const maxSessions = useMemo(() => Math.max(...parsedData.map((item) => item.Sessions)), [parsedData]);
-
-  const getBackgroundColor = (sessions: number) => {
-    const intensity = sessions / maxSessions;
-    return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`;
-  };
-
-  const getTextColor = (sessions: number) => {
-    const intensity = sessions / maxSessions;
-    return intensity > 0.7 ? 'text-white' : 'text-black';
-  };
-
-  const isNumericColumn = (column: string) => {
-    return [
-      'Add To Carts',
-      'Checkouts',
-      'Sessions',
-      'Purchases',
-      'Visitors',
-      ...comparisonColumns,
-    ].includes(column);
-  };
 
   const sortedData = useMemo(() => {
     if (sortColumn) {
@@ -88,21 +105,42 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
     }
   };
 
-  const getConditionalTextColor = (value: number, average: number) => {
-    if (value < average) return 'text-red-600';
-    else if (value > average) return 'text-green-600';
-    else return 'text-yellow-600';
+  const isNumericColumn = (column: string) => {
+    return [
+      'Add To Cart',
+      'Checkouts',
+      'Sessions',
+      'Purchases',
+      'Visitors',
+      ...comparisonColumns,
+    ].includes(column);
   };
 
-  const getConditionalIcon = (value: number, average: number) => {
-    if (value < average) {
-      return <ArrowDown className="ml-1 text-red-600 w-3 h-3" />;
-    } else if (value > average) {
-      return <ArrowUp className="ml-1 text-green-600 w-3 h-3" />;
+  const handleLabelClick = (label: 'top' | 'worst') => {
+    if (filterLabel === label) {
+      setFilterLabel(null); // Remove the filter if the same label is clicked again
     } else {
-      return null;
+      setFilterLabel(label);
     }
   };
+
+  const filteredData = useMemo(() => {
+    if (filterLabel) {
+      return sortedData.filter((item) => item.performanceLabel === filterLabel);
+    }
+    return sortedData;
+  }, [sortedData, filterLabel]);
+  const maxSessions = useMemo(() => Math.max(...parsedData.map((item) => item.Sessions)), [parsedData]);
+
+const getBackgroundColor = (sessions: number) => {
+  const intensity = sessions / maxSessions;
+  return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`;
+};
+const getTextColor = (sessions: number) => {
+  const intensity = sessions / maxSessions;
+  return intensity > 0.7 ? 'text-white' : 'text-black';
+};
+
 
   return (
     <div className="rounded-md overflow-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
@@ -134,7 +172,7 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {sortedData.slice(0, rowsToShow).map((item, index) => (
+          {filteredData.slice(0, rowsToShow).map((item, index) => (
             <tr
               key={index}
               className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-100 transition-colors duration-200 rounded-md`}
@@ -142,6 +180,8 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
               {columns.map((column) => {
                 const cellValue = item[column as keyof typeof item];
                 const isComparisonColumn = comparisonColumns.includes(column);
+                const firstColumn = columns[0];
+                
                 return (
                   <td
                     key={column}
@@ -151,14 +191,31 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
                         ? getConditionalTextColor(cellValue as number, averageValues[column])
                         : 'text-gray-800'
                       }`}
-                    style={{
-                      backgroundColor: column === 'Sessions' ? getBackgroundColor(Number(item.Sessions)) : '',
-                    }}
+                      style={{
+                        backgroundColor: column === 'Sessions' ? getBackgroundColor(Number(item.Sessions)) : '',
+                      }}
                   >
                     <div className="flex items-center justify-center gap-2">
                       {isComparisonColumn ? `${(cellValue as number).toFixed(2)}%` : cellValue}
-                      {isComparisonColumn &&
-                        getConditionalIcon(cellValue as number, averageValues[column])}
+                      {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column])}
+                      
+                      {/* Performance Label for the specified column */}
+                      {column === firstColumn && item.performanceLabel === 'top' && (
+                        <span
+                          className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full cursor-pointer"
+                          onClick={() => handleLabelClick('top')}
+                        >
+                          Top
+                        </span>
+                      )}
+                      {column === firstColumn && item.performanceLabel === 'worst' && (
+                        <span
+                          className="ml-1 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full cursor-pointer"
+                          onClick={() => handleLabelClick('worst')}
+                        >
+                          Worst
+                        </span>
+                      )}
                     </div>
                   </td>
                 );
@@ -172,4 +229,3 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
 };
 
 export default React.memo(ReportTable);
-

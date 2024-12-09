@@ -1,4 +1,4 @@
 node_modules
 .env
-server/utils/logs/report.log
+server\utils\logs\report.log
 

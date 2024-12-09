@@ -2,11 +2,10 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from "axios"
 import { format } from "date-fns"
-import { BriefcaseBusiness, ChevronDown, Columns, RefreshCw } from "lucide-react"
+import { PanelsTopLeft, ChevronDown, Columns, RefreshCw, X } from 'lucide-react'
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,13 +17,14 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
+import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
 
 interface PageMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
-  "Checkouts" : string;
+  "Checkouts": string;
   "Checkout Rate": string;
-  "Purchases":string;
+  "Purchases": string;
   "Purchase Rate": string;
   [key: string]: string;
 }
@@ -43,7 +43,6 @@ const LandingPageSession: React.FC = () => {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
-  
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -77,7 +76,7 @@ const LandingPageSession: React.FC = () => {
 
       if (fetchedData.length > 0) {
         if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]); 
+          const allColumns = Object.keys(fetchedData[0]);
           setSelectedColumns(allColumns);
         } else {
           const newColumns = Object.keys(fetchedData[0]);
@@ -117,7 +116,7 @@ const LandingPageSession: React.FC = () => {
 
   const applyFilters = useCallback((filters: FilterItem[]) => {
     let result = [...data];
-    
+
     filters.forEach(filter => {
       result = result.filter(item => {
         const value = item[filter.column as keyof PageMetric] as string;
@@ -145,116 +144,115 @@ const LandingPageSession: React.FC = () => {
     setFilters(filters.filter((_, i) => i !== index))
   }
 
-
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-2">
-              <BriefcaseBusiness className="h-6 w-6 text-gray-500" />
-              <h1 className="text-2xl font-bold">Landing Page Metrics Overview</h1>
+      <div className="flex-1 h-screen overflow-hidden flex flex-col">
+        <header className="px-6 py-4 border-b">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <PanelsTopLeft className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-semibold text-primary">Landing Page Metrics Overview</h1>
             </div>
-            <div className="flex flex-col lg:flex-row lg:space-x-3 items-center">
-              <div className="flex items-center space-x-4">
-                <DatePickerWithRange
-                  date={date}
-                  setDate={setDate}
-                  defaultDate={{
-                    from: new Date(now.getFullYear(), now.getMonth(), 1),
-                    to: now,
-                  }}
-                />
-              </div>
+            <div className="flex flex-row gap-3 items-center">
+              {lastUpdated && (
+                <span className="text-sm text-muted-foreground">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+              <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <DatePickerWithRange
+                date={date}
+                setDate={setDate}
+                defaultDate={{
+                  from: new Date(now.getFullYear(), now.getMonth(), 1),
+                  to: now,
+                }}
+              />
             </div>
           </div>
         </header>
 
-        <div className="m-6">
-          <div className="flex flex-col md:flex-row gap-5 justify-start items-start md:justify-between md:items-center mb-6">
-            <h1 className="text-lg font-semibold">Key performance indicators for your online store</h1>
-            <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:space-x-2">
-              <div className="lg:flex items-center hidden">
-                {lastUpdated && (
-                  <span className="text-sm text-gray-600 mr-4">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-                <Button onClick={handleManualRefresh} disabled={isLoading} className="flex items-center">
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                </Button>
+        <main className="flex-1 overflow-auto px-6 py-4">
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-medium">Analyze your landing page wise performance</h2>
+                <Ga4Logo />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Columns className="h-4 w-4" />
-                    <span>Select Columns</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-44">
-                  {allColumns.map((column) => (
-                    <div key={column} className="flex items-center space-x-2 p-2">
-                      <Checkbox
-                        id={`column-${column}`}
-                        checked={selectedColumns.includes(column)}
-                        onCheckedChange={() => toggleColumnSelection(column)}
-                      />
-                      <label
-                        htmlFor={`column-${column}`}
-                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {column}
-                      </label>
-                    </div>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-36">
-                    Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <FilterComponent
-                columns={numericColumns}
-                onFiltersChange={applyFilters}
-                filters={filters}
-                setFilters={setFilters}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Columns className="h-4 w-4" />
+                      <span>Select Columns</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56">
+                    {allColumns.map((column) => (
+                      <DropdownMenuItem key={column} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`column-${column}`}
+                          checked={selectedColumns.includes(column)}
+                          onCheckedChange={() => toggleColumnSelection(column)}
+                        />
+                        <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
+                          {column}
+                        </label>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <FilterComponent
+                  columns={numericColumns}
+                  onFiltersChange={applyFilters}
+                  filters={filters}
+                  setFilters={setFilters}
+                />
+              </div>
             </div>
-          </div>
-          {filters.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {filters.map((filter, index) => (
-                <div key={index} className="bg-gray-100 rounded-full px-3 py-1 text-sm flex items-center">
-                  <span>{`${filter.column} ${filter.operator} ${filter.value}`}</span>
-                  <button onClick={() => removeFilter(index)} className="ml-2 text-red-500">×</button>
-                </div>
-              ))}
-            </div>
-          )}
 
-          <div className="relative border rounded-md overflow-hidden">
-            <div className="overflow-auto h-full">
-            {isLoading ? (
+            {filters.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {filters.map((filter, index) => (
+                  <div key={index} className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <span>{`${filter.column} ${filter.operator} ${filter.value}`}</span>
+                    <button onClick={() => removeFilter(index)} className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" aria-label="Remove filter">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded-md border overflow-hidden">
+              {isLoading ? (
                 <TableSkeleton />
               ) : (
                 <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
               )}
             </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   )
 }
 
-export default LandingPageSession;
+export default LandingPageSession
+

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 
 interface TableProps {
   columns: string[];
@@ -17,7 +16,6 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
   const parsePercentage = (value: string): number => {
     return parseFloat(value?.replace('%', '').trim()) || 0;
   };
-
 
   // Calculate averages for specific columns
   const averageValues = useMemo(() => {
@@ -64,13 +62,13 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
   const sortedData = useMemo(() => {
     if (sortColumn) {
       return [...parsedData].sort((a, b) => {
-        const aValue = typeof a[sortColumn] === 'number' 
-          ? a[sortColumn] 
+        const aValue = typeof a[sortColumn] === 'number'
+          ? a[sortColumn]
           : parseFloat((a[sortColumn] || '0').toString().replace('%', '').trim());
-        const bValue = typeof b[sortColumn] === 'number' 
-          ? b[sortColumn] 
+        const bValue = typeof b[sortColumn] === 'number'
+          ? b[sortColumn]
           : parseFloat((b[sortColumn] || '0').toString().replace('%', '').trim());
-  
+
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
         return 0;
@@ -78,7 +76,6 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
     }
     return parsedData;
   }, [parsedData, sortColumn, sortDirection]);
-  
 
   const handleSort = (column: string) => {
     if (!isNumericColumn(column)) return;
@@ -92,84 +89,87 @@ const ReportTable: React.FC<TableProps> = ({ columns, data, rowsToShow }) => {
   };
 
   const getConditionalTextColor = (value: number, average: number) => {
-    if (value < average) return 'text-red-500';
-    else if (value > average) return 'text-green-500';
-    else return 'text-yellow-500';
+    if (value < average) return 'text-red-600';
+    else if (value > average) return 'text-green-600';
+    else return 'text-yellow-600';
   };
 
   const getConditionalIcon = (value: number, average: number) => {
     if (value < average) {
-      return <ArrowDown className="ml-1 text-red-500 w-3 h-3" />;
+      return <ArrowDown className="ml-1 text-red-600 w-3 h-3" />;
     } else if (value > average) {
-      return <ArrowUp className="ml-1 text-green-500 w-3 h-3" />;
+      return <ArrowUp className="ml-1 text-green-600 w-3 h-3" />;
     } else {
       return null;
     }
   };
 
   return (
-    <div className="relative border rounded-md overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-      <div className="overflow-x-auto min-w-full">
-        <Table className="text-center">
-          <TableHeader className="bg-gray-200 sticky top-0 z-10">
-            <TableRow>
-              {columns.map((column) => (
-                <TableCell
-                  key={column}
-                  className={`font-bold px-4 text-black min-w-[170px] ${
-                    isNumericColumn(column) ? 'cursor-pointer' : ''
+    <div className="rounded-md overflow-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+      <table className="w-full text-center shadow-lg rounded-lg overflow-auto">
+        <thead className="bg-white sticky top-0 z-10">
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column}
+                className={`font-bold p-3 text-gray-800 text-sm uppercase min-w-[200px] border-b-2 ${isNumericColumn(column) ? 'cursor-pointer' : ''
                   }`}
-                  onClick={() => handleSort(column)}
-                >
-                  <div className="flex items-center justify-center">
-                    {column}
-                    {isNumericColumn(column) && (
-                      sortColumn === column ? (
-                        sortDirection === 'asc' ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
+                onClick={() => handleSort(column)}
+                style={{ position: 'sticky', top: 0 }}
+              >
+                <div className="flex items-center justify-center">
+                  {column}
+                  {isNumericColumn(column) && (
+                    <span className="ml-2">
+                      {sortColumn === column ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />
                       ) : (
-                        <ArrowUpDown className="ml-1 w-4 h-4" />
-                      )
-                    )}
-                  </div>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedData.slice(0, rowsToShow).map((item, index) => (
-              <TableRow key={index}>
-                {columns.map((column) => {
-                  const cellValue = item[column as keyof typeof item];
-                  const isComparisonColumn = comparisonColumns.includes(column);
-                  return (
-                    <TableCell
-                      key={column}
-                      className={`px-4 py-2 w-[160px] font-medium ${
-                        column === 'Sessions'
-                          ? getTextColor(Number(item.Sessions))
-                          : isComparisonColumn
-                          ? getConditionalTextColor(cellValue as number, averageValues[column])
-                          : ''
-                      }`}
-                      style={{
-                        backgroundColor: column === 'Sessions' ? getBackgroundColor(Number(item.Sessions)) : '',
-                      }}
-                    >
-                      <div className="flex flex-row items-center justify-center gap-1">
-                        {isComparisonColumn ? `${cellValue.toFixed(2)}%` : cellValue}
-                        {isComparisonColumn &&
-                          getConditionalIcon(cellValue as number, averageValues[column])}
-                      </div>
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
+                        <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                      )}
+                    </span>
+                  )}
+                </div>
+              </th>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {sortedData.slice(0, rowsToShow).map((item, index) => (
+            <tr
+              key={index}
+              className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-100 transition-colors duration-200 rounded-md`}
+            >
+              {columns.map((column) => {
+                const cellValue = item[column as keyof typeof item];
+                const isComparisonColumn = comparisonColumns.includes(column);
+                return (
+                  <td
+                    key={column}
+                    className={`p-3 text-sm font-normal ${column === 'Sessions'
+                      ? getTextColor(Number(item.Sessions))
+                      : isComparisonColumn
+                        ? getConditionalTextColor(cellValue as number, averageValues[column])
+                        : 'text-gray-800'
+                      }`}
+                    style={{
+                      backgroundColor: column === 'Sessions' ? getBackgroundColor(Number(item.Sessions)) : '',
+                    }}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      {isComparisonColumn ? `${(cellValue as number).toFixed(2)}%` : cellValue}
+                      {isComparisonColumn &&
+                        getConditionalIcon(cellValue as number, averageValues[column])}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
 export default React.memo(ReportTable);
+

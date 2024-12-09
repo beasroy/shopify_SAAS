@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Upload, Check } from 'lucide-react'
+import { Upload, Check, ArrowRight, Building2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,12 +12,11 @@ import { Ga4Logo, shopifyLogo } from './OtherPlatformModalContent'
 import axios from 'axios'
 
 const platforms = [
-  { name: 'Shopify', color: 'from-green-50 to-green-200', icon: shopifyLogo , border: 'border-green-800'},
-  { name: 'Facebook', color: 'from-blue-50 to-blue-200', icon: FacebookLogo , border: 'border-blue-800'},
-  { name: 'Google Ads', color: 'from-green-50 to-green-200', icon: GoogleLogo , border: 'border-green-800'},
-  { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-200', icon: Ga4Logo, border: 'border-yellow-800' },
-]
-
+  { name: 'Shopify', color: 'from-emerald-50 to-emerald-100', icon: shopifyLogo, border: 'border-emerald-600', description: 'Connect your e-commerce store' },
+  { name: 'Facebook', color: 'from-blue-50 to-blue-100', icon: FacebookLogo, border: 'border-blue-600', description: 'Link your ad accounts' },
+  { name: 'Google Ads', color: 'from-rose-50 to-rose-100', icon: GoogleLogo, border: 'border-rose-600', description: 'Import campaign data' },
+  { name: 'Google Analytics', color: 'from-yellow-50 to-yellow-100', icon: Ga4Logo, border: 'border-yellow-600', description: 'Track website metrics' },
+];
 
 export default function BrandSetup() {
   const [openModal, setOpenModal] = useState<string | null>(null)
@@ -102,56 +101,94 @@ export default function BrandSetup() {
   
 
   return (
-    <div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-bold text-gray-800">Set Up Your Brand</CardTitle>
-          <CardDescription>
-            Connect your accounts and set up your brand details to get started.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+    <Card className="border-2 border-gray-100 shadow-lg">
+      <CardHeader className="space-y-4 pb-8">
+        <div className="flex items-center space-x-3">
+          <div className="rounded-full bg-primary/10 p-2">
+            <Building2 className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-bold text-gray-900">Brand Setup</CardTitle>
+            <CardDescription className="mt-1 text-gray-500">
+              Connect your accounts and configure your brand settings
+            </CardDescription>
+          </div>
+        </div>
+        <div className="mt-4 h-2 w-full rounded-full bg-gray-100">
+          <div 
+            className="h-2 rounded-full bg-primary transition-all bg-green-700"
+            style={{ 
+              width: `${Math.min(
+                ((!!brandName ? 25 : 0) + 
+                (!!brandLogo ? 25 : 0) + 
+                (Object.keys(connectedAccounts).length * 12.5)), 
+                100)}%` 
+            }}
+          />
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Brand Name</label>
+            <Input
+              id="brandName"
+              placeholder="Enter your brand name"
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-gray-700">Brand Logo</label>
+            <div className="flex items-center gap-3">
               <Input
-                id="brandName"
-                placeholder="Enter your brand name"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
+                id="brandLogo"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
               />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="brandLogo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => document.getElementById('brandLogo')?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {brandLogo ? 'Change Logo' : 'Upload Logo'}
-                </Button>
-                {brandLogo && <span className="text-sm text-gray-500">{brandLogo.name}</span>}
-              </div>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => document.getElementById('brandLogo')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {brandLogo ? 'Change Logo' : 'Upload Logo'}
+              </Button>
+              {brandLogo && (
+                <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-md">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-gray-600">{brandLogo.name}</span>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect Platforms</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {platforms.map((platform) => (
-              <Dialog key={platform.name} open={openModal === platform.name} onOpenChange={(isOpen) => setOpenModal(isOpen ? platform.name : null)}>
+              <Dialog 
+                key={platform.name} 
+                open={openModal === platform.name} 
+                onOpenChange={(isOpen) => setOpenModal(isOpen ? platform.name : null)}
+              >
                 <DialogTrigger asChild>
-                  <Button className={`w-full h-24 bg-gradient-to-br ${platform.color} border ${platform.border} text-black relative`}>
-                    <div className="flex flex-col items-center">
-                      <platform.icon width="1.75rem" height="1.75rem" />
-                      <span>{platform.name}</span>
+                  <Button 
+                    variant="outline"
+                    className={`w-full h-32 bg-gradient-to-br ${platform.color} hover:shadow-md transition-all duration-200 border ${platform.border} relative group`}
+                  >
+                    <div className="flex flex-col items-center space-y-2">
+                      <platform.icon width='1.5rem' height='1.5rem' />
+                      <span className="font-medium">{platform.name}</span>
+                      <span className="text-xs text-gray-600">{platform.description}</span>
                     </div>
                     {isConnected(platform.name) && (
-                      <div className="absolute top-2 right-2 bg-white rounded-full p-1">
+                      <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm">
                         <Check className="h-4 w-4 text-green-500" />
                       </div>
                     )}
@@ -169,23 +206,27 @@ export default function BrandSetup() {
                   {platform.name === 'Shopify' ? (
                     <ShopifyModalContent onConnect={handleConnect} />
                   ) : (
-                    <OtherPlatformModalContent platform={platform.name} onConnect={handleConnect} connectedId={getConnectedId(platform.name) || ''} />
+                    <OtherPlatformModalContent 
+                      platform={platform.name} 
+                      onConnect={handleConnect} 
+                      connectedId={getConnectedId(platform.name)} 
+                    />
                   )}
                 </DialogContent>
               </Dialog>
             ))}
           </div>
+        </div>
 
-          <Button 
-            className={`w-full `} 
-            disabled={!brandName || !brandLogo || Object.keys(connectedAccounts).length === 0}
-            onClick={handleSubmit}
-          >
-            Complete Setup
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  )
+        <Button 
+          className="w-full mt-8 text-sm font-medium"
+          disabled={!brandName || !brandLogo || Object.keys(connectedAccounts).length === 0}
+          onClick={handleSubmit}
+        >
+          Complete Setup
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
-

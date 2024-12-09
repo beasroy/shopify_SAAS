@@ -5,7 +5,7 @@ import { MdCampaign, MdInsights } from "react-icons/md"
 import BrandSetup from './components/BrandForm.tsx'
 import { AnalyticsCard, AnalyticsCardProps } from './components/AnalyticsCard.tsx'
 import { useUser } from '@/context/UserContext.tsx'
-import SetupGuide from './components/SetUpGuide.tsx'
+
 
 export default function Dashboard() {
   const { user } = useUser()
@@ -38,27 +38,30 @@ export default function Dashboard() {
 
   return (
     <div className="flex-col md:flex">
-      <div className="border-b">
-        <div className="flex h-16 items-center px-4">
-          <h1 className="text-2xl font-bold tracking-tight">Welcome back, {user?.username.split(' ')[0] || 'user'}</h1>
+      <div className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur-sm">
+        <div className="lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Welcome back, <span className="text-primary">{user?.username.split(' ')[0] || 'user'}</span>
+            </h1>
+          </div>
+        </div>
+        </div>
+        <div className="flex-1 space-y-4 p-8 pt-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {insights.map((insight, index) => (
+              <AnalyticsCard
+                key={index}
+                title={insight.title}
+                description={insight.description}
+                icon={insight.icon}
+                bgColor={insight.bgColor}
+                ribbonText={insight.ribbonText} />
+            ))}
+          </div>
+          <BrandSetup />
         </div>
       </div>
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {insights.map((insight, index) => (
-            <AnalyticsCard
-              key={index}
-              title={insight.title}
-              description={insight.description}
-              icon={insight.icon}
-              bgColor={insight.bgColor}
-              ribbonText={insight.ribbonText} />
-          ))}
-        </div>
-        <BrandSetup />
-        <SetupGuide />
-      </div>
-    </div>
-  )
+      )
 }
 

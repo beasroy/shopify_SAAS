@@ -20,6 +20,12 @@ type TabConfig = {
     lastUpdated: number | null;
     totalPages?: number;
     currentPage?: number;
+    campaignAdGroupPairs?: CampaignAdGroupPair[];
+};
+
+type CampaignAdGroupPair = {
+    campaignName: string;
+    adGroups: string[];
 };
 
 type ColumnDef = {  
@@ -33,10 +39,10 @@ type MetricKey = keyof typeof metricLabels;
 
 type FilterState = {
     campaign: string;
+    adGroup: string;
     ageRange?: string;
     gender?: string;
 };
-
 const metricLabels = {
     totalConversions: 'Total Conversions',
     totalClicks: 'Total Clicks',
@@ -58,6 +64,7 @@ export default function AgeAndGenderMetrics() {
     // State for filters
     const [filters, setFilters] = useState<FilterState>({
         campaign: 'all',
+        adGroup: 'all',
         ageRange: 'all',
         gender: 'all'
     });
@@ -65,12 +72,16 @@ export default function AgeAndGenderMetrics() {
     // State for filter options with explicit type
     const [filterOptions, setFilterOptions] = useState<{
         campaigns: string[];
+        adGroups: string[];
         ageRanges: string[];
         genders: string[];
+        campaignAdGroupMap?: Record<string, string[]>; // Add this line
     }>({
         campaigns: [],
+        adGroups: [], 
         ageRanges: [],
-        genders: []
+        genders: [],
+        campaignAdGroupMap: {} // Initialize with empty object
     });
 
     // Existing state variables
@@ -151,8 +162,10 @@ export default function AgeAndGenderMetrics() {
             // Always pass the campaign names, even if the filter is "all"
             const filtersToApply = {
                 campaigns: filterOptions.campaigns,
-                ...(tabId === 'age' && filters.ageRange !== 'all' && { agerange: filters.ageRange }),
-                ...(tabId === 'gender' && filters.gender !== 'all' && { gender: filters.gender })
+                ...(filters.campaign !== 'all' && { campaign: filters.campaign }),
+                ...(filters.adGroup !== 'all' && { adGroup: filters.adGroup }),
+                ...(activeTab === 'age' && filters.ageRange !== 'all' && { agerange: filters.ageRange }),
+                ...(activeTab === 'gender' && filters.gender !== 'all' && { gender: filters.gender })
             };
     
             const response = await axios.post(apiEndpoint, {
@@ -165,6 +178,19 @@ export default function AgeAndGenderMetrics() {
                 const campaignNames: string[] = response.data.campaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
                 const genderCampaignNames: string[] = response.data.genderCampaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
                 
+                // In fetchData function
+                const campaignAdGroupMap = response.data.campaignAdGroupPairs.reduce((acc: Record<string, string[]>, pair: CampaignAdGroupPair) => {
+                    acc[pair.campaignName] = pair.adGroups;
+                    return acc;
+                }, {});
+
+                setFilterOptions(prevOptions => ({
+                    ...prevOptions,
+                    campaigns: campaignNames,
+                    adGroups: response.data.campaignAdGroupPairs.flatMap((pair: { adGroups: any; }) => pair.adGroups),
+                    campaignAdGroupMap: campaignAdGroupMap
+                }));
+
                 console.log("whole data");
                 console.log("Extracted Campaign Names:", campaignNames); // Debugging log
             
@@ -179,7 +205,6 @@ export default function AgeAndGenderMetrics() {
             
                     setFilterOptions(prevOptions => ({
                         ...prevOptions,
-                        campaigns: campaignNames, // Update campaigns for age tab
                         ageRanges: cachedAgeRanges.length > 0 ? cachedAgeRanges : Array.from(ageRanges) as string[],
                         genders: prevOptions.genders
                     }));
@@ -197,8 +222,7 @@ export default function AgeAndGenderMetrics() {
                     setFilterOptions(prevOptions => ({
                         ...prevOptions,
                         campaigns: [...new Set([...campaignNames, ...genderCampaignNames])], // Combine both sets of campaign names
-                        genders: cachedGenders.length > 0 ? cachedGenders : Array.from(genders) as string[],
-                        ageRanges: prevOptions.ageRanges
+                        genders: cachedGenders.length > 0 ? cachedGenders : Array.from(genders) as string[]
                     }));
                 }
             
@@ -269,15 +293,27 @@ export default function AgeAndGenderMetrics() {
             setLoading(false);
         }
     };
-    const [, setRefreshKey] = useState(0);
+
+
 
     const handleFilterChange = (filterKey: keyof FilterState, value: string) => {
-        setFilters(prev => ({
-            ...prev,
-            [filterKey]: value
-        }));
+        setFilters(prev => {
+            const updatedFilters = {
+                ...prev,
+                [filterKey]: value
+            };
+    
+            // Reset adGroup when campaign changes
+            if (filterKey === 'campaign') {
+                updatedFilters.adGroup = 'all'; // Reset adGroup to 'all' when campaign changes
+            }
+    
+            return updatedFilters;
+        });
+    
         // Reset to first page when filter changes
         setCurrentPage(1);
+        
         // Fetch data immediately after filter change
         const requestBody = {
             startDate: date?.from ? format(date.from, "yyyy-MM-dd") : "",
@@ -286,8 +322,6 @@ export default function AgeAndGenderMetrics() {
             limit: ROWS_PER_PAGE
         };
         fetchData(activeTab, requestBody);
-        // Trigger a re-render
-        setRefreshKey(prevKey => prevKey + 1);
     };
 
     useEffect(() => {
@@ -298,7 +332,7 @@ export default function AgeAndGenderMetrics() {
             limit: ROWS_PER_PAGE
         };
         fetchData(activeTab, requestBody);
-
+    
         const intervalId = setInterval(() => {
             fetchData(activeTab, requestBody);
         }, 300000); // 5 minutes
@@ -308,6 +342,7 @@ export default function AgeAndGenderMetrics() {
         date, 
         currentPage, 
         filters.campaign,
+        filters.adGroup,
         filters.ageRange,
         filters.gender
     ]);
@@ -456,7 +491,7 @@ export default function AgeAndGenderMetrics() {
                             }}
                             disabled={loading}
                         >
-                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`h-4 w-4 ${loading ?                            '' : ''}`} />
                         </Button>
                         <Button 
                             variant="outline" 
@@ -474,7 +509,7 @@ export default function AgeAndGenderMetrics() {
                             <PopoverContent className="w-80">
                                 <div className="space-y-4">
                                     <div>
-                                    <h3 className="font-medium mb-2">Campaign</h3>
+                                        <h3 className="font-medium mb-2">Campaign</h3>
                                         <Select 
                                             onValueChange={(value) => handleFilterChange('campaign', value)} 
                                             value={filters.campaign}
@@ -492,6 +527,30 @@ export default function AgeAndGenderMetrics() {
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    {filters.campaign !== 'all' && (
+                                        <div>
+                                            <h3 className="font-medium mb-2">Ad Group</h3>
+                                            <Select 
+                                                onValueChange={(value) => handleFilterChange('adGroup', value)} 
+                                                value={filters.adGroup}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select ad group" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Ad Groups</SelectItem>
+                                                    {(filters.campaign === 'all' 
+                                                        ? filterOptions.adGroups 
+                                                        : filterOptions.campaignAdGroupMap?.[filters.campaign] || []
+                                                    ).map(adGroup => (
+                                                        <SelectItem key={adGroup} value={adGroup}>
+                                                            {adGroup}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                     {activeTab === 'age' && (
                                         <div>
                                             <h3 className="font-medium mb-2">Age Range</h3>

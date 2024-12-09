@@ -102,7 +102,11 @@ if (!filters || !filters.location) {
   }
   if (filters.location.includes('region')) {
     locationDimensionsSet.add('city');
-    // locationDimensionsSet.add('country');
+    locationDimensionsSet.add('country');
+  }
+  if (filters.location.includes('country')) {
+    locationDimensionsSet.add('city');
+    locationDimensionsSet.add('region');
   }
 }
 

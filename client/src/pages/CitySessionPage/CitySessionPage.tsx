@@ -35,7 +35,6 @@ interface CityMetric {
 export default function CitySessionPage() {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [filteredData, setFilteredData] = useState<CityMetric[]>([])
-  const now = new Date();
   const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -47,8 +46,9 @@ export default function CitySessionPage() {
   const [rowsToShow, setRowsToShow] = useState(50)
   const [filters, setFilters] = useState<FilterItem[]>([])
   const [removedColumns, setRemovedColumns] = useState<string[]>([]);
+  const now = new Date();
 
-const allColumns =['city','country','region','Visitors','Sessions','Add To Carts','Add To Cart Rate','Checkouts','Checkout Rate','Purchases','Purchase Rate']
+const allColumns =['city','country','region','Visitors','Sessions','Add To Cart','Add To Cart Rate','Checkouts','Checkout Rate','Purchases','Purchase Rate']
 
 const toggleColumnSelection = (column: string) => {
   setSelectedColumns(prev => {
@@ -175,7 +175,7 @@ useEffect(() => {
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
-  const numericColumns = ['Add To Carts', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }
@@ -203,7 +203,7 @@ useEffect(() => {
                 date={date}
                 setDate={setDate}
                 defaultDate={{
-                  from: new Date(now.getFullYear(), now.getMonth(), 1),
+                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
                   to: now,
                 }}
               />

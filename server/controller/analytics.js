@@ -65,53 +65,51 @@ export async function getBatchReports(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
- 
+
     let { startDate, endDate, filters } = req.body;
 
     if (!startDate || !endDate) {
+      // Set default startDate to 4 years ago from today
       const now = new Date();
+      const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
+      console.log(fourYearsAgo)
       
-     
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-      
-     
-      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      currentDayOfMonth.setHours(23, 59, 59, 999);  
-      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
-      
-        const formatToLocalDateString = (date) => {
-        return date.toLocaleDateString('en-CA'); 
-      };
+      // Set default endDate to the current date with time set to 23:59:59.999
+      now.setHours(23, 59, 59, 999);
     
-      startDate = formatToLocalDateString(firstDayOfMonth);
-      endDate = formatToLocalDateString(currentDayOfMonth);
+      // Helper function to format date to 'YYYY-MM-DD' (ISO 8601) format
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+    
+      // Assign formatted default dates
+      startDate = formatToLocalDateString(fourYearsAgo);
+      endDate = formatToLocalDateString(now);
     }
     
+
     const locationDimensionsSet = new Set();
 
-// Add default dimensions if no filters are provided
-if (!filters || !filters.location) {
-  locationDimensionsSet.add('city');
-  locationDimensionsSet.add('country');
-  locationDimensionsSet.add('region');
-} else {
-  // Add dimensions dynamically based on filters
-  if (filters.location.includes('city')) {
-    locationDimensionsSet.add('country');
-  }
-  if (filters.location.includes('region')) {
-    locationDimensionsSet.add('city');
-    locationDimensionsSet.add('country');
-  }
-  if (filters.location.includes('country')) {
-    locationDimensionsSet.add('city');
-    locationDimensionsSet.add('region');
-  }
-}
+    // Add default dimensions if no filters are provided
+    if (!filters || !filters.location) {
+      locationDimensionsSet.add('city');
+      locationDimensionsSet.add('country');
+      locationDimensionsSet.add('region');
+    } else {
+      // Add dimensions dynamically based on filters
+      if (filters.location.includes('city')) {
+        locationDimensionsSet.add('country');
+      }
+      if (filters.location.includes('region')) {
+        locationDimensionsSet.add('city');
+        locationDimensionsSet.add('country');
+      }
+      if (filters.location.includes('country')) {
+        locationDimensionsSet.add('city');
+        locationDimensionsSet.add('region');
+      }
+    }
 
-// Convert the Set to an array of objects if needed
-const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name }));
+    // Convert the Set to an array of objects if needed
+    const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name }));
 
 
     // Construct the batch request with individual report requests
@@ -153,7 +151,7 @@ const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name
             { name: 'checkouts' },
             { name: 'ecommercePurchases' }
           ]
-        
+
         },
         // Third report: Sessions by Referring Channel (monthly data)
         {
@@ -199,7 +197,7 @@ const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name
           ],
           metrics: [
             { name: 'sessions' },
-            {name: 'ecommercePurchases'}       // Number of items purchased            // Sessions that resulted in purchase
+            { name: 'ecommercePurchases' }       // Number of items purchased            // Sessions that resulted in purchase
           ],
         },
         //
@@ -211,55 +209,55 @@ const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name
       // Add a unique report type for each report
       switch (index) {
         case 0: // Landing Page Report
-        return {
-          reportType: 'Landing Page Report',
-          data: report.rows.map(row => ({
-            "Landing Page": row.dimensionValues[0]?.value,
-            "Visitors": row.metricValues[0]?.value,
-            "Sessions": row.metricValues[1]?.value,
-            "Add To Carts": row.metricValues[2]?.value,
-            "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            "Checkouts": row.metricValues[3]?.value,
-            "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            "Purchases": row.metricValues[4]?.value,
-            "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-          }))
-        };
-        case 1: // Sessions by Location
-        return {
-          reportType: 'Sessions by Location',
-          data: report.rows.map(row => {
-            const rowData = {};
-            locationDimensions.forEach((dim, idx) => {
-              rowData[dim.name] = row.dimensionValues[idx]?.value;
-            });
-            return {
-              ...rowData,
+          return {
+            reportType: 'Landing Page Report',
+            data: report.rows.map(row => ({
+              "Landing Page": row.dimensionValues[0]?.value,
               "Visitors": row.metricValues[0]?.value,
               "Sessions": row.metricValues[1]?.value,
-              "Add To Carts": row.metricValues[2]?.value,
+              "Add To Cart": row.metricValues[2]?.value,
               "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
               "Checkouts": row.metricValues[3]?.value,
               "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
               "Purchases": row.metricValues[4]?.value,
               "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            };
-          })
-        };
-        case 2: // Sessions by Referring Channel
+            }))
+          };
+        case 1: // Sessions by Location
           return {
-              reportType: 'Sessions by Referring Channel',
-              data: report.rows.map(row => ({
-                "Channel": row.dimensionValues[0]?.value,
+            reportType: 'Sessions by Location',
+            data: report.rows.map(row => {
+              const rowData = {};
+              locationDimensions.forEach((dim, idx) => {
+                rowData[dim.name] = row.dimensionValues[idx]?.value;
+              });
+              return {
+                ...rowData,
                 "Visitors": row.metricValues[0]?.value,
                 "Sessions": row.metricValues[1]?.value,
-                "Add To Carts": row.metricValues[2]?.value,
+                "Add To Cart": row.metricValues[2]?.value,
                 "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
                 "Checkouts": row.metricValues[3]?.value,
                 "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
                 "Purchases": row.metricValues[4]?.value,
                 "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              }))
+              };
+            })
+          };
+        case 2: // Sessions by Referring Channel
+          return {
+            reportType: 'Sessions by Referring Channel',
+            data: report.rows.map(row => ({
+              "Channel": row.dimensionValues[0]?.value,
+              "Visitors": row.metricValues[0]?.value,
+              "Sessions": row.metricValues[1]?.value,
+              "Add To Cart": row.metricValues[2]?.value,
+              "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+              "Checkouts": row.metricValues[3]?.value,
+              "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+              "Purchases": row.metricValues[4]?.value,
+              "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
+            }))
           };
         case 3: // Returning Customer Rate
           return {
@@ -282,8 +280,8 @@ const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name
             data: report.rows.map(row => ({
               yearMonth: row.dimensionValues[0]?.value,  // Date of the transaction
               sessions: row.metricValues[0]?.value,
-              Purchase:row.metricValues[1]?.value,
-              ConversionRate: ((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2) || 0, // Conversion rate as percentage
+              Purchase: row.metricValues[1]?.value,
+              ConversionRate: ((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2) || 0, // Conversion rate as percentage
             }))
           };
         default:
@@ -326,28 +324,28 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     // Get the startDate and endDate from the request body
     let { startDate, endDate } = req.body;
 
-if (!startDate || !endDate) {
-  const now = new Date();
-  
-  // First day of the current month in local time
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-  
-  // Today's date in local time, setting time to 23:59:59.999 (last moment of the day)
-  const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  currentDayOfMonth.setHours(23, 59, 59, 999);  // Set to the last moment of the day
-  console.log("currentDayOfMonth (IST):", currentDayOfMonth);
-  
-  // Format the dates to YYYY-MM-DD in local time
-  const formatToLocalDateString = (date) => {
-    return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-  };
+    if (!startDate || !endDate) {
+      const now = new Date();
 
-  startDate = formatToLocalDateString(firstDayOfMonth);
-  endDate = formatToLocalDateString(currentDayOfMonth);
-}
+      // First day of the current month in local time
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
 
-console.log("Date Range:", startDate, "to", endDate);
+      // Today's date in local time, setting time to 23:59:59.999 (last moment of the day)
+      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      currentDayOfMonth.setHours(23, 59, 59, 999);  // Set to the last moment of the day
+      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+
+      // Format the dates to YYYY-MM-DD in local time
+      const formatToLocalDateString = (date) => {
+        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
+      };
+
+      startDate = formatToLocalDateString(firstDayOfMonth);
+      endDate = formatToLocalDateString(currentDayOfMonth);
+    }
+
+    console.log("Date Range:", startDate, "to", endDate);
 
 
     const data = [];
@@ -376,14 +374,14 @@ console.log("Date Range:", startDate, "to", endDate);
       const Date = row.dimensionValues[0]?.value;
       const formattedDate = moment(Date).format("DD-MM-YYYY");
       data.push({
-        "Date":formattedDate,
+        "Date": formattedDate,
         "Sessions": row.metricValues[0]?.value || 0,
-        "Add To Carts": row.metricValues[1]?.value || 0,
-        "Add To Cart Rate": `${((row.metricValues[1]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Add To Cart": row.metricValues[1]?.value || 0,
+        "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
         "Checkouts": row.metricValues[2]?.value || 0,
-        "Checkout Rate": `${((row.metricValues[2]?.value/ row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
         "Purchases": row.metricValues[3]?.value || 0,
-        "Purchase Rate":`${((row.metricValues[3]?.value/row.metricValues[0]?.value)*100).toFixed(2)} %` || 0,
+        "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
       });
     });
 

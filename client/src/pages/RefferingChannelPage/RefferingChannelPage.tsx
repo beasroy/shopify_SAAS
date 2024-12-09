@@ -140,7 +140,7 @@ const ChannelSessionPage: React.FC = () => {
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
-  const numericColumns = ['Add To Carts', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }
@@ -170,7 +170,7 @@ const ChannelSessionPage: React.FC = () => {
                 date={date}
                 setDate={setDate}
                 defaultDate={{
-                  from: new Date(now.getFullYear(), now.getMonth(), 1),
+                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
                   to: now,
                 }}
               />

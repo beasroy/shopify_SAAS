@@ -33,7 +33,6 @@ const LandingPageSession: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [filteredData, setFilteredData] = useState<PageMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
-  const now = new Date();
   const [data, setData] = useState<PageMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -43,6 +42,7 @@ const LandingPageSession: React.FC = () => {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
+  const now = new Date();
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -139,7 +139,7 @@ const LandingPageSession: React.FC = () => {
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
-  const numericColumns = ['Add To Carts', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }
@@ -167,7 +167,7 @@ const LandingPageSession: React.FC = () => {
                 date={date}
                 setDate={setDate}
                 defaultDate={{
-                  from: new Date(now.getFullYear(), now.getMonth(), 1),
+                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
                   to: now,
                 }}
               />

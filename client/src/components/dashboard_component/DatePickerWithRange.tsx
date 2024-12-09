@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { CalendarIcon } from "lucide-react"
-import { format, subDays, subMonths } from "date-fns"
+import { format, subDays, subMonths, subYears } from "date-fns"
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -38,6 +38,9 @@ export function DatePickerWithRange({
     setTempDate(newRange)
   }
 
+  const clearDateRange = () => {
+    setTempDate(undefined)
+  }
 
   const formatDateRange = (range: DateRange | undefined) => {
     if (!range) {
@@ -71,8 +74,9 @@ export function DatePickerWithRange({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-4" align="start">
-          <div className="flex flex-col space-y-4">
-            <div className="flex flex-wrap gap-2">
+          <div className="flex space-x-4">
+            {/* Preset Buttons */}
+            <div className="flex flex-col space-y-2 justify-end">
               <Button
                 size="sm"
                 variant="outline"
@@ -101,16 +105,37 @@ export function DatePickerWithRange({
               >
                 Last 3 months
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPresetRange(subYears(new Date(), 1), new Date())}
+              >
+                Last 1 year
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={clearDateRange}
+              >
+                Clear
+              </Button>
             </div>
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={tempDate?.from || defaultDate?.from || new Date()}
-              selected={tempDate}
-              onSelect={handleDateChange}
-              numberOfMonths={2}
-            />
-            <Button onClick={handleUpdate} >Update</Button>
+            {/* Calendar */}
+            <div>
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={tempDate?.from || defaultDate?.from || new Date()}
+                selected={tempDate}
+                onSelect={handleDateChange}
+                numberOfMonths={2}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <Button onClick={handleUpdate} className="w-full">
+              Update
+            </Button>
           </div>
         </PopoverContent>
       </Popover>

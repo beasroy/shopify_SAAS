@@ -141,7 +141,7 @@ export default function EcommerceMetricsPage() {
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
-  const numericColumns = ['Add To Carts', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }

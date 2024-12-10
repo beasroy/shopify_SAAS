@@ -38,11 +38,14 @@ type ColumnDef = {
 type MetricKey = keyof typeof metricLabels;
 
 type FilterState = {
+    status: string;
     campaign: string;
     adGroup: string;
     ageRange?: string;
     gender?: string;
+    campaignStatus: string;
 };
+
 const metricLabels = {
     totalConversions: 'Total Conversions',
     totalClicks: 'Total Clicks',
@@ -66,22 +69,26 @@ export default function AgeAndGenderMetrics() {
         campaign: 'all',
         adGroup: 'all',
         ageRange: 'all',
-        gender: 'all'
+        gender: 'all',
+        status: 'all', 
+        campaignStatus: 'all' 
     });
 
-    // State for filter options with explicit type
+    // State for filter options with campaign statuses
     const [filterOptions, setFilterOptions] = useState<{
         campaigns: string[];
         adGroups: string[];
         ageRanges: string[];
         genders: string[];
-        campaignAdGroupMap?: Record<string, string[]>; // Add this line
+        campaignAdGroupMap?: Record<string, string[]>;
+        statusOptions: string[]; // Added statusOptions
     }>({
         campaigns: [],
-        adGroups: [], 
+        adGroups: [],
         ageRanges: [],
         genders: [],
-        campaignAdGroupMap: {} // Initialize with empty object
+        campaignAdGroupMap: {},
+        statusOptions: ['REMOVED', 'PAUSED', 'ENABLED'], // Added status options
     });
 
     // Existing state variables
@@ -143,6 +150,11 @@ export default function AgeAndGenderMetrics() {
             endDate: string;
             page: number;
             limit: number;
+            status?: string; // Ensure status is included here
+            campaign?: string;
+            adGroup?: string;
+            agerange?: string;
+            gender?: string;
         }, 
         _forceRefresh?: boolean
     ) => {
@@ -152,26 +164,22 @@ export default function AgeAndGenderMetrics() {
                 ? `${baseURL}/api/segment/genderMetrics/${brandId}`
                 : `${baseURL}/api/segment/ageMetrics/${brandId}`;
     
-            const requestBody = requestData || {
-                startDate: date?.from ? format(date.from, "yyyy-MM-dd") : "",
-                endDate: date?.to ? format(date.to, "yyyy-MM-dd") : "",
-                page: currentPage,
-                limit: ROWS_PER_PAGE
+            // Prepare the request body with all possible filters
+            const requestBody = {
+                startDate: requestData?.startDate || (date?.from ? format(date.from, "yyyy-MM-dd") : ""),
+                endDate: requestData?.endDate || (date?.to ? format(date.to, "yyyy-MM-dd") : ""),
+                page: requestData?.page || currentPage,
+                limit: requestData?.limit || ROWS_PER_PAGE,
+                ...(requestData?.status && { status: requestData.status }), // Ensure this line is present
+                ...(requestData?.campaign && requestData.campaign !== 'all' && { campaign: requestData.campaign }),
+                ...(requestData?.adGroup && requestData.adGroup !== 'all' && { adGroup: requestData.adGroup }),
+                ...(activeTab === 'age' && requestData?.agerange && requestData.agerange !== 'all' && { agerange: requestData.agerange }),
+                ...(activeTab === 'gender' && requestData?.gender && requestData.gender !== 'all' && { gender: requestData.gender })
             };
     
-            // Always pass the campaign names, even if the filter is "all"
-            const filtersToApply = {
-                campaigns: filterOptions.campaigns,
-                ...(filters.campaign !== 'all' && { campaign: filters.campaign }),
-                ...(filters.adGroup !== 'all' && { adGroup: filters.adGroup }),
-                ...(activeTab === 'age' && filters.ageRange !== 'all' && { agerange: filters.ageRange }),
-                ...(activeTab === 'gender' && filters.gender !== 'all' && { gender: filters.gender })
-            };
+            console.log("Fetch Request Body:", requestBody); // Debug logging
     
-            const response = await axios.post(apiEndpoint, {
-                ...requestBody,
-                ...filtersToApply
-            }, { withCredentials: true });
+            const response = await axios.post(apiEndpoint, requestBody, { withCredentials: true });
     
             if (response.data.success) {
                 // Extract campaign names for both age and gender metrics
@@ -233,7 +241,9 @@ export default function AgeAndGenderMetrics() {
                         .filter(key => key !== 'adGroupStatus')
                         .map(key => ({
                             id: key,
-                            header: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+                            header: key === 'campaignStatus' 
+                                ? 'Campaign Status' 
+                                : key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
                             accessorKey: key,
                             cell: (value: any) => {
                                 if (key === 'cost') {
@@ -241,6 +251,21 @@ export default function AgeAndGenderMetrics() {
                                 }
                                 if (['roas', 'conversionsRate', 'ctr'].includes(key)) {
                                     return `${(Number(value) * 100).toFixed(2)}%`;
+                                }
+                                if (key === 'campaignStatus') {
+                                    // Capitalize and style campaign status
+                                    const statusColor = {
+                                        'REMOVED': 'text-red-600',
+                                        'PAUSED': 'text-yellow-600',
+                                        'ENABLED': 'text-green-600'
+                                    }[value as string] || '';
+                                    return (
+                                        <span className={`font-medium ${statusColor}`}>
+                                            {value === 'REMOVED' ? 'Removed' : 
+                                             value === 'PAUSED' ? 'Paused' : 
+                                             value === 'ENABLED' ? 'Enabled' : value}
+                                        </span>
+                                    );
                                 }
                                 return String(value);
                             }
@@ -303,39 +328,77 @@ export default function AgeAndGenderMetrics() {
                 [filterKey]: value
             };
     
-            // Reset adGroup when campaign changes
+            // Reset dependent filters when certain filters change
             if (filterKey === 'campaign') {
-                updatedFilters.adGroup = 'all'; // Reset adGroup to 'all' when campaign changes
+                updatedFilters.adGroup = 'all';
             }
     
             return updatedFilters;
         });
     
-        // Reset to first page when filter changes
-        setCurrentPage(1);
-        
-        // Fetch data immediately after filter change
+        // Prepare request body with updated filters
         const requestBody = {
             startDate: date?.from ? format(date.from, "yyyy-MM-dd") : "",
             endDate: date?.to ? format(date.to, "yyyy-MM-dd") : "",
             page: 1,
-            limit: ROWS_PER_PAGE
+            limit: ROWS_PER_PAGE,
+            status: filters.status === 'all' ? undefined : filters.status,
+            campaign: filterKey === 'campaign' ? value : filters.campaign,
+            adGroup: filterKey === 'adGroup' ? value : filters.adGroup,
+            
+            // Specifically handle age and gender filters
+            ...(activeTab === 'age' && {
+                agerange: filterKey === 'ageRange' ? value : 
+                          filters.ageRange !== 'all' ? filters.ageRange : undefined
+            }),
+            ...(activeTab === 'gender' && {
+                gender: filterKey === 'gender' ? value : 
+                        filters.gender !== 'all' ? filters.gender : undefined
+            })
         };
-        fetchData(activeTab, requestBody);
+    
+        // Debug logging
+        console.log('Filter Change Request:', {
+            filterKey,
+            value,
+            activeTab,
+            requestBody
+        });
+    
+        // Force data refresh with new filters
+        fetchData(activeTab, requestBody, true);
     };
-
     useEffect(() => {
         const requestBody = {
             startDate: date?.from ? format(date.from, "yyyy-MM-dd") : "",
             endDate: date?.to ? format(date.to, "yyyy-MM-dd") : "",
             page: currentPage,
-            limit: ROWS_PER_PAGE
+            limit: ROWS_PER_PAGE,
+            status: filters.status === 'all' ? undefined : filters.status,
+            campaign: filters.campaign === 'all' ? undefined : filters.campaign,
+            adGroup: filters.adGroup === 'all' ? undefined : filters.adGroup,
+            
+            // Conditional filters based on active tab
+            ...(activeTab === 'age' && filters.ageRange !== 'all' && { 
+                agerange: filters.ageRange 
+            }),
+            ...(activeTab === 'gender' && filters.gender !== 'all' && { 
+                gender: filters.gender 
+            })
         };
+    
+        console.log('UseEffect Fetch Request:', { 
+            activeTab, 
+            filters, 
+            requestBody 
+        });
+        
         fetchData(activeTab, requestBody);
     
         const intervalId = setInterval(() => {
             fetchData(activeTab, requestBody);
         }, 300000); // 5 minutes
+    
         return () => clearInterval(intervalId);
     }, [
         activeTab, 
@@ -344,9 +407,9 @@ export default function AgeAndGenderMetrics() {
         filters.campaign,
         filters.adGroup,
         filters.ageRange,
-        filters.gender
+        filters.gender,
+        filters.status
     ]);
-
     const handleTabChange = (newTabId: string) => {
         setActiveTab(newTabId);
         setCurrentPage(1);
@@ -491,7 +554,7 @@ export default function AgeAndGenderMetrics() {
                             }}
                             disabled={loading}
                         >
-                            <RefreshCw className={`h-4 w-4 ${loading ?                            '' : ''}`} />
+                            <RefreshCw className={`h-4 w-4 ${loading ? '' : ''}`} />
                         </Button>
                         <Button 
                             variant="outline" 
@@ -551,6 +614,25 @@ export default function AgeAndGenderMetrics() {
                                             </Select>
                                         </div>
                                     )}
+                                    <div>
+                                        <h3 className="font-medium mb-2">Status</h3>
+                                        <Select 
+                                            onValueChange={(value) => handleFilterChange('status', value)} 
+                                            value={filters.status}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All</SelectItem>
+                                                {filterOptions.statusOptions.map((status) => (
+                                                    <SelectItem key={status} value={status}>
+                                                        {status}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     {activeTab === 'age' && (
                                         <div>
                                             <h3 className="font-medium mb-2">Age Range</h3>

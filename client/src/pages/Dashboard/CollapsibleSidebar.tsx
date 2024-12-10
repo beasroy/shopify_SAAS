@@ -17,7 +17,7 @@ export interface Brand {
     googleAdAccount?: string;
 }
 export default function CollapsibleSidebar() {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
     const { user, setUser } = useUser();  
     const location = useLocation();
@@ -31,13 +31,17 @@ export default function CollapsibleSidebar() {
         const fetchBrands = async () => {
             try {
                 const response = await axios.get(`${baseURL}/api/brands/all`, { withCredentials: true });
-                setBrands(response.data);
+                const fetchedBrands = response.data;
+                setBrands(fetchedBrands);
+                if (fetchedBrands.length > 0) {
+                    setSelectedBrandId(fetchedBrands[0]._id);
+                }
             } catch (error) {
                 console.error('Error fetching brands:', error);
             }
         };
         fetchBrands();
-    }, [setBrands, baseURL]);
+    }, [setBrands, setSelectedBrandId, baseURL]);
 
     const toggleSidebar = () => setIsExpanded(prev => !prev);
     

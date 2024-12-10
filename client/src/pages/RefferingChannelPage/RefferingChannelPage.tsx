@@ -32,6 +32,7 @@ interface ChannelMetric {
 const ChannelSessionPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [filteredData, setFilteredData] = useState<ChannelMetric[]>([])
+  const [allTimeData, setAllTimeData]= useState<ChannelMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
   const now = new Date();
   const [data, setData] = useState<ChannelMetric[]>([]);
@@ -97,6 +98,33 @@ const ChannelSessionPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [navigate, startDate, endDate, brandId]);
+
+  const fetchAllTimeData = useCallback(async () => {
+    try {
+      const baseURL = import.meta.env.PROD
+        ? import.meta.env.VITE_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
+
+      const allTimeResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+      }, {
+        withCredentials: true
+      });
+
+
+      const fetchedAllTimeData = allTimeResponse.data[2].data || []
+      setAllTimeData(fetchedAllTimeData);
+    } catch (error) {
+      console.error('Error fetching all-time data:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        alert('Your session has expired. Please log in again.');
+        navigate('/');
+      }
+    }
+  }, [navigate, brandId]);
+
+  useEffect(() => {
+    fetchAllTimeData();
+  }, [fetchMetrics]);
 
   useEffect(() => {
     fetchMetrics();
@@ -247,7 +275,7 @@ const ChannelSessionPage: React.FC = () => {
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} />
               )}
             </div>
           </div>

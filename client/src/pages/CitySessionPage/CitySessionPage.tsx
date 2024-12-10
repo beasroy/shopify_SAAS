@@ -184,84 +184,84 @@ useEffect(() => {
     <div className="flex h-screen">
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-hidden flex flex-col">
-        <header className="px-6 py-4 border-b">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold text-primary">Location Metrics Overview</h1>
-            </div>
-            <div className="flex flex-row gap-3 items-center">
-              {lastUpdated && (
-                <span className="text-sm text-muted-foreground">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                </span>
-              )}
-              <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <DatePickerWithRange
-                date={date}
-                setDate={setDate}
-                defaultDate={{
-                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
-                  to: now,
-                }}
-              />
-            </div>
-          </div>
-        </header>
+      <header className="px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <MapPin className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-semibold text-primary">Location Metrics Overview</h1>
+        </div>
+        <div className="flex flex-row gap-3 items-center">
+          {lastUpdated && (
+            <span className="text-sm text-muted-foreground">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <DatePickerWithRange
+            date={date}
+            setDate={setDate}
+            defaultDate={{
+              from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
+              to: now,
+            }}
+          />
+        </div>
+      </div>
+    </header>
 
         <main className="flex-1 overflow-auto px-6 py-4">
           <div className="space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium">Analyze your location wise performance</h2>
-                <Ga4Logo />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Columns className="h-4 w-4" />
-                      <span>Select Columns</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56">
-                    {allColumns.map((column) => (
-                      <DropdownMenuItem key={column} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`column-${column}`}
-                          checked={selectedColumns.includes(column)}
-                          onCheckedChange={() => toggleColumnSelection(column)}
-                        />
-                        <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
-                          {column}
-                        </label>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <FilterComponent
-                  columns={numericColumns}
-                  onFiltersChange={applyFilters}
-                  filters={filters}
-                  setFilters={setFilters}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-medium">Analyze your location wise performance</h2>
+        <Ga4Logo />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Columns className="h-4 w-4" />
+              <span>Select Columns</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            {allColumns.map((column) => (
+              <DropdownMenuItem key={column} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`column-${column}`}
+                  checked={selectedColumns.includes(column)}
+                  onCheckedChange={() => toggleColumnSelection(column)}
                 />
-              </div>
-            </div>
+                <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
+                  {column}
+                </label>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <FilterComponent
+          columns={numericColumns}
+          onFiltersChange={applyFilters}
+          filters={filters}
+          setFilters={setFilters}
+        />
+      </div>
+    </div>
 
             {filters.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -276,7 +276,7 @@ useEffect(() => {
               </div>
             )}
 
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-hidden shadow-lg">
               {isLoading ? (
                 <TableSkeleton />
               ) : (

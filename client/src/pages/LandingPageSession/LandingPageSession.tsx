@@ -19,7 +19,7 @@ import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
 
-interface PageMetric {
+export interface PageMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
   "Checkouts": string;
@@ -31,6 +31,7 @@ interface PageMetric {
 
 const LandingPageSession: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [allTimeData, setAllTimeData]= useState<PageMetric[]>([])
   const [filteredData, setFilteredData] = useState<PageMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
   const [data, setData] = useState<PageMetric[]>([]);
@@ -107,6 +108,34 @@ const LandingPageSession: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [fetchMetrics]);
 
+  const fetchAllTimeData = useCallback(async () => {
+    try {
+      const baseURL = import.meta.env.PROD
+        ? import.meta.env.VITE_API_URL
+        : import.meta.env.VITE_LOCAL_API_URL;
+
+      const allTimeResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+      }, {
+        withCredentials: true
+      });
+
+
+      const fetchedAllTimeData = allTimeResponse.data[0].data || []
+      setAllTimeData(fetchedAllTimeData);
+    } catch (error) {
+      console.error('Error fetching all-time data:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        alert('Your session has expired. Please log in again.');
+        navigate('/');
+      }
+    }
+  }, [navigate, brandId]);
+
+  useEffect(() => {
+    fetchAllTimeData();
+  }, [fetchMetrics]);
+
+
   const handleManualRefresh = () => {
     fetchMetrics();
   };
@@ -167,7 +196,7 @@ const LandingPageSession: React.FC = () => {
                 date={date}
                 setDate={setDate}
                 defaultDate={{
-                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
+                  from: new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()),
                   to: now,
                 }}
               />
@@ -244,7 +273,7 @@ const LandingPageSession: React.FC = () => {
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} />
               )}
             </div>
           </div>

@@ -101,10 +101,6 @@ export default function EcommerceMetricsPage() {
 
   useEffect(() => {
     fetchMetrics()
-  }, [fetchMetrics])
-
-  useEffect(() => {
-    fetchMetrics()
     const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000)
     return () => clearInterval(intervalId)
   }, [fetchMetrics])

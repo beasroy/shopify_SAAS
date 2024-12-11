@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, Link2, LogOut, User2Icon, Store, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart } from 'lucide-react';
+import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, Link2, LogOut, User2Icon, Store,CircleDot, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart, CalendarFold } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -17,7 +17,7 @@ export interface Brand {
     googleAdAccount?: string;
 }
 export default function CollapsibleSidebar() {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
     const { user, setUser } = useUser();  
     const location = useLocation();
@@ -31,13 +31,17 @@ export default function CollapsibleSidebar() {
         const fetchBrands = async () => {
             try {
                 const response = await axios.get(`${baseURL}/api/brands/all`, { withCredentials: true });
-                setBrands(response.data);
+                const fetchedBrands = response.data;
+                setBrands(fetchedBrands);
+                if (fetchedBrands.length > 0) {
+                    setSelectedBrandId(fetchedBrands[0]._id);
+                }
             } catch (error) {
                 console.error('Error fetching brands:', error);
             }
         };
         fetchBrands();
-    }, [setBrands, baseURL]);
+    }, [setBrands, setSelectedBrandId, baseURL]);
 
     const toggleSidebar = () => setIsExpanded(prev => !prev);
     
@@ -68,6 +72,8 @@ export default function CollapsibleSidebar() {
         { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={20} /> },
         { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={20} /> },
         { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={20} /> },
+        { name: "Age based Reports", path: `/age-metrics/${selectedBrandId}`, icon: <CalendarFold size={20} />},
+        { name: "Gender based Reports", path: `/gender-metrics/${selectedBrandId}`, icon: <CircleDot size={20} />}
     ];
 
     const dashboards = [
@@ -92,7 +98,7 @@ export default function CollapsibleSidebar() {
 
     return (
         <TooltipProvider>
-            <div ref={sidebarRef} className={`bg-[rgb(4,16,33)] text-white transition-all duration-300 ease-in-out flex flex-col ${isExpanded ? 'w-64' : 'w-16'}`} style={{ height: '100vh' }}>
+            <div ref={sidebarRef} className={`bg-[rgb(4,16,33)] text-white transition-all duration-500 ease-in-out flex flex-col ${isExpanded ? 'w-64' : 'w-16'}`} style={{ height: '100vh' }}>
                 <div className={`flex justify-between items-center p-4 relative`}>
                     <div className="flex items-center cursor-pointer" onClick={() => navigate('/dashboard')}>
                         <img src={Logo} alt="Messold Logo" className="h-8 w-8" />

@@ -34,6 +34,7 @@ interface CityMetric {
 
 export default function CitySessionPage() {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [allTimeData, setAllTimeData]= useState<CityMetric[]>([])
   const [filteredData, setFilteredData] = useState<CityMetric[]>([])
   const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +75,9 @@ const toggleColumnSelection = (column: string) => {
     return allColumns.filter(col => newColumns.includes(col));
   });
 };
-
+useEffect(() => {
+  setSelectedColumns(allColumns);
+}, [])
 
 const fetchMetrics = useCallback(async () => {
   setIsLoading(true);
@@ -83,67 +86,70 @@ const fetchMetrics = useCallback(async () => {
       ? import.meta.env.VITE_API_URL
       : import.meta.env.VITE_LOCAL_API_URL;
 
-    // Prepare location filters based on removed columns
-    const requestBody = {
-      startDate: startDate,
-      endDate: endDate,
-      ...(removedColumns.length > 0 ? {
-        filters: {
-          location: removedColumns
-        }
-      } : {})
-    };
+    // Fetch all-time and date-specific metrics in parallel
+    const [analyticsResponse, allTimeResponse] = await Promise.all([
+      axios.post(
+        `${baseURL}/api/analytics/report/${brandId}`,
+        {
+          startDate: startDate || "",
+          endDate: endDate || "",
+          ...(removedColumns.length > 0
+            ? { filters: { location: removedColumns } }
+            : {}),
+        },
+        { withCredentials: true }
+      ),
+      axios.post(
+        `${baseURL}/api/analytics/report/${brandId}`,
+        { startDate: "", endDate: "" ,...(removedColumns.length > 0
+          ? { filters: { location: removedColumns } }
+          : {})},
+        { withCredentials: true }
+      ),
+    ]);
 
-    const analyticsResponse = await axios.post(
-      `${baseURL}/api/analytics/report/${brandId}`,
-      requestBody,
-      { withCredentials: true }
-    );
-
+    // Process the responses
     const fetchedData = analyticsResponse.data[1]?.data || [];
+    const fetchedAllTimeData = allTimeResponse.data[1]?.data || [];
+
     setData(fetchedData);
     setFilteredData(fetchedData);
+    setAllTimeData(fetchedAllTimeData);
     setLastUpdated(new Date());
 
     // Ensure selected columns match fetched data
     if (fetchedData.length > 0) {
       const newColumns = Object.keys(fetchedData[0]);
       setSelectedColumns((prevSelected) =>
-        prevSelected.filter((col) => newColumns.includes(col))
+        prevSelected.length === 0
+          ? newColumns
+          : prevSelected.filter((col) => newColumns.includes(col))
       );
     }
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error("Error fetching metrics:", error);
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      alert('Your session has expired. Please log in again.');
-      navigate('/');
+      alert("Your session has expired. Please log in again.");
+      navigate("/");
     }
   } finally {
     setIsLoading(false);
   }
-}, [navigate, brandId, removedColumns,startDate, endDate]);
+}, [navigate, brandId, removedColumns, startDate, endDate]);
 
+// Use fetchMetrics in useEffect
 useEffect(() => {
-  // Set all columns as selected when the component loads
-  setSelectedColumns(allColumns);
-}, [])
+  fetchMetrics();
+  const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000); // Refresh every 5 minutes
+  return () => clearInterval(intervalId);
+}, [fetchMetrics]);
+
+// Manual refresh handler
+const handleManualRefresh = () => {
+  fetchMetrics();
+};
 
 
-  
-
-  useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
-
-  useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
-
-  const handleManualRefresh = () => {
-    fetchMetrics();
-  };
 
   const sortedSelectedColumns = useMemo(() => {
     return allColumns.filter((col) => selectedColumns.includes(col));
@@ -184,84 +190,84 @@ useEffect(() => {
     <div className="flex h-screen">
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-hidden flex flex-col">
-        <header className="px-6 py-4 border-b">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold text-primary">Location Metrics Overview</h1>
-            </div>
-            <div className="flex flex-row gap-3 items-center">
-              {lastUpdated && (
-                <span className="text-sm text-muted-foreground">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                </span>
-              )}
-              <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <DatePickerWithRange
-                date={date}
-                setDate={setDate}
-                defaultDate={{
-                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
-                  to: now,
-                }}
-              />
-            </div>
-          </div>
-        </header>
+      <header className="px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <MapPin className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-semibold text-primary">Location Metrics Overview</h1>
+        </div>
+        <div className="flex flex-row gap-3 items-center">
+          {lastUpdated && (
+            <span className="text-sm text-muted-foreground">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <DatePickerWithRange
+            date={date}
+            setDate={setDate}
+            defaultDate={{
+              from: new Date(now.getFullYear(), now.getMonth(),1),
+              to: now,
+            }}
+          />
+        </div>
+      </div>
+    </header>
 
         <main className="flex-1 overflow-auto px-6 py-4">
           <div className="space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium">Analyze your location wise performance</h2>
-                <Ga4Logo />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Columns className="h-4 w-4" />
-                      <span>Select Columns</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56">
-                    {allColumns.map((column) => (
-                      <DropdownMenuItem key={column} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`column-${column}`}
-                          checked={selectedColumns.includes(column)}
-                          onCheckedChange={() => toggleColumnSelection(column)}
-                        />
-                        <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
-                          {column}
-                        </label>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <FilterComponent
-                  columns={numericColumns}
-                  onFiltersChange={applyFilters}
-                  filters={filters}
-                  setFilters={setFilters}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-medium">Analyze your location wise performance</h2>
+        <Ga4Logo />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Columns className="h-4 w-4" />
+              <span>Select Columns</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            {allColumns.map((column) => (
+              <DropdownMenuItem key={column} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`column-${column}`}
+                  checked={selectedColumns.includes(column)}
+                  onCheckedChange={() => toggleColumnSelection(column)}
                 />
-              </div>
-            </div>
+                <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
+                  {column}
+                </label>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <FilterComponent
+          columns={numericColumns}
+          onFiltersChange={applyFilters}
+          filters={filters}
+          setFilters={setFilters}
+        />
+      </div>
+    </div>
 
             {filters.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -276,11 +282,11 @@ useEffect(() => {
               </div>
             )}
 
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-hidden shadow-lg">
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} />
               )}
             </div>
           </div>

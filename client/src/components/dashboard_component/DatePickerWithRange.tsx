@@ -14,48 +14,58 @@ type DatePickerWithRangeProps = {
   resetToFirstPage?: () => void
 }
 
+import { useEffect } from "react"
+// (Rest of your imports remain the same)
+
 export function DatePickerWithRange({
   date,
   setDate,
   defaultDate,
   resetToFirstPage,
 }: DatePickerWithRangeProps) {
-  const [tempDate, setTempDate] = useState<DateRange | undefined>(date || defaultDate)
+  const [tempDate, setTempDate] = useState<DateRange | undefined>(date || defaultDate);
+
+  // Propagate defaultDate to parent on mount if date is undefined
+  useEffect(() => {
+    if (!date && defaultDate) {
+      setDate(defaultDate);
+    }
+  }, [date, defaultDate, setDate]);
 
   const handleDateChange = (newDate: DateRange | undefined) => {
-    setTempDate(newDate)
-  }
+    setTempDate(newDate);
+  };
 
   const handleUpdate = () => {
-    setDate(tempDate)
+    setDate(tempDate);
     if (resetToFirstPage) {
-      resetToFirstPage()
+      resetToFirstPage();
     }
-  }
+  };
 
   const setPresetRange = (from: Date, to: Date) => {
-    const newRange = { from, to }
-    setTempDate(newRange)
-  }
+    const newRange = { from, to };
+    setTempDate(newRange);
+  };
 
   const clearDateRange = () => {
-    setTempDate(undefined)
-  }
+    setTempDate(undefined);
+  };
 
   const formatDateRange = (range: DateRange | undefined) => {
     if (!range) {
       return defaultDate && defaultDate.from && defaultDate.to
         ? `${format(defaultDate.from, "LLL dd, y")} - ${format(defaultDate.to, "LLL dd, y")}`
-        : "Pick a date"
+        : "Pick a date";
     }
     if (range.from) {
       if (range.to) {
-        return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`
+        return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`;
       }
-      return format(range.from, "LLL dd, y")
+      return format(range.from, "LLL dd, y");
     }
-    return "Pick a date"
-  }
+    return "Pick a date";
+  };
 
   return (
     <div className="grid gap-2">
@@ -140,5 +150,6 @@ export function DatePickerWithRange({
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }
+

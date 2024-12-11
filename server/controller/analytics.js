@@ -397,6 +397,175 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 }
 
 
+export async function getAgeMetrics(req, res) {
+  try {
+    const { brandId } = req.params;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const credentials = getCredentials(brandId);
+    if (!credentials) {
+      console.warn(`No credentials found for brand ID: ${brandId}`);
+      return res.status(200).json([]);
+    }
+
+    const client = new BetaAnalyticsDataClient({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+
+    let { startDate, endDate,} = req.body;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
+      console.log(fourYearsAgo)
+      
+      now.setHours(23, 59, 59, 999);
+    
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+  
+      startDate = formatToLocalDateString(fourYearsAgo);
+      endDate = formatToLocalDateString(now);
+    }
+
+
+    const data = [];
+
+
+    const [response] = await client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'userAgeBracket' }], 
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' }
+      ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'userAgeBracket' }
+        }
+      ],
+    });
+
+    // Parse the data from the response
+    response.rows.forEach(row => {
+      data.push({
+        "Age": row.dimensionValues[0]?.value,
+        "Sessions": row.metricValues[0]?.value || 0,
+        "Add To Cart": row.metricValues[1]?.value || 0,
+        "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        "Checkouts": row.metricValues[2]?.value || 0,
+        "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        "Purchases": row.metricValues[3]?.value || 0,
+        "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+      });
+    });
+
+    // Send the data as response
+    res.status(200).json({
+      reportType: 'Agebased Data',
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Age data:', error);
+    res.status(500).json({ error: 'Failed to fetch Age data.' });
+  }
+}
+
+export async function getGenderMetrics(req, res) {
+  try {
+    const { brandId } = req.params;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const credentials = getCredentials(brandId);
+    if (!credentials) {
+      console.warn(`No credentials found for brand ID: ${brandId}`);
+      return res.status(200).json([]);
+    }
+
+    const client = new BetaAnalyticsDataClient({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+
+    let { startDate, endDate,} = req.body;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
+      console.log(fourYearsAgo)
+      
+      now.setHours(23, 59, 59, 999);
+    
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+  
+      startDate = formatToLocalDateString(fourYearsAgo);
+      endDate = formatToLocalDateString(now);
+    }
+
+
+    const data = [];
+
+
+    const [response] = await client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'userGender' }], 
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' }
+      ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'userGender' }
+        }
+      ],
+    });
+
+    // Parse the data from the response
+    response.rows.forEach(row => {
+      data.push({
+        "Gender": row.dimensionValues[0]?.value,
+        "Sessions": row.metricValues[0]?.value || 0,
+        "Add To Cart": row.metricValues[1]?.value || 0,
+        "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        "Checkouts": row.metricValues[2]?.value || 0,
+        "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        "Purchases": row.metricValues[3]?.value || 0,
+        "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+      });
+    });
+
+    // Send the data as response
+    res.status(200).json({
+      reportType: 'Gender based Data',
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Gender data:', error);
+    res.status(500).json({ error: 'Failed to fetch Gender data.' });
+  }
+}
 
 
 

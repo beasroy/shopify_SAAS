@@ -1,16 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ThumbsDown, Award } from 'lucide-react';
+import { PageMetric } from '@/pages/LandingPageSession/LandingPageSession';
 
 interface TableProps {
   columns: string[];
   data: any[];
-  rowsToShow?: number; 
+  rowsToShow?: number;
+  allTimeData?: PageMetric[]
 }
 
 const getConditionalTextColor = (value: number, average: number) => {
   if (value > average) return 'text-green-600';
   if (value < average) return 'text-red-600';
-  return 'text-gray-600';
+  return 'text-yellow-600';
 };
 
 
@@ -21,14 +23,17 @@ const getConditionalIcon = (value: number, average: number) => {
   return null;
 };
 
-const ReportTable: React.FC<TableProps> = ({ 
-  columns, 
-  data, 
-  rowsToShow, 
+const ReportTable: React.FC<TableProps> = ({
+  columns,
+  data,
+  rowsToShow,
+  allTimeData
 }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [filterLabel, setFilterLabel] = useState<'top' | 'worst' | null>(null);
+  const [filterLabel, setFilterLabel] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null);
+
 
   const comparisonColumns = ['Add To Cart Rate', 'Checkout Rate', 'Purchase Rate'];
 
@@ -45,35 +50,79 @@ const ReportTable: React.FC<TableProps> = ({
     return averages;
   }, [data]);
 
+  const allTimeAverageValues = useMemo(() => {
+    const averages: Record<string, number> = {};
+    comparisonColumns.forEach((key) => {
+      if (allTimeData) {
+        averages[key] =
+          allTimeData.reduce((sum, item) => sum + parsePercentage(item[key] || '0'), 0) / allTimeData.length;
+      } else {
+        averages[key] = 0;
+      }
+    });
+    return averages;
+  }, [allTimeData])
+
   const rowPerformanceLabels = useMemo(() => {
-    return data.map((item) => {
-      const isTopPerforming = comparisonColumns.some(column => {
-        const value = parsePercentage(item?.[column] || '0');
+    return data.map((item, _) => {
+      const currentPerformance = comparisonColumns.some((column) => {
+        const value = parsePercentage(item[column] || '0');
         const average = averageValues[column];
         return value > average;
       });
 
-      const isWorstPerforming = comparisonColumns.every(column => {
-        const value = parsePercentage(item?.[column] || '0');
+      const isWorstPerformingCurrent = comparisonColumns.every((column) => {
+        const value = parsePercentage(item[column] || '0');
         const average = averageValues[column];
         return value < average;
       });
 
-      if (isTopPerforming) return 'top';
-      if (isWorstPerforming) return 'worst';
-      return null;
+      const currentLabel = currentPerformance ? 'Current Top' : isWorstPerformingCurrent ? 'Current Worst' : '';
+
+      // Adjust all-time performance labels to ensure consistency
+      const allTimePerformance = comparisonColumns.some((column) => {
+        const value = parsePercentage(item[column] || '0');
+        const allTimeAverage = allTimeAverageValues[column];
+        return value > allTimeAverage;
+      });
+
+      const isWorstPerformingAllTime = comparisonColumns.every((column) => {
+        const value = parsePercentage(item[column] || '0');
+        const allTimeAverage = allTimeAverageValues[column];
+        return value < allTimeAverage;
+      });
+
+
+      // Assign labels for all-time performance
+      const allTimeLabel =
+        allTimePerformance
+          ? 'All Time Top'
+          : isWorstPerformingAllTime
+            ? 'All Time Worst'
+            : '';
+
+      return {
+        currentLabel,
+        allTimeLabel,
+      };
     });
-  }, [data, averageValues]);
+  }, [data, allTimeData, averageValues, allTimeAverageValues]);
+
+
+
+
 
   const parsedData = useMemo(() =>
     data.map((item, index) => ({
       ...item,
-      performanceLabel: rowPerformanceLabels?.[index] || null,
+      currentPerformanceLabel: rowPerformanceLabels?.[index]?.currentLabel || null,
+      allTimePerformanceLabel: rowPerformanceLabels?.[index]?.allTimeLabel || null,
       Sessions: Number(item?.Sessions || 0),
       'Add To Cart Rate': parsePercentage(item?.['Add To Cart Rate'] || '0'),
       'Checkout Rate': parsePercentage(item?.['Checkout Rate'] || '0'),
       'Purchase Rate': parsePercentage(item?.['Purchase Rate'] || '0'),
     })), [data, rowPerformanceLabels]);
+
 
 
   const sortedData = useMemo(() => {
@@ -116,30 +165,34 @@ const ReportTable: React.FC<TableProps> = ({
     ].includes(column);
   };
 
-  const handleLabelClick = (label: 'top' | 'worst') => {
-    if (filterLabel === label) {
-      setFilterLabel(null); // Remove the filter if the same label is clicked again
+  const handleClickLabel = (label: string, type: string) => {
+    if (filterLabel === label && filterType === type) {
+      setFilterLabel(null);
+      setFilterType(null);
     } else {
       setFilterLabel(label);
+      setFilterType(type);
     }
   };
 
+
   const filteredData = useMemo(() => {
     if (filterLabel) {
-      return sortedData.filter((item) => item.performanceLabel === filterLabel);
+      return sortedData.filter((item) => {
+        if (filterType === 'current') {
+          return item.currentPerformanceLabel === filterLabel;
+        }
+        if (filterType === 'allTime') {
+          return item.allTimePerformanceLabel === filterLabel;
+        }
+        return false;
+      });
     }
     return sortedData;
-  }, [sortedData, filterLabel]);
-  const maxSessions = useMemo(() => Math.max(...parsedData.map((item) => item.Sessions)), [parsedData]);
+  }, [sortedData, filterLabel, filterType]);
 
-const getBackgroundColor = (sessions: number) => {
-  const intensity = sessions / maxSessions;
-  return `rgba(0, 0, 255, ${Math.max(0.1, intensity)})`;
-};
-const getTextColor = (sessions: number) => {
-  const intensity = sessions / maxSessions;
-  return intensity > 0.7 ? 'text-white' : 'text-black';
-};
+
+
 
 
   return (
@@ -147,11 +200,13 @@ const getTextColor = (sessions: number) => {
       <table className="w-full text-center shadow-lg rounded-lg overflow-auto">
         <thead className="bg-white sticky top-0 z-10">
           <tr>
+            {allTimeData &&<th className="font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2">
+              Performance Label
+            </th>}
             {columns.map((column) => (
               <th
                 key={column}
-                className={`font-bold p-3 text-gray-800 text-sm uppercase min-w-[200px] border-b-2 ${isNumericColumn(column) ? 'cursor-pointer' : ''
-                  }`}
+                className={`font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2 capitalize ${isNumericColumn(column) ? 'cursor-pointer' : ''}`}
                 onClick={() => handleSort(column)}
                 style={{ position: 'sticky', top: 0 }}
               >
@@ -175,47 +230,68 @@ const getTextColor = (sessions: number) => {
           {filteredData.slice(0, rowsToShow).map((item, index) => (
             <tr
               key={index}
-              className={`${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-100 transition-colors duration-200 rounded-md`}
+              className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors duration-200 rounded-md`}
             >
+             {allTimeData &&
+              <td className="p-3 text-sm font-normal">
+                <div className="flex flex-col items-center gap-1.5 min-w-[150px]">
+                  {item.currentPerformanceLabel === 'Current Top' && (
+                    <span
+                      onClick={() => handleClickLabel('Current Top', 'current')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'Current Top' && filterType === 'current' ? 'ring-1 ring-green-500' : ''
+                        }`}
+                    >
+                      <ArrowUp size={16} />
+                      <span>Current Top</span>
+                    </span>
+                  )}
+                  {item.currentPerformanceLabel === 'Current Worst' && (
+                    <span
+                      onClick={() => handleClickLabel('Current Worst', 'current')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'Current Worst' && filterType === 'current' ? 'ring-1 ring-red-500' : ''
+                        }`}
+                    >
+                      <ArrowDown size={16} />
+                      <span>Current Worst</span>
+                    </span>
+                  )}
+                  {item.allTimePerformanceLabel === 'All Time Top' && (
+                    <span
+                      onClick={() => handleClickLabel('All Time Top', 'allTime')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-normal rounded-full cursor-pointer  ${filterLabel === 'All Time Top' && filterType === 'allTime' ? 'ring-1 ring-blue-500' : ''
+                        }`}
+                    >
+                      <Award size={16} />
+                      <span>All Time Top</span>
+                    </span>
+                  )}
+                  {item.allTimePerformanceLabel === 'All Time Worst' && (
+                    <span
+                      onClick={() => handleClickLabel('All Time Worst', 'allTime')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'All Time Worst' && filterType === 'allTime' ? 'ring-1 ring-orange-500' : ''
+                        }`}
+                    >
+                      <ThumbsDown size={16} />
+                      <span>All Time Worst</span>
+                    </span>
+                  )}
+                </div>
+              </td>}
               {columns.map((column) => {
                 const cellValue = item[column as keyof typeof item];
                 const isComparisonColumn = comparisonColumns.includes(column);
-                const firstColumn = columns[0];
-                
+
                 return (
                   <td
                     key={column}
-                    className={`p-3 text-sm font-normal ${column === 'Sessions'
-                      ? getTextColor(Number(item.Sessions))
-                      : isComparisonColumn
-                        ? getConditionalTextColor(cellValue as number, averageValues[column])
-                        : 'text-gray-800'
+                    className={`p-3 text-sm font-normal ${isComparisonColumn
+                      ? getConditionalTextColor(cellValue as number, averageValues[column])
+                      : 'text-gray-800'
                       }`}
-                      style={{
-                        backgroundColor: column === 'Sessions' ? getBackgroundColor(Number(item.Sessions)) : '',
-                      }}
                   >
                     <div className="flex items-center justify-center gap-2">
                       {isComparisonColumn ? `${(cellValue as number).toFixed(2)}%` : cellValue}
                       {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column])}
-                      
-                      {/* Performance Label for the specified column */}
-                      {column === firstColumn && item.performanceLabel === 'top' && (
-                        <span
-                          className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full cursor-pointer"
-                          onClick={() => handleLabelClick('top')}
-                        >
-                          Top
-                        </span>
-                      )}
-                      {column === firstColumn && item.performanceLabel === 'worst' && (
-                        <span
-                          className="ml-1 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full cursor-pointer"
-                          onClick={() => handleLabelClick('worst')}
-                        >
-                          Worst
-                        </span>
-                      )}
                     </div>
                   </td>
                 );
@@ -224,6 +300,7 @@ const getTextColor = (sessions: number) => {
           ))}
         </tbody>
       </table>
+
     </div>
   );
 };

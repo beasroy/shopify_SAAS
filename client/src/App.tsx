@@ -16,6 +16,8 @@ import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceDashboard.tsx';
 import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
+import AgeReportPage from './pages/AgeReportPage/AgeReportPage.tsx';
+import GenderReportPage from './pages/GenderReportPage/GenderReportPage.tsx';
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
           <Route path ="/city-metrics/:brandId" element={<CitySessionPage />} />
           <Route path ='/channel-metrics/:brandId' element={<ChannelSessionPage />} />
           <Route path ='/page-metrics/:brandId' element={<LandingPageSession />} />
+          <Route path = '/age-metrics/:brandId' element={<AgeReportPage/>} />
+          <Route path = '/gender-metrics/:brandId' element={<GenderReportPage/>} />
           <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />

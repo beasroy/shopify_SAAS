@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package } from 'lucide-react'
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,9 +9,6 @@ import { Button } from '@/components/ui/button'
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
-
-
-
 
 type Metrics = {
     products: number
@@ -70,14 +67,15 @@ export default function ProductTab() {
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
+    // Sorting state
+    const [sortColumn, setSortColumn] = useState<string | null>(null);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const handleTabChange = (newTabId: string) => {
         setActiveTab(newTabId);
         setCurrentPage(1);
         setExpandedCategories(new Set());
     };
-
-
 
     const fetchTabData = useCallback(
         async (tabId: string, body: Record<string, any> = {}, isFilterApplied: boolean = false) => {
@@ -97,7 +95,6 @@ export default function ProductTab() {
                 ...(startDate && { startDate }),
                 ...(endDate && { endDate }),
             };
-
 
             const cacheKey = `${tabId}-${startDate || "default"}-${endDate || "default"}`;
             const cachedData = cacheRef.current[cacheKey];
@@ -159,7 +156,6 @@ export default function ProductTab() {
     );
 
     useEffect(() => {
-
         const requestBody = {
             ...filterData,
             ...(startDate && { startDate }),
@@ -168,8 +164,6 @@ export default function ProductTab() {
 
         fetchTabData(activeTab, filterApplied ? requestBody : {}, filterApplied ? true : false);
     }, [activeTab, date, filterApplied, filterData]);
-
-
 
     const handleRowClick = (currentTab: string, rowData: Record<string, any>) => {
         const tabColumnMapping: Record<string, string> = {
@@ -213,8 +207,6 @@ export default function ProductTab() {
             console.warn(`No column or body key mapping found for tab: ${currentTab}`);
         }
     };
-
-
 
     const toggleCategory = (categoryPath: string) => {
         setExpandedCategories(prev => {
@@ -267,18 +259,44 @@ export default function ProductTab() {
             </React.Fragment>
         )
     }
-
-
+    const handleSort = (columnId: string) => {
+        if (sortColumn === columnId) {
+            setSortOrder(prevOrder => (prevOrder === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortColumn(columnId);
+            setSortOrder('asc');
+        }
+    };
     const getCurrentTabData = () => {
         const currentTab = tabs.find(tab => tab.id === activeTab)
         if (!currentTab || currentTab.id === 'categories') return { columns: [], data: [] }
 
-        const startIndex = (currentPage - 1) * rowsPerPage
-        const endIndex = startIndex + rowsPerPage
+        let sortedData = currentTab.data;
+
+        if (sortColumn) {
+            sortedData = [...sortedData].sort((a, b) => {
+                const aValue = a[sortColumn];
+                const bValue = b[sortColumn];
+
+                if (typeof aValue === 'number' && typeof bValue === 'number') {
+                    return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+                }
+
+                const stringA = String(aValue || '').toLowerCase();
+                const stringB = String(bValue || '').toLowerCase();
+
+                if (stringA < stringB) return sortOrder === 'asc' ? -1 : 1;
+                if (stringA > stringB) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
         return {
             columns: currentTab.columns,
-            data: currentTab.data.slice(startIndex, endIndex)
-        }
+            data: sortedData.slice(startIndex, endIndex),
+        };
     }
 
     const { columns, data } = getCurrentTabData()
@@ -295,7 +313,6 @@ export default function ProductTab() {
         { id: 'totalClicks', header: 'Clicks' },
         { id: 'ctr', header: 'CTR' },
         { id: 'AvgCPC', header: 'Avg CPC' },
-
     ]
 
     function TableSkeleton() {
@@ -326,219 +343,208 @@ export default function ProductTab() {
             </div>
         );
     }
-
     return (
-        <div className='w-full'>
-            <div className='flex flex-row gap-2 items-center mb-4'>
-                <GoogleLogo />
-                <h1 className='text-xl font-bold text-gray-800'>Google Ads Product Insights</h1>
-            </div>
-            <div className='bg-white p-6 rounded-xl shadow-lg border border-gray-200'>
-                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
-                    <div className="flex space-x-2" role="tablist">
-                        {tabs.map(tab => (
-                            <Button
-                                key={tab.id}
-                                variant={activeTab === tab.id ? "default" : "ghost"}
-                                onClick={() => handleTabChange(tab.id)}
-                                className="relative"
-                            >
-                                {tab.id === 'products' && <Package className="w-4 h-4 mr-2" />}
-                                {tab.id === 'categories' && <Layers className="w-4 h-4 mr-2" />}
-                                {tab.id === 'brands' && <Tag className="w-4 h-4 mr-2" />}
-                                {tab.id === 'productTypes' && <BarChart2 className="w-4 h-4 mr-2" />}
-                                {tab.label}
-                                {activeTab === tab.id && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-                                )}
-                            </Button>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <DatePickerWithRange
-                            date={date}
-                            setDate={setDate}
-                            defaultDate={{
-                                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                to: new Date(),
-                            }}
-                        />
-
-                        <Button variant="outline" size="icon">
-                            <Filter className={`h-4 w-4 ${filterApplied ? 'text-blue-600' : 'text-gray-600'}`} />
-                        </Button>
-
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" onClick={() => fetchTabData(activeTab, {}, false)}>
-                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                    </Button>
-                                </TooltipTrigger>
-                                {tabs.find(t => t.id === activeTab)?.lastUpdated && (
-                                    <TooltipContent>
-                                        <p>Last updated: {new Date(tabs.find(t => t.id === activeTab)?.lastUpdated || 0).toLocaleString()}</p>
-                                    </TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                </div>
-
-                <div className='space-y-4'>
-                    {filterApplied && (
-                        <div className="flex items-center gap-2 w-fit p-2 bg-blue-50 rounded-full">
-                            <span className="text-xs font-medium text-blue-700">{Object.entries(filterData).map(([key, value]) => `${key}: ${value}`).join(', ')}</span>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setFilterApplied(false);
-                                    setFilterData({});
-                                    setActiveTab('products')
-                                    cacheRef.current['products'] = null as any;
-                                    fetchTabData('products', {}, false);
-                                }}
-                                className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 p-1 h-auto"
-                            >
-                                <X className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    )}
-                    <div className="rounded-md border border-gray-200 overflow-hidden">
-                        <div className="max-h-[350px] overflow-auto">
-                            {loading ? <TableSkeleton /> : (
-                                <table className="w-full">
-                                    <thead className="sticky top-0 z-10 bg-[#4A628A]">
-                                        <tr>
-                                            {(activeTab === 'categories' ? categoryColumns : columns).map(column => (
-                                                <th key={column.id} className="px-4 py-3 text-left text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[150px]">
-                                                    <div className="flex items-center gap-1">
-                                                        {column.header}
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    </div>
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {activeTab === 'categories' ? (
-                                            tabs.find(tab => tab.id === 'categories')?.data.map((category: Category) =>
-                                                renderCategoryRow(category)
-                                            )
-                                        ) : (
-                                            data.map((row, i) => (
-                                                <tr key={i} className="hover:bg-gray-50">
-                                                    {columns.map((column) => {
-                                                        const value = column.cell(row[column.accessorKey]);
-                                                        const isIssuesColumn = column.id === 'issues';
-                                                        const isProductColumn = column.id === 'Products';
-                                                        const isStatusColumn = column.id === 'status';
-                                                        const isNoIssues = typeof value === 'string' && value.trim().toLowerCase() === 'no issues';
-
-                                                        const getStatusColor = (status: string) => {
-                                                            switch (status.trim().toUpperCase()) {
-                                                                case "UNSPECIFIED": return 'bg-gray-100 text-gray-800';
-                                                                case "UNKNOWN": return 'bg-yellow-100 text-yellow-800';
-                                                                case "NOT_ELIGIBLE": return 'bg-red-100 text-red-800';
-                                                                case "ELIGIBLE_LIMITED": return 'bg-orange-100 text-orange-800';
-                                                                case "ELIGIBLE": return 'bg-green-100 text-green-800';
-                                                                default: return 'bg-gray-100 text-gray-700';
-                                                            }
-                                                        };
-
-                                                        const renderCell = () => {
-                                                            if (isIssuesColumn) {
-                                                                return (
-                                                                    <div className={`flex items-center ${isNoIssues ? 'text-green-600' : 'text-red-600'}`}>
-                                                                        {isNoIssues ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                                                                        {value}
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            if (isStatusColumn) {
-                                                                const statusValue = value ? String(value) : '';
-                                                                const colorClass = getStatusColor(statusValue);
-                                                                return (
-                                                                    <div className={`px-2 py-1.5 rounded-full text-xs font-medium w-full ${colorClass} cursor-pointer`} onClick={() => handleRowClick(activeTab, row)}>
-                                                                        {statusValue}
-                                                                    </div>
-                                                                );
-                                                            }
-                                                            return column.cell ? column.cell(value) : value;
-                                                        };
-
-                                                        return (
-                                                            <td
-                                                                key={column.id}
-                                                                className={`px-4 py-2.5 text-sm whitespace-nowrap min-w-[150px] ${isProductColumn ? 'cursor-pointer text-blue-600 hover:text-blue-800' : ''}`}
-                                                                onClick={() => isProductColumn && handleRowClick(activeTab, row)}
-                                                            >
-                                                                {renderCell()}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))
-                                        )}
-                                        {(activeTab === 'categories' ? tabs.find(tab => tab.id === 'categories')?.data.length === 0 : data.length === 0) && (
-                                            <tr>
-                                                <td
-                                                    colSpan={(activeTab === 'categories' ? categoryColumns : columns).length}
-                                                    className="px-4 py-2 text-sm text-gray-500 text-center"
-                                                >
-                                                    No data available
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+    <div className='w-full'>
+        <div className='flex flex-row gap-2 items-center mb-4'>
+            <GoogleLogo />
+            <h1 className='text-xl font-bold text-gray-800'>Google Ads Product Insights</h1>
+        </div>
+        <div className='bg-white p-6 rounded-xl shadow-lg border border-gray-200'>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
+                <div className="flex space-x-2" role="tablist">
+                    {tabs.map(tab => (
+                        <Button
+                            key={tab.id}
+                            variant={activeTab === tab.id ? "default" : "ghost"}
+                            onClick={() => handleTabChange(tab.id)}
+                            className="relative"
+                        >
+                            {tab.id === 'products' && <Package className="w-4 h-4 mr-2" />}
+                            {tab.id === 'categories' && <Layers className="w-4 h-4 mr-2" />}
+                            {tab.id === 'brands' && <Tag className="w-4 h-4 mr-2" />}
+                            {tab.id === 'productTypes' && <BarChart2 className="w-4 h-4 mr-2" />}
+                            {tab.label}
+                            {activeTab === tab.id && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                             )}
+                        </Button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2">
+                    <DatePickerWithRange
+                        date={date}
+                        setDate={setDate}
+                        defaultDate={{
+                            from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                            to: new Date(),
+                        }}
+                    />
+                    <Button variant="outline" size="icon">
+                        <Filter className={`h-4 w-4 ${filterApplied ? 'text-blue-600' : 'text-gray-600'}`} />
+                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" onClick={() => fetchTabData(activeTab, {}, false)}>
+                                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                </Button>
+                            </TooltipTrigger>
+                            {tabs.find(t => t.id === activeTab)?.lastUpdated && (
+                                <TooltipContent>
+                                    <p>Last updated: {new Date(tabs.find(t => t.id === activeTab)?.lastUpdated || 0).toLocaleString()}</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            </div>
+
+            <div className='space-y-4'>
+                {filterApplied && (
+                    <div className="flex items-center gap-2 w-fit p-2 bg-blue-50 rounded-full">
+                        <span className="text-xs font-medium text-blue-700">{Object.entries(filterData).map(([key, value]) => `${key}: ${value}`).join(', ')}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setFilterApplied(false);
+                                setFilterData({});
+                                setActiveTab('products');
+                                cacheRef.current['products'] = null as any;
+                                fetchTabData('products', {}, false);
+                            }}
+                            className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 p-1 h-auto"
+                        >
+                            <X className="h-3 w-3" />
+                        </Button>
+                    </div>
+                )}
+                <div className="rounded-md border border-gray-200 overflow-hidden">
+                    <div className="max-h-[350px] overflow-auto">
+                        {loading ? <TableSkeleton /> : (
+                            <table className="w-full">
+                                <thead className="sticky top-0 z-10 bg-[#4A628A]">
+                                    <tr>
+                                        {(activeTab === 'categories' ? categoryColumns : columns).map(column => (
+                                            <th key={column.id} className="px-4 py-3 text-left text-xs font-medium text-gray-50 uppercase tracking-wider min-w-[150px] cursor-pointer" onClick={() => handleSort(column.id)}>
+                                            <div className="flex items-center gap-1">
+                                                {column.header}
+                                                {sortColumn === column.id ? (
+                                                    sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                                                ) : (
+                                                    <ArrowUpDown className="h-4 w-4" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {activeTab === 'categories' ? (
+                                        tabs.find(tab => tab.id === 'categories')?.data.map((category: Category) =>
+                                            renderCategoryRow(category)
+                                        )
+                                    ) : (
+                                        data.map((row, i) => (
+                                            <tr key={i} className="hover:bg-gray-50">
+                                                {columns.map((column) => {
+                                                    const value = column.cell(row[column.accessorKey]);
+                                                    const isIssuesColumn = column.id === 'issues';
+                                                    const isProductColumn = column.id === 'Products';
+                                                    const isStatusColumn = column.id === 'status';
+                                                    const isNoIssues = typeof value === 'string' && value.trim().toLowerCase() === 'no issues';
+
+                                                    const getStatusColor = (status: string) => {
+                                                        switch (status.trim().toUpperCase()) {
+                                                            case "UNSPECIFIED": return 'bg-gray-100 text-gray-800';
+                                                            case "UNKNOWN": return 'bg-yellow-100 text-yellow-800';
+                                                            case "NOT_ELIGIBLE": return 'bg-red-100 text-red-800';
+                                                            case "ELIGIBLE_LIMITED": return 'bg-orange-100 text-orange-800';
+                                                            case "ELIGIBLE": return 'bg-green-100 text-green-800';
+                                                            default: return 'bg-gray-100 text-gray-700';
+                                                        }
+                                                    };
+
+                                                    const renderCell = () => {
+                                                        if (isIssuesColumn) {
+                                                            return (
+                                                                <div className={`flex items-center ${isNoIssues ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {isNoIssues ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
+                                                                    {value}
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        if (isStatusColumn) {
+                                                            const statusValue = value ? String(value) : '';
+                                                            const colorClass = getStatusColor(statusValue);
+                                                            return (
+                                                                <div className={`px-2 py-1.5 rounded-full text-xs font-medium w-full ${colorClass} cursor-pointer`} onClick={() => handleRowClick(activeTab, row)}>
+                                                                    {statusValue}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return column.cell ? column.cell(value) : value;
+                                                    };
+
+                                                    return (
+                                                        <td
+                                                            key={column.id}
+                                                            className={`px-4 py-2.5 text-sm whitespace-nowrap min-w-[150px] ${isProductColumn ? 'cursor-pointer text-blue-600 hover:text-blue-800' : ''}`}
+                                                            onClick={() => isProductColumn && handleRowClick(activeTab, row)}
+                                                        >
+                                                            {renderCell()}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))
+                                    )}
+                                    {(activeTab === 'categories' ? tabs.find(tab => tab.id === 'categories')?.data.length === 0 : data.length === 0) && (
+                                        <tr>
+                                            <td
+                                                colSpan={(activeTab === 'categories' ? categoryColumns : columns).length}
+                                                className="px-4 py-2 text-sm text-gray-500 text-center"
+                                            >
+                                                No data available
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <div className="text-sm text-gray-700">
+                            Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, tabs.find(t => t.id === activeTab)?.data.length || 0)} of {tabs.find(t => t.id === activeTab)?.data.length || 0} entries
                         </div>
-                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <div className="flex items-center space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Previous
+                            </Button>
                             <div className="text-sm text-gray-700">
-                                Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, tabs.find(t => t.id === activeTab)?.data.length || 0)} of {tabs.find(t => t.id === activeTab)?.data.length || 0} entries
+                                Page {currentPage} of {totalPages}
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4 mr-1" />
-                                    Previous
-                                </Button>
-                                <div className="text-sm text-gray-700">
-                                    Page {currentPage} of {totalPages}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    Next
-                                    <ChevronRight className="h-4 w-4 ml-1" />
-                                </Button>
-                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    )
-}
-
-// function TableSkeleton() {
-//     return (
-//         <div className="animate-pulse">
-//             <div className="h-10 bg-gray-200 mb-4"></div>
-//             {[...Array(5)].map((_, i) => (
-//                 <div key={i} className="h-16 bg-gray-100 mb-2"></div>
-//             ))}
-//         </div>
-//     )
-// }
-
+    </div>
+    );
+};      

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
@@ -18,8 +18,13 @@ export default function AuthForm() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [errors, setErrors] = useState({ username: '', email: '', password: '' })
-  const { setUser } = useUser();
+  const { user,setUser } = useUser();
 
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const toggleForm = () => setIsLogin(!isLogin)
 

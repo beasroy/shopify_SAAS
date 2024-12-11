@@ -34,6 +34,7 @@ interface CityMetric {
 
 export default function CitySessionPage() {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [allTimeData, setAllTimeData]= useState<CityMetric[]>([])
   const [filteredData, setFilteredData] = useState<CityMetric[]>([])
   const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +75,9 @@ const toggleColumnSelection = (column: string) => {
     return allColumns.filter(col => newColumns.includes(col));
   });
 };
-
+useEffect(() => {
+  setSelectedColumns(allColumns);
+}, [])
 
 const fetchMetrics = useCallback(async () => {
   setIsLoading(true);
@@ -83,67 +86,70 @@ const fetchMetrics = useCallback(async () => {
       ? import.meta.env.VITE_API_URL
       : import.meta.env.VITE_LOCAL_API_URL;
 
-    // Prepare location filters based on removed columns
-    const requestBody = {
-      startDate: startDate,
-      endDate: endDate,
-      ...(removedColumns.length > 0 ? {
-        filters: {
-          location: removedColumns
-        }
-      } : {})
-    };
+    // Fetch all-time and date-specific metrics in parallel
+    const [analyticsResponse, allTimeResponse] = await Promise.all([
+      axios.post(
+        `${baseURL}/api/analytics/report/${brandId}`,
+        {
+          startDate: startDate || "",
+          endDate: endDate || "",
+          ...(removedColumns.length > 0
+            ? { filters: { location: removedColumns } }
+            : {}),
+        },
+        { withCredentials: true }
+      ),
+      axios.post(
+        `${baseURL}/api/analytics/report/${brandId}`,
+        { startDate: "", endDate: "" ,...(removedColumns.length > 0
+          ? { filters: { location: removedColumns } }
+          : {})},
+        { withCredentials: true }
+      ),
+    ]);
 
-    const analyticsResponse = await axios.post(
-      `${baseURL}/api/analytics/report/${brandId}`,
-      requestBody,
-      { withCredentials: true }
-    );
-
+    // Process the responses
     const fetchedData = analyticsResponse.data[1]?.data || [];
+    const fetchedAllTimeData = allTimeResponse.data[1]?.data || [];
+
     setData(fetchedData);
     setFilteredData(fetchedData);
+    setAllTimeData(fetchedAllTimeData);
     setLastUpdated(new Date());
 
     // Ensure selected columns match fetched data
     if (fetchedData.length > 0) {
       const newColumns = Object.keys(fetchedData[0]);
       setSelectedColumns((prevSelected) =>
-        prevSelected.filter((col) => newColumns.includes(col))
+        prevSelected.length === 0
+          ? newColumns
+          : prevSelected.filter((col) => newColumns.includes(col))
       );
     }
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error("Error fetching metrics:", error);
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      alert('Your session has expired. Please log in again.');
-      navigate('/');
+      alert("Your session has expired. Please log in again.");
+      navigate("/");
     }
   } finally {
     setIsLoading(false);
   }
-}, [navigate, brandId, removedColumns,startDate, endDate]);
+}, [navigate, brandId, removedColumns, startDate, endDate]);
 
+// Use fetchMetrics in useEffect
 useEffect(() => {
-  // Set all columns as selected when the component loads
-  setSelectedColumns(allColumns);
-}, [])
+  fetchMetrics();
+  const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000); // Refresh every 5 minutes
+  return () => clearInterval(intervalId);
+}, [fetchMetrics]);
+
+// Manual refresh handler
+const handleManualRefresh = () => {
+  fetchMetrics();
+};
 
 
-  
-
-  useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
-
-  useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
-
-  const handleManualRefresh = () => {
-    fetchMetrics();
-  };
 
   const sortedSelectedColumns = useMemo(() => {
     return allColumns.filter((col) => selectedColumns.includes(col));
@@ -203,7 +209,7 @@ useEffect(() => {
             date={date}
             setDate={setDate}
             defaultDate={{
-              from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
+              from: new Date(now.getFullYear(), now.getMonth(),1),
               to: now,
             }}
           />
@@ -280,7 +286,7 @@ useEffect(() => {
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} />
+                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} />
               )}
             </div>
           </div>

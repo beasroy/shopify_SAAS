@@ -22,9 +22,9 @@ import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalCo
 interface ChannelMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
-  "Checkouts" : string;
+  "Checkouts": string;
   "Checkout Rate": string;
-  "Purchases":string;
+  "Purchases": string;
   "Purchase Rate": string;
   [key: string]: string;
 }
@@ -32,7 +32,7 @@ interface ChannelMetric {
 const ChannelSessionPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [filteredData, setFilteredData] = useState<ChannelMetric[]>([])
-  const [allTimeData, setAllTimeData]= useState<ChannelMetric[]>([])
+  const [allTimeData, setAllTimeData] = useState<ChannelMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
   const now = new Date();
   const [data, setData] = useState<ChannelMetric[]>([]);
@@ -51,93 +51,66 @@ const ChannelSessionPage: React.FC = () => {
       const newColumns = prev.includes(column)
         ? prev.filter(col => col !== column)
         : [...prev, column];
-      
+
       return allColumns.filter(col => newColumns.includes(col));
     });
   };
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
-
-      const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
-        startDate: startDate,
-        endDate: endDate
-      }, {
-        withCredentials: true
-      });
-
+  
+      // Fetch all-time and date-specific metrics
+      const [analyticsResponse, allTimeResponse] = await Promise.all([
+        axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+          startDate: startDate || "",
+          endDate: endDate || ""
+        }, { withCredentials: true }),
+        axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+          startDate: "",
+          endDate: ""
+        }, { withCredentials: true })
+      ]);
+  
       const fetchedData = analyticsResponse.data[2].data || [];
-
+      const fetchedAllTimeData = allTimeResponse.data[2].data || [];
+  
       setData(fetchedData);
       setFilteredData(fetchedData);
+      setAllTimeData(fetchedAllTimeData);
       setLastUpdated(new Date());
-
+  
       if (fetchedData.length > 0) {
-        if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]); 
-          setSelectedColumns(allColumns);
-        } else {
-          const newColumns = Object.keys(fetchedData[0]);
-          setSelectedColumns((prevSelected) =>
-            prevSelected.filter((col) => newColumns.includes(col))
-          );
-        }
+        const allColumns = Object.keys(fetchedData[0]);
+        setSelectedColumns((prevSelected) =>
+          prevSelected.length === 0
+            ? allColumns
+            : prevSelected.filter((col) => allColumns.includes(col))
+        );
       }
-
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error("Error fetching data:", error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
+        alert("Your session has expired. Please log in again.");
+        navigate("/");
       }
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, startDate, endDate, brandId]);
-
-  const fetchAllTimeData = useCallback(async () => {
-    try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
-      const allTimeResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
-      }, {
-        withCredentials: true
-      });
-
-
-      const fetchedAllTimeData = allTimeResponse.data[2].data || []
-      setAllTimeData(fetchedAllTimeData);
-    } catch (error) {
-      console.error('Error fetching all-time data:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        navigate('/');
-      }
-    }
-  }, [navigate, brandId]);
-
+  }, [brandId, startDate, endDate, navigate]);
+  
   useEffect(() => {
-    fetchAllTimeData();
-  }, [fetchMetrics]);
-
-  useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
-
-  useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 5 * 60 * 1000);
+    fetchData();
+    const intervalId = setInterval(fetchData, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
+  }, [fetchData]);
+  
 
   const handleManualRefresh = () => {
-    fetchMetrics();
+    fetchData();
   };
 
   const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
@@ -145,7 +118,7 @@ const ChannelSessionPage: React.FC = () => {
 
   const applyFilters = useCallback((filters: FilterItem[]) => {
     let result = [...data];
-    
+
     filters.forEach(filter => {
       result = result.filter(item => {
         const value = item[filter.column as keyof ChannelMetric] as string;
@@ -198,7 +171,7 @@ const ChannelSessionPage: React.FC = () => {
                 date={date}
                 setDate={setDate}
                 defaultDate={{
-                  from: new Date(now.getFullYear() - 4, now.getMonth(), now.getDate()),
+                  from: new Date(now.getFullYear(), now.getMonth(), 1),
                   to: now,
                 }}
               />

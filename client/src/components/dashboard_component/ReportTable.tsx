@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ThumbsDown, Award } from 'lucide-react';
 import { PageMetric } from '@/pages/LandingPageSession/LandingPageSession';
 
 interface TableProps {
@@ -12,7 +12,7 @@ interface TableProps {
 const getConditionalTextColor = (value: number, average: number) => {
   if (value > average) return 'text-green-600';
   if (value < average) return 'text-red-600';
-  return 'text-gray-600';
+  return 'text-yellow-600';
 };
 
 
@@ -64,51 +64,50 @@ const ReportTable: React.FC<TableProps> = ({
   }, [allTimeData])
 
   const rowPerformanceLabels = useMemo(() => {
-    return data.map((item) => {
-      // Determine current performance labels based on current data and averages
-      const currentPerformance = comparisonColumns.some(column => {
-        const value = parsePercentage(item?.[column] || '0');
+    return data.map((item, _) => {
+      const currentPerformance = comparisonColumns.some((column) => {
+        const value = parsePercentage(item[column] || '0');
         const average = averageValues[column];
         return value > average;
       });
 
-      // Determine if it's the worst performing in the current date range
-      const isWorstPerformingCurrent = comparisonColumns.every(column => {
-        const value = parsePercentage(item?.[column] || '0');
+      const isWorstPerformingCurrent = comparisonColumns.every((column) => {
+        const value = parsePercentage(item[column] || '0');
         const average = averageValues[column];
         return value < average;
       });
 
-      // Create separate labels for current performance
       const currentLabel = currentPerformance ? 'Current Top' : isWorstPerformingCurrent ? 'Current Worst' : '';
 
-      // Calculate all-time performance labels independently of the current data
-      const allTimePerformance = allTimeData?.some((allItem) => {
-        return comparisonColumns.every(column => {
-          const allTimeAverage = allTimeAverageValues[column];
-          const value = parsePercentage(allItem?.[column] || '0');
-          return value > allTimeAverage;
-        });
+      // Adjust all-time performance labels to ensure consistency
+      const allTimePerformance = comparisonColumns.some((column) => {
+        const value = parsePercentage(item[column] || '0');
+        const allTimeAverage = allTimeAverageValues[column];
+        return value > allTimeAverage;
       });
 
-      // Determine if it's the worst performing in all-time data
-      const isWorstPerformingAllTime = allTimeData?.every((allItem) => {
-        return comparisonColumns.every(column => {
-          const allTimeAverage = allTimeAverageValues[column];
-          const value = parsePercentage(allItem?.[column] || '0');
-          return value < allTimeAverage;
-        });
+      const isWorstPerformingAllTime = comparisonColumns.every((column) => {
+        const value = parsePercentage(item[column] || '0');
+        const allTimeAverage = allTimeAverageValues[column];
+        return value < allTimeAverage;
       });
 
-      // Create separate labels for all-time performance
-      const allTimeLabel = allTimePerformance ? 'All Time Top' : isWorstPerformingAllTime ? 'All Time Worst' : '';
+
+      // Assign labels for all-time performance
+      const allTimeLabel =
+        allTimePerformance
+          ? 'All Time Top'
+          : isWorstPerformingAllTime
+            ? 'All Time Worst'
+            : '';
 
       return {
         currentLabel,
-        allTimeLabel
+        allTimeLabel,
       };
     });
   }, [data, allTimeData, averageValues, allTimeAverageValues]);
+
 
 
 
@@ -201,14 +200,13 @@ const ReportTable: React.FC<TableProps> = ({
       <table className="w-full text-center shadow-lg rounded-lg overflow-auto">
         <thead className="bg-white sticky top-0 z-10">
           <tr>
-            {/* Header for Performance Label */}
-            <th className="font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2">
+            {allTimeData &&<th className="font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2">
               Performance Label
-            </th>
+            </th>}
             {columns.map((column) => (
               <th
                 key={column}
-                className={`font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2 ${isNumericColumn(column) ? 'cursor-pointer' : ''}`}
+                className={`font-bold p-3 text-gray-800 text-sm min-w-[160px] border-b-2 capitalize ${isNumericColumn(column) ? 'cursor-pointer' : ''}`}
                 onClick={() => handleSort(column)}
                 style={{ position: 'sticky', top: 0 }}
               >
@@ -234,33 +232,51 @@ const ReportTable: React.FC<TableProps> = ({
               key={index}
               className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors duration-200 rounded-md`}
             >
-              {/* Performance Label Column */}
+             {allTimeData &&
               <td className="p-3 text-sm font-normal">
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1.5 min-w-[150px]">
                   {item.currentPerformanceLabel === 'Current Top' && (
-                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full cursor-pointer">
-                      Current Top
+                    <span
+                      onClick={() => handleClickLabel('Current Top', 'current')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'Current Top' && filterType === 'current' ? 'ring-1 ring-green-500' : ''
+                        }`}
+                    >
+                      <ArrowUp size={16} />
+                      <span>Current Top</span>
                     </span>
                   )}
                   {item.currentPerformanceLabel === 'Current Worst' && (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full cursor-pointer">
-                      Current Worst
+                    <span
+                      onClick={() => handleClickLabel('Current Worst', 'current')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'Current Worst' && filterType === 'current' ? 'ring-1 ring-red-500' : ''
+                        }`}
+                    >
+                      <ArrowDown size={16} />
+                      <span>Current Worst</span>
                     </span>
                   )}
                   {item.allTimePerformanceLabel === 'All Time Top' && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full cursor-pointer">
-                      All Time Top
+                    <span
+                      onClick={() => handleClickLabel('All Time Top', 'allTime')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-normal rounded-full cursor-pointer  ${filterLabel === 'All Time Top' && filterType === 'allTime' ? 'ring-1 ring-blue-500' : ''
+                        }`}
+                    >
+                      <Award size={16} />
+                      <span>All Time Top</span>
                     </span>
                   )}
                   {item.allTimePerformanceLabel === 'All Time Worst' && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full cursor-pointer">
-                      All Time Worst
+                    <span
+                      onClick={() => handleClickLabel('All Time Worst', 'allTime')}
+                      className={`flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-800 text-xs font-normal rounded-full cursor-pointer ${filterLabel === 'All Time Worst' && filterType === 'allTime' ? 'ring-1 ring-orange-500' : ''
+                        }`}
+                    >
+                      <ThumbsDown size={16} />
+                      <span>All Time Worst</span>
                     </span>
                   )}
                 </div>
-              </td>
-
-              {/* Other columns */}
+              </td>}
               {columns.map((column) => {
                 const cellValue = item[column as keyof typeof item];
                 const isComparisonColumn = comparisonColumns.includes(column);

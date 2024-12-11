@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from "axios"
 import { format } from "date-fns"
-import { PanelsTopLeft, ChevronDown, Columns, RefreshCw, X } from 'lucide-react'
+import { ChevronDown, CircleDot, Columns, RefreshCw, X} from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -19,7 +19,8 @@ import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
 
-export interface PageMetric {
+
+interface GenderMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
   "Checkouts": string;
@@ -29,12 +30,13 @@ export interface PageMetric {
   [key: string]: string;
 }
 
-const LandingPageSession: React.FC = () => {
+const GenderReportPage: React.FC = () => {
   const [date, setDate] = useState<DateRange | undefined>(undefined);
-  const [allTimeData, setAllTimeData]= useState<PageMetric[]>([])
-  const [filteredData, setFilteredData] = useState<PageMetric[]>([])
+  const [filteredData, setFilteredData] = useState<GenderMetric[]>([])
+  const [allTimeData, setAllTimeData] = useState<GenderMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
-  const [data, setData] = useState<PageMetric[]>([]);
+  const now = new Date();
+  const [data, setData] = useState<GenderMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
@@ -43,7 +45,7 @@ const LandingPageSession: React.FC = () => {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
-  const now = new Date();
+
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -64,18 +66,18 @@ const LandingPageSession: React.FC = () => {
   
       // Fetch all-time and date-specific metrics
       const [analyticsResponse, allTimeResponse] = await Promise.all([
-        axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+        axios.post(`${baseURL}/api/analytics/genderReport/${brandId}`, {
           startDate: startDate || "",
           endDate: endDate || ""
         }, { withCredentials: true }),
-        axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
+        axios.post(`${baseURL}/api/analytics/genderReport/${brandId}`, {
           startDate: "",
           endDate: ""
         }, { withCredentials: true })
       ]);
   
-      const fetchedData = analyticsResponse.data[0].data || [];
-      const fetchedAllTimeData = allTimeResponse.data[0].data || [];
+      const fetchedData = analyticsResponse.data.data || [];
+      const fetchedAllTimeData = allTimeResponse.data.data || [];
   
       setData(fetchedData);
       setFilteredData(fetchedData);
@@ -106,7 +108,7 @@ const LandingPageSession: React.FC = () => {
     const intervalId = setInterval(fetchData, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [fetchData]);
-
+  
 
   const handleManualRefresh = () => {
     fetchData();
@@ -120,7 +122,7 @@ const LandingPageSession: React.FC = () => {
 
     filters.forEach(filter => {
       result = result.filter(item => {
-        const value = item[filter.column as keyof PageMetric] as string;
+        const value = item[filter.column as keyof GenderMetric] as string;
         if (['>', '<', '='].includes(filter.operator)) {
           const numValue = parseFloat(value);
           const filterValue = parseFloat(filter.value);
@@ -138,13 +140,14 @@ const LandingPageSession: React.FC = () => {
     setFilteredData(result); // Update filtered data
   }, [data]);
 
-  const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
-
-  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
   }
 
+  const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
+
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  
   return (
     <div className="flex h-screen">
       <CollapsibleSidebar />
@@ -152,8 +155,8 @@ const LandingPageSession: React.FC = () => {
         <header className="px-6 py-4 border-b">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <PanelsTopLeft className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold text-primary">Landing Page Metrics Overview</h1>
+              <CircleDot className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-semibold text-primary">Gender Metrics Overview</h1>
             </div>
             <div className="flex flex-row gap-3 items-center">
               {lastUpdated && (
@@ -180,7 +183,7 @@ const LandingPageSession: React.FC = () => {
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium">Analyze your landing page wise performance</h2>
+                <h2 className="text-lg font-medium">Analyze Gender wise performance</h2>
                 <Ga4Logo />
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -255,5 +258,4 @@ const LandingPageSession: React.FC = () => {
   )
 }
 
-export default LandingPageSession
-
+export default GenderReportPage;

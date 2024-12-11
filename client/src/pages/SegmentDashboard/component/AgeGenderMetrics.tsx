@@ -74,24 +74,23 @@ export default function AgeAndGenderMetrics() {
         campaignStatus: 'all' 
     });
 
-    // State for filter options with campaign statuses
+
     const [filterOptions, setFilterOptions] = useState<{
         campaigns: string[];
         adGroups: string[];
         ageRanges: string[];
         genders: string[];
         campaignAdGroupMap?: Record<string, string[]>;
-        statusOptions: string[]; // Added statusOptions
+        statusOptions: string[]; 
     }>({
         campaigns: [],
         adGroups: [],
         ageRanges: [],
         genders: [],
         campaignAdGroupMap: {},
-        statusOptions: ['REMOVED', 'PAUSED', 'ENABLED'], // Added status options
+        statusOptions: ['REMOVED', 'PAUSED', 'ENABLED'], 
     });
 
-    // Existing state variables
     const [data, setData] = useState<any[]>([]);
     const [tabs, setTabs] = useState<TabConfig[]>([
         { 
@@ -180,27 +179,38 @@ export default function AgeAndGenderMetrics() {
             console.log("Fetch Request Body:", requestBody); // Debug logging
     
             const response = await axios.post(apiEndpoint, requestBody, { withCredentials: true });
-    
+            const genderCampaignNames: string[] = response.data.genderCampaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
             if (response.data.success) {
-                // Extract campaign names for both age and gender metrics
-                const campaignNames: string[] = response.data.campaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
-                const genderCampaignNames: string[] = response.data.genderCampaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || [];
+                // Combine campaign names and ad groups from both age and gender metrics
+                const campaignNames: string[] = [
+                    ...(response.data.campaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || []),
+                    ...(response.data.campaignAdGroupPairs?.map((pair: { campaignName: string }) => pair.campaignName) || []),
+                    ...genderCampaignNames
+                ];
                 
-                // In fetchData function
-                const campaignAdGroupMap = response.data.campaignAdGroupPairs.reduce((acc: Record<string, string[]>, pair: CampaignAdGroupPair) => {
-                    acc[pair.campaignName] = pair.adGroups;
-                    return acc;
-                }, {});
-
+                // Initialize and update campaignAdGroupMap
+                const campaignAdGroupMap: Record<string, string[]> = {};
+                const campaignAdGroupPairs = [
+                    ...(response.data.campaignAdGroupPairs || []),
+                    ...(response.data.genderCampaignAdGroupPairs || [])
+                ];
+            
+                campaignAdGroupPairs.forEach((pair: CampaignAdGroupPair) => {
+                    campaignAdGroupMap[pair.campaignName] = pair.adGroups || [];
+                });
+            
+                // Get unique ad groups
+                const adGroups = Array.from(new Set(
+                    campaignAdGroupPairs.flatMap((pair: CampaignAdGroupPair) => pair.adGroups || [])
+                ));
+            
                 setFilterOptions(prevOptions => ({
                     ...prevOptions,
-                    campaigns: campaignNames,
-                    adGroups: response.data.campaignAdGroupPairs.flatMap((pair: { adGroups: any; }) => pair.adGroups),
+                    campaigns: Array.from(new Set(campaignNames)),
+                    adGroups: adGroups,
                     campaignAdGroupMap: campaignAdGroupMap
                 }));
-
-                console.log("whole data");
-                console.log("Extracted Campaign Names:", campaignNames); // Debugging log
+            
             
                 const data = tabId === 'gender' ? response.data.genderData || [] : response.data.ageData || [];
             
@@ -279,11 +289,12 @@ export default function AgeAndGenderMetrics() {
                             : t
                     )
                 );
-    
+                
                 const aggregatedData = tabId === 'gender' 
                     ? response.data.aggregatedRecords 
                     : response.data.ageRangeAggregatedMetrics;
-                
+                console.log("Aggregated Data:", aggregatedData);
+                console.log("Response Data afterfilter test:", response.data);
                 const processedGraphData = Object.entries(aggregatedData || {}).map(([key, metrics]) => {
                     const displayKey = tabId === 'gender' 
                         ? (key === 'MALE' ? 'Male' : key === 'FEMALE' ? 'Female' : key)
@@ -305,12 +316,13 @@ export default function AgeAndGenderMetrics() {
                     }
                     return baseEntry;
                 });
-    
+                console.log("Processed Graph Data:", processedGraphData);
                 setGraphData(processedGraphData);
                 setTotalRecords(response.data.totalRecords || 0);
                 setTotalPages(response.data.totalPages || 1);
                 setHasMoreData(currentPage * ROWS_PER_PAGE < response.data.totalRecords);
             }
+            
         } catch (error) {
             console.error(`Error fetching data:`, error);
             setGraphData(null);
@@ -343,27 +355,14 @@ export default function AgeAndGenderMetrics() {
             page: 1,
             limit: ROWS_PER_PAGE,
             status: filters.status === 'all' ? undefined : filters.status,
-            campaign: filterKey === 'campaign' ? value : filters.campaign,
-            adGroup: filterKey === 'adGroup' ? value : filters.adGroup,
-            
-            // Specifically handle age and gender filters
-            ...(activeTab === 'age' && {
-                agerange: filterKey === 'ageRange' ? value : 
-                          filters.ageRange !== 'all' ? filters.ageRange : undefined
-            }),
-            ...(activeTab === 'gender' && {
-                gender: filterKey === 'gender' ? value : 
-                        filters.gender !== 'all' ? filters.gender : undefined
-            })
+            campaign: filters.campaign === 'all' ? undefined : filters.campaign,
+            adGroup: filters.adGroup === 'all' ? undefined : filters.adGroup,
+            ...(activeTab === 'age' && filters.ageRange !== 'all' && { agerange: filters.ageRange }),
+            ...(activeTab === 'gender' && filters.gender !== 'all' && { gender: filters.gender })
         };
     
-        // Debug logging
-        console.log('Filter Change Request:', {
-            filterKey,
-            value,
-            activeTab,
-            requestBody
-        });
+        // Reset graph data before fetching
+        setGraphData(null);
     
         // Force data refresh with new filters
         fetchData(activeTab, requestBody, true);
@@ -387,6 +386,9 @@ export default function AgeAndGenderMetrics() {
             })
         };
     
+        // Reset graph data before fetching
+        setGraphData(null);
+        
         console.log('UseEffect Fetch Request:', { 
             activeTab, 
             filters, 
@@ -602,10 +604,22 @@ export default function AgeAndGenderMetrics() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="all">All Ad Groups</SelectItem>
-                                                    {(filters.campaign === 'all' 
-                                                        ? filterOptions.adGroups 
-                                                        : filterOptions.campaignAdGroupMap?.[filters.campaign] || []
-                                                    ).map(adGroup => (
+                                                    {(
+                                                        filterOptions.campaignAdGroupMap?.[filters.campaign] || 
+                                                        (activeTab === 'gender' 
+                                                            ? filterOptions.adGroups.filter(() => {
+                                                                if (filterOptions && filterOptions.campaignAdGroupMap) {
+                                                                    const campaign = Object.keys(filterOptions.campaignAdGroupMap).find(() => 
+                                                                        filterOptions.campaignAdGroupMap?.[filters.campaign]?.some(ag => 
+                                                                            filterOptions.campaignAdGroupMap?.[filters.campaign]?.includes(ag)
+                                                                        )
+                                                                    );
+                                                                    return campaign && filterOptions.campaigns.includes(campaign);
+                                                                }
+                                                                return false;
+                                                            })
+                                                            : filterOptions.adGroups)
+                                                    )?.map(adGroup => (
                                                         <SelectItem key={adGroup} value={adGroup}>
                                                             {adGroup}
                                                         </SelectItem>

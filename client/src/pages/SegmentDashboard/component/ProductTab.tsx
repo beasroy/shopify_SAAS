@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { ArrowUp, ArrowDown, ArrowUpDown, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Skeleton } from '@/components/ui/skeleton'

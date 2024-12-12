@@ -33,7 +33,9 @@ export default function CollapsibleSidebar() {
                 const response = await axios.get(`${baseURL}/api/brands/all`, { withCredentials: true });
                 const fetchedBrands = response.data;
                 setBrands(fetchedBrands);
-                if (fetchedBrands.length > 0) {
+    
+                // Only set the default brand if no brand is currently selected
+                if (!selectedBrandId && fetchedBrands.length > 0) {
                     setSelectedBrandId(fetchedBrands[0]._id);
                 }
             } catch (error) {
@@ -41,7 +43,8 @@ export default function CollapsibleSidebar() {
             }
         };
         fetchBrands();
-    }, [setBrands, setSelectedBrandId, baseURL]);
+    }, [setBrands, setSelectedBrandId, baseURL, selectedBrandId]);
+    
 
     const toggleSidebar = () => setIsExpanded(prev => !prev);
     

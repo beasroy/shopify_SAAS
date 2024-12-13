@@ -443,3 +443,45 @@ export const updateTokensForGoogleAndFb = async (req, res) => {
   
 //     res.json({ authUrl });
 // }
+// export const handleShopifyCallback = async (request) => {
+//     const url = new URL(request.url);
+//     const code = url.searchParams.get('code');
+//     const shop = url.searchParams.get('shop');
+//     const clientId = process.env.SHOPIFY_CLIENT_ID;
+//     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+  
+//     if (!code || !shop) {
+//       return {
+//         error: 'Missing required parameters: code or shop',
+//       };
+//     }
+  
+//     try {
+//       const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+//         client_id: clientId,
+//         client_secret: clientSecret,
+//         code: code,
+//       });
+  
+//       if (tokenResponse.data && tokenResponse.data.access_token) {
+//         // Return the access token
+//         const isProduction = process.env.NODE_ENV === 'production';
+
+//         const clientURL = isProduction
+//             ? 'https://parallels.messold.com/callback'
+//             : 'http://localhost:5173/callback';
+
+//         return res.redirect(clientURL + `?shopifyAccessToken=${tokenResponse.data.access_token}`);
+//       } else {
+//         return {
+//           error: 'Unable to get access token',
+//           details: tokenResponse.data,
+//         };
+//       }
+//     } catch (error) {
+//       return {
+//         error: 'Error occurred while fetching the access token',
+//         details: error.response?.data || error.message,
+//       };
+//     }
+//   };

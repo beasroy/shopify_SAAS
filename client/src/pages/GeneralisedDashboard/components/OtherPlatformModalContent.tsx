@@ -232,7 +232,7 @@ export default function OtherPlatformModalContent({
         console.error('Failed to get Facebook Auth URL');
       }
     } catch (error) {
-      console.error('Error getting Google Auth URL:', error);
+      console.error('Error getting Facebook Auth URL:', error);
     }
   }
 

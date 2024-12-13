@@ -430,58 +430,58 @@ export const updateTokensForGoogleAndFb = async (req, res) => {
     }
 };
 
-// export const getShopifyAuthUrl = (req, res)=>{
-//     const { shop } = req.body;
+export const getShopifyAuthUrl = (req, res)=>{
+    const { shop } = req.body;
 
-//     if (!shop) {
-//       return res.status(400).json({ error: 'Shop name is required' });
-//     }
+    if (!shop) {
+      return res.status(400).json({ error: 'Shop name is required' });
+    }
 
-//     const SCOPES ="read_analytics, write_returns, read_returns, write_orders, read_orders, write_customers, read_customers, write_products, read_products"
+    const SCOPES ="read_analytics, write_returns, read_returns, write_orders, read_orders, write_customers, read_customers, write_products, read_products"
   
-//     const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
+    const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
   
-//     res.json({ authUrl });
-// }
-// export const handleShopifyCallback = async (request) => {
-//     const url = new URL(request.url);
-//     const code = url.searchParams.get('code');
-//     const shop = url.searchParams.get('shop');
-//     const clientId = process.env.SHOPIFY_CLIENT_ID;
-//     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+    res.json({ success: true,authUrl });
+}
+export const handleShopifyCallback = async (request) => {
+    const url = new URL(request.url);
+    const code = url.searchParams.get('code');
+    const shop = url.searchParams.get('shop');
+    const clientId = process.env.SHOPIFY_CLIENT_ID;
+    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
   
-//     if (!code || !shop) {
-//       return {
-//         error: 'Missing required parameters: code or shop',
-//       };
-//     }
+    if (!code || !shop) {
+      return {
+        error: 'Missing required parameters: code or shop',
+      };
+    }
   
-//     try {
-//       const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
-//         client_id: clientId,
-//         client_secret: clientSecret,
-//         code: code,
-//       });
+    try {
+      const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+      });
   
-//       if (tokenResponse.data && tokenResponse.data.access_token) {
-//         // Return the access token
-//         const isProduction = process.env.NODE_ENV === 'production';
+      if (tokenResponse.data && tokenResponse.data.access_token) {
+        // Return the access token
+        const isProduction = process.env.NODE_ENV === 'production';
 
-//         const clientURL = isProduction
-//             ? 'https://parallels.messold.com/callback'
-//             : 'http://localhost:5173/callback';
+        const clientURL = isProduction
+            ? 'https://parallels.messold.com/dashboard'
+            : 'http://localhost:5173/dashboard';
 
-//         return res.redirect(clientURL + `?shopifyAccessToken=${tokenResponse.data.access_token}`);
-//       } else {
-//         return {
-//           error: 'Unable to get access token',
-//           details: tokenResponse.data,
-//         };
-//       }
-//     } catch (error) {
-//       return {
-//         error: 'Error occurred while fetching the access token',
-//         details: error.response?.data || error.message,
-//       };
-//     }
-//   };
+        return res.redirect(clientURL + `?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
+      } else {
+        return {
+          error: 'Unable to get access token',
+          details: tokenResponse.data,
+        };
+      }
+    } catch (error) {
+      return {
+        error: 'Error occurred while fetching the access token',
+        details: error.response?.data || error.message,
+      };
+    }
+  };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Upload, Check, ArrowRight, Building2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,10 +26,26 @@ export default function BrandSetup() {
   const [googleAdId , setGoogleAdId] = useState<string>('')
   const [ga4Id , setGa4Id] = useState<string>('')
   const [fbAdId , setFBAdId] = useState<string[]>([])
-  // const [shop, setShop] = useState<string>('')
-  // const [shopifyAccessToken, setShopifyAccessToken] = useState('')
+  const [shop, setShop] = useState<string>('')
+  const [shopifyAccessToken, setShopifyAccessToken] = useState('')
   const { toast } = useToast()
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('access_token');
+    const shopName = params.get('shop_name');
+
+    if (accessToken && shopName) {
+      setShopifyAccessToken(accessToken); 
+      setShop(shopName); 
+
+      setConnectedAccounts(prev => ({
+        ...prev,
+        Shopify: [shopName], 
+      }));
+    }
+  }, []);
 
   const handleConnect = (platform: string, account: string, accountId: string) => {
     setConnectedAccounts(prev => ({
@@ -46,20 +62,7 @@ export default function BrandSetup() {
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" })
   }
 
-  // const handleConnectShopify = (shopName: string, accessToken: string) => {
-  //   setShop(shopName);
-  //   setShopifyAccessToken(accessToken);
-  
-  //   setConnectedAccounts((prev) => ({
-  //     ...prev,
-  //     Shopify: [...(prev.Shopify || []), shopName], 
-  //   }));
-  
-  //   toast({
-  //     description: `Successfully connected Shopify store: ${shopName}`,
-  //     variant: "default",
-  //   });
-  // };
+ 
   
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +101,7 @@ export default function BrandSetup() {
       googleAdAccount: googleAdId || '',
       ga4Account: { PropertyID: ga4Id || '' },
       fbAdAccounts: fbAdId.map((accountId) => ( accountId )), 
-      // shopifyAccount:{ shopName: shop || '' , shopifyAccessToken: shopifyAccessToken || ''}
+      shopifyAccount:{ shopName: shop || '' , shopifyAccessToken: shopifyAccessToken || ''}
     };
   
     try {

@@ -10,16 +10,19 @@ export default function ShopifyModalContent() {
 
   const handleShopifyLogin = async () => {
     try {
-      const response = await axios.post(`${baseURL}/api/auth/facebook`,{shop:storeName}, { withCredentials: true });
+      const response = await axios.post(`${baseURL}/api/auth/shopify`, { shop: storeName }, { withCredentials: true });
       if (response.data.success) {
-        window.location.href = response.data.authURL;
+        const { authUrl } = response.data;
+        console.log('Generated Shopify Auth URL:', authUrl); // Log the URL to check if it's correct
+        window.location.href = authUrl;
       } else {
-        console.error('Failed to get shopify Auth URL');
+        console.error('Failed to get Shopify Auth URL');
       }
     } catch (error) {
-      console.error('Error getting shopify Auth URL:', error);
+      console.error('Error getting Shopify Auth URL:', error);
     }
-  }
+  };
+  
 
   return (
     <div className="mt-4 space-y-4">

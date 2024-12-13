@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
+// import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
@@ -146,9 +146,9 @@ const LandingPageSession: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen">
-      <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">
+    <div className="flex">
+      {/* <CollapsibleSidebar /> */}
+      <div className="flex-1 overflow-hidden flex flex-col">
         <header className="px-6 py-4 border-b">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">

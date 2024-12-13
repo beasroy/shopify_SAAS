@@ -68,20 +68,21 @@ export default function CollapsibleSidebar() {
 
     const reports = [
         { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
-        { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
-        { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={20} /> },
-        { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={20} /> },
-        { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={20} /> },
-        { name: "Age based Reports", path: `/age-metrics/${selectedBrandId}`, icon: <CalendarFold size={20} />},
-        { name: "Gender based Reports", path: `/gender-metrics/${selectedBrandId}`, icon: <CircleDot size={20} />}
+        // { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
+        // { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={20} /> },
+        // { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={20} /> },
+        // { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={20} /> },
+        // { name: "Age based Reports", path: `/age-metrics/${selectedBrandId}`, icon: <CalendarFold size={20} /> },
+        // { name: "Gender based Reports", path: `/gender-metrics/${selectedBrandId}`, icon: <CircleDot size={20} /> },
+        { name: "Reports Overview", path: `/reports/${selectedBrandId}`, icon: <CircleDot size={20} /> } 
     ];
-
     const dashboards = [
         { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={20} /> },
         { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
         { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />},
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
     ];
+
 
     const isItemDisabled = (item: any) => {
         if (!selectedBrandId) return true;
@@ -95,6 +96,7 @@ export default function CollapsibleSidebar() {
         }
         return false;
     };
+
 
     return (
         <TooltipProvider>
@@ -113,7 +115,7 @@ export default function CollapsibleSidebar() {
                             right: '-10px',
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            zIndex: 50,
+                            zIndex: 60,
                         }}
                         onClick={toggleSidebar}
                     >

@@ -18,6 +18,7 @@ import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
 import AgeReportPage from './pages/AgeReportPage/AgeReportPage.tsx';
 import GenderReportPage from './pages/GenderReportPage/GenderReportPage.tsx';
+import ReportsPage from './pages/ReportsPage.tsx';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="/dashboard" element={<GeneralDashboard />} />
           <Route path="/business-dashboard/:brandId" element={<BusinessDashboard />} />
           <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard/>} />
+          <Route path='/reports/:brandId' element={<ReportsPage />} />
           <Route path ="/ecommerce-metrics/:brandId" element={<EcommerceMetricsPage />} />
           <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
           <Route path ="/city-metrics/:brandId" element={<CitySessionPage />} />
@@ -40,6 +42,7 @@ function App() {
           <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
+          <Route path = '/ecommerce-metrics/:brandId' element={<EcommerceMetricsPage />} />
           <Route path="/callback" element={<GoogleCallback />} />
         </Routes>
       </Router>

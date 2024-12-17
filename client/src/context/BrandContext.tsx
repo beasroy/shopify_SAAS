@@ -25,8 +25,13 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load brands from local storage when the component mounts
   useEffect(() => {
     const storedBrands = localStorage.getItem('brands');
+    const storedSelectedBrandId = localStorage.getItem('selectedBrandId');
+
     if (storedBrands) {
       setBrands(JSON.parse(storedBrands));
+    }
+    if (storedSelectedBrandId) {
+      setSelectedBrandId(storedSelectedBrandId);
     }
   }, []);
 
@@ -37,8 +42,15 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [brands]);
 
+  useEffect(() => {
+    if (selectedBrandId) {
+      localStorage.setItem('selectedBrandId', selectedBrandId);
+    }
+  }, [selectedBrandId]);
+
   const resetBrand = () => {
     setSelectedBrandId(null);
+    localStorage.removeItem('selectedBrandId');
   };
 
   return (

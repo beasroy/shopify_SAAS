@@ -18,6 +18,7 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
+import { useUser } from "@/context/UserContext"
 
 interface EcommerceMetric {
   "Date": string
@@ -44,6 +45,7 @@ export default function EcommerceMetricsPage() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
   const [rowsToShow, setRowsToShow] = useState(50)
   const [filters, setFilters] = useState<FilterItem[]>([])
+  const {user}= useUser();
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns((prev) => {
@@ -67,6 +69,7 @@ export default function EcommerceMetricsPage() {
         {
           startDate: startDate,
           endDate: endDate,
+          userId: user?.id
         },
         { withCredentials: true }
       )

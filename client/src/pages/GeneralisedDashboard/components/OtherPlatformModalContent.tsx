@@ -146,10 +146,13 @@ export default function OtherPlatformModalContent({
 
     if (axiosError.response) {
       const { status, data } = axiosError.response;
-
+      const code = axiosError.code;
       if (status === 400) {
         setShowLoginButton(true);
       } else if (status === 403) {
+        setShowLoginButton(true);
+      } else if (status === 401 || code === 'TOKEN_EXPIRED') {
+        alert('Your Google session has expired. Please log in again.');
         setShowLoginButton(true);
       } else {
         console.error('Unhandled Error Status:', status);

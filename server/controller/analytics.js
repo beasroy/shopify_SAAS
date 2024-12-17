@@ -1,100 +1,75 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
+import User from "../models/User.js";
 import moment from "moment";
-
+import axios from 'axios'
+import { OAuth2Client } from 'google-auth-library';
 config();
 
+export async function getGoogleAccessToken(refreshToken) {
+  const oAuth2Client = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
 
-const getCredentials = (brandId) => {
-  switch (brandId) {
-    case '671b68bed3c4f462d681ef45':
-      return {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL_UDDSTUDIO,
-        private_key: process.env.GOOGLE_PRIVATE_KEY_UDDSTUDIO.replace(/\\n/g, '\n')
-      };
-    case '671b6925d3c4f462d681ef47':
-      return {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL_FISHERMANHUB,
-        private_key: process.env.GOOGLE_PRIVATE_KEY_FISHERMANHUB.replace(/\\n/g, '\n')
-      };
-    case '671b90c83aee55a69981a0c9':
-      return {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL_KOLORTHERAPI,
-        private_key: process.env.GOOGLE_PRIVATE_KEY_KOLORTHERAPI.replace(/\\n/g, '\n')
-      };
-    case '671b7d85f99634509a5f2693':
-      return {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL_REPRISE,
-        private_key: process.env.GOOGLE_PRIVATE_KEY_REPRISE.replace(/\\n/g, '\n')
-      };
-    case '671cc01d00989c5fdf2dcb11':
-      return {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL_MAYINCLOTHING,
-        private_key: process.env.GOOGLE_PRIVATE_KEY_MAYINCLOTHING.replace(/\\n/g, '\n')
-      };
-    default:
-      console.warn(`No credentials found for brand ID: ${brandId}`);
-      return null;
+  oAuth2Client.setCredentials({ refresh_token: refreshToken });
+
+  try {
+    const { token } = await oAuth2Client.getAccessToken();
+    return token;
+  } catch (error) {
+    console.error('Error fetching access token:', error);
+    throw new Error('Failed to generate access token.');
   }
-};
+}
 
-
-// Batch request handler
 export async function getBatchReports(req, res) {
   try {
     const { brandId } = req.params;
+    let { startDate, endDate, filters, userId } = req.body;
 
+    // Find the brand by ID
     const brand = await Brand.findById(brandId);
     if (!brand) {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    const credentials = getCredentials(brandId);
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
 
-    if (!credentials) {
-      console.warn(`No credentials found for brand ID: ${brandId}`);
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
     }
 
-    const client = new BetaAnalyticsDataClient({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    });
-
-
+    const accessToken = await getGoogleAccessToken(refreshToken);
+ 
     const propertyId = brand.ga4Account?.PropertyID;
+    if (!propertyId) {
+      return res.status(404).json({ success: false, message: 'GA4 Property ID not found for the brand.' });
+    }
 
-
-    let { startDate, endDate, filters } = req.body;
-
+    // Set default date range if not provided
     if (!startDate || !endDate) {
-      // Set default startDate to 4 years ago from today
       const now = new Date();
       const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
-      console.log(fourYearsAgo)
-      
-      // Set default endDate to the current date with time set to 23:59:59.999
-      now.setHours(23, 59, 59, 999);
-    
-      // Helper function to format date to 'YYYY-MM-DD' (ISO 8601) format
       const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-    
-      // Assign formatted default dates
+
       startDate = formatToLocalDateString(fourYearsAgo);
       endDate = formatToLocalDateString(now);
     }
-    
 
     const locationDimensionsSet = new Set();
-
-    // Add default dimensions if no filters are provided
     if (!filters || !filters.location) {
       locationDimensionsSet.add('city');
       locationDimensionsSet.add('country');
       locationDimensionsSet.add('region');
     } else {
-      // Add dimensions dynamically based on filters
       if (filters.location.includes('city')) {
         locationDimensionsSet.add('country');
       }
@@ -108,107 +83,96 @@ export async function getBatchReports(req, res) {
       }
     }
 
-    // Convert the Set to an array of objects if needed
     const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name }));
 
-
-    // Construct the batch request with individual report requests
-    const [batchResponse] = await client.batchRunReports({
-      property: `properties/${propertyId}`,
-      requests: [
-        // First report: Landing Page Report (limited monthly data)
+    const requestBody = {
+      "requests": [
         {
-          dateRanges: [
-            {
-              startDate, // Using startDate from req.body
-              endDate,   // Using endDate from req.body
-            },
+          "dateRanges": [
+            { "startDate": startDate, "endDate": endDate }
           ],
-          dimensions: [                // Group by month
-            { name: 'landingPage' }    // Landing page path
+          "dimensions": [
+            { "name": "landingPage" }
           ],
-          metrics: [
-            { name: 'totalUsers' },
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' },
-          ],
-        },
-        // Second report: Sessions by Location (monthly data)
-        {
-          dateRanges: [
-            {
-              startDate, // Using startDate from req.body
-              endDate,   // Using endDate from req.body
-            },
-          ],
-          dimensions: locationDimensions,
-          metrics: [
-            { name: 'totalUsers' },
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' }
-          ]
-
-        },
-        // Third report: Sessions by Referring Channel (monthly data)
-        {
-          dateRanges: [
-            {
-              startDate, // Using startDate from req.body
-              endDate,   // Using endDate from req.body
-            },
-          ],
-          dimensions: [
-            { name: 'sessionDefaultChannelGroup' }   // Referring channel
-          ],
-          metrics: [
-            { name: 'totalUsers' },
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' },
+          "metrics": [
+            { "name": "totalUsers" },
+            { "name": "sessions" },
+            { "name": "addToCarts" },
+            { "name": "checkouts" },
+            { "name": "ecommercePurchases" }
           ]
         },
-        // Fourth report: Returning Customer Rate (monthly data)
         {
-          dateRanges: [
-            {
-              startDate, // Using startDate from req.body
-              endDate,   // Using endDate from req.body
-            },
+          "dateRanges": [
+            { "startDate": startDate, "endDate": endDate }
           ],
-          dimensions: [
-            { name: 'yearMonth' },  // Group by month
-          ],
-          metrics: [
-            { name: 'totalUsers' },   // Total users (including both new and returning)
-            { name: 'newUsers' },     // New users in the given period
-          ],
+          "dimensions": locationDimensions,
+          "metrics": [
+            { "name": "totalUsers" },
+            { "name": "sessions" },
+            { "name": "addToCarts" },
+            { "name": "checkouts" },
+            { "name": "ecommercePurchases" }
+          ]
         },
         {
-          dateRanges: [
-            { startDate, endDate }
+          "dateRanges": [
+            { "startDate": startDate, "endDate": endDate }
           ],
-          dimensions: [
-            { name: 'yearMonth' },        // Unique ID for each purchase               // Date of the transaction
+          "dimensions": [
+            { "name": "sessionDefaultChannelGroup" }
           ],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'ecommercePurchases' }       // Number of items purchased            // Sessions that resulted in purchase
-          ],
+          "metrics": [
+            { "name": "totalUsers" },
+            { "name": "sessions" },
+            { "name": "addToCarts" },
+            { "name": "checkouts" },
+            { "name": "ecommercePurchases" }
+          ]
         },
-        //
+        {
+          "dateRanges": [
+            { "startDate": startDate, "endDate": endDate }
+          ],
+          "dimensions": [
+            { "name": "yearMonth" }
+          ],
+          "metrics": [
+            { "name": "totalUsers" },
+            { "name": "newUsers" }
+          ]
+        },
+        {
+          "dateRanges": [
+            { "startDate": startDate, "endDate": endDate }
+          ],
+          "dimensions": [
+            { "name": "yearMonth" }
+          ],
+          "metrics": [
+            { "name": "sessions" },
+            { "name": "ecommercePurchases" }
+          ]
+        }
       ]
-    });
+    };
+    
+ 
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:batchRunReports`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }
+    );    
 
-    // Format the batch responses
-    const batchData = batchResponse.reports.map((report, index) => {
-      // Add a unique report type for each report
+    const batchData = response.data.reports.map((report, index) => {
       switch (index) {
-        case 0: // Landing Page Report
+        case 0:
           return {
             reportType: 'Landing Page Report',
             data: report.rows.map(row => ({
@@ -221,9 +185,9 @@ export async function getBatchReports(req, res) {
               "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
               "Purchases": row.metricValues[4]?.value,
               "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            }))
+            })),
           };
-        case 1: // Sessions by Location
+        case 1:
           return {
             reportType: 'Sessions by Location',
             data: report.rows.map(row => {
@@ -242,9 +206,9 @@ export async function getBatchReports(req, res) {
                 "Purchases": row.metricValues[4]?.value,
                 "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
               };
-            })
+            }),
           };
-        case 2: // Sessions by Referring Channel
+        case 2:
           return {
             reportType: 'Sessions by Referring Channel',
             data: report.rows.map(row => ({
@@ -257,9 +221,9 @@ export async function getBatchReports(req, res) {
               "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
               "Purchases": row.metricValues[4]?.value,
               "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            }))
+            })),
           };
-        case 3: // Returning Customer Rate
+        case 3:
           return {
             reportType: 'Returning Customer Rate',
             data: report.rows.map(row => {
@@ -270,33 +234,33 @@ export async function getBatchReports(req, res) {
 
               return {
                 yearMonth: row.dimensionValues[0]?.value,
-                returnRate: returnRate.toFixed(2)  // Returning customer rate as percentage
+                returnRate: returnRate.toFixed(2),
               };
-            })
+            }),
           };
-        case 4: // Purchase Data
+        case 4:
           return {
             reportType: 'Purchase Data',
             data: report.rows.map(row => ({
-              yearMonth: row.dimensionValues[0]?.value,  // Date of the transaction
+              yearMonth: row.dimensionValues[0]?.value,
               sessions: row.metricValues[0]?.value,
               Purchase: row.metricValues[1]?.value,
-              ConversionRate: ((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2) || 0, // Conversion rate as percentage
-            }))
+              ConversionRate: ((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2) || 0,
+            })),
           };
         default:
           return [];
       }
     });
 
-
-    // Send the batch report data
     res.status(200).json(batchData);
   } catch (error) {
     console.error('Error fetching batch reports:', error);
     res.status(500).json({ error: 'Failed to fetch batch reports.' });
   }
 }
+
+
 
 
 export async function getDailyAddToCartAndCheckouts(req, res) {
@@ -308,93 +272,99 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    const credentials = getCredentials(brandId);
-    if (!credentials) {
-      console.warn(`No credentials found for brand ID: ${brandId}`);
-      return res.status(200).json([]);
-    }
-
-    const client = new BetaAnalyticsDataClient({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    });
-
     const propertyId = brand.ga4Account?.PropertyID;
 
-    // Get the startDate and endDate from the request body
-    let { startDate, endDate } = req.body;
+    let { startDate, endDate, userId } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
-
-      // First day of the current month in local time
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      console.log("firstDayOfMonth (IST):", firstDayOfMonth);
-
-      // Today's date in local time, setting time to 23:59:59.999 (last moment of the day)
       const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      currentDayOfMonth.setHours(23, 59, 59, 999);  // Set to the last moment of the day
-      console.log("currentDayOfMonth (IST):", currentDayOfMonth);
+      currentDayOfMonth.setHours(23, 59, 59, 999);
 
-      // Format the dates to YYYY-MM-DD in local time
-      const formatToLocalDateString = (date) => {
-        return date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-      };
+      const formatToLocalDateString = (date) =>
+        date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
 
       startDate = formatToLocalDateString(firstDayOfMonth);
       endDate = formatToLocalDateString(currentDayOfMonth);
     }
 
-    console.log("Date Range:", startDate, "to", endDate);
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
 
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
 
-    const data = [];
+    const accessToken = await getGoogleAccessToken(refreshToken);
 
+    const requestBody = {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'date' }],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'addToCarts' },
+            { name: 'checkouts' },
+            { name: 'ecommercePurchases' },
+          ],
+          orderBys: [
+            {
+              desc: false,
+              dimension: { dimensionName: 'date' },
+            },
+          ]
+    };
 
-    const [response] = await client.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'date' }], // Group by date
-      metrics: [
-        { name: 'sessions' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' }
-      ],
-      orderBys: [
-        {
-          desc: false,
-          dimension: { dimensionName: 'date' }
-        }
-      ],
-    });
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    // Parse the data from the response
-    response.rows.forEach(row => {
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn("No data found in the response.");
+      return res.status(200).json({
+        reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range',
+        data: [],
+      });
+    }
+
+    const data = rows.map((row) => {
       const Date = row.dimensionValues[0]?.value;
       const formattedDate = moment(Date).format("DD-MM-YYYY");
-      data.push({
-        "Date": formattedDate,
-        "Sessions": row.metricValues[0]?.value || 0,
+      return {
+        Date: formattedDate,
+        Sessions: row.metricValues[0]?.value || 0,
         "Add To Cart": row.metricValues[1]?.value || 0,
         "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Checkouts": row.metricValues[2]?.value || 0,
+        Checkouts: row.metricValues[2]?.value || 0,
         "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Purchases": row.metricValues[3]?.value || 0,
+        Purchases: row.metricValues[3]?.value || 0,
         "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-      });
+      };
     });
 
-    // Send the data as response
     res.status(200).json({
       reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range',
       data,
     });
   } catch (error) {
-    console.error('Error fetching daily Add to Cart and Checkout data:', error);
+    console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
   }
 }
+
 
 
 export async function getAgeMetrics(req, res) {
@@ -406,21 +376,8 @@ export async function getAgeMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    const credentials = getCredentials(brandId);
-    if (!credentials) {
-      console.warn(`No credentials found for brand ID: ${brandId}`);
-      return res.status(200).json([]);
-    }
-
-    const client = new BetaAnalyticsDataClient({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    });
-
     const propertyId = brand.ga4Account?.PropertyID;
-
-
-    let { startDate, endDate,} = req.body;
+    let { startDate, endDate, userId} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -436,39 +393,69 @@ export async function getAgeMetrics(req, res) {
     }
 
 
-    const data = [];
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
 
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
 
-    const [response] = await client.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'userAgeBracket' }], 
-      metrics: [
-        { name: 'sessions' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' }
-      ],
-      orderBys: [
-        {
-          desc: false,
-          dimension: { dimensionName: 'userAgeBracket' }
-        }
-      ],
-    });
+    const accessToken = await getGoogleAccessToken(refreshToken);
 
+    const requestBody = {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'userAgeBracket' }],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'addToCarts' },
+            { name: 'checkouts' },
+            { name: 'ecommercePurchases' },
+          ],
+          orderBys: [
+            {
+              desc: false,
+              dimension: { dimensionName: 'userAgeBracket' },
+            },
+          ]
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn("No data found in the response.");
+      return res.status(200).json({
+        reportType: 'Age based data',
+        data: [],
+      });
+    }
     // Parse the data from the response
-    response.rows.forEach(row => {
-      data.push({
-        "Age": row.dimensionValues[0]?.value,
-        "Sessions": row.metricValues[0]?.value || 0,
+    const data = rows.map((row) => {
+      const Age = row.dimensionValues[0]?.value;
+      return {
+        Age: Age,
+        Sessions: row.metricValues[0]?.value || 0,
         "Add To Cart": row.metricValues[1]?.value || 0,
         "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Checkouts": row.metricValues[2]?.value || 0,
+        Checkouts: row.metricValues[2]?.value || 0,
         "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Purchases": row.metricValues[3]?.value || 0,
+        Purchases: row.metricValues[3]?.value || 0,
         "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-      });
+      };
     });
 
     // Send the data as response
@@ -491,21 +478,8 @@ export async function getGenderMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'Brand not found.' });
     }
 
-    const credentials = getCredentials(brandId);
-    if (!credentials) {
-      console.warn(`No credentials found for brand ID: ${brandId}`);
-      return res.status(200).json([]);
-    }
-
-    const client = new BetaAnalyticsDataClient({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    });
-
     const propertyId = brand.ga4Account?.PropertyID;
-
-
-    let { startDate, endDate,} = req.body;
+    let { startDate, endDate, userId} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -521,39 +495,69 @@ export async function getGenderMetrics(req, res) {
     }
 
 
-    const data = [];
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
 
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
 
-    const [response] = await client.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'userGender' }], 
-      metrics: [
-        { name: 'sessions' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' }
-      ],
-      orderBys: [
-        {
-          desc: false,
-          dimension: { dimensionName: 'userGender' }
-        }
-      ],
-    });
+    const accessToken = await getGoogleAccessToken(refreshToken);
 
+    const requestBody = {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'userGender' }],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'addToCarts' },
+            { name: 'checkouts' },
+            { name: 'ecommercePurchases' },
+          ],
+          orderBys: [
+            {
+              desc: false,
+              dimension: { dimensionName: 'userAgeBracket' },
+            },
+          ]
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn("No data found in the response.");
+      return res.status(200).json({
+        reportType: 'Gender Based Data',
+        data: [],
+      });
+    }
     // Parse the data from the response
-    response.rows.forEach(row => {
-      data.push({
-        "Gender": row.dimensionValues[0]?.value,
-        "Sessions": row.metricValues[0]?.value || 0,
+    const data = rows.map((row) => {
+      const Gender = row.dimensionValues[0]?.value;
+      return {
+        Gender: Gender,
+        Sessions: row.metricValues[0]?.value || 0,
         "Add To Cart": row.metricValues[1]?.value || 0,
         "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Checkouts": row.metricValues[2]?.value || 0,
+        Checkouts: row.metricValues[2]?.value || 0,
         "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        "Purchases": row.metricValues[3]?.value || 0,
+        Purchases: row.metricValues[3]?.value || 0,
         "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-      });
+      };
     });
 
     // Send the data as response
@@ -566,8 +570,6 @@ export async function getGenderMetrics(req, res) {
     res.status(500).json({ error: 'Failed to fetch Gender data.' });
   }
 }
-
-
 
 
 

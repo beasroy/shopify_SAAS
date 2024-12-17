@@ -18,6 +18,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
+import { useUser } from "@/context/UserContext"
 
 interface AgeMetric {
   "Add To Carts": string;
@@ -44,7 +45,7 @@ const AgeReportPage: React.FC = () => {
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
-
+  const {user} = useUser();
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -67,11 +68,13 @@ const AgeReportPage: React.FC = () => {
       const [analyticsResponse, allTimeResponse] = await Promise.all([
         axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
           startDate: startDate || "",
-          endDate: endDate || ""
+          endDate: endDate || "",
+          userId: user?.id
         }, { withCredentials: true }),
         axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
           startDate: "",
-          endDate: ""
+          endDate: "",
+          userId: user?.id
         }, { withCredentials: true })
       ]);
   

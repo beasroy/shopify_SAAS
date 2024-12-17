@@ -19,7 +19,7 @@ const createGoogleAdsClient = (refreshToken) => {
 
 export const getGoogleAdAccounts = async (req, res) => {
     try {
-        const { userId } = req.body; 
+        const { userId } = req.body;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
         }
@@ -35,7 +35,7 @@ export const getGoogleAdAccounts = async (req, res) => {
             console.log('No cached data found for key:', cacheKey);
         }
 
-        // Retrieve user 
+        // Retrieve user
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
@@ -48,8 +48,8 @@ export const getGoogleAdAccounts = async (req, res) => {
 
         // Create customer instance
         const customer = client.Customer({
-            customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID, 
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID, 
+            customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
             refresh_token: user.googleRefreshToken,
         });
 
@@ -79,8 +79,22 @@ export const getGoogleAdAccounts = async (req, res) => {
         console.error('Error fetching Google accounts:', error);
 
         // Handle Google Ads API-specific errors
+        if (error.message && error.message.includes('invalid_grant')) {
+            console.log('Refresh token expired. Prompting user to reauthenticate.');
+
+            // Invalidate the user's refresh token in the database
+            await User.findByIdAndUpdate(req.body.userId, { googleRefreshToken: null });
+
+            return res.status(401).json({
+                message: 'Your Google session has expired. Please log in again to continue.',
+                code: 'TOKEN_EXPIRED',
+            });
+        }
+
         if (error.errors && Array.isArray(error.errors)) {
-            const googleError = error.errors.find(err => err.message.includes('OAuth access tokens is not associated with any Ads accounts'));
+            const googleError = error.errors.find(err =>
+                err.message.includes('OAuth access tokens is not associated with any Ads accounts')
+            );
             if (googleError) {
                 return res.status(400).json({
                     message: 'The Google account is not associated with any Ads accounts. Please ensure the account is linked to an Ads account.',
@@ -96,7 +110,6 @@ export const getGoogleAdAccounts = async (req, res) => {
         });
     }
 };
-
 
 export const getGa4PropertyIds = async (req, res) => {
     try {
@@ -163,6 +176,17 @@ export const getGa4PropertyIds = async (req, res) => {
     } catch (error) {
         console.error('Error fetching properties:', error.message);
         console.error('Stack trace:', error.stack);
+        if (error.message && error.message.includes('invalid_grant')) {
+            console.log('Refresh token expired. Prompting user to reauthenticate.');
+
+            // Invalidate the user's refresh token in the database
+            await User.findByIdAndUpdate(req.body.userId, { googleRefreshToken: null });
+
+            return res.status(401).json({
+                message: 'Your Google session has expired. Please log in again to continue.',
+                code: 'TOKEN_EXPIRED',
+            });
+        }
         res.status(500).json({ message: 'Error fetching properties.', error: error.message });
     }
 };

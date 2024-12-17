@@ -1,6 +1,7 @@
 export interface Brand {
     _id: string;
     name: string;
-    fbAdAccounts?: string[];
+    brandId: string;
+    fbAdAccounts?: [];
     googleAdAccount?: string;
 } 

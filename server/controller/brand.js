@@ -76,3 +76,21 @@ export const updateBrands = async(req,res) =>{
         res.status(500).json({ error: 'Failed to update brand. Please try again.' });
     }
 }
+
+export const filterBrands = async (req, res) => {
+    try {
+        const { brandIds } = req.body;
+
+        if (!brandIds || !Array.isArray(brandIds)) {
+            return res.status(400).json({ message: 'Invalid or missing brand IDs.' });
+        }
+
+        // Fetch brands matching the given IDs
+        const brands = await Brand.find({ _id: { $in: brandIds } });
+
+        res.status(200).json(brands);
+    } catch (error) {
+        console.error('Error filtering brands:', error);
+        res.status(500).json({ message: 'Error fetching brands.', error: error.message });
+    }
+};

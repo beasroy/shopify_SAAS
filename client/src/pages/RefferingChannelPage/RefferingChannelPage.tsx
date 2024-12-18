@@ -1,23 +1,21 @@
-import { useState, useCallback, useEffect, useMemo } from "react"
-import { useNavigate, useParams } from 'react-router-dom'
-import axios from "axios"
-import { format } from "date-fns"
-import { ChevronDown, Columns, Link2, RefreshCw, X } from "lucide-react"
-import { DateRange } from "react-day-picker"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useNavigate, useParams } from 'react-router-dom';
+import axios from "axios";
+import { format } from "date-fns";
+import { ChevronDown, Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-// import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
-import ReportTable from "@/components/dashboard_component/ReportTable"
-import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
-import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
+} from "@/components/ui/dropdown-menu";
+import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
+import ReportTable from "@/components/dashboard_component/ReportTable";
+import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport";
+import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent";
 
 interface ChannelMetric {
   "Add To Carts": string;
@@ -29,22 +27,26 @@ interface ChannelMetric {
   [key: string]: string;
 }
 
-const ChannelSessionPage: React.FC = () => {
-  const [date, setDate] = useState<DateRange | undefined>(undefined);
-  const [filteredData, setFilteredData] = useState<ChannelMetric[]>([])
-  const [allTimeData, setAllTimeData] = useState<ChannelMetric[]>([])
-  const [filters, setFilters] = useState<FilterItem[]>([])
-  const now = new Date();
+const ChannelSessionPage: React.FC<{ dateRange?: DateRange }> = ({ dateRange }) => {
+  const [date, setDate] = useState<DateRange | undefined>(dateRange);
+  const [filteredData, setFilteredData] = useState<ChannelMetric[]>([]);
+  const [allTimeData, setAllTimeData] = useState<ChannelMetric[]>([]);
+  const [filters, setFilters] = useState<FilterItem[]>([]);
   const [data, setData] = useState<ChannelMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
   const navigate = useNavigate();
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  const [rowsToShow, setRowsToShow] = useState(50)
+  const [rowsToShow, setRowsToShow] = useState(50);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Update date state when dateRange changes
+  useEffect(() => {
+    setDate(dateRange);
+  }, [dateRange]);
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -62,7 +64,7 @@ const ChannelSessionPage: React.FC = () => {
       const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
-  
+
       // Fetch all-time and date-specific metrics
       const [analyticsResponse, allTimeResponse] = await Promise.all([
         axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
@@ -74,15 +76,15 @@ const ChannelSessionPage: React.FC = () => {
           endDate: ""
         }, { withCredentials: true })
       ]);
-  
+
       const fetchedData = analyticsResponse.data[2].data || [];
       const fetchedAllTimeData = allTimeResponse.data[2].data || [];
-  
+
       setData(fetchedData);
       setFilteredData(fetchedData);
       setAllTimeData(fetchedAllTimeData);
       setLastUpdated(new Date());
-  
+
       if (fetchedData.length > 0) {
         const allColumns = Object.keys(fetchedData[0]);
         setSelectedColumns((prevSelected) =>
@@ -101,13 +103,12 @@ const ChannelSessionPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [brandId, startDate, endDate, navigate]);
-  
+
   useEffect(() => {
     fetchData();
     const intervalId = setInterval(fetchData, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [fetchData]);
-  
 
   const handleManualRefresh = () => {
     fetchData();
@@ -141,18 +142,19 @@ const ChannelSessionPage: React.FC = () => {
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
-  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
+  const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate'];
   const removeFilter = (index: number) => {
-    setFilters(filters.filter((_, i) => i !== index))
-  }
+    setFilters(filters.filter((_, i) => i !== index));
+  };
 
-
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
 
   return (
-    <div className="flex">
-      {/* <CollapsibleSidebar /> */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="px-6 py-4 border-b">
+    <div className={`flex ${isFullScreen ? 'fixed inset-0 z-50 bg-white' : ''}`}>
+      <div className={`flex-1 overflow-hidden flex flex-col ${isFullScreen ? 'h-full' : ''}`}>
+        {/* <header className="px-6 py-4 border-b">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <Link2 className="h-6 w-6 text-primary" />
@@ -169,24 +171,36 @@ const ChannelSessionPage: React.FC = () => {
               </Button>
               <DatePickerWithRange
                 date={date}
-                setDate={setDate}
+                setDate={(range) => {
+                  setDate(range);
+                  // Update dateRange state if needed
+                }}
                 defaultDate={{
                   from: new Date(now.getFullYear(), now.getMonth(), 1),
                   to: now,
                 }}
               />
+              <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
-        </header>
+        </header> */}
 
-        <main className="flex-1 overflow-auto px-6 py-4">
-          <div className="space-y-4">
+        <main className={`flex-1 overflow-auto px-6 py-4 ${isFullScreen ? 'h-full' : ''}`}>
+          <div className="space-y-4 h-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium">Analyze your Reffering Channel wise performance</h2>
+                <h2 className="text-lg font-medium">Analyze your Referring Channel wise performance</h2>
                 <Ga4Logo />
               </div>
               <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="flex items-center gap-2">
@@ -255,7 +269,7 @@ const ChannelSessionPage: React.FC = () => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default ChannelSessionPage;

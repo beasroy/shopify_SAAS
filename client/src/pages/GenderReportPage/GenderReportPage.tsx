@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from "axios"
 import { format } from "date-fns"
-import { ChevronDown, CircleDot, Columns, RefreshCw, X} from "lucide-react"
+import { ChevronDown, CircleDot, Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,13 +12,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-// import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import ReportTable from "@/components/dashboard_component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
-
 
 interface GenderMetric {
   "Add To Carts": string;
@@ -30,8 +28,12 @@ interface GenderMetric {
   [key: string]: string;
 }
 
-const GenderReportPage: React.FC = () => {
-  const [date, setDate] = useState<DateRange | undefined>(undefined);
+interface GenderBasedReportsProps {
+  dateRange: DateRange | undefined;
+}
+
+const GenderReportPage: React.FC<GenderBasedReportsProps> = ({ dateRange: propDateRange }) => {
+  const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [filteredData, setFilteredData] = useState<GenderMetric[]>([])
   const [allTimeData, setAllTimeData] = useState<GenderMetric[]>([])
   const [filters, setFilters] = useState<FilterItem[]>([])
@@ -41,11 +43,19 @@ const GenderReportPage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { brandId } = useParams();
   const navigate = useNavigate();
+  
+  // Use optional chaining to safely access date properties
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+  
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState(50)
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Update date state when prop changes
+  useEffect(() => {
+    setDate(propDateRange);
+  }, [propDateRange]);
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -148,11 +158,14 @@ const GenderReportPage: React.FC = () => {
 
   const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate']
   
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
+
   return (
-    <div className="flex">
-      {/* <CollapsibleSidebar /> */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="px-6 py-4 border-b">
+    <div className={`flex ${isFullScreen ? 'fixed inset-0 z-50 bg-white' : ''}`}>
+      <div className={`flex-1 overflow-hidden flex flex-col ${isFullScreen ? 'h-full' : ''}`}>
+        {/* <header className="px-6 py-4 border-b">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <CircleDot className="h-6 w-6 text-primary" />
@@ -175,18 +188,27 @@ const GenderReportPage: React.FC = () => {
                   to: now,
                 }}
               />
+              <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
-        </header>
+        </header> */}
 
-        <main className="flex-1 overflow-auto px-6 py-4">
-          <div className="space-y-4">
+        <main className={`flex-1 overflow-auto px-6 py-4 ${isFullScreen ? 'h-full' : ''}`}>
+          <div className="space-y-4 h-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-medium">Analyze Gender wise performance</h2>
                 <Ga4Logo />
               </div>
               <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="flex items-center gap-2">
@@ -244,11 +266,16 @@ const GenderReportPage: React.FC = () => {
               </div>
             )}
 
-            <div className="rounded-md border overflow-hidden">
+            <div className={`rounded-md border overflow-hidden ${isFullScreen ? 'h-full flex flex-col' : ''}`}>
               {isLoading ? (
                 <TableSkeleton />
               ) : (
-                <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} />
+                <ReportTable 
+                  columns={sortedSelectedColumns} 
+                  data={memoizedFilteredData} 
+                  rowsToShow={rowsToShow} 
+                  allTimeData={allTimeData} 
+                />
               )}
             </div>
           </div>

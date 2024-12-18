@@ -207,7 +207,7 @@ const CampaignMetricsPage: React.FC = () => {
   });
   const [googleData, setGoogleData] = useState<GoogleData | null>(null);
   const [facebookData, setFacebookData] = useState<FacebookAccount[]>([]);
-  const [selectedFacebookAccount, setSelectedFacebookAccount] = useState<string>("");
+  const [selectedFacebookAccount, setSelectedFacebookAccount] = useState<string>(""); 
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isFacebookLoading, setIsFacebookLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');

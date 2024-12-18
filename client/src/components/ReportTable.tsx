@@ -234,7 +234,7 @@ const ReportTable: React.FC<TableProps> = ({
       className="rounded-md overflow-x-auto relative"
       style={{ 
         width: '100%',  
-        maxHeight: 'calc(100vh - 400px)', 
+        maxHeight: 'calc(100vh- 400px)', 
         overflowX: 'auto' 
       }}
     >
@@ -331,7 +331,7 @@ const ReportTable: React.FC<TableProps> = ({
             >
               {columns[0] !== 'Daily E-Commerce' && allTimeData && (
                 <td
-                  className="p-3 text-sm font-normal sticky left-0 bg-white z-20 shadow-[2px_0_0_0_rgba(0,0,0,0.1)] border-r border-gray-300"
+                  className="p-3 text-sm font-normal sticky left-0 bg-white z-30 shadow-[2px_0_0_0_rgba(0,0,0,0.1)] border-r border-gray-300"
                   style={{
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -385,7 +385,7 @@ const ReportTable: React.FC<TableProps> = ({
                 </td>
               )}
               <td
-                className="p-3 text-sm font-normal sticky left-[150px] bg-white z-20 shadow-[2px_0_0_0_rgba(0,0,0,0.1)] border-r border-gray-300"
+                className="p-3 text-sm font-normal sticky left-[150px] bg-white z-30 shadow-[2px_0_0_0_rgba(0,0,0,0.1)] border-r border-gray-300"
                 style={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

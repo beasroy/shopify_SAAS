@@ -42,7 +42,6 @@ function App() {
           <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
-          <Route path = '/ecommerce-metrics/:brandId' element={<EcommerceMetricsPage />} />
           <Route path="/callback" element={<GoogleCallback />} />
         </Routes>
       </Router>

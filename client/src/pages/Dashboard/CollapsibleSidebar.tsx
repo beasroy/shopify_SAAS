@@ -115,7 +115,7 @@ export default function CollapsibleSidebar() {
                             right: '-10px',
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            zIndex: 60,
+                            zIndex: 50,
                         }}
                         onClick={toggleSidebar}
                     >

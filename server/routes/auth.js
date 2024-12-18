@@ -1,5 +1,5 @@
 import express from "express";
-import { userLogin, userLogout, userRegistration,getGoogleAuthURL,handleGoogleCallback, getFbAuthURL, handleFbCallback, updateTokensForGoogleAndFb } from "../controller/auth.js";
+import { userLogin, userLogout, userRegistration,getGoogleAuthURL,handleGoogleCallback, getFbAuthURL, handleFbCallback, updateTokensForGoogleAndFb, getShopifyAuthUrl, handleShopifyCallback } from "../controller/auth.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
 
@@ -12,6 +12,8 @@ router.get('/google/callback',handleGoogleCallback);
 router.get('/facebook',getFbAuthURL);
 router.get('/facebook/callback',handleFbCallback);
 router.get('/updateTokens/:type',verifyAuth,updateTokensForGoogleAndFb);
+router.post('/shopify',getShopifyAuthUrl);
+router.get('/shopify/callback',handleShopifyCallback);
 
 export default router;
 

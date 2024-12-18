@@ -13,6 +13,7 @@ import TopPagesPieChart from '../../components/dashboard_component/LandingPageCh
 import { DashboardData, CombinedData, DailyCartCheckoutReport } from './interfaces.ts';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx';
 import EcommerceMetrics from '@/components/dashboard_component/EcommerceChart.tsx';
+import { useUser } from '@/context/UserContext.tsx';
 
 
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [date, setDate] = useState<DateRange | undefined>(undefined); // Initialize state
+  const {user}= useUser();
 
   // const websocketUrl = import.meta.env.PROD ? 'wss://your-production-url' : 'ws://localhost:PORT';
 
@@ -66,7 +68,8 @@ export default function Dashboard() {
 
       const analyticsResponse = await axios.post(`${baseURL}/api/analytics/report/${brandId}`, {
         startDate: startDate,
-        endDate: endDate
+        endDate: endDate,
+        userId: user?.id
       }, {
         withCredentials: true
       });
@@ -75,7 +78,8 @@ export default function Dashboard() {
 
       const DailyAnalyticsResponse = await axios.post<DailyCartCheckoutReport>(`${baseURL}/api/analytics/atcreport/${brandId}`, {
         startDate: startDate,
-        endDate: endDate
+        endDate: endDate,
+        userId: user?.id
       }, { withCredentials: true });
 
       console.log("Daily Analytics Data:", DailyAnalyticsResponse.data);

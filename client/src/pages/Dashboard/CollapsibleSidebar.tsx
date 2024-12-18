@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, Link2, LogOut, User2Icon, Store,CircleDot, BarChart, CalendarRange, ShoppingCart, MapPin, PanelsTopLeft, LineChart, CalendarFold } from 'lucide-react';
+import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, LogOut, User2Icon, Store,CircleDot, BarChart, CalendarRange, LineChart,} from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -15,6 +15,7 @@ export interface Brand {
     name: string;
     fbAdAccounts?: string[];
     googleAdAccount?: string;
+    ga4Account?: {string : string};
 }
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(true);
@@ -29,19 +30,37 @@ export default function CollapsibleSidebar() {
     // Fetch brands
     useEffect(() => {
         const fetchBrands = async () => {
-            try {
-                const response = await axios.get(`${baseURL}/api/brands/all`, { withCredentials: true });
-                const fetchedBrands = response.data;
-                setBrands(fetchedBrands);
-                if (fetchedBrands.length > 0) {
-                    setSelectedBrandId(fetchedBrands[0]._id);
-                }
-            } catch (error) {
-                console.error('Error fetching brands:', error);
+          try {
+            if (!user?.brands || user.brands.length === 0) {
+              console.warn('No brand IDs found in user context.');
+              return;
             }
+      
+            const response = await axios.post(
+              `${baseURL}/api/brands/filter`,
+              { brandIds: user.brands },
+              { withCredentials: true }
+            );
+      
+            const fetchedBrands = response.data;
+            setBrands(fetchedBrands);
+      
+           
+            const storedSelectedBrandId = localStorage.getItem('selectedBrandId');
+            if (!storedSelectedBrandId && !selectedBrandId && fetchedBrands.length > 0) {
+              setSelectedBrandId(fetchedBrands[0]._id);
+            }
+          } catch (error) {
+            console.error('Error fetching brands:', error);
+          }
         };
+      
         fetchBrands();
-    }, [setBrands, setSelectedBrandId, baseURL]);
+      }, [user?.brands, setBrands, setSelectedBrandId, baseURL, selectedBrandId]);
+      
+      
+
+    
 
     const toggleSidebar = () => setIsExpanded(prev => !prev);
     
@@ -52,6 +71,8 @@ export default function CollapsibleSidebar() {
                 setUser(null);
                 localStorage.removeItem('user');
                 setSelectedBrandId(null);
+                localStorage.removeItem('selectedBrandId');
+                setBrands([]);
                 navigate('/');
             }
         } catch (error) {
@@ -125,7 +146,7 @@ export default function CollapsibleSidebar() {
 
                 <div className={`flex-1 overflow-y-auto ${isExpanded ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-16px)]'}`}>
                     <ScrollArea className="h-full">
-                        <nav className="mt-3">
+                       {brands && brands.length > 0 && <nav className="mt-3">
                             <SidebarItem 
                                 icon={<Store size={24} />} 
                                 text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') || "Unknown Brand" : "Your Brands"} 
@@ -182,7 +203,7 @@ export default function CollapsibleSidebar() {
                                     disabled={isItemDisabled(report)}
                                 />
                             ))}
-                        </nav>
+                        </nav>}
                     </ScrollArea>
                 </div>
 

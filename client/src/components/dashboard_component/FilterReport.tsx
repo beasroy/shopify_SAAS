@@ -43,9 +43,8 @@ export function FilterComponent({ columns, onFiltersChange,filters,setFilters }:
     <div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="outline" size={"icon"}>
             <Filter className="h-4 w-4" />
-            <span>Add Filter</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-80 p-4">

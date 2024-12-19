@@ -35,7 +35,7 @@ const ReportTable: React.FC<TableProps> = ({
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const [isResizing, setIsResizing] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = isFullScreen ? 14 : 7;
+  const rowsPerPage = isFullScreen ? 13 : 7;
 
   const tableRef = useRef<HTMLTableElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

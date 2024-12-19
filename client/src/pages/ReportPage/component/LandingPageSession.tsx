@@ -45,7 +45,7 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  const [rowsToShow, setRowsToShow] = useState(50);
+  const [rowsToShow, setRowsToShow] = useState<string>('50');
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const { user } = useUser();
@@ -76,12 +76,14 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
         axios.post(`${baseURL}/api/analytics/landingpageReport/${brandId}`, {
           startDate: startDate || "",
           endDate: endDate || "",
-          userId: user?.id
+          userId: user?.id,
+          limit: rowsToShow
         }, { withCredentials: true }),
         axios.post(`${baseURL}/api/analytics/landingpageReport/${brandId}`, {
           startDate: "",
           endDate: "",
-          userId: user?.id
+          userId: user?.id,
+          limit: rowsToShow
         }, { withCredentials: true })
       ]);
 
@@ -109,7 +111,7 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
     } finally {
       setIsLoading(false);
     }
-  }, [brandId, startDate, endDate, navigate]);
+  }, [brandId, startDate, endDate, navigate, rowsToShow]);
 
   useEffect(() => {
     fetchData();
@@ -204,14 +206,14 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+                    Show {rowsToShow === '10000' ? 'all' : rowsToShow} rows
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('50')}>Show 50 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('100')}>Show 100 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('10000')}>Show all rows</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -230,11 +232,11 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
             </div>
           )}
 
-          <div className="rounded-md border overflow-hidden">
+          <div className="rounded-md overflow-hidden">
             {isLoading ? (
               <TableSkeleton />
             ) : (
-              <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} isFullScreen={isFullScreen} />
+              <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData}  allTimeData={allTimeData} isFullScreen={isFullScreen} />
             )}
           </div>
         </div>

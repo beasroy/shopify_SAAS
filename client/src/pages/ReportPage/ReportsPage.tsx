@@ -12,6 +12,8 @@ import { DatePickerWithRange } from '@/components/dashboard_component/DatePicker
 import { useBrand } from '@/context/BrandContext';
 import { useParams } from 'react-router-dom';
 import ConnectGA4 from './ConnectGA4Page';
+import { ChartNoAxesCombined } from 'lucide-react';
+
 
 
 const ReportsPage: React.FC = () => {
@@ -23,7 +25,7 @@ const ReportsPage: React.FC = () => {
   const { brandId } = useParams<{ brandId: string }>();
   const { brands } = useBrand();
   const selectedBrand = brands.find((brand) => brand._id === brandId);
-  const hasGA4Account = selectedBrand?.ga4Account ?? false; 
+  const hasGA4Account = selectedBrand?.ga4Account ?? false;
 
 
   const resetToFirstPage = () => {
@@ -31,44 +33,60 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-auto">
-        {!hasGA4Account ? <ConnectGA4 /> :<>
-        <header className="sticky top-0 z-40 bg-white border-b px-4 py-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Reports Overview</h1>
-          <DatePickerWithRange
-            date={date}
-            setDate={setDate}
-            defaultDate={{from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-              to: new Date()}}
-            resetToFirstPage={resetToFirstPage}
-          />
-        </header>
-        {isLoading ? (
-          <TableSkeleton />
-        ) : (
-          <>
-            <section className="my-6">
-              <DailyEcommerceMetrics dateRange={date} />
-            </section>
-            <section className="mb-6">
-              <CityBasedReports dateRange={date} />
-            </section>
-            <section className="mb-6">
-              <LandingPageSession dateRange={date} />
-            </section>
-            <section className="mb-6">
-              <ChannelSessionPage dateRange={date} />
-            </section>
-            <section className="mb-6">
-              <AgeReportPage dateRange={date} />
-            </section>
-            <section className="mb-6">
-              <GenderBasedReports dateRange={date} />
-            </section>
-          </>
-        )}
+        {!hasGA4Account ? <ConnectGA4 /> : <>
+          <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="rounded-lg bg-secondary p-2 transition-transform duration-300 ease-in-out hover:scale-110">
+                    <ChartNoAxesCombined className="h-6 w-6 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-secondary-foreground to-primary">
+                    GA4 Insights & Trends
+                    </h1>
+                  </div>
+                </div>
+
+                <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange
+                    date={date}
+                    setDate={setDate}
+                    defaultDate={{
+                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      to: new Date()
+                    }}
+                    resetToFirstPage={resetToFirstPage}
+                  />
+                </div>
+              </div>
+          </header>
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
+            <>
+              <section className="my-6">
+                <DailyEcommerceMetrics dateRange={date} />
+              </section>
+              <section className="mb-6">
+                <CityBasedReports dateRange={date} />
+              </section>
+              <section className="mb-6">
+                <LandingPageSession dateRange={date} />
+              </section>
+              <section className="mb-6">
+                <ChannelSessionPage dateRange={date} />
+              </section>
+              <section className="mb-6">
+                <AgeReportPage dateRange={date} />
+              </section>
+              <section className="mb-6">
+                <GenderBasedReports dateRange={date} />
+              </section>
+            </>
+          )}
         </>}
       </div>
     </div>

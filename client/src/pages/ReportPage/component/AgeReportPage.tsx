@@ -49,13 +49,14 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
 
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [isFullScreen, setIsFullScreen]= useState<boolean>(false);
+  const [rowsToShow, setRowsToShow] = useState<string>('50')
+  const {user} = useUser();
 
   // Update date state when prop changes
   useEffect(() => {
     setDate(propDateRange);
   }, [propDateRange]);
-  const [rowsToShow, setRowsToShow] = useState(50)
-  const {user} = useUser();
+
 
   const toggleColumnSelection = (column: string) => {
     setSelectedColumns(prev => {
@@ -79,12 +80,14 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
         axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
           startDate: startDate || "",
           endDate: endDate || "",
-          userId: user?.id
+          userId: user?.id,
+          limit: rowsToShow
         }, { withCredentials: true }),
         axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
           startDate: "",
           endDate: "",
-          userId: user?.id
+          userId: user?.id,
+          limit: rowsToShow
         }, { withCredentials: true })
       ]);
 
@@ -112,7 +115,7 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
     } finally {
       setIsLoading(false);
     }
-  }, [brandId, startDate, endDate, navigate]);
+  }, [brandId, startDate, endDate, navigate, rowsToShow]);
 
   useEffect(() => {
     fetchData();
@@ -208,14 +211,14 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    Show {rowsToShow === 1000000 ? 'all' : rowsToShow} rows
+                    Show {rowsToShow === '10000' ? 'all' : rowsToShow} rows
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(50)}>Show 50 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(100)}>Show 100 rows</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setRowsToShow(1000000)}>Show all rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('50')}>Show 50 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('100')}>Show 100 rows</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setRowsToShow('10000')}>Show all rows</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -234,11 +237,11 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
             </div>
           )}
 
-          <div className="rounded-md border overflow-hidden">
+          <div className="rounded-md overflow-hidden">
             {isLoading ? (
               <TableSkeleton />
             ) : (
-              <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} rowsToShow={rowsToShow} allTimeData={allTimeData} isFullScreen={isFullScreen} />
+              <ReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} allTimeData={allTimeData} isFullScreen={isFullScreen} />
             )}
           </div>
         </div>

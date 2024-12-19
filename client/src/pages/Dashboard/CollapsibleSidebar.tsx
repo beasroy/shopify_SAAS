@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, LogOut, User2Icon, Store,CircleDot, BarChart, CalendarRange, LineChart,} from 'lucide-react';
+import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, LogOut, User2Icon, Store,ChartNoAxesCombined, BarChart, CalendarRange, LineChart,} from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MdCampaign } from "react-icons/md";
+
 
 export interface Brand {
     _id: string;
@@ -87,21 +88,13 @@ export default function CollapsibleSidebar() {
         }
     }, [location.pathname, setSelectedBrandId]);
 
-    const reports = [
-        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
-        // { name: "Daily E-Commerce Metrics Reports", path: `/ecommerce-metrics/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
-        // { name: "City based Reports", path: `/city-metrics/${selectedBrandId}`, icon: <MapPin size={20} /> },
-        // { name: "Landing Page based Reports", path: `/page-metrics/${selectedBrandId}`, icon: <PanelsTopLeft size={20} /> },
-        // { name: "Referring Channel based Reports", path: `/channel-metrics/${selectedBrandId}`, icon: <Link2 size={20} /> },
-        // { name: "Age based Reports", path: `/age-metrics/${selectedBrandId}`, icon: <CalendarFold size={20} /> },
-        // { name: "Gender based Reports", path: `/gender-metrics/${selectedBrandId}`, icon: <CircleDot size={20} /> },
-        { name: "Reports Overview", path: `/reports/${selectedBrandId}`, icon: <CircleDot size={20} /> } 
-    ];
     const dashboards = [
         { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={20} /> },
         { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
         { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />},
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
+        { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
+        { name: "GA4 Insights & Trends", path: `/reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> } 
     ];
 
 
@@ -184,23 +177,6 @@ export default function CollapsibleSidebar() {
                                         }
                                     }} 
                                     disabled={isItemDisabled(dashboard)}
-                                />
-                            ))}
-
-                            {reports.map((report, index) => (
-                                <SidebarItem 
-                                    key={index}
-                                    icon={report.icon}
-                                    text={report.name}
-                                    isExpanded={isExpanded}
-                                    isSelected={location.pathname === report.path}
-                                    tooltipContent={`${report.name}${isItemDisabled(report) ? ' (No campaign data available)' : ''}`}
-                                    onClick={() => {
-                                        if (!isItemDisabled(report)) {
-                                            navigate(report.path);
-                                        }
-                                    }} 
-                                    disabled={isItemDisabled(report)}
                                 />
                             ))}
                         </nav>}

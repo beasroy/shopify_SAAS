@@ -23,244 +23,6 @@ export async function getGoogleAccessToken(refreshToken) {
   }
 }
 
-export async function getBatchReports(req, res) {
-  try {
-    const { brandId } = req.params;
-    let { startDate, endDate, filters, userId } = req.body;
-
-    // Find the brand by ID
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
-    }
-
-    // Find the user by ID
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
-
-    const refreshToken = user.googleRefreshToken;
-    if (!refreshToken) {
-      console.warn(`No refresh token found for User ID: ${userId}`);
-      return res.status(200).json([]);
-    }
-
-    const accessToken = await getGoogleAccessToken(refreshToken);
- 
-    const propertyId = brand.ga4Account?.PropertyID;
-    if (!propertyId) {
-      return res.status(404).json({ success: false, message: 'GA4 Property ID not found for the brand.' });
-    }
-
-    // Set default date range if not provided
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-
-      startDate = formatToLocalDateString(fourYearsAgo);
-      endDate = formatToLocalDateString(now);
-    }
-
-    const locationDimensionsSet = new Set();
-    if (!filters || !filters.location) {
-      locationDimensionsSet.add('city');
-      locationDimensionsSet.add('country');
-      locationDimensionsSet.add('region');
-    } else {
-      if (filters.location.includes('city')) {
-        locationDimensionsSet.add('country');
-      }
-      if (filters.location.includes('region')) {
-        locationDimensionsSet.add('city');
-        locationDimensionsSet.add('country');
-      }
-      if (filters.location.includes('country')) {
-        locationDimensionsSet.add('city');
-        locationDimensionsSet.add('region');
-      }
-    }
-
-    const locationDimensions = Array.from(locationDimensionsSet).map(name => ({ name }));
-
-    const requestBody = {
-      "requests": [
-        {
-          "dateRanges": [
-            { "startDate": startDate, "endDate": endDate }
-          ],
-          "dimensions": [
-            { "name": "landingPage" }
-          ],
-          "metrics": [
-            { "name": "totalUsers" },
-            { "name": "sessions" },
-            { "name": "addToCarts" },
-            { "name": "checkouts" },
-            { "name": "ecommercePurchases" }
-          ]
-        },
-        {
-          "dateRanges": [
-            { "startDate": startDate, "endDate": endDate }
-          ],
-          "dimensions": locationDimensions,
-          "metrics": [
-            { "name": "totalUsers" },
-            { "name": "sessions" },
-            { "name": "addToCarts" },
-            { "name": "checkouts" },
-            { "name": "ecommercePurchases" }
-          ]
-        },
-        {
-          "dateRanges": [
-            { "startDate": startDate, "endDate": endDate }
-          ],
-          "dimensions": [
-            { "name": "sessionDefaultChannelGroup" }
-          ],
-          "metrics": [
-            { "name": "totalUsers" },
-            { "name": "sessions" },
-            { "name": "addToCarts" },
-            { "name": "checkouts" },
-            { "name": "ecommercePurchases" }
-          ]
-        },
-        {
-          "dateRanges": [
-            { "startDate": startDate, "endDate": endDate }
-          ],
-          "dimensions": [
-            { "name": "yearMonth" }
-          ],
-          "metrics": [
-            { "name": "totalUsers" },
-            { "name": "newUsers" }
-          ]
-        },
-        {
-          "dateRanges": [
-            { "startDate": startDate, "endDate": endDate }
-          ],
-          "dimensions": [
-            { "name": "yearMonth" }
-          ],
-          "metrics": [
-            { "name": "sessions" },
-            { "name": "ecommercePurchases" }
-          ]
-        }
-      ]
-    };
-    
- 
-    const response = await axios.post(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:batchRunReports`,
-      requestBody,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }
-    );    
-
-    const batchData = response.data.reports.map((report, index) => {
-      switch (index) {
-        case 0:
-          return {
-            reportType: 'Landing Page Report',
-            data: report.rows.map(row => ({
-              "Landing Page": row.dimensionValues[0]?.value,
-              "Visitors": row.metricValues[0]?.value,
-              "Sessions": row.metricValues[1]?.value,
-              "Add To Cart": row.metricValues[2]?.value,
-              "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              "Checkouts": row.metricValues[3]?.value,
-              "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              "Purchases": row.metricValues[4]?.value,
-              "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            })),
-          };
-        case 1:
-          return {
-            reportType: 'Sessions by Location',
-            data: report.rows.map(row => {
-              const rowData = {};
-              locationDimensions.forEach((dim, idx) => {
-                rowData[dim.name] = row.dimensionValues[idx]?.value;
-              });
-              return {
-                ...rowData,
-                "Visitors": row.metricValues[0]?.value,
-                "Sessions": row.metricValues[1]?.value,
-                "Add To Cart": row.metricValues[2]?.value,
-                "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-                "Checkouts": row.metricValues[3]?.value,
-                "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-                "Purchases": row.metricValues[4]?.value,
-                "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              };
-            }),
-          };
-        case 2:
-          return {
-            reportType: 'Sessions by Referring Channel',
-            data: report.rows.map(row => ({
-              "Channel": row.dimensionValues[0]?.value,
-              "Visitors": row.metricValues[0]?.value,
-              "Sessions": row.metricValues[1]?.value,
-              "Add To Cart": row.metricValues[2]?.value,
-              "Add To Cart Rate": ((row.metricValues[2]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              "Checkouts": row.metricValues[3]?.value,
-              "Checkout Rate": ((row.metricValues[3]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-              "Purchases": row.metricValues[4]?.value,
-              "Purchase Rate": ((row.metricValues[4]?.value / row.metricValues[1]?.value) * 100).toFixed(2) || 0,
-            })),
-          };
-        case 3:
-          return {
-            reportType: 'Returning Customer Rate',
-            data: report.rows.map(row => {
-              const totalUsers = parseInt(row.metricValues[0].value);
-              const newUsers = parseInt(row.metricValues[1].value);
-              const returningUsers = totalUsers - newUsers;
-              const returnRate = totalUsers > 0 ? (returningUsers / totalUsers) * 100 : 0;
-
-              return {
-                yearMonth: row.dimensionValues[0]?.value,
-                returnRate: returnRate.toFixed(2),
-              };
-            }),
-          };
-        case 4:
-          return {
-            reportType: 'Purchase Data',
-            data: report.rows.map(row => ({
-              yearMonth: row.dimensionValues[0]?.value,
-              sessions: row.metricValues[0]?.value,
-              Purchase: row.metricValues[1]?.value,
-              ConversionRate: ((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2) || 0,
-            })),
-          };
-        default:
-          return [];
-      }
-    });
-
-    res.status(200).json(batchData);
-  } catch (error) {
-    console.error('Error fetching batch reports:', error);
-    res.status(500).json({ error: 'Failed to fetch batch reports.' });
-  }
-}
-
-
-
 
 export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
@@ -273,7 +35,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -315,7 +77,8 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
               desc: false,
               dimension: { dimensionName: 'date' },
             },
-          ]
+          ],
+          limit: limit
     };
 
     const response = await axios.post(
@@ -375,7 +138,7 @@ export async function getLandingPageMetrics(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -416,7 +179,8 @@ export async function getLandingPageMetrics(req, res) {
           { "name": "addToCarts" },
           { "name": "checkouts" },
           { "name": "ecommercePurchases" }
-        ]
+        ],
+        "limit": limit
     };
 
     const response = await axios.post(
@@ -472,7 +236,7 @@ export async function getChannelMetrics(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId,limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -513,7 +277,8 @@ export async function getChannelMetrics(req, res) {
         { "name": "addToCarts" },
         { "name": "checkouts" },
         { "name": "ecommercePurchases" }
-      ]
+      ],
+      "limit": limit
     };
 
     const response = await axios.post(
@@ -569,7 +334,7 @@ export async function getLocationMetrics(req,res){
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId, filters} = req.body;
+    let { startDate, endDate, userId, filters, limit} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -631,7 +396,8 @@ export async function getLocationMetrics(req,res){
           { "name": "addToCarts" },
           { "name": "checkouts" },
           { "name": "ecommercePurchases" }
-        ]
+        ],
+        "limit": limit
     };
 
     const response = await axios.post(
@@ -693,7 +459,7 @@ export async function getAgeMetrics(req, res) {
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId} = req.body;
+    let { startDate, endDate, userId, limit} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -736,7 +502,8 @@ export async function getAgeMetrics(req, res) {
               desc: false,
               dimension: { dimensionName: 'userAgeBracket' },
             },
-          ]
+          ],
+          limit: limit
     };
 
     const response = await axios.post(
@@ -795,7 +562,7 @@ export async function getGenderMetrics(req, res) {
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId} = req.body;
+    let { startDate, endDate, userId, limit} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -838,7 +605,8 @@ export async function getGenderMetrics(req, res) {
               desc: false,
               dimension: { dimensionName: 'userGender' },
             },
-          ]
+          ],
+          limit : limit
     };
 
     const response = await axios.post(

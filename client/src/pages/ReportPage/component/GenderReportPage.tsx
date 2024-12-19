@@ -18,6 +18,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent"
 import { useUser } from "@/context/UserContext"
 import { Card, CardContent } from "@/components/ui/card"
+import { useTokenError } from "@/context/TokenErrorContext"
 
 interface GenderMetric {
   "Add To Carts": string;
@@ -43,6 +44,7 @@ const GenderReportPage: React.FC<GenderBasedReportsProps> = ({ dateRange: propDa
   const { brandId } = useParams();
   const navigate = useNavigate();
   const {user} = useUser();
+  const { setTokenError } = useTokenError();
   
   // Use optional chaining to safely access date properties
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -110,6 +112,9 @@ const GenderReportPage: React.FC<GenderBasedReportsProps> = ({ dateRange: propDa
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
         navigate("/");
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

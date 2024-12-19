@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, LogOut, User2Icon, Store,ChartNoAxesCombined, BarChart, CalendarRange, LineChart,} from 'lucide-react';
+import { ChevronUp, ChevronDown,ChevronLeft,ChevronRight, Compass, LogOut, User2Icon, Store,ChartNoAxesCombined,CalendarRange, LineChart,} from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -89,8 +89,7 @@ export default function CollapsibleSidebar() {
     }, [location.pathname, setSelectedBrandId]);
 
     const dashboards = [
-        { name: "Business Dashboard", path: `/business-dashboard/${selectedBrandId}`, icon: <BarChart size={20} /> },
-        { name: "Analytics Dashboard", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
+        { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
         { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />},
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
         { name: "Monthly Ad Metrics Reports", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
@@ -152,11 +151,11 @@ export default function CollapsibleSidebar() {
                                 {brands.map(brand => (
                                     <SidebarChild 
                                         key={brand._id} 
-                                        path={`/business-dashboard/${brand._id}`} 
+                                        path={`/analytics-dashboard/${brand._id}`} 
                                         text={brand.name.replace(/_/g, ' ')} 
                                         onClick={() => {
                                             setSelectedBrandId(brand._id);
-                                            navigate(`/business-dashboard/${brand._id}`);
+                                            navigate(`/analytics-dashboard/${brand._id}`);
                                         }} 
                                         isSelected={selectedBrandId === brand._id}
                                     />

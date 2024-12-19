@@ -18,6 +18,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent} from "@/components/ui/card";
+import { useTokenError } from "@/context/TokenErrorContext";
 
 interface ChannelMetric {
   "Add To Carts": string;
@@ -44,6 +45,7 @@ const ChannelSessionPage: React.FC<{ dateRange?: DateRange }> = ({ dateRange }) 
   const [rowsToShow, setRowsToShow] = useState<string>('50');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { user } = useUser();
+  const { setTokenError } = useTokenError();
 
   // Update date state when dateRange changes
   useEffect(() => {
@@ -103,6 +105,9 @@ const ChannelSessionPage: React.FC<{ dateRange?: DateRange }> = ({ dateRange }) 
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
         navigate("/");
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

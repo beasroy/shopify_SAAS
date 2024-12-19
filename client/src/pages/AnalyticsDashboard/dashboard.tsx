@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from "date-fns"
-import { Blend, Filter, RefreshCw } from "lucide-react"
+import { Blend, Filter, LineChart, RefreshCw } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
@@ -231,16 +231,31 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-100">
 
-      <nav className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
-        <div className=" flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h1 className="text-2xl font-bold">Ad Metrics Dashboard</h1>
-          <div className="flex items-center space-x-2">
-            {/* <ReportsDropdown brandId={brandId} /> */}
-            <DatePickerWithRange date={date} setDate={setDate}
-              defaultDate={{ from: new Date(), to: new Date() }} />
-          </div>
-        </div>
-      </nav>
+<header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="rounded-lg bg-secondary p-2 transition-transform duration-300 ease-in-out hover:scale-110">
+                    <LineChart className="h-6 w-6 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-secondary-foreground to-primary">
+                    AdMetrics Dashboard
+                    </h1>
+                  </div>
+                </div>
+
+                <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange
+                    date={date}
+                    setDate={setDate}
+                    defaultDate={{
+                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      to: new Date()
+                    }}
+                  />
+                </div>
+              </div>
+          </header>
 
       {/* Main content */}
       <main className="p-4 md:p-6 lg:px-8">

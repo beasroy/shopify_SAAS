@@ -18,6 +18,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext"
 import { Card, CardContent } from "@/components/ui/card";
+import { useTokenError } from "@/context/TokenErrorContext";
 
 interface AgeMetric {
   "Add To Carts": string;
@@ -51,6 +52,7 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
   const [isFullScreen, setIsFullScreen]= useState<boolean>(false);
   const [rowsToShow, setRowsToShow] = useState<string>('50')
   const {user} = useUser();
+  const { setTokenError } = useTokenError();
 
   // Update date state when prop changes
   useEffect(() => {
@@ -111,6 +113,9 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
         navigate("/");
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

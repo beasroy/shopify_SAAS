@@ -123,6 +123,9 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     });
   } catch (error) {
     console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
     res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
   }
 }
@@ -222,6 +225,9 @@ export async function getLandingPageMetrics(req, res) {
     });
   } catch (error) {
     console.error('Error fetching Landing page data:', error.response?.data || error.message);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
     res.status(500).json({ error: 'Failed to fetch Landing page data.' });
   }
 }
@@ -320,6 +326,9 @@ export async function getChannelMetrics(req, res) {
     });
   } catch (error) {
     console.error('Error fetching Reffering Channel data:', error.response?.data || error.message);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
     res.status(500).json({ error: 'Failed to fetch Reffering Channel data.' });
   }
 }
@@ -445,6 +454,9 @@ export async function getLocationMetrics(req,res){
     });
   } catch (error) {
     console.error('Error fetching Location data:', error);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
     res.status(500).json({ error: 'Failed to fetch Location data.' });
   }
 }
@@ -548,6 +560,9 @@ export async function getAgeMetrics(req, res) {
     });
   } catch (error) {
     console.error('Error fetching Age data:', error);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
     res.status(500).json({ error: 'Failed to fetch Age data.' });
   }
 }
@@ -562,21 +577,17 @@ export async function getGenderMetrics(req, res) {
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId, limit} = req.body;
+    let { startDate, endDate, userId, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
       const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
-      console.log(fourYearsAgo)
-      
       now.setHours(23, 59, 59, 999);
-    
+
       const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-  
       startDate = formatToLocalDateString(fourYearsAgo);
       endDate = formatToLocalDateString(now);
     }
-
 
     const user = await User.findById(userId);
     if (!user) {
@@ -592,21 +603,21 @@ export async function getGenderMetrics(req, res) {
     const accessToken = await getGoogleAccessToken(refreshToken);
 
     const requestBody = {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'userGender' }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' },
-          ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'userGender' },
-            },
-          ],
-          limit : limit
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'userGender' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' },
+      ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'userGender' },
+        },
+      ],
+      limit: limit,
     };
 
     const response = await axios.post(
@@ -623,37 +634,42 @@ export async function getGenderMetrics(req, res) {
 
     const rows = response?.data?.rows;
     if (!rows || rows.length === 0) {
-      console.warn("No data found in the response.");
+      console.warn('No data found in the response.');
       return res.status(200).json({
         reportType: 'Gender Based Data',
         data: [],
       });
     }
-    // Parse the data from the response
+
     const data = rows.map((row) => {
       const Gender = row.dimensionValues[0]?.value;
       return {
         Gender: Gender,
         Sessions: row.metricValues[0]?.value || 0,
-        "Add To Cart": row.metricValues[1]?.value || 0,
-        "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        'Add To Cart': row.metricValues[1]?.value || 0,
+        'Add To Cart Rate': `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
         Checkouts: row.metricValues[2]?.value || 0,
-        "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        'Checkout Rate': `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
         Purchases: row.metricValues[3]?.value || 0,
-        "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        'Purchase Rate': `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
       };
     });
 
-    // Send the data as response
     res.status(200).json({
-      reportType: 'Gender based Data',
+      reportType: 'Gender Based Data',
       data,
     });
   } catch (error) {
     console.error('Error fetching Gender data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
     res.status(500).json({ error: 'Failed to fetch Gender data.' });
   }
 }
+
 
 
 

@@ -3,7 +3,6 @@ import { UserProvider } from './context/UserContext';
 import { BrowserRouter as Router,Route,Routes } from 'react-router-dom';
 import AuthForm from "./Auth/AuthForm.tsx";
 import { Toaster } from "@/components/ui/toaster"
-import BusinessDashboard from './pages/Dashboard/BusinessDashboard.tsx';
 import AnalyticsDashboard from './pages/AnalyticsDashboard/AnalyticsDashboard.tsx';
 import GeneralDashboard from './pages/GeneralisedDashboard/GeneralDashboard.tsx';
 import { BrandProvider } from './context/BrandContext.tsx';
@@ -13,17 +12,19 @@ import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceD
 import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
 import ReportsPage from './pages/ReportPage/ReportsPage.tsx';
+import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
 
 function App() {
   return (
+
     <UserProvider>
       <BrandProvider>
+      <TokenErrorProvider>
       <Router>
         <Toaster />
         <Routes>
           <Route path="/" element={<AuthForm />} />
           <Route path="/dashboard" element={<GeneralDashboard />} />
-          <Route path="/business-dashboard/:brandId" element={<BusinessDashboard />} />
           <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard/>} />
           <Route path='/reports/:brandId' element={<ReportsPage />} />
           <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
@@ -33,6 +34,7 @@ function App() {
           <Route path="/callback" element={<GoogleCallback />} />
         </Routes>
       </Router>
+      </TokenErrorProvider>
       </BrandProvider>
     </UserProvider>
   );

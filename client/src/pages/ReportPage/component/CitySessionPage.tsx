@@ -18,6 +18,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTokenError } from "@/context/TokenErrorContext";
 
 interface CityMetric {
   "city": string;
@@ -51,6 +52,7 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
   const [removedColumns, setRemovedColumns] = useState<string[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const {user} = useUser();
+  const { setTokenError } = useTokenError();
 
   const allColumns = ['city', 'country', 'region', 'Visitors', 'Sessions', 'Add To Cart', 'Add To Cart Rate', 'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'];
 
@@ -144,6 +146,9 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
         navigate("/");
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

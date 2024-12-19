@@ -75,7 +75,7 @@ export default function LandingPage() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
               {brands.map((brand) => (
-                <Link key={brand._id} to={`/business-dashboard/${brand._id}`}>
+                <Link key={brand._id} to={`/analytics-dashboard/${brand._id}`}>
                   <div className="border border-[#071952] p-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
                     <h3 className="text-base font-semibold text-[#071952]">{brand.name}</h3>
                   </div>

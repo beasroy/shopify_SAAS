@@ -18,6 +18,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent} from "@/components/ui/card";
+import { useTokenError } from "@/context/TokenErrorContext";
 export interface PageMetric {
   "Add To Carts": string;
   "Add To Cart Rate": string;
@@ -49,6 +50,7 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const { user } = useUser();
+  const { setTokenError } = useTokenError();
 
   useEffect(() => {
     setDate(propDateRange);
@@ -107,6 +109,9 @@ const LandingPageSession: React.FC<LandingPageSessionProps> = ({ dateRange: prop
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
         navigate("/");
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

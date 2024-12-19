@@ -19,6 +19,7 @@ import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModa
 import { useUser } from "@/context/UserContext"
 ;
 import { Card, CardContent } from "@/components/ui/card";
+import { useTokenError } from "@/context/TokenErrorContext";
 
 interface EcommerceMetric {
   "Date": string
@@ -51,6 +52,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const {user}= useUser();
+  const { setTokenError } = useTokenError();
 
   // Update date state when prop changes
   useEffect(() => {
@@ -110,6 +112,9 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert('Your session has expired. Please log in again.');
         navigate('/');
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setTokenError(true);
       }
     } finally {
       setIsLoading(false);

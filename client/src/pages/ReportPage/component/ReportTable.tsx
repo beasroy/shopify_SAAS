@@ -35,7 +35,7 @@ const ReportTable: React.FC<TableProps> = ({
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const [isResizing, setIsResizing] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = isFullScreen ? 13 : 7;
+  const rowsPerPage = isFullScreen ? 12 : 7;
 
   const tableRef = useRef<HTMLTableElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -245,7 +245,7 @@ const ReportTable: React.FC<TableProps> = ({
         className="rounded-md overflow-x-auto relative border"
         style={{
           width: '100%',
-          maxHeight: isFullScreen ? 'calc(100vh - 100px)' : 'calc(100vh - 400px)',
+          maxHeight: isFullScreen ? 'calc(100vh - 130px)' : 'calc(100vh - 400px)',
           overflowX: 'auto',
         }}
       >

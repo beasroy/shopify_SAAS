@@ -1,164 +1,229 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bell, Settings, Briefcase, RefreshCw, FileSpreadsheet, Target, ArrowRight, BarChart3, PieChart, TrendingUp, Activity} from "lucide-react"
-import { Link } from "react-router-dom"
-import { useUser } from "@/context/UserContext"
-import { useBrand } from "@/context/BrandContext"
+// CombinedDashboard.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { useUser } from "@/context/UserContext";
+import { useBrand } from "@/context/BrandContext";
+import { Activity, Target, TrendingUp, ArrowUpRight } from "lucide-react";
+import axios from 'axios';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import BrandSetup from "./components/BrandForm";
+import LandingSlides from "./components/LandingSlides";
 
-export default function LandingPage() {
-  const { user } = useUser();
-  const { brands } = useBrand();
+// Define the Brand interface
+interface Brand {
+    brandId: string;
+    name: string;
+    targetAmount: number;
+}
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-full mx-auto space-y-6 px-4">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.username.split(' ')[0] || 'user'}!</h1>
+export default function CombinedDashboard() {
+    const { user, setUser, showLandingPopup, setShowLandingPopup } = useUser();
+    const { brands } = useBrand();
+    const [activeTab, setActiveTab] = useState("landing");
+    const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
+    const [achievedSales, setAchievedSales] = useState<{ [key: string]: number }>({});
+    const [isLoading, setIsLoading] = useState(false);
+    const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          <Card className="bg-white shadow-lg border-t-4 border-t-[#071952]">
-            <CardHeader>
-              <CardTitle className="text-[#088395] flex items-center">
-                <Activity className="mr-2 h-5 w-5" />
-                Performance & Targets
-              </CardTitle>
-              <CardDescription>Overview of your brand performance and targets</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between bg-[#EBF4F6] p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Target className="h-8 w-8 text-blue-500 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-[#088395]">Active Targets</p>
-                    <p className="text-2xl font-bold text-blue-900">{brands.length}</p>
-                  </div>
+    const getAchievedSales = useCallback(async (brandId: string) => {
+        try {
+            const response = await axios.get(`${baseURL}/api/shopify/dailysales/${brandId}`, { withCredentials: true });
+            return response.data.totalSales;
+        } catch (error) {
+            console.error('Error fetching sales data:', error);
+            return 0;
+        }
+    }, [baseURL]);
+
+    const fetchSalesData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const salesData: { [key: string]: number } = {};
+            await Promise.all(
+                selectedBrands.map(async (brand) => {
+                    salesData[brand.brandId] = await getAchievedSales(brand.brandId);
+                })
+            );
+            setAchievedSales(salesData);
+        } catch (error) {
+            console.error('Error fetching sales data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedBrands, getAchievedSales]);
+
+    useEffect(() => {
+        const fetchBrandTargets = async () => {
+            try {
+                const response = await axios.get(`${baseURL}/api/performance/brandTarget`, { withCredentials: true });
+                setSelectedBrands(response.data); // Ensure response.data is correctly typed
+            } catch (error) {
+                console.error('Error fetching brands:', error);
+            }
+        };
+
+        fetchBrandTargets();
+    }, [baseURL]);
+
+    useEffect(() => {
+        fetchSalesData();
+    }, [fetchSalesData]);
+
+    return (
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6 relative">
+            {/* Landing Slides Popup */}
+            {showLandingPopup && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="w-full max-w-4xl mx-4">
+                        <LandingSlides 
+                            onEnd={() => {
+                                setShowLandingPopup(false);
+                                if (user) {
+                                    setUser({
+                                        ...user,
+                                        hasSeenLandingSlides: true
+                                    });
+                                }
+                                if (brands.length === 0) {
+                                    setActiveTab("setup");
+                                }
+                            }} 
+                        />
+                    </div>
                 </div>
-                <BarChart3 className="h-12 w-12 text-blue-300" />
-              </div>
-              <Button asChild className="w-full justify-between bg-[#37B7C3] hover:bg-cyan-800 text-white">
-                <Link to="/performance-metrics">
-                  <span>View Performance Dashboard</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white shadow-lg border-t-4 border-t-blue-500">
-            <CardHeader>
-              <CardTitle className="text-blue-700 flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5" />
-                Getting Started
-              </CardTitle>
-              <CardDescription>Follow these steps to set up your analytics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="list-decimal list-inside space-y-2 text-sm">
-                <li>Select a brand from "Your Brands" section</li>
-                <li>Connect your brand's Shopify store</li>
-                <li>Set up Google Analytics 4 property</li>
-                <li>Link Facebook Ads account</li>
-                <li>Configure Google Ads integration</li>
-                <li>Explore your unified brand analytics</li>
-              </ol>
-            </CardContent>
-          </Card>
-        </div>
-<div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-        <Card className="bg-white shadow-lg border-t-4 border-t-blue-500">
-          <CardHeader>
-            <CardTitle className="text-blue-700 flex items-center">
-              <PieChart className="mr-2 h-5 w-5" />
-              Dashboard Overview
-            </CardTitle>
-            <CardDescription>Key insights and analytics for your brands</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              {brands.map((brand) => (
-                <Link key={brand._id} to={`/analytics-dashboard/${brand._id}`}>
-                  <div className="border border-[#071952] p-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
-                    <h3 className="text-base font-semibold text-[#071952]">{brand.name}</h3>
-                  </div>
-                </Link>
-              ))}
+            )}
+
+            {/* Main Dashboard Content */}
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header Section */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-4xl font-bold text-gray-700">
+                            Welcome{brands.length === 0 ? '' : ' back'}, {user?.username.split(' ')[0] || 'user'}! 👋
+                        </h1>
+                        <p className="mt-2 text-gray-500">
+                            {brands.length === 0 
+                                ? "Let's get started by setting up your first brand!"
+                                : "Here's what's happening with your brands today."
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                {brands.length === 0 ? (
+                    <></>
+                ) : (
+                    <>
+                        {/* Tabs Section */}
+                        <div className="flex space-x-4 border-b border-gray-300">
+                            <div
+                                onClick={() => setActiveTab("landing")}
+                                className={`cursor-pointer py-2 px-4 ${activeTab === "landing" ? "border-b-2 border-blue-500 font-bold" : "text-gray-600"}`}
+                            >
+                                Dashboard
+                            </div>
+                            <div
+                                onClick={() => setActiveTab("setup")}
+                                className={`cursor-pointer py-2 px-4 ${activeTab === "setup" ? "border-b-2 border-blue-500 font-bold" : "text-gray-600"}`}
+                            >
+                                Brand Setup
+                            </div>
+                        </div>
+
+                        {/* Dashboard Content */}
+                        {activeTab === "landing" && (
+                            <div className="space-y-6">
+                                {/* Quick Stats Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <Card className="bg-white shadow-md rounded-lg">
+                                        <CardContent className="p-6">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-gray-800 font-semibold">Active Brands</p>
+                                                    <p className="text-3xl font-bold mt-2">{brands.length}</p>
+                                                </div>
+                                                <Target className="h-8 w-8 text-blue-500" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-white shadow-md rounded-lg">
+                                        <CardContent className="p-6">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-gray-800 font-semibold">Total Sales</p>
+                                                    <p className="text-3xl font-bold mt-2">
+                                                        ${Object.values(achievedSales).reduce((a, b) => a + b, 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <TrendingUp className="h-8 w-8 text-green-500" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-white shadow-md rounded-lg">
+                                        <CardContent className="p-6">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-gray-800 font-semibold">Active Targets</p>
+                                                    <p className="text-3xl font-bold mt-2">{selectedBrands.length}</p>
+                                                </div>
+                                                <Activity className="h-8 w-8 text-purple-500" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Brand Quick Access */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center text-lg">
+                                                <ArrowUpRight className="mr-2 h-5 w-5 text-blue-500" />
+                                                Analytics Dashboards
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {brands.map((brand) => (
+                                                    <Link key={brand.brandId} to={`/analytics-dashboard/${brand.brandId}`}>
+                                                        <div className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                            <p className="font-medium text-gray-900">{brand.name}</p>
+                                                            <p className="text-sm text-gray-500 mt-1">View Analytics</p>
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center text-lg">
+                                                <ArrowUpRight className="mr-2 h-5 w-5 text-blue-500" />
+                                                Monthly Reports
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {brands.map((brand) => (
+                                                    <Link key={brand.brandId} to={`/ad-metrics/${brand.brandId}`}>
+                                                        <div className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                            <p className="font-medium text-gray-900">{brand.name}</p>
+                                                            <p className="text-sm text-gray-500 mt-1">View Report</p>
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "setup" && <BrandSetup />}
+                    </>
+                )}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white shadow-lg border-t-4 border-t-blue-600">
-          <CardHeader>
-            <CardTitle className="text-blue-700 flex items-center">
-              <FileSpreadsheet className="mr-2 h-5 w-5" />
-              Monthly Reports
-            </CardTitle>
-            <CardDescription>Access comprehensive monthly reports for your brands</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              {brands.map((brand) => (
-                <Link key={brand._id} to={`/ad-metrics/${brand._id}`}>
-                  <div className="bg-blue-50 p-2 rounded-lg shadow hover:shadow-md transition-shadow duration-200 ">
-                    <h3 className="text-base font-semibold text-blue-700">{brand.name}</h3>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-white shadow-lg border-t-4 border-t-blue-500">
-            <CardHeader>
-              <CardTitle className="text-blue-700 flex items-center">
-                <Bell className="mr-2 h-5 w-5" />
-                Notifications
-              </CardTitle>
-              <CardDescription>Stay updated with your latest alerts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                <li className="flex items-center bg-blue-50 p-2 rounded">
-                  <Bell className="mr-2 h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-blue-700">New Shopify order received for UDD Studio</span>
-                </li>
-                <li className="flex items-center bg-blue-50 p-2 rounded">
-                  <Bell className="mr-2 h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-blue-700">Weekly analytics report ready for Fisherman Hub</span>
-                </li>
-                <li className="flex items-center bg-blue-50 p-2 rounded">
-                  <Bell className="mr-2 h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-blue-700">Facebook Ads campaign ended for UDD Studio</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-lg border-t-4 border-t-blue-600">
-            <CardHeader>
-              <CardTitle className="text-blue-700 flex items-center">
-                <Settings className="mr-2 h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>Frequently used features and settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button variant="outline" className="w-full justify-start text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-200">
-                <Settings className="mr-2 h-4 w-4" />
-                Account Settings
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-200">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Sync Data Sources
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-200">
-                <Briefcase className="mr-2 h-4 w-4" />
-                Manage Brands
-              </Button>
-            </CardContent>
-          </Card>
-
-        </div>
-      </div>
-    </div>
-  )
+    );
 }

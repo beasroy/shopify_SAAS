@@ -18,13 +18,16 @@ export default function AuthForm() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [errors, setErrors] = useState({ username: '', email: '', password: '' })
-  const { user,setUser } = useUser();
+  const { user, setUser, setShowLandingPopup } = useUser();
 
   useEffect(() => {
     if (user) {
+      if (!user.hasSeenLandingSlides) {
+        setShowLandingPopup(true);
+      }
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, navigate, setShowLandingPopup]);
 
   const toggleForm = () => setIsLogin(!isLogin)
 
@@ -79,9 +82,15 @@ export default function AuthForm() {
         );
 
         if (response.data.success) {
-          // Set the user in the context
-          setUser(response.data.user);
-          console.log('User set in context:', response.data.user);
+          // Set the user in the context with hasSeenLandingSlides flag
+          const userData = {
+            ...response.data.user,
+            // Only set hasSeenLandingSlides to false if the user has no brands
+            hasSeenLandingSlides: response.data.user.brands && response.data.user.brands.length > 0 
+          };
+          setUser(userData);
+          // Only show landing popup if user has no brands
+          setShowLandingPopup(!(response.data.user.brands && response.data.user.brands.length > 0));
 
           toast({
             title: 'Login successful!',
@@ -89,7 +98,6 @@ export default function AuthForm() {
             variant: 'default',
           });
           navigate('/dashboard');
-          console.log(baseURL);
         }
       } else {
         response = await axios.post(
@@ -124,7 +132,6 @@ export default function AuthForm() {
     }
   };
 
-
   const handleGoogleLogin = async () => {
     try {
       const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
@@ -137,12 +144,9 @@ export default function AuthForm() {
     }
   }
 
-
-
-
   return (
     <div className="flex h-screen">
-      <div className="hidden md:flex md:w-1/2 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2015&q=80')"}}>
+      <div className="hidden md:flex md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2015&q=80')" }}>
         <div className="flex items-center justify-center w-full h-full bg-black bg-opacity-40">
           <div className="text-white text-center p-8">
             <h3 className="text-4xl font-bold mb-6">Unified Marketing Analytics</h3>

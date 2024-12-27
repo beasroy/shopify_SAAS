@@ -73,7 +73,6 @@ export default function BrandPerformanceDashboard() {
     fetchSalesData();
   }, [fetchSalesData]);
 
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setNewBrand(prev => ({ ...prev, [name]: name === 'brandId' ? value : Number(value) }))

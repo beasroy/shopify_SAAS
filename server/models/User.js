@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     brands: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Brand' // Reference to the Brand model
+            ref: 'Brand' 
         }
     ]
 });

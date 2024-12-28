@@ -74,6 +74,7 @@ export default function CollapsibleSidebar() {
                 setSelectedBrandId(null);
                 localStorage.removeItem('selectedBrandId');
                 setBrands([]);
+                localStorage.removeItem('brands');
                 navigate('/');
             }
         } catch (error) {

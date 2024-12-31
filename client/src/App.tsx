@@ -13,6 +13,7 @@ import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
 import ReportsPage from './pages/ReportPage/ReportsPage.tsx';
 import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
+import ConversionReportPage from './pages/ConversionReportPage/ConversionReportPage.tsx';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
           <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
+          <Route path="/conversion-reports/:brandId" element={<ConversionReportPage />} />
           <Route path="/callback" element={<GoogleCallback />} />
         </Routes>
       </Router>

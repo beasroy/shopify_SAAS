@@ -64,21 +64,21 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     const accessToken = await getGoogleAccessToken(refreshToken);
 
     const requestBody = {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'date' }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' },
-          ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'date' },
-            },
-          ],
-          limit: limit
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' },
+      ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'date' },
+        },
+      ],
+      limit: limit
     };
 
     const response = await axios.post(
@@ -170,20 +170,20 @@ export async function getLandingPageMetrics(req, res) {
     const accessToken = await getGoogleAccessToken(refreshToken);
 
     const requestBody = {
-        "dateRanges": [
-          { "startDate": startDate, "endDate": endDate }
-        ],
-        "dimensions": [
-          { "name": "landingPage" }
-        ],
-        "metrics": [
-          { "name": "totalUsers" },
-          { "name": "sessions" },
-          { "name": "addToCarts" },
-          { "name": "checkouts" },
-          { "name": "ecommercePurchases" }
-        ],
-        "limit": limit
+      "dateRanges": [
+        { "startDate": startDate, "endDate": endDate }
+      ],
+      "dimensions": [
+        { "name": "landingPage" }
+      ],
+      "metrics": [
+        { "name": "totalUsers" },
+        { "name": "sessions" },
+        { "name": "addToCarts" },
+        { "name": "checkouts" },
+        { "name": "ecommercePurchases" }
+      ],
+      "limit": limit
     };
 
     const response = await axios.post(
@@ -242,7 +242,7 @@ export async function getChannelMetrics(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let { startDate, endDate, userId,limit } = req.body;
+    let { startDate, endDate, userId, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -333,7 +333,7 @@ export async function getChannelMetrics(req, res) {
   }
 }
 
-export async function getLocationMetrics(req,res){
+export async function getLocationMetrics(req, res) {
   try {
     const { brandId } = req.params;
 
@@ -343,17 +343,17 @@ export async function getLocationMetrics(req,res){
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId, filters, limit} = req.body;
+    let { startDate, endDate, userId, filters, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
       const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
       console.log(fourYearsAgo)
-      
+
       now.setHours(23, 59, 59, 999);
-    
+
       const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-  
+
       startDate = formatToLocalDateString(fourYearsAgo);
       endDate = formatToLocalDateString(now);
     }
@@ -395,18 +395,18 @@ export async function getLocationMetrics(req,res){
 
 
     const requestBody = {
-        "dateRanges": [
-          { "startDate": startDate, "endDate": endDate }
-        ],
-        "dimensions": locationDimensions,
-        "metrics": [
-          { "name": "totalUsers" },
-          { "name": "sessions" },
-          { "name": "addToCarts" },
-          { "name": "checkouts" },
-          { "name": "ecommercePurchases" }
-        ],
-        "limit": limit
+      "dateRanges": [
+        { "startDate": startDate, "endDate": endDate }
+      ],
+      "dimensions": locationDimensions,
+      "metrics": [
+        { "name": "totalUsers" },
+        { "name": "sessions" },
+        { "name": "addToCarts" },
+        { "name": "checkouts" },
+        { "name": "ecommercePurchases" }
+      ],
+      "limit": limit
     };
 
     const response = await axios.post(
@@ -429,7 +429,7 @@ export async function getLocationMetrics(req,res){
         data: [],
       });
     }
-    const data=  rows.map(row => {
+    const data = rows.map(row => {
       const rowData = {};
       locationDimensions.forEach((dim, idx) => {
         rowData[dim.name] = row.dimensionValues[idx]?.value;
@@ -471,17 +471,17 @@ export async function getAgeMetrics(req, res) {
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    let { startDate, endDate, userId, limit} = req.body;
+    let { startDate, endDate, userId, limit } = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
       const fourYearsAgo = new Date(now.getFullYear() - 4, now.getMonth(), now.getDate());
       console.log(fourYearsAgo)
-      
+
       now.setHours(23, 59, 59, 999);
-    
+
       const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-  
+
       startDate = formatToLocalDateString(fourYearsAgo);
       endDate = formatToLocalDateString(now);
     }
@@ -501,21 +501,21 @@ export async function getAgeMetrics(req, res) {
     const accessToken = await getGoogleAccessToken(refreshToken);
 
     const requestBody = {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'userAgeBracket' }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'addToCarts' },
-            { name: 'checkouts' },
-            { name: 'ecommercePurchases' },
-          ],
-          orderBys: [
-            {
-              desc: false,
-              dimension: { dimensionName: 'userAgeBracket' },
-            },
-          ],
-          limit: limit
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'userAgeBracket' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' },
+      ],
+      orderBys: [
+        {
+          desc: false,
+          dimension: { dimensionName: 'userAgeBracket' },
+        },
+      ],
+      limit: limit
     };
 
     const response = await axios.post(
@@ -671,5 +671,897 @@ export async function getGenderMetrics(req, res) {
 }
 
 
+export async function getRegionWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId, limit } = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'region' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+      limit: limit
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Regions`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+    const groupedData = rows.reduce((acc, row) => {
+      const Region = row.dimensionValues[0]?.value;
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const TotalSessions = row.metricValues[1]?.value || 0;
+      const Visitors = row.metricValues[0]?.value || 0;
+      const ConversionRate = row.metricValues[2]?.value || 0;
+
+      if (!acc[Region]) {
+        acc[Region] = [];
+      }
+
+      acc[Region].push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      });
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format
+    const data = Object.entries(groupedData)
+      .map(([region, monthlyData]) => ({
+        Region: region,
+        MonthlyData: monthlyData,
+      }))
 
 
+    res.status(200).json({
+      reportType: `Monthly Data for All Regions Sorted by Conversions`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Regions-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Regions-Based Monthly Data.' });
+  }
+}
+
+export async function getChannelWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId, limit } = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'source' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+      limit: limit
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Channels`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+    const groupedData = rows.reduce((acc, row) => {
+      const Channel = row.dimensionValues[0]?.value;
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const TotalSessions = row.metricValues[1]?.value || 0;
+      const Visitors = row.metricValues[0]?.value || 0;
+      const ConversionRate = row.metricValues[2]?.value || 0;
+
+      if (!acc[Channel]) {
+        acc[Channel] = [];
+      }
+
+      acc[Channel].push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      });
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format
+    const data = Object.entries(groupedData)
+      .map(([channel, monthlyData]) => ({
+        Channel: channel,
+        MonthlyData: monthlyData,
+      }))
+
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Reffering Channels Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Reffering Channels-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Reffering Channels-Based Monthly Data.' });
+  }
+}
+
+export async function getPageWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId, limit } = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'landingPage' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+      limit: limit
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Landing Pages`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+    const groupedData = rows.reduce((acc, row) => {
+      const LandingPage = row.dimensionValues[0]?.value;
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const TotalSessions = row.metricValues[1]?.value || 0;
+      const Visitors = row.metricValues[0]?.value || 0;
+      const ConversionRate = row.metricValues[2]?.value || 0;
+
+      if (!acc[LandingPage]) {
+        acc[LandingPage] = [];
+      }
+
+      acc[LandingPage].push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      });
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format
+    const data = Object.entries(groupedData)
+      .map(([page, monthlyData]) => ({
+        LandingPage: page,
+        MonthlyData: monthlyData,
+      }))
+
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Landing Pages Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Landing Pages-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Landing Pages-Based Monthly Data.' });
+  }
+}
+// all these apis are fixed
+export async function getProductTypeWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId} = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'itemCategory' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Product Types`,
+        data: [],
+      });
+    }
+
+    // Group data by product type and calculate totals
+    const groupedData = rows.reduce((acc, row) => {
+      const ProductType = row.dimensionValues[0]?.value;
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
+
+      if (!acc[ProductType]) {
+        acc[ProductType] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0,
+        };
+      }
+
+      acc[ProductType].MonthlyData.push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: Sessions,
+        ConversionRate: ConversionRate,
+      });
+
+      // Correct summing for TotalSessions
+      acc[ProductType].TotalSessions += Sessions;
+
+      // For Average Conversion Rate, accumulate the ConversionRate for averaging later
+      acc[ProductType].TotalConversionRate += ConversionRate;
+
+      // Increment the data points
+      acc[ProductType].DataPoints += 1;
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format and calculate the average conversion rate
+    const data = Object.entries(groupedData).map(([productType, productData]) => ({
+      ProductType: productType,
+      TotalSessions: productData.TotalSessions,
+      AverageConversionRate: productData.DataPoints
+        ? productData.TotalConversionRate / productData.DataPoints // Calculate the average conversion rate
+        : 0,
+      MonthlyData: productData.MonthlyData,
+    }));
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Product Types Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Landing Product Types-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Product Types-Based Monthly Data.' });
+  }
+}
+
+export async function getDeviceTypeWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId} = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'deviceCategory' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Device Types`,
+        data: [],
+      });
+    }
+
+    // Group data by device type and calculate totals
+    const groupedData = rows.reduce((acc, row) => {
+      const DeviceType = row.dimensionValues[0]?.value || "Unknown Device Type";
+      const YearMonth = row.dimensionValues[1]?.value || "Unknown Date";
+      const TotalSessions = parseInt(row.metricValues[1]?.value || 0, 10);
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
+
+      if (!acc[DeviceType]) {
+        acc[DeviceType] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0, // To calculate average conversion rate
+        };
+      }
+
+      // Add the current month's data to the device type's MonthlyData array
+      acc[DeviceType].MonthlyData.push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate,
+      });
+
+      // Aggregate total sessions and conversion rates
+      acc[DeviceType].TotalSessions += TotalSessions;
+      acc[DeviceType].TotalConversionRate += ConversionRate;
+      acc[DeviceType].DataPoints += 1;
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format
+    const data = Object.entries(groupedData).map(([deviceType, deviceData]) => ({
+      DeviceType: deviceType,
+      TotalSessions: deviceData.TotalSessions,
+      AverageConversionRate: deviceData.TotalConversionRate / deviceData.DataPoints || 0,
+      MonthlyData: deviceData.MonthlyData,
+    }));
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Device Types Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Device Types-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Device Types-Based Monthly Data.' });
+  }
+}
+
+export async function getCampaignWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId} = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'campaignName' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Campaigns`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+    const groupedData = rows.reduce((acc, row) => {
+      const CampaignName = row.dimensionValues[0]?.value || "Unknown Campaign"; // Fallback for undefined or missing campaign name
+      const YearMonth = row.dimensionValues[1]?.value || "Unknown Date"; // Fallback for undefined or missing year-month
+      const TotalSessions = parseInt(row.metricValues[1]?.value || 0, 10);
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
+
+      if (!acc[CampaignName]) {
+        acc[CampaignName] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0, // To calculate average conversion rate
+        };
+      }
+
+      // Add the current month's data to the campaign's MonthlyData array
+      acc[CampaignName].MonthlyData.push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate,
+      });
+
+      // Aggregate total sessions and conversion rates
+      acc[CampaignName].TotalSessions += TotalSessions;
+      acc[CampaignName].TotalConversionRate += ConversionRate;
+      acc[CampaignName].DataPoints += 1;
+
+      return acc;
+    }, {});
+
+
+    // Convert grouped data to an array format
+    const data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
+      CampaignName: campaignName,
+      TotalSessions: campaignData.TotalSessions,
+      AverageConversionRate: campaignData.TotalConversionRate / campaignData.DataPoints || 0,
+      MonthlyData: campaignData.MonthlyData,
+    }));
+
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Campaigns Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Campaigns-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Campaigns-Based Monthly Data.' });
+  }
+}
+
+export async function getCityWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId} = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'city' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Cities`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+    const groupedData = rows.reduce((acc, row) => {
+      const City = row.dimensionValues[0]?.value || "Unknown City";
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const TotalSessions = parseInt(row.metricValues[1]?.value || 0, 10);
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
+
+      if (!acc[City]) {
+        acc[City] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0, // To calculate average conversion rate
+        };
+      }
+
+      // Add the current month's data to the city's MonthlyData array
+      acc[City].MonthlyData.push({
+        Month: YearMonth,
+        Visitors: Visitors,
+        Sessions: TotalSessions,
+        ConversionRate: ConversionRate,
+      });
+
+      // Aggregate total sessions and conversion rates
+      acc[City].TotalSessions += TotalSessions;
+      acc[City].TotalConversionRate += ConversionRate;
+      acc[City].DataPoints += 1;
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format and calculate average conversion rate
+    const data = Object.entries(groupedData).map(([city, cityData]) => ({
+      City: city,
+      TotalSessions: cityData.TotalSessions,
+      AverageConversionRate: cityData.TotalConversionRate / cityData.DataPoints || 0,
+      MonthlyData: cityData.MonthlyData,
+    }));
+
+
+    res.status(200).json({
+      reportType: `Monthly Data for All City Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching City-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch City-Based Monthly Data.' });
+  }
+}

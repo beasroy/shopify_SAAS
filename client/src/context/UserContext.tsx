@@ -4,7 +4,7 @@ interface User {
   id: string;
   username: string;
   email: string;
-  brands: [];
+  brands: string[];
   hasSeenLandingSlides?: boolean;
 }
 

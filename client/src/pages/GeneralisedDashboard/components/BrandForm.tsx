@@ -8,11 +8,13 @@ import { useToast } from '@/hooks/use-toast';
 import ShopifyModalContent from './ShopifyModalContent';
 import OtherPlatformModalContent from './OtherPlatformModalContent';
 import { FacebookLogo, GoogleLogo } from '@/pages/CampaignMetricsPage';
-import { Ga4Logo, shopifyLogo } from './OtherPlatformModalContent';
+import { Ga4Logo, ShopifyLogo } from './OtherPlatformModalContent';
 import axios from 'axios';
+import { useUser } from '@/context/UserContext';
+
 
 const platforms = [
-  { name: 'Shopify', color: 'bg-emerald-50', icon: shopifyLogo, textColor: 'text-emerald-700', ringColor: 'ring-emerald-200', description: 'Connect your e-commerce store' },
+  { name: 'Shopify', color: 'bg-emerald-50', icon: ShopifyLogo, textColor: 'text-emerald-700', ringColor: 'ring-emerald-200', description: 'Connect your e-commerce store' },
   { name: 'Facebook', color: 'bg-blue-50', icon: FacebookLogo, textColor: 'text-blue-700', ringColor: 'ring-blue-200', description: 'Link your ad accounts' },
   { name: 'Google Ads', color: 'bg-rose-50', icon: GoogleLogo, textColor: 'text-rose-700', ringColor: 'ring-rose-200', description: 'Import campaign data' },
   { name: 'Google Analytics', color: 'bg-yellow-50', icon: Ga4Logo, textColor: 'text-yellow-700', ringColor: 'ring-yellow-200', description: 'Track website metrics' },
@@ -33,6 +35,7 @@ export default function BrandSetup() {
   const [shopifyAccessToken, setShopifyAccessToken] = useState('');
   const { toast } = useToast();
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
+  const {user, setUser} = useUser();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -104,7 +107,7 @@ export default function BrandSetup() {
     if (!brandName || Object.keys(connectedAccounts).length === 0) {
       return toast({ description: 'Please complete all fields before submitting.', variant: "destructive" });
     }
-
+  
     const payload = {
       name: brandName,
       logoUrl: brandLogo || '',
@@ -113,20 +116,45 @@ export default function BrandSetup() {
       fbAdAccounts: fbAdId.map((accountId) => accountId),
       shopifyAccount: { shopName: shop || '', shopifyAccessToken: shopifyAccessToken || '' }
     };
-
+  
     try {
-      const response = await axios.post(
+      // First create the brand
+      const brandResponse = await axios.post(
         `${baseURL}/api/brands/add`,
         payload,
         { withCredentials: true }
       );
+  
+      const newBrandId = brandResponse.data.brand._id;
+  
+      // Then add the brand to user
+      if (user) {
+        await axios.post(
+          `${baseURL}/api/users/add-brand`,
+          {
+            userId: user.id,
+            brandId: newBrandId
+          },
+          { withCredentials: true }
+        );
+      }
+  
+      // Update local state
+      const updatedUser = user ? {
+        ...user,
+        brands: [...user.brands, newBrandId]
+      } : null;
+      
+      if (updatedUser) setUser(updatedUser);
+      
       toast({ description: 'Brand setup completed successfully!', variant: "default" });
-      console.log(response.data);
+  
     } catch (error) {
       console.error(error);
       toast({ description: 'Error creating brand. Please try again.', variant: "destructive" });
     }
   };
+  
 
   const renderStepContent = () => {
     switch (currentStep) {

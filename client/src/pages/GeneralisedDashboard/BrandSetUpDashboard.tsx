@@ -1,11 +1,6 @@
-import React from 'react'
 import { 
   Rocket, 
   ChevronRight, 
-  BarChart2, 
-  Target, 
-  TrendingUp, 
-  PieChart, 
   Zap 
 } from 'lucide-react'
 import BrandSetup from './components/BrandForm.tsx'
@@ -16,35 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export default function Dashboard() {
   const { user } = useUser()
 
-  const features = [
-    {
-      title: "Comprehensive Analytics",
-      description: "Get deep insights into your brand's performance across multiple channels.",
-      icon: BarChart2,
-      gradient: "from-purple-500 to-pink-500",
-      iconColor: "text-purple-600"
-    },
-    {
-      title: "Performance Tracking",
-      description: "Monitor sales, campaigns, and growth metrics in real-time.",
-      icon: TrendingUp,
-      gradient: "from-green-500 to-teal-500",
-      iconColor: "text-green-600"
-    },
-    {
-      title: "Actionable Insights",
-      description: "Receive data-driven recommendations to optimize your business strategy.",
-      icon: Target,
-      gradient: "from-blue-500 to-indigo-500",
-      iconColor: "text-blue-600"
-    }
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-10">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4 sm:px-6 lg:px-8">
+      <div className="space-y-5">
         {/* Vibrant Welcome Header */}
-        <div className="bg-gradient-to-r from-primary to-primary/80 text-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-primary to-primary/80 text-white rounded-2xl shadow-md overflow-hidden">
           <div className="p-8 flex items-center justify-between">
             <div className="space-y-4 max-w-2xl">
               <h1 className="text-4xl font-extrabold tracking-tight">
@@ -57,9 +28,6 @@ export default function Dashboard() {
                 <Button variant="secondary" className="bg-white text-primary hover:bg-gray-100">
                   Get Started
                   <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
-                  Learn More
                 </Button>
               </div>
             </div>
@@ -87,32 +55,6 @@ export default function Dashboard() {
             <BrandSetup />
           </CardContent>
         </Card>
-
-        {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div 
-              key={index} 
-              className={`
-                bg-gradient-to-br ${feature.gradient} 
-                text-white 
-                rounded-2xl 
-                p-6 
-                transform transition-all 
-                hover:-translate-y-2 
-                hover:shadow-2xl
-                group
-              `}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <feature.icon className={`h-10 w-10 ${feature.iconColor} bg-white/20 p-2 rounded-full group-hover:animate-pulse`} />
-                <ChevronRight className="h-6 w-6 text-white/70 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-              <p className="text-white/80 text-sm">{feature.description}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )

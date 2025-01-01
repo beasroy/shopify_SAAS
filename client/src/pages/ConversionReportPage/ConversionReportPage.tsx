@@ -8,6 +8,9 @@ import ConnectGA4 from '../ReportPage/ConnectGA4Page';
 import { Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
+import DeviceTypeConversion from './components/DeviceConversion';
+import CityTypeConversion from './components/CityConversion';
+import ChannelConversion from './components/ChannelConversion';
 
 
 
@@ -54,6 +57,9 @@ const ConversionReportPage: React.FC = () => {
                 </div>
               </div>
             </header>
+            <ChannelConversion />
+            <DeviceTypeConversion />
+            <CityTypeConversion />
           </>
         )}
       </div>

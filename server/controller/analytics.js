@@ -747,34 +747,45 @@ export async function getRegionWiseConversions(req, res) {
       });
     }
 
-    // Group data by region and month
     const groupedData = rows.reduce((acc, row) => {
       const Region = row.dimensionValues[0]?.value;
       const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
-      const TotalSessions = row.metricValues[1]?.value || 0;
-      const Visitors = row.metricValues[0]?.value || 0;
-      const ConversionRate = row.metricValues[2]?.value || 0;
+      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
 
       if (!acc[Region]) {
-        acc[Region] = [];
+        acc[Region] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0,
+        };
       }
 
-      acc[Region].push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      acc[Region].MonthlyData.push({
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": Sessions,
+        "Conv. Rate": ConversionRate,
       });
+
+      acc[Region].TotalSessions += Sessions;
+      acc[Region].TotalConversionRate += ConversionRate;
+      acc[Region].DataPoints += 1;
 
       return acc;
     }, {});
 
-    // Convert grouped data to an array format
-    const data = Object.entries(groupedData)
-      .map(([region, monthlyData]) => ({
-        Region: region,
-        MonthlyData: monthlyData,
-      }))
+    // Convert grouped data to an array format and calculate the average conversion rate
+    const data = Object.entries(groupedData).map(([Region, RegionData]) => ({
+      "Region": Region,
+      "Total Sessions": RegionData.TotalSessions,
+      "Avg Conv. Rate": RegionData.DataPoints
+        ? RegionData.TotalConversionRate / RegionData.DataPoints // Calculate the average conversion rate
+        : 0,
+      "MonthlyData": RegionData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
 
     res.status(200).json({
@@ -869,33 +880,45 @@ export async function getChannelWiseConversions(req, res) {
     }
 
     // Group data by region and month
-    const groupedData = rows.reduce((acc, row) => {
+   const groupedData = rows.reduce((acc, row) => {
       const Channel = row.dimensionValues[0]?.value;
       const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
-      const TotalSessions = row.metricValues[1]?.value || 0;
-      const Visitors = row.metricValues[0]?.value || 0;
-      const ConversionRate = row.metricValues[2]?.value || 0;
+      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
 
       if (!acc[Channel]) {
-        acc[Channel] = [];
+        acc[Channel] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0,
+        };
       }
 
-      acc[Channel].push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      acc[Channel].MonthlyData.push({
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": Sessions,
+        "Conv. Rate": ConversionRate,
       });
+
+      acc[Channel].TotalSessions += Sessions;
+      acc[Channel].TotalConversionRate += ConversionRate;
+      acc[Channel].DataPoints += 1;
 
       return acc;
     }, {});
 
-    // Convert grouped data to an array format
-    const data = Object.entries(groupedData)
-      .map(([channel, monthlyData]) => ({
-        Channel: channel,
-        MonthlyData: monthlyData,
-      }))
+    // Convert grouped data to an array format and calculate the average conversion rate
+    const data = Object.entries(groupedData).map(([Channel, channelData]) => ({
+      "Channel": Channel,
+      "Total Sessions": channelData.TotalSessions,
+      "Avg Conv. Rate": channelData.DataPoints
+        ? channelData.TotalConversionRate / channelData.DataPoints // Calculate the average conversion rate
+        : 0,
+      "MonthlyData": channelData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
 
     res.status(200).json({
@@ -993,30 +1016,42 @@ export async function getPageWiseConversions(req, res) {
     const groupedData = rows.reduce((acc, row) => {
       const LandingPage = row.dimensionValues[0]?.value;
       const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
-      const TotalSessions = row.metricValues[1]?.value || 0;
-      const Visitors = row.metricValues[0]?.value || 0;
-      const ConversionRate = row.metricValues[2]?.value || 0;
+      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
 
       if (!acc[LandingPage]) {
-        acc[LandingPage] = [];
+        acc[LandingPage] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0,
+        };
       }
 
-      acc[LandingPage].push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate, // Ensure ConversionRate is a number
+      acc[LandingPage].MonthlyData.push({
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": Sessions,
+        "Conv. Rate": ConversionRate,
       });
+
+      acc[LandingPage].TotalSessions += Sessions;
+      acc[LandingPage].TotalConversionRate += ConversionRate;
+      acc[LandingPage].DataPoints += 1;
 
       return acc;
     }, {});
 
-    // Convert grouped data to an array format
-    const data = Object.entries(groupedData)
-      .map(([page, monthlyData]) => ({
-        LandingPage: page,
-        MonthlyData: monthlyData,
-      }))
+    // Convert grouped data to an array format and calculate the average conversion rate
+    const data = Object.entries(groupedData).map(([LandingPage, pageData]) => ({
+      "Landing Page": LandingPage,
+      "Total Sessions": pageData.TotalSessions,
+      "Avg Conv. Rate": pageData.DataPoints
+        ? pageData.TotalConversionRate / pageData.DataPoints // Calculate the average conversion rate
+        : 0,
+      "MonthlyData": pageData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
 
     res.status(200).json({
@@ -1037,7 +1072,7 @@ export async function getPageWiseConversions(req, res) {
 export async function getProductTypeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId} = req.body;
+    const { startDate, endDate, userId } = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -1127,19 +1162,14 @@ export async function getProductTypeWiseConversions(req, res) {
       }
 
       acc[ProductType].MonthlyData.push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: Sessions,
-        ConversionRate: ConversionRate,
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": Sessions,
+        "Conv. Rate": ConversionRate,
       });
 
-      // Correct summing for TotalSessions
       acc[ProductType].TotalSessions += Sessions;
-
-      // For Average Conversion Rate, accumulate the ConversionRate for averaging later
       acc[ProductType].TotalConversionRate += ConversionRate;
-
-      // Increment the data points
       acc[ProductType].DataPoints += 1;
 
       return acc;
@@ -1147,13 +1177,13 @@ export async function getProductTypeWiseConversions(req, res) {
 
     // Convert grouped data to an array format and calculate the average conversion rate
     const data = Object.entries(groupedData).map(([productType, productData]) => ({
-      ProductType: productType,
-      TotalSessions: productData.TotalSessions,
-      AverageConversionRate: productData.DataPoints
+      "Product Type": productType,
+      "Total Sessions": productData.TotalSessions,
+      "Avg Conv. Rate": productData.DataPoints
         ? productData.TotalConversionRate / productData.DataPoints // Calculate the average conversion rate
         : 0,
-      MonthlyData: productData.MonthlyData,
-    }));
+      "MonthlyData": productData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
     res.status(200).json({
       reportType: `Monthly Data for All Product Types Sorted by Month`,
@@ -1173,7 +1203,7 @@ export async function getProductTypeWiseConversions(req, res) {
 export async function getDeviceTypeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId} = req.body;
+    const { startDate, endDate, userId } = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -1186,13 +1216,12 @@ export async function getDeviceTypeWiseConversions(req, res) {
     let adjustedEndDate = endDate;
 
     if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
+      const currentMonth = new Date();
+      currentMonth.setHours(23, 59, 59, 999);
+      const sixMonthsAgo = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 5, 1);
       const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
+      adjustedStartDate = formatToLocalDateString(sixMonthsAgo);
+      adjustedEndDate = formatToLocalDateString(currentMonth);
     }
 
     const user = await User.findById(userId);
@@ -1264,10 +1293,10 @@ export async function getDeviceTypeWiseConversions(req, res) {
 
       // Add the current month's data to the device type's MonthlyData array
       acc[DeviceType].MonthlyData.push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate,
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": TotalSessions,
+        "Conv. Rate": ConversionRate,
       });
 
       // Aggregate total sessions and conversion rates
@@ -1280,11 +1309,11 @@ export async function getDeviceTypeWiseConversions(req, res) {
 
     // Convert grouped data to an array format
     const data = Object.entries(groupedData).map(([deviceType, deviceData]) => ({
-      DeviceType: deviceType,
-      TotalSessions: deviceData.TotalSessions,
-      AverageConversionRate: deviceData.TotalConversionRate / deviceData.DataPoints || 0,
-      MonthlyData: deviceData.MonthlyData,
-    }));
+      "Device": deviceType,
+      "Total Sessions": deviceData.TotalSessions,
+      "Avg Conv. Rate": deviceData.TotalConversionRate / deviceData.DataPoints || 0,
+      "MonthlyData": deviceData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
     res.status(200).json({
       reportType: `Monthly Data for All Device Types Sorted by Month`,
@@ -1304,7 +1333,7 @@ export async function getDeviceTypeWiseConversions(req, res) {
 export async function getCampaignWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId} = req.body;
+    const { startDate, endDate, userId } = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -1378,8 +1407,8 @@ export async function getCampaignWiseConversions(req, res) {
 
     // Group data by region and month
     const groupedData = rows.reduce((acc, row) => {
-      const CampaignName = row.dimensionValues[0]?.value || "Unknown Campaign"; // Fallback for undefined or missing campaign name
-      const YearMonth = row.dimensionValues[1]?.value || "Unknown Date"; // Fallback for undefined or missing year-month
+      const CampaignName = row.dimensionValues[0]?.value || "Unknown Campaign"; 
+      const YearMonth = row.dimensionValues[1]?.value || "Unknown Date"; 
       const TotalSessions = parseInt(row.metricValues[1]?.value || 0, 10);
       const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
       const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
@@ -1395,11 +1424,11 @@ export async function getCampaignWiseConversions(req, res) {
 
       // Add the current month's data to the campaign's MonthlyData array
       acc[CampaignName].MonthlyData.push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate,
-      });
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": TotalSessions,
+        "Conv. Rate": ConversionRate,
+      }).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
       // Aggregate total sessions and conversion rates
       acc[CampaignName].TotalSessions += TotalSessions;
@@ -1412,11 +1441,11 @@ export async function getCampaignWiseConversions(req, res) {
 
     // Convert grouped data to an array format
     const data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
-      CampaignName: campaignName,
-      TotalSessions: campaignData.TotalSessions,
-      AverageConversionRate: campaignData.TotalConversionRate / campaignData.DataPoints || 0,
-      MonthlyData: campaignData.MonthlyData,
-    }));
+      "Campaign Name": campaignName,
+      "Total Sessions": campaignData.TotalSessions,
+      "Avg Conv. Rate": campaignData.TotalConversionRate / campaignData.DataPoints || 0,
+      "MonthlyData": campaignData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
 
     res.status(200).json({
@@ -1437,7 +1466,7 @@ export async function getCampaignWiseConversions(req, res) {
 export async function getCityWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId} = req.body;
+    const { startDate, endDate, userId } = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -1482,11 +1511,12 @@ export async function getCityWiseConversions(req, res) {
       ],
       orderBys: [
         {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
+          desc: true, // Sort in descending order
+          metric: { metricName: 'sessions' }, // Sort by sessions
         },
       ],
     };
+
 
     const response = await axios.post(
       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
@@ -1528,10 +1558,10 @@ export async function getCityWiseConversions(req, res) {
 
       // Add the current month's data to the city's MonthlyData array
       acc[City].MonthlyData.push({
-        Month: YearMonth,
-        Visitors: Visitors,
-        Sessions: TotalSessions,
-        ConversionRate: ConversionRate,
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": TotalSessions,
+        "Conv. Rate": ConversionRate,
       });
 
       // Aggregate total sessions and conversion rates
@@ -1543,12 +1573,14 @@ export async function getCityWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to an array format and calculate average conversion rate
-    const data = Object.entries(groupedData).map(([city, cityData]) => ({
-      City: city,
-      TotalSessions: cityData.TotalSessions,
-      AverageConversionRate: cityData.TotalConversionRate / cityData.DataPoints || 0,
-      MonthlyData: cityData.MonthlyData,
-    }));
+    const data = Object.entries(groupedData)
+      .map(([city, cityData]) => ({
+        "City": city,
+        "Total Sessions": cityData.TotalSessions,
+        "Avg Conv. Rate": cityData.TotalConversionRate / cityData.DataPoints || 0,
+        "MonthlyData": cityData.MonthlyData,
+      }))
+      .sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
 
     res.status(200).json({

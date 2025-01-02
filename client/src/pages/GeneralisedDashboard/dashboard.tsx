@@ -1,5 +1,5 @@
 // CombinedDashboard.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 import { useBrand } from "@/context/BrandContext";
@@ -22,7 +22,6 @@ export default function CombinedDashboard() {
     const [activeTab, setActiveTab] = useState("landing");
     const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
     const [achievedSales, setAchievedSales] = useState<{ [key: string]: number }>({});
-    const [isLoading, setIsLoading] = useState(false);
     const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
     const getAchievedSales = useCallback(async (brandId: string) => {
@@ -36,7 +35,6 @@ export default function CombinedDashboard() {
     }, [baseURL]);
 
     const fetchSalesData = useCallback(async () => {
-        setIsLoading(true);
         try {
             const salesData: { [key: string]: number } = {};
             await Promise.all(
@@ -47,9 +45,7 @@ export default function CombinedDashboard() {
             setAchievedSales(salesData);
         } catch (error) {
             console.error('Error fetching sales data:', error);
-        } finally {
-            setIsLoading(false);
-        }
+        } 
     }, [selectedBrands, getAchievedSales]);
 
     useEffect(() => {

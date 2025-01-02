@@ -57,15 +57,20 @@ export default function ConversionTable({
       }
     });
 
-    return {
+    const result = {
       avgSessions: totalSessions / count,
       avgConvRate: totalConvRate / count
     };
+
+    console.log('Average Sessions:', result.avgSessions);
+    console.log('Average Conversion Rate:', result.avgConvRate);
+
+    return result;
   }, [data]);
 
   const getMetricColor = (sessions: number, convRate: number) => {
-    const isHighSessions = sessions > thresholds.avgSessions;
-    const isGoodConversion = convRate > thresholds.avgConvRate;
+    const isHighSessions = sessions >= thresholds.avgSessions;
+    const isGoodConversion = convRate >= thresholds.avgConvRate;
     
     if (isHighSessions && isGoodConversion) {
       return 'bg-green-100';
@@ -138,7 +143,7 @@ export default function ConversionTable({
   };
   
 
-  const fixedColumnsWidth = 160 + 100 + (150 * secondaryColumns.length);
+  const fixedColumnsWidth = 180 + 100 + (160 * secondaryColumns.length);
   const totalRows = data.length * monthlyMetrics.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -160,7 +165,7 @@ export default function ConversionTable({
     <div className="w-full border border-border rounded-lg flex flex-col">
       <div className={`relative ${tableHeightClass}`}>
         <div
-          className={`absolute left-0 top-0 bg-background overflow-hidden ${tableHeightClass}`}
+          className={`absolute left-0 top-0 bg-background  overflow-x-auto overflow-y-hidden ${tableHeightClass}`}
           style={{ width: fixedColumnsWidth }}
         >
           <table className="w-full">
@@ -188,7 +193,7 @@ export default function ConversionTable({
                 const metric = monthlyMetrics[metricIndex];
                 return (
                   <tr key={`${row[primaryColumn]}-${metric}`}>
-                    <td className="min-w-[130px] bg-background whitespace-nowrap px-4 py-3 text-sm border-r border-border">
+                    <td className="min-w-[130px] bg-background px-4 py-3 text-sm border-r border-border">
                       {metricIndex === 0 
                         ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number" 
                             ? renderCell(row[primaryColumn]) 

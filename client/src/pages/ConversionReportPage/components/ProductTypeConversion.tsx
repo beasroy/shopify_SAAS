@@ -26,7 +26,7 @@ interface CityBasedReportsProps {
 }
 
 
-const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -49,7 +49,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
 
-      const response = await axios.post(`${baseURL}/api/analytics/deviceTypeConversionReport/${brandId}`, {
+      const response = await axios.post(`${baseURL}/api/analytics/productTypeConversionReport/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate
       }, { withCredentials: true })
 
@@ -86,7 +86,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Device";
+  const primaryColumn = "Product Type";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
@@ -97,7 +97,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-medium">Device based Conversion</h2>
+              <h2 className="text-lg font-medium">Product Type based Conversion</h2>
               <Ga4Logo />
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -131,4 +131,4 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   );
 };
 
-export default DeviceTypeConversion;
+export default ProductTypeConversion;

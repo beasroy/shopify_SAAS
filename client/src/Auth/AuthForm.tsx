@@ -18,16 +18,16 @@ export default function AuthForm() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [errors, setErrors] = useState({ username: '', email: '', password: '' })
-  const { user, setUser, setShowLandingPopup } = useUser();
+  const { user, setUser} = useUser();
 
   useEffect(() => {
     if (user) {
-      if (!user.hasSeenLandingSlides) {
-        setShowLandingPopup(true);
-      }
+      // if (!user.hasSeenLandingSlides) {
+      //   setShowLandingPopup(true);
+      // }
       navigate('/dashboard');
     }
-  }, [user, navigate, setShowLandingPopup]);
+  }, [user, navigate]);
 
   const toggleForm = () => setIsLogin(!isLogin)
 
@@ -90,7 +90,7 @@ export default function AuthForm() {
           };
           setUser(userData);
           // Only show landing popup if user has no brands
-          setShowLandingPopup(!(response.data.user.brands && response.data.user.brands.length > 0));
+          // setShowLandingPopup(!(response.data.user.brands && response.data.user.brands.length > 0));
 
           toast({
             title: 'Login successful!',

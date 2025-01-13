@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
 import { useUser } from "@/context/UserContext";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams} from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
-import { useTokenError } from "@/context/TokenErrorContext";
 import { DateRange } from "react-day-picker";
+import createAxiosInstance from "./axiosInstance";
 
 type ApiResponse = {
   reportType: string;
@@ -33,11 +32,10 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const { user } = useUser();
   const { brandId } = useParams();
-  const navigate = useNavigate();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
   };
-  const { setTokenError } = useTokenError();
+  const axiosInstance = createAxiosInstance();
   // Use optional chaining to safely access date properties
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
@@ -45,11 +43,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
-      const response = await axios.post(`${baseURL}/api/analytics/deviceTypeConversionReport/${brandId}`, {
+      const response = await axiosInstance.post(`/api/analytics/deviceTypeConversionReport/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate
       }, { withCredentials: true })
 
@@ -59,17 +53,11 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
 
     } catch (error) {
       console.error("Error fetching data:", error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert("Your session has expired. Please log in again.");
-        navigate("/");
-      }
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        setTokenError(true);
-      }
+
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, navigate]);
+  }, [brandId, startDate, endDate]);
 
   useEffect(() => {
     fetchData();

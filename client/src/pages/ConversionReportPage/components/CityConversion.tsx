@@ -10,6 +10,7 @@ import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
+import PerformanceSummary from "./PerformanceSummary";
 
 type ApiResponse = {
   reportType: string;
@@ -79,7 +80,7 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   return (
-    <Card className={`m-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
+    <Card className={`m-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''} overflow-auto`}>
       <CardContent className="mt-4">
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -102,6 +103,8 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
             {loading ? (
               <TableSkeleton />
             ) : (
+              <div>
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
@@ -110,6 +113,7 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
               />
+              </div>
             )}
           </div>
         </div>

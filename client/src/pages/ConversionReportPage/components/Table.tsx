@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 
-interface MonthlyData {
+export interface MonthlyData {
   Month: string;
   [key: string]: number | string;
 }
 
-interface RowData {
+export interface RowData {
   [key: string]: number | string | MonthlyData[];
 }
 

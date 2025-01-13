@@ -10,6 +10,7 @@ import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
+import PerformanceSummary from "./PerformanceSummary";
 
 type ApiResponse = {
   reportType: string;
@@ -103,6 +104,8 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
             {loading ? (
               <TableSkeleton />
             ) : (
+              <div>
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
@@ -111,6 +114,7 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
               />
+              </div>
             )}
           </div>
         </div>

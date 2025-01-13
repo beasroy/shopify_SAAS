@@ -803,139 +803,6 @@ export async function getRegionWiseConversions(req, res) {
   }
 }
 
-export async function getChannelWiseConversions(req, res) {
-  try {
-    const { brandId } = req.params;
-    const { startDate, endDate, userId, limit } = req.body;
-
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
-    }
-
-    const propertyId = brand.ga4Account?.PropertyID;
-
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
-
-    const refreshToken = user.googleRefreshToken;
-    if (!refreshToken) {
-      console.warn(`No refresh token found for User ID: ${userId}`);
-      return res.status(200).json([]);
-    }
-
-    const accessToken = await getGoogleAccessToken(refreshToken);
-
-    const requestBody = {
-      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
-      dimensions: [{ name: 'source' }, { name: 'yearMonth' }],
-      metrics: [
-        { name: 'totalUsers' },
-        { name: 'sessions' },
-        { name: 'sessionKeyEventRate' },
-      ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
-      ],
-      limit: limit
-    };
-
-    const response = await axios.post(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-      requestBody,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const rows = response?.data?.rows;
-    if (!rows || rows.length === 0) {
-      console.warn('No data found in the response.');
-      return res.status(200).json({
-        reportType: `Monthly Data for All Channels`,
-        data: [],
-      });
-    }
-
-    // Group data by region and month
-   const groupedData = rows.reduce((acc, row) => {
-      const Channel = row.dimensionValues[0]?.value;
-      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
-      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
-      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
-      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
-
-      if (!acc[Channel]) {
-        acc[Channel] = {
-          MonthlyData: [],
-          TotalSessions: 0,
-          TotalConversionRate: 0,
-          DataPoints: 0,
-        };
-      }
-
-      acc[Channel].MonthlyData.push({
-        "Month": YearMonth,
-        "Visitors": Visitors,
-        "Sessions": Sessions,
-        "Conv. Rate": ConversionRate,
-      });
-
-      acc[Channel].TotalSessions += Sessions;
-      acc[Channel].TotalConversionRate += ConversionRate;
-      acc[Channel].DataPoints += 1;
-
-      return acc;
-    }, {});
-
-    // Convert grouped data to an array format and calculate the average conversion rate
-    const data = Object.entries(groupedData).map(([Channel, channelData]) => ({
-      "Channel": Channel,
-      "Total Sessions": channelData.TotalSessions,
-      "Avg Conv. Rate": channelData.DataPoints
-        ? channelData.TotalConversionRate / channelData.DataPoints // Calculate the average conversion rate
-        : 0,
-      "MonthlyData": channelData.MonthlyData,
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
-
-
-    res.status(200).json({
-      reportType: `Monthly Data for All Reffering Channels Sorted by Month`,
-      data,
-    });
-  } catch (error) {
-    console.error('Error fetching Reffering Channels-Based Monthly Data:', error);
-
-    if (error.response && error.response.status === 403) {
-      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
-    }
-
-    res.status(500).json({ error: 'Failed to fetch Reffering Channels-Based Monthly Data.' });
-  }
-}
-
 export async function getPageWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
@@ -1411,6 +1278,7 @@ export async function getCampaignWiseConversions(req, res) {
       const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
       const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
 
+
       if (!acc[CampaignName]) {
         acc[CampaignName] = {
           MonthlyData: [],
@@ -1593,5 +1461,138 @@ export async function getCityWiseConversions(req, res) {
     }
 
     res.status(500).json({ error: 'Failed to fetch City-Based Monthly Data.' });
+  }
+}
+
+export async function getChannelWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, userId, limit } = req.body;
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    let adjustedStartDate = startDate;
+    let adjustedEndDate = endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+      now.setHours(23, 59, 59, 999);
+
+      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
+      adjustedStartDate = formatToLocalDateString(LastSixMonths);
+      adjustedEndDate = formatToLocalDateString(now);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [{ name: 'source' }, { name: 'yearMonth' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'sessions' },
+        { name: 'sessionKeyEventRate' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'yearMonth' },
+        },
+      ],
+      limit: limit
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn('No data found in the response.');
+      return res.status(200).json({
+        reportType: `Monthly Data for All Channels`,
+        data: [],
+      });
+    }
+
+    // Group data by region and month
+   const groupedData = rows.reduce((acc, row) => {
+      const Channel = row.dimensionValues[0]?.value;
+      const YearMonth = row.dimensionValues[1]?.value; // Format: YYYYMM
+      const Sessions = parseInt(row.metricValues[1]?.value || 0, 10); // Ensure Sessions are parsed as integers
+      const Visitors = parseInt(row.metricValues[0]?.value || 0, 10);
+      const ConversionRate = parseFloat(row.metricValues[2]?.value || 0);
+
+      if (!acc[Channel]) {
+        acc[Channel] = {
+          MonthlyData: [],
+          TotalSessions: 0,
+          TotalConversionRate: 0,
+          DataPoints: 0,
+        };
+      }
+
+      acc[Channel].MonthlyData.push({
+        "Month": YearMonth,
+        "Visitors": Visitors,
+        "Sessions": Sessions,
+        "Conv. Rate": ConversionRate,
+      });
+
+      acc[Channel].TotalSessions += Sessions;
+      acc[Channel].TotalConversionRate += ConversionRate;
+      acc[Channel].DataPoints += 1;
+
+      return acc;
+    }, {});
+
+    // Convert grouped data to an array format and calculate the average conversion rate
+    const data = Object.entries(groupedData).map(([Channel, channelData]) => ({
+      "Channel": Channel,
+      "Total Sessions": channelData.TotalSessions,
+      "Avg Conv. Rate": channelData.DataPoints
+        ? channelData.TotalConversionRate / channelData.DataPoints // Calculate the average conversion rate
+        : 0,
+      "MonthlyData": channelData.MonthlyData,
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Reffering Channels Sorted by Month`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching Reffering Channels-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Reffering Channels-Based Monthly Data.' });
   }
 }

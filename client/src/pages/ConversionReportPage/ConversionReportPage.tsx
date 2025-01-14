@@ -76,7 +76,7 @@ const ConversionReportPage: React.FC = () => {
       {
         root: containerRef.current,
         threshold: 0.7,
-        rootMargin: '-140px 0px 0px 0px'
+        rootMargin: '0px 0px 0px 0px'
       }
     );
 
@@ -96,9 +96,8 @@ const ConversionReportPage: React.FC = () => {
     
     if (targetRef.current && containerRef.current) {
       const headerHeight = 140; // Height of header + tabs
-      const containerTop = containerRef.current.getBoundingClientRect().top;
       const elementTop = targetRef.current.getBoundingClientRect().top;
-      const offset = elementTop + containerTop - headerHeight;
+      const offset = elementTop  - headerHeight;
 
       containerRef.current.scrollBy({
         top: offset,

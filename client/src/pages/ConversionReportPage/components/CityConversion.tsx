@@ -80,10 +80,9 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   return (
-    <Card className={`m-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''} overflow-auto`}>
-      <CardContent className="mt-4">
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''} overflow-auto`}>
+      <CardContent>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-medium">City based Conversion</h2>
               <Ga4Logo />
@@ -116,7 +115,6 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
               </div>
             )}
           </div>
-        </div>
       </CardContent>
     </Card>
   );

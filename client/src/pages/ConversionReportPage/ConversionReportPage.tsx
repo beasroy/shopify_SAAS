@@ -98,7 +98,7 @@ const ConversionReportPage: React.FC = () => {
       const headerHeight = 140; // Height of header + tabs
       const containerTop = containerRef.current.getBoundingClientRect().top;
       const elementTop = targetRef.current.getBoundingClientRect().top;
-      const offset = elementTop - containerTop - headerHeight;
+      const offset = elementTop + containerTop - headerHeight;
 
       containerRef.current.scrollBy({
         top: offset,

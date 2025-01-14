@@ -84,9 +84,8 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   return (
-    <Card className={`m-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-      <CardContent className="mt-4">
-        <div className="space-y-4">
+    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
+      <CardContent>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-medium">Product Type based Conversion</h2>
@@ -120,7 +119,6 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
               </div>
             )}
           </div>
-        </div>
       </CardContent>
     </Card>
   );

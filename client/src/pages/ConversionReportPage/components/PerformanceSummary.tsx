@@ -72,8 +72,8 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
 
 
   return (
-    <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-      <div className="flex items-stretch h-12">
+    <div className="my-2.5 border border-gray-200 rounded-lg overflow-hidden">
+      <div className="flex items-stretch h-9">
         {categories.map((category) => (
           <div
             key={category.name}

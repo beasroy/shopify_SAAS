@@ -674,7 +674,7 @@ export async function getGenderMetrics(req, res) {
 export async function getRegionWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, limit } = req.body;
+    const { startDate, endDate, userId} = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -717,13 +717,6 @@ export async function getRegionWiseConversions(req, res) {
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
       ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
-      ],
-      limit: limit
     };
 
     const response = await axios.post(
@@ -785,12 +778,13 @@ export async function getRegionWiseConversions(req, res) {
         ? RegionData.TotalConversionRate / RegionData.DataPoints // Calculate the average conversion rate
         : 0,
       "MonthlyData": RegionData.MonthlyData,
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
+    const limitedData = data.slice(0,500);
 
     res.status(200).json({
       reportType: `Monthly Data for All Regions Sorted by Conversions`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching Regions-Based Monthly Data:', error);
@@ -806,7 +800,7 @@ export async function getRegionWiseConversions(req, res) {
 export async function getPageWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, limit } = req.body;
+    const { startDate, endDate, userId} = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -849,13 +843,6 @@ export async function getPageWiseConversions(req, res) {
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
       ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
-      ],
-      limit: limit
     };
 
     const response = await axios.post(
@@ -918,12 +905,14 @@ export async function getPageWiseConversions(req, res) {
         ? pageData.TotalConversionRate / pageData.DataPoints // Calculate the average conversion rate
         : 0,
       "MonthlyData": pageData.MonthlyData,
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    const limitedData = data.slice(0,500);
 
 
     res.status(200).json({
       reportType: `Monthly Data for All Landing Pages Sorted by Month`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching Landing Pages-Based Monthly Data:', error);
@@ -981,12 +970,6 @@ export async function getProductTypeWiseConversions(req, res) {
         { name: 'totalUsers' },
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
-      ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
       ],
     };
 
@@ -1050,11 +1033,13 @@ export async function getProductTypeWiseConversions(req, res) {
         ? productData.TotalConversionRate / productData.DataPoints // Calculate the average conversion rate
         : 0,
       "MonthlyData": productData.MonthlyData,
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    const limitedData = data.slice(0,500);
 
     res.status(200).json({
       reportType: `Monthly Data for All Product Types Sorted by Month`,
-      data,
+      data : limitedData,
     });
   } catch (error) {
     console.error('Error fetching Landing Product Types-Based Monthly Data:', error);
@@ -1111,12 +1096,6 @@ export async function getDeviceTypeWiseConversions(req, res) {
         { name: 'totalUsers' },
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
-      ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
       ],
     };
 
@@ -1180,9 +1159,11 @@ export async function getDeviceTypeWiseConversions(req, res) {
       "MonthlyData": deviceData.MonthlyData,
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
+    const limitedData = data.slice(0,500);
+
     res.status(200).json({
       reportType: `Monthly Data for All Device Types Sorted by Month`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching Device Types-Based Monthly Data:', error);
@@ -1240,12 +1221,6 @@ export async function getCampaignWiseConversions(req, res) {
         { name: 'totalUsers' },
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
-      ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
       ],
     };
 
@@ -1313,10 +1288,11 @@ export async function getCampaignWiseConversions(req, res) {
       "MonthlyData": campaignData.MonthlyData,
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
+    const limitedData = data.slice(0,500);
 
     res.status(200).json({
       reportType: `Monthly Data for All Campaigns Sorted by Month`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching Campaigns-Based Monthly Data:', error);
@@ -1375,14 +1351,7 @@ export async function getCityWiseConversions(req, res) {
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
       ],
-      orderBys: [
-        {
-          desc: true, // Sort in descending order
-          metric: { metricName: 'sessions' }, // Sort by sessions
-        },
-      ],
     };
-
 
     const response = await axios.post(
       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
@@ -1448,10 +1417,12 @@ export async function getCityWiseConversions(req, res) {
       }))
       .sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
+    const limitedData = data.slice(0, 500);
+
 
     res.status(200).json({
       reportType: `Monthly Data for All City Sorted by Month`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching City-Based Monthly Data:', error);
@@ -1467,7 +1438,7 @@ export async function getCityWiseConversions(req, res) {
 export async function getChannelWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, limit } = req.body;
+    const { startDate, endDate, userId} = req.body;
 
     const brand = await Brand.findById(brandId);
     if (!brand) {
@@ -1510,13 +1481,6 @@ export async function getChannelWiseConversions(req, res) {
         { name: 'sessions' },
         { name: 'sessionKeyEventRate' },
       ],
-      orderBys: [
-        {
-          desc: true,
-          dimension: { dimensionName: 'yearMonth' },
-        },
-      ],
-      limit: limit
     };
 
     const response = await axios.post(
@@ -1579,12 +1543,13 @@ export async function getChannelWiseConversions(req, res) {
         ? channelData.TotalConversionRate / channelData.DataPoints // Calculate the average conversion rate
         : 0,
       "MonthlyData": channelData.MonthlyData,
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+    })). sort((a,b)=>b["Total Sessions"] - a["Total Sessions"])
 
+    const limitedData = data.slice(0,500);
 
     res.status(200).json({
       reportType: `Monthly Data for All Reffering Channels Sorted by Month`,
-      data,
+      data: limitedData,
     });
   } catch (error) {
     console.error('Error fetching Reffering Channels-Based Monthly Data:', error);

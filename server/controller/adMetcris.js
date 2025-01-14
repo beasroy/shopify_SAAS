@@ -232,9 +232,6 @@ export const fetchFBCampaignData = async (req, res) => {
     }
 }
 
-
-// Google ADS API DATA 
-
 const client = new GoogleAdsApi({
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -447,6 +444,148 @@ export async function getGoogleCampaignMetrics(req, res) {
         });
     }
 }
+
+
+export const fetchFBAdAccountAndCampaignData = async (req, res) => {
+    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+    let { startDate, endDate } = req.body;
+    const { brandId } = req.params;
+
+    try {
+        // Find the brand by ID
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return res.status(404).json({
+                success: false,
+                message: 'Brand not found.',
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        // Set default date range to current month if not provided
+        if (!startDate || !endDate) {
+            startDate = moment().startOf('month').format('YYYY-MM-DD'); // First day of the current month
+            endDate = moment().format('YYYY-MM-DD'); // Current date
+        }
+
+        // Create batch requests for each ad account
+        const batchRequests = adAccountIds.flatMap((accountId) => [
+            {
+                method: 'GET',
+                relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`,
+            },
+            {
+                method: 'GET',
+                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas,account_name}`,
+            },
+        ]);
+
+        // Send batch request to Facebook Graph API
+        const response = await axios.post(
+            `https://graph.facebook.com/v21.0/`,
+            { batch: batchRequests },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                params: {
+                    access_token: accessToken,
+                },
+            }
+        );
+
+        // Process the batch response
+        const results = [];
+        for (let i = 0; i < adAccountIds.length; i++) {
+            const accountId = adAccountIds[i];
+
+            // Ad Account Insights Response
+            const accountResponse = response.data[i * 2];
+            let accountData = {
+                adAccountId: accountId,
+                account_name: '',
+                spend: 0,
+                purchase_roas: [],
+                Revenue: null,
+                purchases: null,
+                cpm: 0,
+                ctr: 0,
+                cpc: 0,
+                cpp: 0,
+                clicks: 0,
+                impressions: 0,
+                campaigns: [],
+            };
+
+            if (accountResponse.code === 200) {
+                const accountBody = JSON.parse(accountResponse.body);
+                if (accountBody.data && accountBody.data.length > 0) {
+                    const insight = accountBody.data[0];
+                    const purchase = insight.actions?.find((action) => action.action_type === 'purchase');
+
+                    accountData = {
+                        ...accountData,
+                        account_name: insight.account_name || '',
+                        spend: insight.spend,
+                        purchase_roas: insight.purchase_roas?.map((roas) => ({
+                            action_type: roas.action_type,
+                            value: roas.value,
+                        })) || [],
+                        Revenue: insight.action_values?.find((action) => action.action_type === 'purchase') || null,
+                        purchases: purchase,
+                        cpm: insight.cpm || 0,
+                        ctr: insight.ctr || 0,
+                        cpc: insight.clicks ? (insight.spend / insight.clicks).toFixed(2) : 0,
+                        cpp: purchase?.value ? (insight.spend / purchase.value).toFixed(2) : 0,
+                        clicks: insight.clicks,
+                        impressions: insight.impressions,
+                    };
+                }
+            }
+
+            // Campaign Data Response
+            const campaignResponse = response.data[i * 2 + 1];
+            if (campaignResponse.code === 200) {
+                const campaignBody = JSON.parse(campaignResponse.body);
+                if (Array.isArray(campaignBody.data)) {
+                    const filteredCampaigns = campaignBody.data.filter((campaign) => campaign.insights);
+                    accountData.campaigns = filteredCampaigns.flatMap((campaign) => {
+                        return campaign.insights.data.map((insight) => ({
+                            campaign_name: insight.campaign_name,
+                            spend: insight.spend,
+                            purchase_roas: insight.purchase_roas,
+                        }));
+                    });
+                }
+            }
+
+            results.push(accountData);
+        }
+
+        // Return the combined results
+        return res.status(200).json({
+            success: true,
+            data: results,
+        });
+    } catch (error) {
+        console.error('Error fetching Facebook Ad Account and Campaign Data:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching Facebook Ad Account and Campaign data.',
+            error: error.message,
+        });
+    }
+};
+
 
 
 

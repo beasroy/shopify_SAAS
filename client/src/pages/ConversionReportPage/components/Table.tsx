@@ -27,10 +27,10 @@ export default function ConversionTable({
   isFullScreen
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = isFullScreen ? 12 : 6;
+  const rowsPerPage = isFullScreen ? 16 : 10;
 
   const getTableHeight = () => {
-    return isFullScreen ? 'max-h-[calc(100vh-150px)]' : 'max-h-[320px]';
+    return isFullScreen ? 'max-h-[calc(100vh-150px)]' : 'max-h-[400px]';
   };
 
   const months = useMemo(() => {
@@ -71,7 +71,7 @@ export default function ConversionTable({
   const getMetricColor = (sessions: number, convRate: number) => {
     const isHighSessions = sessions >= thresholds.avgSessions;
     const isGoodConversion = convRate >= thresholds.avgConvRate;
-    
+
     if (isHighSessions && isGoodConversion) {
       return 'bg-green-100';
     } else if (isHighSessions && !isGoodConversion) {
@@ -91,14 +91,14 @@ export default function ConversionTable({
   };
 
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
-    if (!monthData) return <td className="w-[100px] whitespace-nowrap px-4 py-3 text-sm border-r border-border bg-background">-</td>;
-    
+    if (!monthData) return <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border bg-background">-</td>;
+
     const value = monthData[metric];
     let bgColor = 'bg-background';
-    
+
     if (
       (metric === 'Sessions' || metric === 'Conv. Rate') &&
-      typeof monthData['Sessions'] === 'number' && 
+      typeof monthData['Sessions'] === 'number' &&
       typeof monthData['Conv. Rate'] === 'number'
     ) {
       bgColor = getMetricColor(
@@ -106,44 +106,63 @@ export default function ConversionTable({
         Number(monthData['Conv. Rate'])
       );
     }
-    
+
     return (
-      <td className={`w-[100px] whitespace-nowrap px-4 py-3 text-sm border-r border-border ${bgColor}`}>
+      <td className={`w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
         {renderCell(value, metric.toLowerCase().includes('rate'))}
       </td>
     );
   };
 
-  const renderMetricValue = (row: RowData, column: string, currentMetric: string) => {
+  const renderMetricValue = (
+    row: RowData,
+    column: string,
+    currentMetric: string,
+    columnIndex: number
+  ) => {
+    // Adjust left position dynamically
     const value = row[column];
-    if (typeof value !== 'number') return (
-      <td className="min-w-[130px] px-4 py-3 text-sm border-r border-border bg-background">
-        {""}
-      </td>
-    );
-  
-    let bgColor = 'bg-background';
-  
-    if ((currentMetric === 'Sessions' && column === 'Total Sessions') ||
-        (currentMetric === 'Conv. Rate' && column === 'Avg Conv. Rate')) {
-      const sessions = row['Total Sessions'] as number;
-      const convRate = row['Avg Conv. Rate'] as number;
+
+    if (typeof value !== "number") {
+      return (
+        <td 
+        className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border bg-background`}
+        style={{ left: `${130 + 100 + columnIndex * 130}px`}}
+        >
+          {""}
+        </td>
+      );
+    }
+
+    let bgColor = "bg-background";
+
+    if (
+      (currentMetric === "Sessions" && column === "Total Sessions") ||
+      (currentMetric === "Conv. Rate" && column === "Avg Conv. Rate")
+    ) {
+      const sessions = row["Total Sessions"] as number;
+      const convRate = row["Avg Conv. Rate"] as number;
       bgColor = getMetricColor(sessions, convRate);
     }
-  
+
     return (
-      <td className={`w-[130px] px-4 py-3 text-sm border-r border-border ${bgColor}`}>
-        {currentMetric.toLowerCase() === 'sessions' && column === 'Total Sessions'
+      <td
+        className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
+        style={{ left: `${130 + 100 + columnIndex * 130}px`}}
+      >
+        {currentMetric.toLowerCase() === "sessions" && column === "Total Sessions"
           ? renderCell(value)
-          : currentMetric.toLowerCase() === 'conv. rate' && column === 'Avg Conv. Rate'
-          ? renderCell(value, true)
-          : ""}
+          : currentMetric.toLowerCase() === "conv. rate" &&
+            column === "Avg Conv. Rate"
+            ? renderCell(value, true)
+            : ""}
       </td>
     );
   };
-  
 
-  const fixedColumnsWidth = 180 + 100 + (160 * secondaryColumns.length);
+
+
+
   const totalRows = data.length * monthlyMetrics.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -163,89 +182,66 @@ export default function ConversionTable({
 
   return (
     <div className="w-full border border-border rounded-lg flex flex-col">
-      <div className={`relative ${tableHeightClass}`}>
-        <div
-          className={`absolute left-0 top-0 bg-background  overflow-x-auto overflow-y-hidden ${tableHeightClass}`}
-          style={{ width: fixedColumnsWidth }}
-        >
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="sticky top-0 min-w-[130px] z-20 px-4 py-3 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
-                  {primaryColumn}
-                </th>
-                <th className="sticky top-0 min-w-[100px] z-20 px-4 py-3 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
-                  Metric
-                </th>
-                {secondaryColumns.map((column) => (
+      <div className={`relative overflow-x-auto ${tableHeightClass}`}>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="sticky left-0 top-0 min-w-[130px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+                {primaryColumn}
+              </th>
+              <th className="sticky left-[130px] top-0 min-w-[100px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+                Metric
+              </th>
+              {secondaryColumns.map((column, index) => {
+                return (
                   <th
                     key={column}
-                    className="sticky top-0 min-w-[130px] z-20 px-4 py-3 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
+                    className={`sticky top-0 min-w-[130px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100`}
+                    style={{ left: `${130 + 100 + index * 130}px`}}
                   >
                     {column}
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginatedRows.map(({ dataIndex, metricIndex }) => {
-                const row = data[dataIndex];
-                const metric = monthlyMetrics[metricIndex];
-                return (
-                  <tr key={`${row[primaryColumn]}-${metric}`}>
-                    <td className="min-w-[130px] bg-background px-4 py-3 text-sm border-r border-border">
-                      {metricIndex === 0 
-                        ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number" 
-                            ? renderCell(row[primaryColumn]) 
-                            : "") 
-                        : ""}
-                    </td>
-                    <td className="min-w-[100px] bg-background whitespace-nowrap px-4 py-3 text-sm border-r border-border">
-                      {metric}
-                    </td>
-                    {secondaryColumns.map((column) => renderMetricValue(row, column, metric))} 
-                  </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
 
-        <div
-          className={`overflow-x-auto ${tableHeightClass}`}
-          style={{ marginLeft: fixedColumnsWidth }}
-        >
-          <table className="w-full">
-            <thead>
-              <tr>
-                {months.map((month) => (
-                  <th
-                    key={month}
-                    className="sticky top-0 min-w-[100px] px-4 py-3 text-left text-sm font-medium text-muted-foreground whitespace-nowrap border-r border-border bg-muted/50"
-                  >
-                    {month}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginatedRows.map(({ dataIndex, metricIndex }) => {
-                const row = data[dataIndex];
-                const metric = monthlyMetrics[metricIndex];
-                return (
-                  <tr key={`${row[primaryColumn]}-${metric}`}>
-                    {months.map((month) => {
-                      const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
-                        (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month
-                      );
-                      return renderMonthCell(monthData, metric);
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              {months.map((month) => (
+                <th
+                  key={month}
+                  className="top-0 min-w-[100px] px-2 py-2.5 text-right text-sm font-medium text-muted-foreground whitespace-nowrap border-r border-border bg-muted/50"
+                >
+                  {month}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {paginatedRows.map(({ dataIndex, metricIndex }) => {
+              const row = data[dataIndex];
+              const metric = monthlyMetrics[metricIndex];
+              return (
+                <tr key={`${row[primaryColumn]}-${metric}`}>
+                  <td className="sticky left-0 min-w-[130px] bg-background p-2 text-xs border-r border-border">
+                    {metricIndex === 0
+                      ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
+                        ? renderCell(row[primaryColumn])
+                        : "")
+                      : ""}
+                  </td>
+                  <td className="sticky left-[130px] min-w-[100px] bg-background whitespace-nowrap p-2 text-xs border-r border-border">
+                    {metric}
+                  </td>
+                  {secondaryColumns.map((column, index) => renderMetricValue(row, column, metric, index))}
+                  {months.map((month) => {
+                    const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
+                      (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month
+                    );
+                    return renderMonthCell(monthData, metric);
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="border-t border-border p-4 flex items-center justify-between bg-background">
@@ -272,3 +268,4 @@ export default function ConversionTable({
     </div>
   );
 }
+

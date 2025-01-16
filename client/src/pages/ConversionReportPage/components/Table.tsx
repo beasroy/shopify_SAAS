@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 export interface MonthlyData {
   Month: string;
@@ -42,7 +42,7 @@ export default function ConversionTable({
       console.error("Data is not an array:", data);
       return [];
     }
-  
+
     const allMonths = new Set<string>();
     data.forEach((row) => {
       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
@@ -56,8 +56,6 @@ export default function ConversionTable({
     });
     return Array.from(allMonths).sort().reverse();
   }, [data, monthlyDataKey]);
-  
-
 
   const allRows = useMemo(() => {
     const rows: Array<{ dataIndex: number; metricIndex: number }> = [];
@@ -96,7 +94,6 @@ export default function ConversionTable({
     }
   }, [isFullScreen, allRows]);
 
-
   const getMetricColor = (sessions: number, convRate: number) => {
     const isHighSessions = sessions >= thresholds.avgSessions;
     const isGoodConversion = convRate >= thresholds.avgConvRate;
@@ -122,10 +119,10 @@ export default function ConversionTable({
         </td>
       );
     }
-  
+
     const value = monthData[metric];
     let bgColor = 'bg-background';
-  
+
     if (
       (metric === 'Sessions' || metric === 'Conv. Rate') &&
       typeof monthData['Sessions'] === 'number' &&
@@ -136,7 +133,7 @@ export default function ConversionTable({
         Number(monthData['Conv. Rate'])
       );
     }
-  
+
     return (
       <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
         {renderCell(value, metric.toLowerCase().includes('rate'))}
@@ -147,7 +144,6 @@ export default function ConversionTable({
       </td>
     );
   };
-  
 
   const renderMetricValue = (
     row: RowData,
@@ -159,9 +155,9 @@ export default function ConversionTable({
 
     if (typeof value !== "number") {
       return (
-        <td 
+        <td
           className="sticky top-0 min-w-[130px] p-2 text-xs border-r border-border bg-background"
-          style={{ left: `${130 + 100 + columnIndex * 130}px`}}
+          style={{ left: `${130 + 100 + columnIndex * 130}px` }}
         >
           {""}
         </td>
@@ -182,7 +178,7 @@ export default function ConversionTable({
     return (
       <td
         className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
-        style={{ left: `${130 + 100 + columnIndex * 130}px`}}
+        style={{ left: `${130 + 100 + columnIndex * 130}px` }}
       >
         {currentMetric.toLowerCase() === "sessions" && column === "Total Sessions"
           ? renderCell(value)
@@ -194,9 +190,8 @@ export default function ConversionTable({
     );
   };
 
-
-  const displayRows = isFullScreen 
-    ? visibleRows 
+  const displayRows = isFullScreen
+    ? visibleRows
     : allRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const totalRows = allRows.length;
@@ -206,12 +201,10 @@ export default function ConversionTable({
     setCurrentPage(pageNumber);
   };
 
-  //excel report function
   const downloadExcel = () => {
     const workbook = XLSX.utils.book_new();
     const sheetData: Array<Array<string | number | null>> = [];
-  
-    // Add the header row
+
     const headerRow = [
       primaryColumn,
       'Metric',
@@ -219,113 +212,152 @@ export default function ConversionTable({
       ...months,
     ];
     sheetData.push(headerRow);
-  
-    // Add table rows
+
+    const styles = {
+      green: { 
+        patternType: 'solid', 
+        fgColor: { rgb: "DCFCE7" }
+      },
+      blue: { 
+        patternType: 'solid', 
+        fgColor: { rgb: "DBEAFE" }
+      },
+      yellow: { 
+        patternType: 'solid', 
+        fgColor: { rgb: "FEF9C3" }
+      },
+      red: { 
+        patternType: 'solid', 
+        fgColor: { rgb: "FEF2F2" }
+      },
+      header: {
+        patternType: 'solid',
+        fgColor: { rgb: "F1F5F9" }
+      }
+    };
+
     allRows.forEach(({ dataIndex, metricIndex }) => {
       const row = data[dataIndex];
       const metric = monthlyMetrics[metricIndex];
       const rowData: Array<string | number | null> = [];
-  
-      // Add primary column value (only for the first metric of each row)
+
       rowData.push(metricIndex === 0 ? (row[primaryColumn] as string | number) : '');
-  
-      // Add metric name
       rowData.push(metric);
-  
-      // Add secondary column values
+
       secondaryColumns.forEach((column) => {
         const value = row[column] as number | string | undefined;
-        rowData.push(typeof value === 'number' ? value : null);
+        rowData.push(typeof value === 'number' ? Number(value.toFixed(2)) : null);
       });
-  
-      // Add monthly data
+
       months.forEach((month) => {
         const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
           (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month
         );
         const value = monthData ? monthData[metric] : null;
-        rowData.push(typeof value === 'number' ? value : null);
+        rowData.push(typeof value === 'number' ? Number(value.toFixed(2)) : null);
       });
-  
+
       sheetData.push(rowData);
     });
-  
-    // Create worksheet
+
     const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-  
-    // Define custom styles
-    const styles = {
-      green: { patternType: 'solid', fgColor: { rgb: "BBFFD3" } },  // Light green
-      blue: { patternType: 'solid', fgColor: { rgb: "BBE5FF" } },   // Light blue
-      yellow: { patternType: 'solid', fgColor: { rgb: "FFF4BB" } }, // Light yellow
-      red: { patternType: 'solid', fgColor: { rgb: "FFBBBB" } }     // Light red
-    };
-  
-    // Apply styles to cells
+
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+      worksheet[headerCell].s = {
+        fill: styles.header,
+        font: { bold: true, color: { rgb: "64748B" } },
+        alignment: { horizontal: 'left' }
+      };
+    }
+
     allRows.forEach(({ dataIndex, metricIndex }, rowIndex) => {
-      const actualRow = rowIndex + 1; // Adding 1 to account for header row
+      const actualRow = rowIndex + 2;
       const row = data[dataIndex];
       const metric = monthlyMetrics[metricIndex];
-  
-      // Only apply colors for Sessions and Conv. Rate metrics
-      if (metric === 'Sessions' || metric === 'Conv. Rate') {
-        const sessions = row['Total Sessions'] as number;
-        const convRate = row['Avg Conv. Rate'] as number;
-  
-        // Start from the column after secondary columns
-        const startCol = secondaryColumns.length + 2; // +2 for primary column and metric column
-  
-        months.forEach((_, colIndex) => {
-          const cellRef = XLSX.utils.encode_cell({ 
-            r: actualRow, 
-            c: startCol + colIndex 
-          });
-  
-          // Determine background color based on sessions and conversion rate
-          let fillStyle;
-          const isHighSessions = sessions >= thresholds.avgSessions;
-          const isGoodConversion = convRate >= thresholds.avgConvRate;
-  
-          if (isHighSessions && isGoodConversion) {
-            fillStyle = styles.green;
-          } else if (isHighSessions && !isGoodConversion) {
-            fillStyle = styles.blue;
-          } else if (!isHighSessions && isGoodConversion) {
-            fillStyle = styles.yellow;
-          } else {
-            fillStyle = styles.red;
-          }
-  
-          // Apply the style to the cell
-          if (!worksheet[cellRef]) {
-            worksheet[cellRef] = { v: '' };
-          }
-          
-          worksheet[cellRef].s = {
-            fill: fillStyle,
-            font: { color: { rgb: "000000" } }, // Black text
-            alignment: { horizontal: 'right' }
-          };
+
+      // Apply styles for each cell
+      const startCol = 2;
+      const endCol = months.length + secondaryColumns.length + 1;
+
+      for (let col = startCol; col <= endCol; col++) {
+        const cellRef = XLSX.utils.encode_cell({
+          r: actualRow - 1,
+          c: col
         });
+
+        if (!worksheet[cellRef]) {
+          worksheet[cellRef] = { v: '' };
+        }
+
+        // Default styling
+        let cellStyle: any = {
+          font: { color: { rgb: "000000" } },
+          alignment: { horizontal: 'right' },
+          format: metric === 'Conv. Rate' ? '0.00%' : '#,##0'
+        };
+
+        // Apply color based on metric and column
+        if (metric === 'Sessions' || metric === 'Conv. Rate') {
+          let sessions: number | undefined;
+          let convRate: number | undefined;
+
+          if (col < startCol + secondaryColumns.length) {
+            // For secondary columns
+            sessions = row['Total Sessions'] as number;
+            convRate = row['Avg Conv. Rate'] as number;
+          } else {
+            // For monthly data
+            const monthIndex = col - (startCol + secondaryColumns.length);
+            const monthKey = months[monthIndex];
+            const monthlyData = (row[monthlyDataKey] as MonthlyData[]).find(
+              (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === monthKey
+            );
+
+            if (monthlyData) {
+              sessions = monthlyData['Sessions'] as number;
+              convRate = monthlyData['Conv. Rate'] as number;
+            }
+          }
+
+          if (typeof sessions === 'number' && typeof convRate === 'number') {
+            const isHighSessions = sessions >= thresholds.avgSessions;
+            const isGoodConversion = convRate >= thresholds.avgConvRate;
+
+            let fillStyle;
+            if (isHighSessions && isGoodConversion) {
+              fillStyle = styles.green;
+            } else if (isHighSessions && !isGoodConversion) {
+              fillStyle = styles.blue;
+            } else if (!isHighSessions && isGoodConversion) {
+              fillStyle = styles.yellow;
+            } else {
+              fillStyle = styles.red;
+            }
+
+            cellStyle = {
+              ...cellStyle,
+              fill: fillStyle
+            };
+          }
+        }
+
+        worksheet[cellRef].s = cellStyle;
       }
     });
-  
-    // Set column widths
+
     const colWidths = [
-      { wch: 15 }, // Primary column
-      { wch: 10 }, // Metric
-      ...secondaryColumns.map(() => ({ wch: 15 })), // Secondary columns
-      ...months.map(() => ({ wch: 12 })) // Month columns
+      { wch: 20 },
+      { wch: 12 },
+      ...secondaryColumns.map(() => ({ wch: 15 })),
+      ...months.map(() => ({ wch: 12 }))
     ];
     worksheet['!cols'] = colWidths;
-  
-    // Add the sheet to the workbook and write it to a file
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Metrics');
-    XLSX.writeFile(workbook, 'MetricsData.xlsx');
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Conversion Data');
+    XLSX.writeFile(workbook, `${primaryColumn}_Conversion_Report.xlsx`);
   };
-  
-  
-  
 
   return (
     <div className="w-full border border-border rounded-lg flex flex-col">
@@ -343,7 +375,7 @@ export default function ConversionTable({
                 <th
                   key={column}
                   className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
-                  style={{ left: `${130 + 100 + index * 130}px`}}
+                  style={{ left: `${130 + 100 + index * 130}px` }}
                 >
                   {column}
                 </th>
@@ -365,7 +397,7 @@ export default function ConversionTable({
               return (
                 <tr key={`${row[primaryColumn]}-${metric}`}>
                   <td className="sticky left-0 min-w-[130px] max-w-[200px] bg-background p-2 text-xs border-r border-border">
-                  {metricIndex === 0
+                    {metricIndex === 0
                       ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
                         ? renderCell(row[primaryColumn])
                         : "")
@@ -395,41 +427,41 @@ export default function ConversionTable({
           </div>
           <div className="flex gap-2">
             <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => goToPage(1)}
-            disabled={currentPage === 1}
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center justify-center text-sm">
-            Page {currentPage} of {totalPages}
-          </div>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => goToPage(totalPages)}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
-          <Button onClick={downloadExcel}  className="hidden h-8 w-8 p-0 lg:flex" > <FileDown className='h-4 w-4' /></Button>
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center justify-center text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+            <Button onClick={downloadExcel} className="hidden h-8 w-8 p-0 lg:flex"> <FileDown className='h-4 w-4' /></Button>
           </div>
         </div>
       )}

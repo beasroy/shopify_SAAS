@@ -25,7 +25,6 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-
 const ChannelConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);

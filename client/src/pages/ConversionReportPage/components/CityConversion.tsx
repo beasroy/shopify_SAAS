@@ -25,7 +25,6 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-
 const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
@@ -103,7 +102,13 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
               <TableSkeleton />
             ) : (
               <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <PerformanceSummary 
+                data={apiResponse?.data || []} 
+                primaryColumn={primaryColumn} 
+                secondaryColumns={secondaryColumns} 
+                monthlyDataKey={monthlyDataKey} 
+                monthlyMetrics={monthlyMetrics} 
+              />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}

@@ -25,7 +25,6 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-
 const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
@@ -104,8 +103,14 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
             {loading ? (
               <TableSkeleton />
             ) : (
-              <div className="space-y-3">
-                <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <div>
+                <PerformanceSummary 
+                  data={apiResponse?.data || []} 
+                  primaryColumn={primaryColumn} 
+                  secondaryColumns={secondaryColumns} 
+                  monthlyDataKey={monthlyDataKey} 
+                  monthlyMetrics={monthlyMetrics} 
+                />
                 <ConversionTable
                   data={apiResponse?.data || []}
                   primaryColumn={primaryColumn}

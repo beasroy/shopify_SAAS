@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { RowData } from './Table';
+
 interface PerformanceSummaryProps {
   data: RowData[];
   primaryColumn: string;
@@ -66,10 +67,9 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
       { name: 'Top Performers', color: 'text-green-700', bgColor: 'bg-green-100', count: categorizedItems['Top Performers'].length, items: categorizedItems['Top Performers'] },
       { name: 'High Traffic', color: 'text-blue-700', bgColor: 'bg-blue-100', count: categorizedItems['High Traffic'].length, items: categorizedItems['High Traffic'] },
       { name: 'Good Converters', color: 'text-yellow-700', bgColor: 'bg-yellow-100', count: categorizedItems['Good Converters'].length, items: categorizedItems['Good Converters'] },
-      { name: 'Underperformers', color: 'text-red-700', bgColor: 'bg-red-100', count: categorizedItems['Underperformers'].length, items: categorizedItems['Underperformers'] }
+      { name: 'Underperformers', color: 'text-red-700', bgColor: 'bg-red-50', count: categorizedItems['Underperformers'].length, items: categorizedItems['Underperformers'] }
     ];
   }, [data, thresholds, primaryColumn]);
-
 
   return (
     <div className="my-2.5 border border-gray-200 rounded-lg overflow-hidden">
@@ -105,4 +105,3 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
 };
 
 export default PerformanceSummary;
-

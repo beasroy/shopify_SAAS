@@ -16,15 +16,14 @@ type ApiResponse = {
   reportType: string;
   data: Array<{
     DeviceType: string;
-    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
+    MonthlyData?: Array<{ Month: string;[key: string]: any }>;// eslint-disable-line
     [key: string]: any;
-  }>;
+  }>;// eslint-disable-line
 };
 
 interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
-
 
 const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
@@ -48,7 +47,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
         userId: user?.id, startDate: startDate, endDate: endDate
       }, { withCredentials: true })
 
-      const fetchedData = response.data || [];
+      const fetchedData = response.data || [];// eslint-disable-line
 
       setApiResponse(fetchedData);
 
@@ -104,7 +103,13 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
               <TableSkeleton />
             ) : (
               <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <PerformanceSummary 
+                data={apiResponse?.data || []} 
+                primaryColumn={primaryColumn} 
+                secondaryColumns={secondaryColumns} 
+                monthlyDataKey={monthlyDataKey} 
+                monthlyMetrics={monthlyMetrics} 
+              />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}

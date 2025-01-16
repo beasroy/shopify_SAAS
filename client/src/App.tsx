@@ -7,7 +7,6 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard/AnalyticsDashboard.ts
 import GeneralDashboard from './pages/GeneralisedDashboard/GeneralDashboard.tsx';
 import { BrandProvider } from './context/BrandContext.tsx';
 import { ExcelMetricsPage } from './pages/MonthlyAdMetrics/ExcelMetrics.tsx';
-import CampaignMetricsPage from './pages/CampaignMetricsPage.tsx';
 import PerformanceDashboard from './pages/BrandPerformanceDashboard/PerformanceDashboard.tsx';
 import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
@@ -29,7 +28,6 @@ function App() {
           <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard/>} />
           <Route path='/reports/:brandId' element={<ReportsPage />} />
           <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
-          <Route path = '/campaign-metrics/:brandId' element={<CampaignMetricsPage/>}/>
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
           <Route path="/conversion-reports/:brandId" element={<ConversionReportPage />} />

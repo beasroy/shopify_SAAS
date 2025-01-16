@@ -31,22 +31,33 @@ export default function ConversionTable({
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [visibleRows, setVisibleRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
-  const rowsPerPage = 10;
+  const rowsPerPage = 8;
 
   const getTableHeight = () => {
-    return isFullScreen ? 'max-h-[calc(100vh-150px)]' : 'max-h-[400px]';
+    return isFullScreen ? 'max-h-[calc(100vh-130px)]' : 'max-h-[400px]';
   };
 
   const months = useMemo(() => {
+    if (!Array.isArray(data)) {
+      console.error("Data is not an array:", data);
+      return [];
+    }
+  
     const allMonths = new Set<string>();
     data.forEach((row) => {
-      const monthlyData = row[monthlyDataKey] as MonthlyData[];
-      monthlyData.forEach((month) => {
-        allMonths.add(`${month.Month.slice(0, 4)}-${month.Month.slice(4)}`);
-      });
+      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
+      if (Array.isArray(monthlyData)) {
+        monthlyData.forEach((month) => {
+          if (month?.Month) {
+            allMonths.add(`${month.Month.slice(0, 4)}-${month.Month.slice(4)}`);
+          }
+        });
+      }
     });
     return Array.from(allMonths).sort().reverse();
   }, [data, monthlyDataKey]);
+  
+
 
   const allRows = useMemo(() => {
     const rows: Array<{ dataIndex: number; metricIndex: number }> = [];
@@ -104,11 +115,17 @@ export default function ConversionTable({
   };
 
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
-    if (!monthData) return <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border bg-background">-</td>;
-
+    if (!monthData) {
+      return (
+        <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border bg-background">
+          -
+        </td>
+      );
+    }
+  
     const value = monthData[metric];
     let bgColor = 'bg-background';
-
+  
     if (
       (metric === 'Sessions' || metric === 'Conv. Rate') &&
       typeof monthData['Sessions'] === 'number' &&
@@ -119,13 +136,18 @@ export default function ConversionTable({
         Number(monthData['Conv. Rate'])
       );
     }
-
+  
     return (
-      <td className={`w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
+      <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
         {renderCell(value, metric.toLowerCase().includes('rate'))}
+        {/* Additional cell for Purchases */}
+        {metric === 'Conv. Rate' && (
+          <div className="text-xs text-muted-foreground">{`Purchases: ${monthData['Purchases'] ?? 0}`}</div>
+        )}
       </td>
     );
   };
+  
 
   const renderMetricValue = (
     row: RowData,
@@ -172,7 +194,7 @@ export default function ConversionTable({
     );
   };
 
-  // Calculate rows to display based on pagination or lazy loading
+
   const displayRows = isFullScreen 
     ? visibleRows 
     : allRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
@@ -183,6 +205,8 @@ export default function ConversionTable({
     const pageNumber = Math.max(1, Math.min(page, totalPages));
     setCurrentPage(pageNumber);
   };
+
+  //excel report function
   const downloadExcel = () => {
     const workbook = XLSX.utils.book_new();
     const sheetData: Array<Array<string | number | null>> = [];
@@ -309,16 +333,16 @@ export default function ConversionTable({
         <table className="w-full">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 min-w-[130px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+              <th className="sticky left-0 top-0 min-w-[130px]  w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
                 {primaryColumn}
               </th>
-              <th className="sticky left-[130px] top-0 min-w-[100px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+              <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
                 Metric
               </th>
               {secondaryColumns.map((column, index) => (
                 <th
                   key={column}
-                  className="sticky top-0 min-w-[130px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
+                  className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
                   style={{ left: `${130 + 100 + index * 130}px`}}
                 >
                   {column}
@@ -340,7 +364,7 @@ export default function ConversionTable({
               const metric = monthlyMetrics[metricIndex];
               return (
                 <tr key={`${row[primaryColumn]}-${metric}`}>
-                  <td className="sticky left-0 min-w-[130px] bg-background p-2 text-xs border-r border-border">
+                  <td className="sticky left-0 min-w-[130px] max-w-[200px] bg-background p-2 text-xs border-r border-border">
                   {metricIndex === 0
                       ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
                         ? renderCell(row[primaryColumn])

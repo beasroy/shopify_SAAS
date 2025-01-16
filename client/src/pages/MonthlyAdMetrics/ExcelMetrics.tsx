@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix
 import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShopifyLogo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
-import { FacebookLogo, GoogleLogo } from "../CampaignMetricsPage"
+import { FacebookLogo, GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
 
 
 

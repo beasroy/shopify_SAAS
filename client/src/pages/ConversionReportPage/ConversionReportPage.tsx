@@ -14,10 +14,11 @@ import ChannelConversion from './components/ChannelConversion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import RegionConversion from './components/RegionConversion';
-import ProductTypeConversion from './components/ProductTypeConversion';
+import GenderConversion from './components/GenderConversion';
 import LandingPageConversion from './components/LandingPageConversion';
-import CampaignConversion from './components/CampaignConversion';
+import AgeConversion from './components/AgeConversion';
 import { CustomTabs } from './components/CustomTabs';
+import InterestConversion from './components/InterestConversion';
 
 const ConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -34,29 +35,31 @@ const ConversionReportPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const colorInfo = [
-    { color: 'bg-green-100', condition: 'More Sessions And Good Conversion Rate' },
-    { color: 'bg-blue-100', condition: 'More Sessions But Bad Conversion Rate' },
-    { color: 'bg-yellow-100', condition: 'Less Sessions But Good Conversion Rate' },
-    { color: 'bg-red-50', condition: 'Poor Conversion Rate' },
+    { color: 'bg-green-100', condition: 'High Traffic, High Conversion' },
+    { color: 'bg-blue-100', condition: 'High Traffic, Low Conversion' },
+    { color: 'bg-yellow-100', condition: 'Low Traffic, High Conversion' },
+    { color: 'bg-red-50', condition: 'Low Traffic, Low Conversion' },
   ];
 
   const tabs = [
     { label: 'City', value: 'city' },
     { label: 'Region', value: 'region' },
+    { label: 'Interest' , value: 'interest'},
     { label: 'Landing Page', value: 'landingPage' },
     { label: 'Channel', value: 'channel' },
-    { label: 'Campaign', value: 'campaign' },
-    { label: 'Product', value: 'product' },
+    { label: 'Age', value: 'age' },
+    { label: 'Gender', value: 'gender' },
     { label: 'Device', value: 'device' },
   ];
 
   const refs = {
     city: useRef<HTMLDivElement>(null),
     region: useRef<HTMLDivElement>(null),
+    interest: useRef<HTMLDivElement>(null),
     landingPage: useRef<HTMLDivElement>(null),
     channel: useRef<HTMLDivElement>(null),
-    campaign: useRef<HTMLDivElement>(null),
-    product: useRef<HTMLDivElement>(null),
+    age: useRef<HTMLDivElement>(null),
+    gender: useRef<HTMLDivElement>(null),
     device: useRef<HTMLDivElement>(null),
   };
 
@@ -172,17 +175,20 @@ const ConversionReportPage: React.FC = () => {
             <div id="region" ref={refs.region} >
               <RegionConversion dateRange={date} />
             </div>
+            <div id="interest" ref={refs.interest} >
+              <InterestConversion dateRange={date} />
+            </div>
             <div id="landingPage" ref={refs.landingPage}>
               <LandingPageConversion dateRange={date} />
             </div>
             <div id="channel" ref={refs.channel} >
               <ChannelConversion dateRange={date}/>
             </div>
-            <div id="campaign" ref={refs.campaign}>
-              <CampaignConversion dateRange={date} />
+            <div id="age" ref={refs.age}>
+              <AgeConversion dateRange={date} />
             </div>
-            <div id="product" ref={refs.product}>
-              <ProductTypeConversion dateRange={date} />
+            <div id="gender" ref={refs.gender}>
+              <GenderConversion dateRange={date} />
             </div>
             <div id="device" ref={refs.device} >
               <DeviceTypeConversion dateRange={date} />

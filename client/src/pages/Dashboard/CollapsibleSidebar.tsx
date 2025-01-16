@@ -8,7 +8,7 @@ import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MdCampaign } from "react-icons/md";
+
 
 
 export interface Brand {
@@ -91,7 +91,6 @@ export default function CollapsibleSidebar() {
 
     const dashboards = [
         { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />},
-        { name: "Campaign Metrics", path: `/campaign-metrics/${selectedBrandId}`, icon: <MdCampaign  size={20} />},
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
         { name: "GA4 Insights & Trends", path: `/reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> },

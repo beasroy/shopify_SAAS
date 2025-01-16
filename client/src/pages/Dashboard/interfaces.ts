@@ -61,6 +61,12 @@ export interface ActionValue {
   value: string;
 }
 
+export interface Campaign {
+  campaign_name: string;
+  spend: string;
+  purchase_roas?: ActionValue[];
+}
+
 export interface AdAccountData {
   adAccountId: string;
   spend?: string;
@@ -76,10 +82,9 @@ export interface AdAccountData {
   impressions?: string;
   date_start: string;
   date_stop: string;
+  campaigns?: Campaign[];
   message?: string;
 }
-
-
 
 export interface AggregatedMetrics {
   totalSpent: string;
@@ -91,17 +96,29 @@ export interface AggregatedMetrics {
 }
 
 export interface GoogleAdAccountData {
-  adAccountName: string;
-  totalSpend: string;
-  roas: string;
-  totalConversionsValue: string;
-  totalConversions: string;
-  totalCPC: string;
-  totalCPM: string;
-  totalCTR: string;
-  totalCostPerConversion: string;
-  totalImpressions: string;
-  totalClicks: string;
+  adAccountName: string; // Name of the ad account
+  adMetrics: AdMetrics; // Nested object for ad metrics
+  campaignData: GoogleCampaign[]; // Array of campaign data
 }
+
+export interface AdMetrics {
+  totalSpend: string; // Number type since it's a monetary value
+  roas: string; // Number type as it's a ratio
+  totalConversionsValue: string; // Number type as it's a monetary value
+  totalConversions: string; // Number type as it's a numeric value
+  totalCPC: string; // Number type for cost per click
+  totalCPM: string; // Number type for cost per 1000 impressions
+  totalCTR: string; // Number type for percentage
+  totalCostPerConversion: string; // Number type for cost per conversion
+  totalClicks: string; // Number type for the number of clicks
+  totalImpressions: string; // Number type for the number of impressions
+}
+
+export interface GoogleCampaign {
+  campaign_name: string; // String for the campaign name
+  spend: string;
+  purchase_roas: string
+}
+
 
 

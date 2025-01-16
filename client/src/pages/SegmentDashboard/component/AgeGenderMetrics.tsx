@@ -7,7 +7,7 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { GoogleLogo } from '@/pages/CampaignMetricsPage';
+import { GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 

@@ -26,18 +26,16 @@ interface CityBasedReportsProps {
 }
 
 
-const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const { user } = useUser();
   const { brandId } = useParams();
-
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
   };
-
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
@@ -47,7 +45,7 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/analytics/productTypeConversionReport/${brandId}`, {
+      const response = await axiosInstance.post(`/api/analytics/ageConversionReport/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate
       }, { withCredentials: true })
 
@@ -57,7 +55,7 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
 
     } catch (error) {
       console.error("Error fetching data:", error);
-
+     
     } finally {
       setLoading(false);
     }
@@ -78,7 +76,7 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Product Type";
+  const primaryColumn = "Age";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
@@ -86,9 +84,10 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
       <CardContent>
+      
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-medium">Product Type based Conversion</h2>
+              <h2 className="text-lg font-medium">Age based Conversion</h2>
               <Ga4Logo />
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -119,9 +118,10 @@ const ProductTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
               </div>
             )}
           </div>
+ 
       </CardContent>
     </Card>
   );
 };
 
-export default ProductTypeConversion;
+export default AgeConversion;

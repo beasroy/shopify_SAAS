@@ -4,7 +4,7 @@ import { Blend, Filter, LineChart, RefreshCw } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
-import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
+import AdAccountMetricsCard, { CampaignGrid } from "./AdAccountsMetricsCard.tsx"
 import { AdAccountData, AggregatedMetrics, GoogleAdAccountData } from '@/pages/Dashboard/interfaces.ts'
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
 import { Button } from '@/components/ui/button.tsx';
@@ -57,7 +57,7 @@ export default function Dashboard() {
       if (dataSource === 'all' || dataSource === 'facebook') {
         try {
           const fbAdResponse = await axios.post(
-            `${baseURL}/api/metrics/fbad/${brandId}`,
+            `${baseURL}/api/metrics/fbAdAndCampaign/${brandId}`,
             { startDate, endDate },
             { withCredentials: true }
           );
@@ -72,7 +72,7 @@ export default function Dashboard() {
       if (dataSource === 'all' || dataSource === 'google') {
         try {
           const googleAdResponse = await axios.post(
-            `${baseURL}/api/metrics/googlead/${brandId}`,
+            `${baseURL}/api/metrics/googleAdAndCampaign/${brandId}`,
             { startDate, endDate },
             { withCredentials: true }
           );
@@ -136,11 +136,11 @@ export default function Dashboard() {
     }
 
     if (googleData) {
-      totalSpent += parseFloat(googleData.totalSpend || '0');
-      totalRevenue += parseFloat(googleData.totalConversionsValue || '0');
-      totalPurchases += parseFloat(googleData.totalConversions || '0');
-      totalClicks += parseFloat(googleData.totalClicks || '0');
-      totalImpressions += parseFloat(googleData.totalImpressions || '0');
+      totalSpent += parseFloat(googleData.adMetrics.totalSpend || '0');
+      totalRevenue += parseFloat(googleData.adMetrics.totalConversionsValue || '0');
+      totalPurchases += parseFloat(googleData.adMetrics.totalConversions || '0');
+      totalClicks += parseFloat(googleData.adMetrics.totalClicks || '0');
+      totalImpressions += parseFloat(googleData.adMetrics.totalImpressions || '0');
     }
     // console.log(totalR)
 
@@ -191,35 +191,35 @@ export default function Dashboard() {
   const googleMetrics = [
     {
       label: 'Total Cost',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.totalSpend}` : ' 0',
+      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalSpend}` : ' 0',
     },
     {
       label: 'Conversion Value',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.totalConversionsValue}` : ' 0',
+      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalConversionsValue}` : ' 0',
     },
     {
       label: 'ROAS',
-      value: googleAdMetrics ? googleAdMetrics?.roas : '0.00',
+      value: googleAdMetrics ? googleAdMetrics?.adMetrics.roas : '0.00',
     },
     {
       label: 'Conversions',
-      value: googleAdMetrics ? googleAdMetrics?.totalConversions : '0',
+      value: googleAdMetrics ? googleAdMetrics?.adMetrics.totalConversions : '0',
     },
     {
       label: 'CPC',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.totalCPC}` : ' 0',
+      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCPC}` : ' 0',
     },
     {
       label: 'CPM',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.totalCPM}` : ' 0',
+      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCPM}` : ' 0',
     },
     {
       label: 'CTR',
-      value: googleAdMetrics ? `${googleAdMetrics?.totalCTR} %` : ' 0',
+      value: googleAdMetrics ? `${googleAdMetrics?.adMetrics.totalCTR} %` : ' 0',
     },
     {
       label: 'Cost Per Conversion',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.totalCostPerConversion}` : ' 0',
+      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCostPerConversion}` : ' 0',
     },
   ]
 
@@ -334,6 +334,7 @@ export default function Dashboard() {
           ];
 
           return (
+            <>
             <AdAccountMetricsCard
               key={index}
               icon="Facebook"
@@ -343,12 +344,15 @@ export default function Dashboard() {
               isLoading={isLoading}
               errorMessage={accountMetrics.message}
             />
+            <CampaignGrid campaigns={accountMetrics.campaigns || []} isLoading={isLoading} icon="Facebook" />
+            </>
           );
         })}
 
         {
           (dataSource === 'all' || dataSource === 'google') && (
             googleAdMetrics && Object.keys(googleAdMetrics).length > 0 ? (
+              <>
               <AdAccountMetricsCard
                 icon="Google"
                 title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
@@ -356,6 +360,8 @@ export default function Dashboard() {
                 date={date || { from: new Date(), to: new Date() }}
                 isLoading={isLoading}
               />
+              <CampaignGrid campaigns={googleAdMetrics.campaignData || []} isLoading={isLoading} icon="Google" />
+              </>
             ) : (
               <section>
                 <div className='flex flex-row gap-2 items-center'>

@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
-import { GoogleLogo } from '@/pages/CampaignMetricsPage'
+import { GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard'
 import { Button } from '@/components/ui/button'
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"

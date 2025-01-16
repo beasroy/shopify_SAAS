@@ -109,9 +109,6 @@ const InterestConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
               <PerformanceSummary 
                 data={apiResponse?.data || []} 
                 primaryColumn={primaryColumn} 
-                secondaryColumns={secondaryColumns} 
-                monthlyDataKey={monthlyDataKey} 
-                monthlyMetrics={monthlyMetrics} 
               />
               <ConversionTable
                 data={apiResponse?.data || []}

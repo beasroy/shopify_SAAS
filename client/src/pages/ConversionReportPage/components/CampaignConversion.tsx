@@ -25,7 +25,8 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+
+const CampaignConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,7 +36,6 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
   };
-
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const axiosInstance = createAxiosInstance();
@@ -43,14 +43,13 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/analytics/cityConversionReport/${brandId}`, {
-        userId: user?.id, startDate: startDate, endDate: endDate
-      }, { withCredentials: true })
-
+        const response = await axiosInstance.post(`/api/analytics/campaignConversionReport/${brandId}`, {
+          userId: user?.id,
+          startDate,
+          endDate,
+        });
       const fetchedData = response.data || [];
-
       setApiResponse(fetchedData);
-
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -73,17 +72,18 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "City";
+  const primaryColumn = "Campaign";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   return (
-    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''} overflow-auto`}>
+    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
       <CardContent>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+   
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-medium">City based Conversion</h2>
+              <h2 className="text-lg font-medium">Campaign based Conversion</h2>
               <Ga4Logo />
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -102,10 +102,7 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
               <TableSkeleton />
             ) : (
               <div>
-              <PerformanceSummary 
-                data={apiResponse?.data || []} 
-                primaryColumn={primaryColumn} 
-              />
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
@@ -122,4 +119,4 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   );
 };
 
-export default CityTypeConversion;
+export default CampaignConversion;

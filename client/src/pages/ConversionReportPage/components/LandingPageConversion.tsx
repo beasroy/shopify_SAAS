@@ -107,9 +107,6 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
                 <PerformanceSummary 
                   data={apiResponse?.data || []} 
                   primaryColumn={primaryColumn} 
-                  secondaryColumns={secondaryColumns} 
-                  monthlyDataKey={monthlyDataKey} 
-                  monthlyMetrics={monthlyMetrics} 
                 />
                 <ConversionTable
                   data={apiResponse?.data || []}

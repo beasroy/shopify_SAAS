@@ -723,16 +723,16 @@ export async function getCityWiseConversions(req, res) {
 
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      )
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
     const Rows = response?.data?.rows || [];
     // Group data by region and month
@@ -855,24 +855,24 @@ export async function getRegionWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
-    
+
 
     // Make both API calls concurrently
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      )
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
     const Rows = response?.data?.rows || [];
 
@@ -1002,19 +1002,19 @@ export async function getPageWiseConversions(req, res) {
       ]
     };
 
-  
+
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      )
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
     const Rows = response?.data?.rows || [];
 
@@ -1137,32 +1137,32 @@ export async function getDeviceTypeWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
-  
-   
-    const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
 
-   const Rows = response?.data?.rows || [];
-   
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+
+    const Rows = response?.data?.rows || [];
+
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
       const yearMonth = row.dimensionValues[0]?.value;
       const DeviceType = row.dimensionValues[1]?.value;
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
-      const purchases = parseInt(row.metricValues[1]?.value || 0, 10);  
+      const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
 
       // Initialize region if it doesn't exist
       if (!acc[DeviceType]) {
@@ -1270,28 +1270,28 @@ export async function getChannelWiseConversions(req, res) {
       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
       dimensions: [
         { name: 'yearMonth' },
-        { name: 'sessionDefaultChannelGroup' }
+        { name: 'firstUserPrimaryChannelGroup' }
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
 
-   const Rows = response?.data?.rows || [];
-  
+    const Rows = response?.data?.rows || [];
+
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
@@ -1414,24 +1414,24 @@ export async function getAgeWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
 
-   const Rows = response?.data?.rows || [];
-  
+    const Rows = response?.data?.rows || [];
+
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
@@ -1482,7 +1482,7 @@ export async function getAgeWiseConversions(req, res) {
 
     // Convert grouped data to array format
     const data = Object.entries(groupedData).map(([Age, AgeData]) => ({
-       Age: Age,
+      Age: Age,
       "Total Sessions": AgeData.TotalSessions,
       "Total Purchases": AgeData.TotalPurchases,
       "Data Points": AgeData.DataPoints,  // Now showing the number of months
@@ -1554,24 +1554,24 @@ export async function getGenderWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
 
-   const Rows = response?.data?.rows || [];
-  
+    const Rows = response?.data?.rows || [];
+
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
@@ -1622,7 +1622,7 @@ export async function getGenderWiseConversions(req, res) {
 
     // Convert grouped data to array format
     const data = Object.entries(groupedData).map(([Gender, GenderData]) => ({
-       Gender: Gender,
+      Gender: Gender,
       "Total Sessions": GenderData.TotalSessions,
       "Total Purchases": GenderData.TotalPurchases,
       "Data Points": GenderData.DataPoints,  // Now showing the number of months
@@ -1694,24 +1694,24 @@ export async function getInterestWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases'}
+        { name: 'ecommercePurchases' }
       ]
     };
 
 
     const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        })
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
 
-   const Rows = response?.data?.rows || [];
-  
+    const Rows = response?.data?.rows || [];
+
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
@@ -1869,23 +1869,23 @@ export async function getProductTypeWiseConversions(req, res) {
             'Content-Type': 'application/json',
           },
         }),
-        axios.post(
-          `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-          purchasesRequestBody,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
+      axios.post(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+        purchasesRequestBody,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
           },
-        )
-        ])
+        },
+      )
+    ])
 
-   const sessionRows = sessionResponse?.data?.rows || [];
-   const purchaseRows = purchaseResponse?.data?.rows || [];
+    const sessionRows = sessionResponse?.data?.rows || [];
+    const purchaseRows = purchaseResponse?.data?.rows || [];
 
-   const purchaseData = {};
+    const purchaseData = {};
     purchaseRows.forEach(row => {
       const yearMonth = row.dimensionValues[0]?.value;
       const ProductType = row.dimensionValues[1]?.value;
@@ -2006,81 +2006,39 @@ export async function getCampaignWiseConversions(req, res) {
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-    const sessionsRequestBody = {
+    const requestBody = {
       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
       dimensions: [
         { name: 'yearMonth' },
-        { name: 'campaign' }
+        { name: 'firstUserCampaignName' }
       ],
       metrics: [
         { name: 'sessions' },
+        { name: 'ecommercePurchases' }
       ]
     };
 
-    // Second API call: Get purchase events
-    const purchasesRequestBody = {
-      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
-      dimensions: [
-        { name: 'yearMonth' },
-        { name: 'campaign' }
-      ],
-      metrics: [
-        { name: 'eventCount' }
-      ],
-      dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: {
-            value: 'purchase',
-            matchType: 'EXACT'
-          }
-        }
-      }
-    };
 
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
 
-    const [sessionResponse, purchaseResponse] = await Promise.all([
-      axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        sessionsRequestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }),
-        axios.post(
-          `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-          purchasesRequestBody,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          },
-        )
-        ])
+    const Rows = response?.data?.rows || [];
 
-   const sessionRows = sessionResponse?.data?.rows || [];
-   const purchaseRows = purchaseResponse?.data?.rows || [];
-
-   const purchaseData = {};
-    purchaseRows.forEach(row => {
-      const yearMonth = row.dimensionValues[0]?.value;
-      const Campaign = row.dimensionValues[1]?.value;
-      const key = `${yearMonth}-${Campaign}`;
-      purchaseData[key] = parseInt(row.metricValues[0]?.value || 0, 10);
-    });
 
     // Process data starting with sessions
-    const groupedData = sessionRows.reduce((acc, row) => {
+    const groupedData = Rows.reduce((acc, row) => {
       const yearMonth = row.dimensionValues[0]?.value;
       const Campaign = row.dimensionValues[1]?.value;
-      const key = `${yearMonth}-${Campaign}`;
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
-      const purchases = purchaseData[key] || 0;  // Get purchases if they exist, otherwise 0
+      const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
 
       // Initialize region if it doesn't exist
       if (!acc[Campaign]) {
@@ -2128,7 +2086,7 @@ export async function getCampaignWiseConversions(req, res) {
       "Campaign": campaignName,
       "Total Sessions": campaignData.TotalSessions,
       "Avg Conv. Rate": campaignData.TotalConversionRate / campaignData.DataPoints || 0,
-      "MonthlyData": campaignData.MonthlyData,
+      "MonthlyData": Object.values(campaignData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
     const limitedData = data.slice(0, 500);

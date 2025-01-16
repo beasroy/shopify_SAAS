@@ -19,6 +19,7 @@ import LandingPageConversion from './components/LandingPageConversion';
 import AgeConversion from './components/AgeConversion';
 import { CustomTabs } from './components/CustomTabs';
 import InterestConversion from './components/InterestConversion';
+import CampaignConversion from './components/CampaignConversion';
 
 const ConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -47,6 +48,7 @@ const ConversionReportPage: React.FC = () => {
     { label: 'Interest' , value: 'interest'},
     { label: 'Landing Page', value: 'landingPage' },
     { label: 'Channel', value: 'channel' },
+    { label: 'Campaign', value: 'campaign'},
     { label: 'Age', value: 'age' },
     { label: 'Gender', value: 'gender' },
     { label: 'Device', value: 'device' },
@@ -61,6 +63,7 @@ const ConversionReportPage: React.FC = () => {
     age: useRef<HTMLDivElement>(null),
     gender: useRef<HTMLDivElement>(null),
     device: useRef<HTMLDivElement>(null),
+    campaign: useRef<HTMLDivElement>(null),
   };
 
   // Observer to highlight active tab based on scroll position
@@ -183,6 +186,9 @@ const ConversionReportPage: React.FC = () => {
             </div>
             <div id="channel" ref={refs.channel} >
               <ChannelConversion dateRange={date}/>
+            </div>
+            <div id="campaign" ref={refs.campaign} >
+              <CampaignConversion dateRange={date}/>
             </div>
             <div id="age" ref={refs.age}>
               <AgeConversion dateRange={date} />

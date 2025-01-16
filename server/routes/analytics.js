@@ -1,5 +1,5 @@
 import express from "express";
-import { getInterestWiseConversions, getAgeMetrics, getChannelMetrics, getRegionWiseConversions,getCityWiseConversions, getDeviceTypeWiseConversions, getGenderWiseConversions, getPageWiseConversions, getChannelWiseConversions, getDailyAddToCartAndCheckouts, getGenderMetrics, getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions } from "../controller/analytics.js";
+import { getInterestWiseConversions,getCampaignWiseConversions, getAgeMetrics, getChannelMetrics, getRegionWiseConversions,getCityWiseConversions, getDeviceTypeWiseConversions, getGenderWiseConversions, getPageWiseConversions, getChannelWiseConversions, getDailyAddToCartAndCheckouts, getGenderMetrics, getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
 const router = express.Router();
@@ -19,5 +19,6 @@ router.post('/deviceTypeConversionReport/:brandId', verifyAuth, getDeviceTypeWis
 router.post('/ageConversionReport/:brandId', verifyAuth, getAgeWiseConversions)
 router.post('/cityConversionReport/:brandId', verifyAuth, getCityWiseConversions)
 router.post('/interestConversionReport/:brandId', verifyAuth, getInterestWiseConversions)
+router.post('/campaignConversionReport/:brandId', verifyAuth, getCampaignWiseConversions)
 
 export default router;

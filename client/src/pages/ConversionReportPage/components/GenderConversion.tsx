@@ -107,7 +107,10 @@ const GenderConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
               <TableSkeleton />
             ) : (
               <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <PerformanceSummary 
+                data={apiResponse?.data || []} 
+                primaryColumn={primaryColumn}
+              />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}

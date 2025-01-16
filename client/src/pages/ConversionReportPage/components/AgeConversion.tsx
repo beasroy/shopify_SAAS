@@ -108,9 +108,6 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
               <PerformanceSummary 
                 data={apiResponse?.data || []} 
                 primaryColumn={primaryColumn} 
-                secondaryColumns={secondaryColumns} 
-                monthlyDataKey={monthlyDataKey} 
-                monthlyMetrics={monthlyMetrics} 
               />
               <ConversionTable
                 data={apiResponse?.data || []}

@@ -106,9 +106,6 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
               <PerformanceSummary 
                 data={apiResponse?.data || []} 
                 primaryColumn={primaryColumn} 
-                secondaryColumns={secondaryColumns} 
-                monthlyDataKey={monthlyDataKey} 
-                monthlyMetrics={monthlyMetrics} 
               />
               <ConversionTable
                 data={apiResponse?.data || []}

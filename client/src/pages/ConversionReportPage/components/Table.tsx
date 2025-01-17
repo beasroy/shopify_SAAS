@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight} from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
-import * as XLSX from 'xlsx-js-style';
 
 export interface MonthlyData {
   Month: string;
@@ -200,163 +199,30 @@ export default function ConversionTable({
     const pageNumber = Math.max(1, Math.min(page, totalPages));
     setCurrentPage(pageNumber);
   };
-
-  const downloadExcel = () => {
-    const workbook = XLSX.utils.book_new();
-    const sheetData: Array<Array<string | number | null>> = [];
-
-    const headerRow = [
-      primaryColumn,
-      'Metric',
-      ...secondaryColumns,
-      ...months,
-    ];
-    sheetData.push(headerRow);
-
-    const styles = {
-      green: { 
-        patternType: 'solid', 
-        fgColor: { rgb: "DCFCE7" }
-      },
-      blue: { 
-        patternType: 'solid', 
-        fgColor: { rgb: "DBEAFE" }
-      },
-      yellow: { 
-        patternType: 'solid', 
-        fgColor: { rgb: "FEF9C3" }
-      },
-      red: { 
-        patternType: 'solid', 
-        fgColor: { rgb: "FEF2F2" }
-      },
-      header: {
-        patternType: 'solid',
-        fgColor: { rgb: "F1F5F9" }
-      }
-    };
-
-    allRows.forEach(({ dataIndex, metricIndex }) => {
-      const row = data[dataIndex];
-      const metric = monthlyMetrics[metricIndex];
-      const rowData: Array<string | number | null> = [];
-
-      rowData.push(metricIndex === 0 ? (row[primaryColumn] as string | number) : '');
-      rowData.push(metric);
-
-      secondaryColumns.forEach((column) => {
-        const value = row[column] as number | string | undefined;
-        rowData.push(typeof value === 'number' ? Number(value.toFixed(2)) : null);
-      });
-
-      months.forEach((month) => {
-        const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
-          (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month
-        );
-        const value = monthData ? monthData[metric] : null;
-        rowData.push(typeof value === 'number' ? Number(value.toFixed(2)) : null);
-      });
-
-      sheetData.push(rowData);
-    });
-
-    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    for (let C = range.s.c; C <= range.e.c; C++) {
-      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
-      worksheet[headerCell].s = {
-        fill: styles.header,
-        font: { bold: true, color: { rgb: "64748B" } },
-        alignment: { horizontal: 'left' }
-      };
+  const renderColumnHeader = (column: string, index: number) => {
+    let thresholdValue = '';
+    if (column === 'Total Sessions') {
+      thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`;
+    } else if (column === 'Avg Conv. Rate') {
+      thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`;
     }
 
-    allRows.forEach(({ dataIndex, metricIndex }, rowIndex) => {
-      const actualRow = rowIndex + 2;
-      const row = data[dataIndex];
-      const metric = monthlyMetrics[metricIndex];
-
-      // Apply styles for each cell
-      const startCol = 2;
-      const endCol = months.length + secondaryColumns.length + 1;
-
-      for (let col = startCol; col <= endCol; col++) {
-        const cellRef = XLSX.utils.encode_cell({
-          r: actualRow - 1,
-          c: col
-        });
-
-        if (!worksheet[cellRef]) {
-          worksheet[cellRef] = { v: '' };
-        }
-
-        // Default styling
-        let cellStyle: any = {
-          font: { color: { rgb: "000000" } },
-          alignment: { horizontal: 'right' },
-          format: metric === 'Conv. Rate' ? '0.00%' : '#,##0'
-        };
-
-        // Apply color based on metric and column
-        if (metric === 'Sessions' || metric === 'Conv. Rate') {
-          let sessions: number | undefined;
-          let convRate: number | undefined;
-
-          if (col < startCol + secondaryColumns.length) {
-            // For secondary columns
-            sessions = row['Total Sessions'] as number;
-            convRate = row['Avg Conv. Rate'] as number;
-          } else {
-            // For monthly data
-            const monthIndex = col - (startCol + secondaryColumns.length);
-            const monthKey = months[monthIndex];
-            const monthlyData = (row[monthlyDataKey] as MonthlyData[]).find(
-              (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === monthKey
-            );
-
-            if (monthlyData) {
-              sessions = monthlyData['Sessions'] as number;
-              convRate = monthlyData['Conv. Rate'] as number;
-            }
-          }
-
-          if (typeof sessions === 'number' && typeof convRate === 'number') {
-            const isHighSessions = sessions >= thresholds.avgSessions;
-            const isGoodConversion = convRate >= thresholds.avgConvRate;
-
-            let fillStyle;
-            if (isHighSessions && isGoodConversion) {
-              fillStyle = styles.green;
-            } else if (isHighSessions && !isGoodConversion) {
-              fillStyle = styles.blue;
-            } else if (!isHighSessions && isGoodConversion) {
-              fillStyle = styles.yellow;
-            } else {
-              fillStyle = styles.red;
-            }
-
-            cellStyle = {
-              ...cellStyle,
-              fill: fillStyle
-            };
-          }
-        }
-
-        worksheet[cellRef].s = cellStyle;
-      }
-    });
-
-    const colWidths = [
-      { wch: 20 },
-      { wch: 12 },
-      ...secondaryColumns.map(() => ({ wch: 15 })),
-      ...months.map(() => ({ wch: 12 }))
-    ];
-    worksheet['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Conversion Data');
-    XLSX.writeFile(workbook, `${primaryColumn}_Conversion_Report.xlsx`);
+    return (
+      <th
+        key={column}
+        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
+        style={{ left: `${130 + 100 + index * 130}px` }}
+      >
+        <div className="flex flex-col">
+          <span>{column}</span>
+          {thresholdValue && (
+            <span className="text-xs text-muted-foreground font-normal">
+              {thresholdValue}
+            </span>
+          )}
+        </div>
+      </th>
+    );
   };
 
   return (
@@ -371,15 +237,7 @@ export default function ConversionTable({
               <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
                 Metric
               </th>
-              {secondaryColumns.map((column, index) => (
-                <th
-                  key={column}
-                  className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
-                  style={{ left: `${130 + 100 + index * 130}px` }}
-                >
-                  {column}
-                </th>
-              ))}
+              {secondaryColumns.map((column, index) => renderColumnHeader(column, index))}
               {months.map((month) => (
                 <th
                   key={month}
@@ -461,7 +319,6 @@ export default function ConversionTable({
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
-            <Button onClick={downloadExcel} className="hidden h-8 w-8 p-0 lg:flex"> <FileDown className='h-4 w-4' /></Button>
           </div>
         </div>
       )}

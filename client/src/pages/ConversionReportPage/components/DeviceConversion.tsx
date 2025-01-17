@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
 import { useUser } from "@/context/UserContext";
-import { useParams} from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
+import ExcelDownload from "./ExcelDownload";
 
 type ApiResponse = {
   reportType: string;
@@ -82,30 +83,38 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
       <CardContent>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-medium">Device based Conversion</h2>
-              <Ga4Logo />
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
-
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-medium">Device based Conversion</h2>
+            <Ga4Logo />
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={toggleFullScreen} size="icon" variant="outline">
+              {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+            <ExcelDownload
+              data={apiResponse?.data || []}
+              fileName={`${primaryColumn}_Conversion_Report`}
+              primaryColumn={primaryColumn}
+              secondaryColumns={secondaryColumns}
+              monthlyDataKey={monthlyDataKey}
+              monthlyMetrics={monthlyMetrics}
+              disabled={loading}
+            />
+          </div>
+        </div>
 
-          <div className="rounded-md overflow-hidden">
-            {loading ? (
-              <TableSkeleton />
-            ) : (
-              <div>
-              <PerformanceSummary 
-                data={apiResponse?.data || []} 
-                primaryColumn={primaryColumn} 
+        <div className="rounded-md overflow-hidden">
+          {loading ? (
+            <TableSkeleton />
+          ) : (
+            <div>
+              <PerformanceSummary
+                data={apiResponse?.data || []}
+                primaryColumn={primaryColumn}
               />
               <ConversionTable
                 data={apiResponse?.data || []}
@@ -115,9 +124,9 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
               />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
       </CardContent>
     </Card>

@@ -81,7 +81,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
             onClick={() => setExpandedCategory(expandedCategory === category.name ? null : category.name)}
           >
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className={`text-xs font-medium ${category.color} ${expandedCategory === category.name ? 'underline': ''}`}>
+              <span className={`text-xs font-medium ${category.color} ${expandedCategory === category.name ? 'underline' : ''}`}>
                 {category.name} ({category.count})
               </span>
             </div>
@@ -93,9 +93,11 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
           <h3 className={`text-lg font-semibold mb-2 ${categories.find(c => c.name === expandedCategory)?.color}`}>
             {expandedCategory}
           </h3>
-          <ul className="grid grid-cols-4 list-disc pl-5 max-h-40 overflow-y-auto ">
+          <ul className="grid grid-cols-4 list-disc pl-5 max-h-40 overflow-y-auto gap-4">
             {categories.find(c => c.name === expandedCategory)?.items.map((item, index) => (
-              <li key={index} className="text-sm mb-1">{item}</li>
+              <li key={index} className="text-sm mb-1 break-words w-full">
+                {item}
+              </li>
             ))}
           </ul>
         </div>

@@ -30,7 +30,7 @@ const WebsiteConversionReportPage: React.FC = () => {
   const hasGA4Account = selectedBrand?.ga4Account ?? false;
   const { tokenError } = useTokenError();
 
-  const [activeTab, setActiveTab] = useState('city');
+  const [activeTab, setActiveTab] = useState('channel');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const colorInfo = [

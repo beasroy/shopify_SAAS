@@ -6,6 +6,31 @@ import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 config();
 
+ // Helper function to compare values based on operator
+ const compareValues = (value, filterValue, operator) => {
+  switch (operator.toLowerCase()) {
+    case 'gt':
+    case '>':
+      return value > filterValue;
+    case 'gte':
+    case '>=':
+      return value >= filterValue;
+    case 'lt':
+    case '<':
+      return value < filterValue;
+    case 'lte':
+    case '<=':
+      return value <= filterValue;
+    case 'eq':
+    case '===':
+    case '==':
+      return value === filterValue;
+    default:
+      console.warn(`Unknown operator: ${operator}, defaulting to greater than or equal`);
+      return value >= filterValue;
+  }
+};
+
 export async function getGoogleAccessToken(refreshToken) {
   const oAuth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -747,8 +772,6 @@ export async function getCityWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -772,12 +795,6 @@ export async function getCityWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[city].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[city].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[city].DataPoints = Object.keys(acc[city].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -786,8 +803,7 @@ export async function getCityWiseConversions(req, res) {
       City: city,
       "Total Sessions": cityData.TotalSessions,
       "Total Purchases": cityData.TotalPurchases,
-      "Data Points": cityData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": cityData.DataPoints > 0 ? (cityData.TotalConversionRate / cityData.DataPoints) : 0,
+      "Avg Conv. Rate": cityData.TotalSessions > 0 ? (cityData.TotalPurchases / cityData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(cityData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -889,8 +905,6 @@ export async function getRegionWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -914,12 +928,6 @@ export async function getRegionWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[region].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[region].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[region].DataPoints = Object.keys(acc[region].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -928,8 +936,7 @@ export async function getRegionWiseConversions(req, res) {
       Region: region,
       "Total Sessions": regionData.TotalSessions,
       "Total Purchases": regionData.TotalPurchases,
-      "Data Points": regionData.DataPoints,
-      "Avg Conv. Rate": (regionData.TotalConversionRate / regionData.DataPoints),
+      "Avg Conv. Rate": regionData.TotalSessions > 0 ? (regionData.TotalPurchases / regionData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(regionData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1031,8 +1038,6 @@ export async function getPageWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1056,11 +1061,6 @@ export async function getPageWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[landingPage].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[landingPage].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[landingPage].DataPoints = Object.keys(acc[landingPage].MonthlyData).length;
 
       return acc;
     }, {});
@@ -1070,8 +1070,7 @@ export async function getPageWiseConversions(req, res) {
       "Landing Page": LandingPage,
       "Total Sessions": LandingPageData.TotalSessions,
       "Total Purchases": LandingPageData.TotalPurchases,
-      "Data Points": LandingPageData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": ((LandingPageData.TotalConversionRate / LandingPageData.DataPoints)),
+      "Avg Conv. Rate": LandingPageData.TotalSessions > 0 ? (LandingPageData.TotalPurchases / LandingPageData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(LandingPageData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1170,8 +1169,6 @@ export async function getDeviceTypeWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1195,12 +1192,6 @@ export async function getDeviceTypeWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[DeviceType].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[DeviceType].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[DeviceType].DataPoints = Object.keys(acc[DeviceType].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1208,7 +1199,7 @@ export async function getDeviceTypeWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([deviceType, deviceData]) => ({
       "Device": deviceType,
       "Total Sessions": deviceData.TotalSessions,
-      "Avg Conv. Rate": deviceData.TotalConversionRate / deviceData.DataPoints || 0,
+      "Avg Conv. Rate": deviceData.TotalSessions > 0 ? (deviceData.TotalPurchases / deviceData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(deviceData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
 
@@ -1306,8 +1297,6 @@ export async function getChannelWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1331,12 +1320,6 @@ export async function getChannelWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Channel].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Channel].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Channel].DataPoints = Object.keys(acc[Channel].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1345,8 +1328,7 @@ export async function getChannelWiseConversions(req, res) {
       Channel: channel,
       "Total Sessions": channelData.TotalSessions,
       "Total Purchases": channelData.TotalPurchases,
-      "Data Points": channelData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": ((channelData.TotalConversionRate / channelData.DataPoints)),
+      "Avg Conv. Rate": channelData.TotalSessions > 0 ? (channelData.TotalPurchases / channelData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(channelData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1446,8 +1428,6 @@ export async function getAgeWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1471,12 +1451,6 @@ export async function getAgeWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Age].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Age].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Age].DataPoints = Object.keys(acc[Age].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1485,8 +1459,7 @@ export async function getAgeWiseConversions(req, res) {
       Age: Age,
       "Total Sessions": AgeData.TotalSessions,
       "Total Purchases": AgeData.TotalPurchases,
-      "Data Points": AgeData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": ((AgeData.TotalConversionRate / AgeData.DataPoints)),
+      "Avg Conv. Rate": AgeData.TotalSessions > 0 ? (AgeData.TotalPurchases / AgeData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(AgeData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1586,8 +1559,6 @@ export async function getGenderWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1611,12 +1582,6 @@ export async function getGenderWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Gender].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Gender].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Gender].DataPoints = Object.keys(acc[Gender].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1625,8 +1590,7 @@ export async function getGenderWiseConversions(req, res) {
       Gender: Gender,
       "Total Sessions": GenderData.TotalSessions,
       "Total Purchases": GenderData.TotalPurchases,
-      "Data Points": GenderData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": ((GenderData.TotalConversionRate / GenderData.DataPoints)),
+      "Avg Conv. Rate": GenderData.TotalSessions > 0 ? (GenderData.TotalPurchases / GenderData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(GenderData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1726,8 +1690,6 @@ export async function getInterestWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1751,12 +1713,6 @@ export async function getInterestWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Interest].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Interest].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Interest].DataPoints = Object.keys(acc[Interest].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1765,8 +1721,7 @@ export async function getInterestWiseConversions(req, res) {
       Interest: Interest,
       "Total Sessions": InterestData.TotalSessions,
       "Total Purchases": InterestData.TotalPurchases,
-      "Data Points": InterestData.DataPoints,  // Now showing the number of months
-      "Avg Conv. Rate": ((InterestData.TotalConversionRate / InterestData.DataPoints)),
+      "Avg Conv. Rate": InterestData.TotalSessions > 0 ? (InterestData.TotalPurchases / InterestData.TotalSessions)*100 : 0.00,
       MonthlyData: Object.values(InterestData.MonthlyData)
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -1866,8 +1821,6 @@ export async function getOperatingSystemWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -1891,12 +1844,6 @@ export async function getOperatingSystemWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[OperatingSystem].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[OperatingSystem].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[OperatingSystem].DataPoints = Object.keys(acc[OperatingSystem].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -1905,7 +1852,7 @@ export async function getOperatingSystemWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([operatingSystemName, operatingSystemData]) => ({
       "Operating System": operatingSystemName,
       "Total Sessions": operatingSystemData.TotalSessions,
-      "Avg Conv. Rate": operatingSystemData.TotalConversionRate / operatingSystemData.DataPoints || 0,
+      "Avg Conv. Rate": operatingSystemData.TotalSessions > 0 ? (operatingSystemData.TotalPurchases / operatingSystemData.TotalSessions)*100 : 0.00,
       "MonthlyData": Object.values(operatingSystemData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -2004,8 +1951,6 @@ export async function getCampaignWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -2029,12 +1974,6 @@ export async function getCampaignWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Campaign].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Campaign].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Campaign].DataPoints = Object.keys(acc[Campaign].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -2043,7 +1982,7 @@ export async function getCampaignWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
       "Campaign": campaignName,
       "Total Sessions": campaignData.TotalSessions,
-      "Avg Conv. Rate": campaignData.TotalConversionRate / campaignData.DataPoints || 0,
+      "Avg Conv. Rate": campaignData.TotalSessions > 0 ? (campaignData.TotalPurchases / campaignData.TotalSessions)*100 : 0.00,
       "MonthlyData": Object.values(campaignData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -2142,8 +2081,6 @@ export async function getBrowserWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -2167,12 +2104,6 @@ export async function getBrowserWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Browser].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Browser].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Browser].DataPoints = Object.keys(acc[Browser].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -2181,7 +2112,7 @@ export async function getBrowserWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([browser, browserData]) => ({
       "Browser": browser,
       "Total Sessions": browserData.TotalSessions,
-      "Avg Conv. Rate": browserData.TotalConversionRate / browserData.DataPoints || 0,
+      "Avg Conv. Rate": browserData.TotalSessions > 0 ? (browserData.TotalPurchases / browserData.TotalSessions)*100 : 0.00,
       "MonthlyData": Object.values(browserData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -2280,8 +2211,6 @@ export async function getSourceWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -2305,12 +2234,6 @@ export async function getSourceWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[Source].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[Source].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[Source].DataPoints = Object.keys(acc[Source].MonthlyData).length;
-
       return acc;
     }, {});
 
@@ -2319,7 +2242,7 @@ export async function getSourceWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([source, sourceData]) => ({
       "Source": source,
       "Total Sessions": sourceData.TotalSessions,
-      "Avg Conv. Rate": sourceData.TotalConversionRate / sourceData.DataPoints || 0,
+      "Avg Conv. Rate": sourceData.TotalSessions > 0 ? (sourceData.TotalPurchases / sourceData.TotalSessions)*100 : 0.00,
       "MonthlyData": Object.values(sourceData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -2418,8 +2341,6 @@ export async function getPagePathWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
@@ -2443,11 +2364,6 @@ export async function getPagePathWiseConversions(req, res) {
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[PagePath].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
 
-      // Update total conversion rate
-      acc[PagePath].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[PagePath].DataPoints = Object.keys(acc[PagePath].MonthlyData).length;
 
       return acc;
     }, {});
@@ -2457,7 +2373,7 @@ export async function getPagePathWiseConversions(req, res) {
     const data = Object.entries(groupedData).map(([pagePath, pagePathData]) => ({
       "Page Path": pagePath,
       "Total Sessions": pagePathData.TotalSessions,
-      "Avg Conv. Rate": pagePathData.TotalConversionRate / pagePathData.DataPoints || 0,
+      "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions)*100 : 0.00,
       "MonthlyData": Object.values(pagePathData.MonthlyData),
     })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
@@ -2481,32 +2397,44 @@ export async function getPagePathWiseConversions(req, res) {
 export async function getPageTitleWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { 
+      startDate, 
+      endDate, 
+      userId, 
+      sessionsFilter, 
+      convRateFilter  
+    } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    // Validate filter formats if provided
+    if (sessionsFilter && (!sessionsFilter.value || !sessionsFilter.operator)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Sessions filter must include both value and operator' 
+      });
+    }
+
+    if (convRateFilter && (!convRateFilter.value || !convRateFilter.operator)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Conversion rate filter must include both value and operator' 
+      });
+    }
+
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: !brand ? 'Brand not found.' : 'User not found.' 
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -2528,7 +2456,6 @@ export async function getPageTitleWiseConversions(req, res) {
       ]
     };
 
-
     const response = await axios.post(
       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
       requestBody,
@@ -2542,7 +2469,6 @@ export async function getPageTitleWiseConversions(req, res) {
 
     const Rows = response?.data?.rows || [];
 
-
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
       const yearMonth = row.dimensionValues[0]?.value;
@@ -2550,18 +2476,14 @@ export async function getPageTitleWiseConversions(req, res) {
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
 
-      // Initialize region if it doesn't exist
       if (!acc[PageTitle]) {
         acc[PageTitle] = {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
-          TotalConversionRate: 0.00,
-          DataPoints: 0,
         };
       }
 
-      // Initialize month data if it doesn't exist
       if (!acc[PageTitle].MonthlyData[yearMonth]) {
         acc[PageTitle].MonthlyData[yearMonth] = {
           Month: yearMonth,
@@ -2571,38 +2493,55 @@ export async function getPageTitleWiseConversions(req, res) {
         };
       }
 
-      // Update metrics
       acc[PageTitle].MonthlyData[yearMonth].Sessions += sessions;
       acc[PageTitle].MonthlyData[yearMonth].Purchases += purchases;
       acc[PageTitle].TotalSessions += sessions;
       acc[PageTitle].TotalPurchases += purchases;
 
-      // Calculate monthly conversion rate
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[PageTitle].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
-
-      // Update total conversion rate
-      acc[PageTitle].TotalConversionRate += monthlyConvRate;
-
-      // Update DataPoints
-      acc[PageTitle].DataPoints = Object.keys(acc[PageTitle].MonthlyData).length;
 
       return acc;
     }, {});
 
+    // Convert grouped data to an array format and apply filters
+    let data = Object.entries(groupedData)
+      .map(([pageTitle, pageTitleData]) => ({
+        "Page Title": pageTitle,
+        "Total Sessions": pageTitleData.TotalSessions,
+        "Total Purchases": pageTitleData.TotalPurchases,
+        "Avg Conv. Rate": pageTitleData.TotalSessions > 0 ? (pageTitleData.TotalPurchases / pageTitleData.TotalSessions) * 100 : 0.00,
+        "MonthlyData": Object.values(pageTitleData.MonthlyData),
+      }));
 
-    // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([pageTitle, pageTitleData]) => ({
-      "Page Title": pageTitle,
-      "Total Sessions": pageTitleData.TotalSessions,
-      "Avg Conv. Rate": pageTitleData.TotalConversionRate / pageTitleData.DataPoints || 0,
-      "MonthlyData": Object.values(pageTitleData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    // Apply filters if they exist
+    if (sessionsFilter || convRateFilter) {
+      data = data.filter(item => {
+        const sessionCondition = sessionsFilter 
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+        
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+        
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    // Sort after filtering
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
     const limitedData = data.slice(0, 500);
 
+    // Create filter info object
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
     res.status(200).json({
       reportType: `Monthly Data for All PageTitle Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -2614,4 +2553,19 @@ export async function getPageTitleWiseConversions(req, res) {
 
     res.status(500).json({ error: 'Failed to fetch Pagetitle-Based Monthly Data.' });
   }
+}
+
+function getAdjustedDates(startDate, endDate) {
+  if (startDate && endDate) {
+    return { adjustedStartDate: startDate, adjustedEndDate: endDate };
+  }
+
+  const now = new Date();
+  const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
+  now.setHours(23, 59, 59, 999);
+
+  return {
+    adjustedStartDate: LastSixMonths.toISOString().split('T')[0],
+    adjustedEndDate: now.toISOString().split('T')[0]
+  };
 }

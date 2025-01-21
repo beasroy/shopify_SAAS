@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from "axios";
+import { useParams } from 'react-router-dom';
 import { format } from "date-fns";
 import { ChevronDown, Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -18,7 +17,7 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext"
 import { Card, CardContent } from "@/components/ui/card";
-import { useTokenError } from "@/context/TokenErrorContext";
+import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 
 interface AgeMetric {
   "Add To Carts": string;
@@ -42,7 +41,7 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
   const [data, setData] = useState<AgeMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
-  const navigate = useNavigate();
+  const axiosInstance = createAxiosInstance();
 
   // Use optional chaining to safely access date properties
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -52,7 +51,6 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
   const [isFullScreen, setIsFullScreen]= useState<boolean>(false);
   const [rowsToShow, setRowsToShow] = useState<string>('50')
   const {user} = useUser();
-  const { setTokenError } = useTokenError();
 
   // Update date state when prop changes
   useEffect(() => {
@@ -73,19 +71,16 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
 
       // Fetch all-time and date-specific metrics
       const [analyticsResponse, allTimeResponse] = await Promise.all([
-        axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
+        axiosInstance.post(`/api/analytics/agereport/${brandId}`, {
           startDate: startDate || "",
           endDate: endDate || "",
           userId: user?.id,
           limit: rowsToShow
         }, { withCredentials: true }),
-        axios.post(`${baseURL}/api/analytics/agereport/${brandId}`, {
+        axiosInstance.post(`/api/analytics/agereport/${brandId}`, {
           startDate: "",
           endDate: "",
           userId: user?.id,
@@ -110,21 +105,15 @@ const AgeReportPage: React.FC<AgeBasedReportsProps> = ({ dateRange: propDateRang
       }
     } catch (error) {
       console.error("Error fetching data:", error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert("Your session has expired. Please log in again.");
-        navigate("/");
-      }
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        setTokenError(true);
-      }
+      
     } finally {
       setIsLoading(false);
     }
-  }, [brandId, startDate, endDate, navigate, rowsToShow]);
+  }, [brandId, startDate, endDate, rowsToShow]);
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 5 * 60 * 1000); // Refresh every 5 minutes
+    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [fetchData]);
 

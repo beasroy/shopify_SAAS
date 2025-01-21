@@ -12,6 +12,7 @@ import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
+import FilterConversions from "./Filter";
 
 type ApiResponse = {
     reportType: string;
@@ -31,6 +32,8 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+    const [sessionsFilter, setSessionsFilter] = useState<{ value: number; operator: string } | null>(null);
+    const [convRateFilter, setConvRateFilter] = useState<{ value: number; operator: string } | null>(null);
     const { user } = useUser();
     const { brandId } = useParams();
     const toggleFullScreen = () => {
@@ -47,7 +50,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
         try {
 
             const response = await axiosInstance.post(`/api/analytics/pagePathConversionReport/${brandId}`, {
-                userId: user?.id, startDate: startDate, endDate: endDate
+                userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter, convRateFilter
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];
@@ -59,7 +62,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate]);
+    }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
     useEffect(() => {
         fetchData();
@@ -93,9 +96,9 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                         <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
                             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
-                        <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                        </Button>
+                        <FilterConversions
+                            sessionFilter={sessionsFilter} setSessionsFilter={setSessionsFilter}
+                            convRateFilter={convRateFilter} setConvRateFilter={setConvRateFilter} />
                         <ExcelDownload
                             data={apiResponse?.data || []}
                             fileName={`${primaryColumn}_Conversion_Report`}
@@ -105,6 +108,9 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                             monthlyMetrics={monthlyMetrics}
                             disabled={loading}
                         />
+                        <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                        </Button>
                     </div>
                 </div>
 

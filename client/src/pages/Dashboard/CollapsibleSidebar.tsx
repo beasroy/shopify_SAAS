@@ -93,7 +93,7 @@ export default function CollapsibleSidebar() {
         { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} /> },
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
-        { name: "GA4 Insights & Trends", path: `/reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> },
+        { name: "E-Commerce Insights", path: `/reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> },
         {
             name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,
             subItems: [

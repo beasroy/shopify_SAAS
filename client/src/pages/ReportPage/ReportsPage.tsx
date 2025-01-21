@@ -49,7 +49,7 @@ const ReportsPage: React.FC = () => {
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-secondary-foreground to-primary">
-                    GA4 Insights & Trends
+                    E-Commerce Insights 
                     </h1>
                   </div>
                 </div>

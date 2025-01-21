@@ -29,8 +29,9 @@ export default function ConversionTable({
   isFullScreen
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [visibleRows, setVisibleRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
+  const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
   const rowsPerPage = 8;
+  const rowsPerChunk = 30;
 
   const getTableHeight = () => {
     return isFullScreen ? 'max-h-[calc(100vh-130px)]' : 'max-h-[400px]';
@@ -66,6 +67,33 @@ export default function ConversionTable({
     return rows;
   }, [data, monthlyMetrics]);
 
+  const loadMoreRows = () => {
+    setLoadedRows((prevRows) => [
+      ...prevRows,
+      ...allRows.slice(prevRows.length, prevRows.length + rowsPerChunk)
+    ]);
+  };
+
+  useEffect(() => {
+    if (isFullScreen) {
+      setLoadedRows(allRows.slice(0, rowsPerChunk));
+    }
+  }, [isFullScreen, allRows]);
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement, UIEvent>) => {
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight + 100) {
+      loadMoreRows();
+    }
+  };
+
+  const displayRows = useMemo(() => {
+    if (isFullScreen) {
+      return loadedRows;
+    }
+    return allRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  }, [isFullScreen, allRows, loadedRows, currentPage]);
+
   const thresholds = useMemo(() => {
     let totalSessions = 0;
     let totalConvRate = 0;
@@ -85,13 +113,13 @@ export default function ConversionTable({
     };
   }, [data]);
 
+  
+
   useEffect(() => {
-    if (isFullScreen) {
-      setVisibleRows(allRows);
-    } else {
+    if (!isFullScreen) {
       setCurrentPage(1);
     }
-  }, [isFullScreen, allRows]);
+  }, [isFullScreen]);
 
   const getMetricColor = (sessions: number, convRate: number) => {
     const isHighSessions = sessions >= thresholds.avgSessions;
@@ -189,9 +217,6 @@ export default function ConversionTable({
     );
   };
 
-  const displayRows = isFullScreen
-    ? visibleRows
-    : allRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const totalRows = allRows.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -227,7 +252,7 @@ export default function ConversionTable({
 
   return (
     <div className="w-full border border-border rounded-lg flex flex-col">
-      <div className={`relative overflow-x-auto ${getTableHeight()}`}>
+      <div className={`relative overflow-x-auto ${getTableHeight()}`} onScroll={isFullScreen ? handleScroll : undefined}>
         <table className="w-full">
           <thead>
             <tr>

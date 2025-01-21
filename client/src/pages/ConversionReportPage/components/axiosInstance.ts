@@ -16,7 +16,7 @@ const createAxiosInstance = (): AxiosInstance => {
     baseURL: import.meta.env.PROD
       ? import.meta.env.VITE_API_URL as string
       : import.meta.env.VITE_LOCAL_API_URL as string,
-    withCredentials: true, // Include cookies with requests
+    withCredentials: true, 
   });
 
 
@@ -32,7 +32,7 @@ const createAxiosInstance = (): AxiosInstance => {
       }else if (error.response?.status === 403) {
         setTokenError(true);
       }
-      return Promise.reject(error); // Forward error for further handling if needed
+      return Promise.reject(error); 
     }
   );
 

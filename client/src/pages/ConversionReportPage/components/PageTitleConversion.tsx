@@ -12,6 +12,7 @@ import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
+import FilterConversions from "./Filter";
 
 type ApiResponse = {
     reportType: string;
@@ -31,6 +32,8 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+    const [sessionsFilter, setSessionsFilter] = useState<{ value: number; operator: string } | null>(null);
+    const [convRateFilter, setConvRateFilter] = useState<{ value: number; operator: string } | null>(null);
     const { user } = useUser();
     const { brandId } = useParams();
     const toggleFullScreen = () => {
@@ -47,7 +50,7 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
         try {
 
             const response = await axiosInstance.post(`/api/analytics/pageTitleConversionReport/${brandId}`, {
-                userId: user?.id, startDate: startDate, endDate: endDate
+                userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter, convRateFilter
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];
@@ -59,11 +62,11 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate]);
+    }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 5 * 60 * 1000); // Refresh every 5 minutes
+        const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 10 minutes
         return () => clearInterval(intervalId);
     }, [fetchData]);
 
@@ -93,9 +96,7 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
                         <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
                             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
-                        <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                        </Button>
+                        <FilterConversions sessionFilter={sessionsFilter} convRateFilter={convRateFilter} setSessionsFilter={setSessionsFilter} setConvRateFilter={setConvRateFilter} />
                         <ExcelDownload
                             data={apiResponse?.data || []}
                             fileName={`${primaryColumn}_Conversion_Report`}
@@ -105,6 +106,9 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
                             monthlyMetrics={monthlyMetrics}
                             disabled={loading}
                         />
+                        <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                        </Button>
                     </div>
                 </div>
 

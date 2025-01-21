@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from "axios";
+import { useParams } from 'react-router-dom';
 import { format } from "date-fns";
 import { ChevronDown, Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -18,7 +17,8 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTokenError } from "@/context/TokenErrorContext";
+import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
+
 
 interface CityMetric {
   "city": string;
@@ -44,7 +44,8 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
   const [data, setData] = useState<CityMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
-  const navigate = useNavigate();
+  const axiosInstance = createAxiosInstance();
+
   
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [rowsToShow, setRowsToShow] = useState<string>('50');
@@ -52,7 +53,7 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
   const [removedColumns, setRemovedColumns] = useState<string[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const {user} = useUser();
-  const { setTokenError } = useTokenError();
+
 
   const allColumns = ['city', 'country', 'region', 'Visitors', 'Sessions', 'Add To Cart', 'Add To Cart Rate', 'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'];
 
@@ -93,18 +94,14 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
   const fetchMetrics = useCallback(async () => { 
     setIsLoading(true);
     try {
-      const baseURL = import.meta.env.PROD
-        ? import.meta.env.VITE_API_URL
-        : import.meta.env.VITE_LOCAL_API_URL;
-
       // Ensure startDate and endDate are derived from the date state
       const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
       const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
       // Fetch all-time and date-specific metrics in parallel
       const [analyticsResponse, allTimeResponse] = await Promise.all([
-        axios.post(
-          `${baseURL}/api/analytics/locationReport/${brandId}`,
+        axiosInstance.post(
+          `/api/analytics/locationReport/${brandId}`,
           {
             startDate: startDate || "",
             endDate: endDate || "",
@@ -115,8 +112,8 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
           },
           { withCredentials: true }
         ),
-        axios.post(
-          `${baseURL}/api/analytics/locationReport/${brandId}`,
+        axiosInstance.post(
+          `/api/analytics/locationReport/${brandId}`,
           { startDate: "", endDate: "",userId:user?.id,limit: rowsToShow, ...(removedColumns.length > 0
             ? { filters: { location: removedColumns } }
             : {}) },
@@ -143,17 +140,10 @@ const CitySessionPage: React.FC<CitySessionProps> = ({ dateRange: propDateRange 
       }
     } catch (error) {
       console.error("Error fetching metrics:", error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        alert("Your session has expired. Please log in again.");
-        navigate("/");
-      }
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        setTokenError(true);
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, brandId, removedColumns, date,rowsToShow]);
+  }, [brandId, removedColumns, date,rowsToShow]);
 
   // Use fetchMetrics in useEffect
   useEffect(() => {

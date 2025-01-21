@@ -6,8 +6,8 @@ import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 config();
 
- // Helper function to compare values based on operator
- const compareValues = (value, filterValue, operator) => {
+// Helper function to compare values based on operator
+const compareValues = (value, filterValue, operator) => {
   switch (operator.toLowerCase()) {
     case 'gt':
     case '>':
@@ -699,32 +699,23 @@ export async function getGenderMetrics(req, res) {
 export async function getCityWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -799,18 +790,40 @@ export async function getCityWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([city, cityData]) => ({
+    let data = Object.entries(groupedData).map(([city, cityData]) => ({
       City: city,
       "Total Sessions": cityData.TotalSessions,
       "Total Purchases": cityData.TotalPurchases,
-      "Avg Conv. Rate": cityData.TotalSessions > 0 ? (cityData.TotalPurchases / cityData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": cityData.TotalSessions > 0 ? (cityData.TotalPurchases / cityData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(cityData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+    
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
 
     res.status(200).json({
       reportType: `Monthly Data for All Cities Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -827,32 +840,22 @@ export async function getCityWiseConversions(req, res) {
 export async function getRegionWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
-
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -862,7 +865,6 @@ export async function getRegionWiseConversions(req, res) {
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-    // First API call: Get total sessions
     const requestBody = {
       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
       dimensions: [
@@ -932,18 +934,40 @@ export async function getRegionWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([region, regionData]) => ({
+    let data = Object.entries(groupedData).map(([region, regionData]) => ({
       Region: region,
       "Total Sessions": regionData.TotalSessions,
       "Total Purchases": regionData.TotalPurchases,
-      "Avg Conv. Rate": regionData.TotalSessions > 0 ? (regionData.TotalPurchases / regionData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": regionData.TotalSessions > 0 ? (regionData.TotalPurchases / regionData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(regionData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Regions Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -962,32 +986,22 @@ export async function getRegionWiseConversions(req, res) {
 export async function getPageWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [user, brand] = await Promise.all([
+      User.findById(userId).lean(),
+      Brand.findById(brandId).lean(),
+    ])
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1065,19 +1079,40 @@ export async function getPageWiseConversions(req, res) {
       return acc;
     }, {});
 
-    // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => ({
+    let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => ({
       "Landing Page": LandingPage,
       "Total Sessions": LandingPageData.TotalSessions,
       "Total Purchases": LandingPageData.TotalPurchases,
-      "Avg Conv. Rate": LandingPageData.TotalSessions > 0 ? (LandingPageData.TotalPurchases / LandingPageData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": LandingPageData.TotalSessions > 0 ? (LandingPageData.TotalPurchases / LandingPageData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(LandingPageData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Landing Page Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -1095,31 +1130,22 @@ export async function getPageWiseConversions(req, res) {
 export async function getDeviceTypeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      now.setHours(23, 59, 59, 999);
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(sixMonthsAgo);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1196,17 +1222,38 @@ export async function getDeviceTypeWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([deviceType, deviceData]) => ({
+    let data = Object.entries(groupedData).map(([deviceType, deviceData]) => ({
       "Device": deviceType,
       "Total Sessions": deviceData.TotalSessions,
-      "Avg Conv. Rate": deviceData.TotalSessions > 0 ? (deviceData.TotalPurchases / deviceData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": deviceData.TotalSessions > 0 ? (deviceData.TotalPurchases / deviceData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(deviceData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);;
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Device Types Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -1222,32 +1269,23 @@ export async function getDeviceTypeWiseConversions(req, res) {
 export async function getChannelWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1324,18 +1362,39 @@ export async function getChannelWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([channel, channelData]) => ({
+    let data = Object.entries(groupedData).map(([channel, channelData]) => ({
       Channel: channel,
       "Total Sessions": channelData.TotalSessions,
       "Total Purchases": channelData.TotalPurchases,
-      "Avg Conv. Rate": channelData.TotalSessions > 0 ? (channelData.TotalPurchases / channelData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": channelData.TotalSessions > 0 ? (channelData.TotalPurchases / channelData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(channelData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Channels Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -1353,32 +1412,22 @@ export async function getChannelWiseConversions(req, res) {
 export async function getAgeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
-
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1455,18 +1504,38 @@ export async function getAgeWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([Age, AgeData]) => ({
+    let data = Object.entries(groupedData).map(([Age, AgeData]) => ({
       Age: Age,
       "Total Sessions": AgeData.TotalSessions,
       "Total Purchases": AgeData.TotalPurchases,
-      "Avg Conv. Rate": AgeData.TotalSessions > 0 ? (AgeData.TotalPurchases / AgeData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": AgeData.TotalSessions > 0 ? (AgeData.TotalPurchases / AgeData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(AgeData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Ages Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -1484,32 +1553,23 @@ export async function getAgeWiseConversions(req, res) {
 export async function getGenderWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1586,18 +1646,38 @@ export async function getGenderWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([Gender, GenderData]) => ({
+    let data = Object.entries(groupedData).map(([Gender, GenderData]) => ({
       Gender: Gender,
       "Total Sessions": GenderData.TotalSessions,
       "Total Purchases": GenderData.TotalPurchases,
-      "Avg Conv. Rate": GenderData.TotalSessions > 0 ? (GenderData.TotalPurchases / GenderData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": GenderData.TotalSessions > 0 ? (GenderData.TotalPurchases / GenderData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(GenderData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
 
     res.status(200).json({
       reportType: `Monthly Data for All Genders Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -1615,32 +1695,23 @@ export async function getGenderWiseConversions(req, res) {
 export async function getInterestWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1717,18 +1788,40 @@ export async function getInterestWiseConversions(req, res) {
     }, {});
 
     // Convert grouped data to array format
-    const data = Object.entries(groupedData).map(([Interest, InterestData]) => ({
+    let data = Object.entries(groupedData).map(([Interest, InterestData]) => ({
       Interest: Interest,
       "Total Sessions": InterestData.TotalSessions,
       "Total Purchases": InterestData.TotalPurchases,
-      "Avg Conv. Rate": InterestData.TotalSessions > 0 ? (InterestData.TotalPurchases / InterestData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": InterestData.TotalSessions > 0 ? (InterestData.TotalPurchases / InterestData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(InterestData.MonthlyData)
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+  
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Interest Sorted by Conversions`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
 
@@ -1746,32 +1839,21 @@ export async function getInterestWiseConversions(req, res) {
 export async function getOperatingSystemWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
-
     const propertyId = brand.ga4Account?.PropertyID;
-
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1849,17 +1931,37 @@ export async function getOperatingSystemWiseConversions(req, res) {
 
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([operatingSystemName, operatingSystemData]) => ({
+    let data = Object.entries(groupedData).map(([operatingSystemName, operatingSystemData]) => ({
       "Operating System": operatingSystemName,
       "Total Sessions": operatingSystemData.TotalSessions,
-      "Avg Conv. Rate": operatingSystemData.TotalSessions > 0 ? (operatingSystemData.TotalPurchases / operatingSystemData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": operatingSystemData.TotalSessions > 0 ? (operatingSystemData.TotalPurchases / operatingSystemData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(operatingSystemData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Operating Systems Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -1876,32 +1978,22 @@ export async function getOperatingSystemWiseConversions(req, res) {
 export async function getCampaignWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -1979,17 +2071,37 @@ export async function getCampaignWiseConversions(req, res) {
 
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
+    let data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
       "Campaign": campaignName,
       "Total Sessions": campaignData.TotalSessions,
-      "Avg Conv. Rate": campaignData.TotalSessions > 0 ? (campaignData.TotalPurchases / campaignData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": campaignData.TotalSessions > 0 ? (campaignData.TotalPurchases / campaignData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(campaignData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Campaigns Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -2006,32 +2118,23 @@ export async function getCampaignWiseConversions(req, res) {
 export async function getBrowserWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -2109,17 +2212,37 @@ export async function getBrowserWiseConversions(req, res) {
 
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([browser, browserData]) => ({
+    let data = Object.entries(groupedData).map(([browser, browserData]) => ({
       "Browser": browser,
       "Total Sessions": browserData.TotalSessions,
-      "Avg Conv. Rate": browserData.TotalSessions > 0 ? (browserData.TotalPurchases / browserData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": browserData.TotalSessions > 0 ? (browserData.TotalPurchases / browserData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(browserData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
 
     res.status(200).json({
       reportType: `Monthly Data for All Browser Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -2136,32 +2259,23 @@ export async function getBrowserWiseConversions(req, res) {
 export async function getSourceWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
-
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -2239,17 +2353,36 @@ export async function getSourceWiseConversions(req, res) {
 
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([source, sourceData]) => ({
+    let data = Object.entries(groupedData).map(([source, sourceData]) => ({
       "Source": source,
       "Total Sessions": sourceData.TotalSessions,
-      "Avg Conv. Rate": sourceData.TotalSessions > 0 ? (sourceData.TotalPurchases / sourceData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": sourceData.TotalSessions > 0 ? (sourceData.TotalPurchases / sourceData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(sourceData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
 
     res.status(200).json({
       reportType: `Monthly Data for All Source Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -2266,32 +2399,24 @@ export async function getSourceWiseConversions(req, res) {
 export async function getPagePathWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let adjustedStartDate = startDate;
-    let adjustedEndDate = endDate;
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const LastSixMonths = new Date(now.getFullYear(), now.getMonth() - 5, now.getDate());
-      now.setHours(23, 59, 59, 999);
-
-      const formatToLocalDateString = (date) => date.toISOString().split('T')[0];
-      adjustedStartDate = formatToLocalDateString(LastSixMonths);
-      adjustedEndDate = formatToLocalDateString(now);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -2370,17 +2495,37 @@ export async function getPagePathWiseConversions(req, res) {
 
 
     // Convert grouped data to an array format
-    const data = Object.entries(groupedData).map(([pagePath, pagePathData]) => ({
+    let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => ({
       "Page Path": pagePath,
       "Total Sessions": pagePathData.TotalSessions,
-      "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions)*100 : 0.00,
+      "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(pagePathData.MonthlyData),
-    })).sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+    }))
 
-    const limitedData = data.slice(0, 500);
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"])
+
+    let limitedData = data.slice(0, 500);
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
 
     res.status(200).json({
       reportType: `Monthly Data for All Pagepath Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
       data: limitedData,
     });
   } catch (error) {
@@ -2397,26 +2542,26 @@ export async function getPagePathWiseConversions(req, res) {
 export async function getPageTitleWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { 
-      startDate, 
-      endDate, 
-      userId, 
-      sessionsFilter, 
-      convRateFilter  
+    const {
+      startDate,
+      endDate,
+      userId,
+      sessionsFilter,
+      convRateFilter
     } = req.body;
 
     // Validate filter formats if provided
     if (sessionsFilter && (!sessionsFilter.value || !sessionsFilter.operator)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Sessions filter must include both value and operator' 
+      return res.status(400).json({
+        success: false,
+        message: 'Sessions filter must include both value and operator'
       });
     }
 
     if (convRateFilter && (!convRateFilter.value || !convRateFilter.operator)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Conversion rate filter must include both value and operator' 
+      return res.status(400).json({
+        success: false,
+        message: 'Conversion rate filter must include both value and operator'
       });
     }
 
@@ -2426,9 +2571,9 @@ export async function getPageTitleWiseConversions(req, res) {
     ]);
 
     if (!brand || !user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: !brand ? 'Brand not found.' : 'User not found.' 
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
       });
     }
 
@@ -2469,7 +2614,6 @@ export async function getPageTitleWiseConversions(req, res) {
 
     const Rows = response?.data?.rows || [];
 
-    // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {
       const yearMonth = row.dimensionValues[0]?.value;
       const PageTitle = row.dimensionValues[1]?.value;
@@ -2504,7 +2648,6 @@ export async function getPageTitleWiseConversions(req, res) {
       return acc;
     }, {});
 
-    // Convert grouped data to an array format and apply filters
     let data = Object.entries(groupedData)
       .map(([pageTitle, pageTitleData]) => ({
         "Page Title": pageTitle,
@@ -2514,27 +2657,25 @@ export async function getPageTitleWiseConversions(req, res) {
         "MonthlyData": Object.values(pageTitleData.MonthlyData),
       }));
 
-    // Apply filters if they exist
+
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
     if (sessionsFilter || convRateFilter) {
-      data = data.filter(item => {
-        const sessionCondition = sessionsFilter 
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
           ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
           : true;
-        
+
         const convRateCondition = convRateFilter
           ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
           : true;
-        
+
         return sessionCondition && convRateCondition;
       });
     }
 
-    // Sort after filtering
-    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
-
-    const limitedData = data.slice(0, 500);
-
-    // Create filter info object
     const activeFilters = {};
     if (sessionsFilter) activeFilters.sessions = sessionsFilter;
     if (convRateFilter) activeFilters.conversionRate = convRateFilter;

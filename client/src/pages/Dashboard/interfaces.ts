@@ -93,6 +93,8 @@ export interface AggregatedMetrics {
   totalPurchases: string;
   totalCTR: string;
   totalCPC: string;
+  totalCPM: string;
+  totalCPP: string;
 }
 
 export interface GoogleAdAccountData {

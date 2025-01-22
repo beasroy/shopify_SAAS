@@ -1226,6 +1226,7 @@ export async function getDeviceTypeWiseConversions(req, res) {
       "Device": deviceType,
       "Total Sessions": deviceData.TotalSessions,
       "Avg Conv. Rate": deviceData.TotalSessions > 0 ? (deviceData.TotalPurchases / deviceData.TotalSessions) * 100 : 0.00,
+      "Total Purchases": deviceData.TotalPurchases,
       MonthlyData: Object.values(deviceData.MonthlyData)
     }))
 
@@ -1934,6 +1935,7 @@ export async function getOperatingSystemWiseConversions(req, res) {
     let data = Object.entries(groupedData).map(([operatingSystemName, operatingSystemData]) => ({
       "Operating System": operatingSystemName,
       "Total Sessions": operatingSystemData.TotalSessions,
+      "Total Purchases": operatingSystemData.TotalPurchases,
       "Avg Conv. Rate": operatingSystemData.TotalSessions > 0 ? (operatingSystemData.TotalPurchases / operatingSystemData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(operatingSystemData.MonthlyData),
     }))
@@ -2074,6 +2076,7 @@ export async function getCampaignWiseConversions(req, res) {
     let data = Object.entries(groupedData).map(([campaignName, campaignData]) => ({
       "Campaign": campaignName,
       "Total Sessions": campaignData.TotalSessions,
+      "Total Purchases": campaignData.TotalPurchases,
       "Avg Conv. Rate": campaignData.TotalSessions > 0 ? (campaignData.TotalPurchases / campaignData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(campaignData.MonthlyData),
     }))
@@ -2215,6 +2218,7 @@ export async function getBrowserWiseConversions(req, res) {
     let data = Object.entries(groupedData).map(([browser, browserData]) => ({
       "Browser": browser,
       "Total Sessions": browserData.TotalSessions,
+      "Total Purchases": browserData.TotalPurchases,
       "Avg Conv. Rate": browserData.TotalSessions > 0 ? (browserData.TotalPurchases / browserData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(browserData.MonthlyData),
     }))
@@ -2356,6 +2360,7 @@ export async function getSourceWiseConversions(req, res) {
     let data = Object.entries(groupedData).map(([source, sourceData]) => ({
       "Source": source,
       "Total Sessions": sourceData.TotalSessions,
+      "Total Purchases": sourceData.TotalPurchases,
       "Avg Conv. Rate": sourceData.TotalSessions > 0 ? (sourceData.TotalPurchases / sourceData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(sourceData.MonthlyData),
     }))
@@ -2498,6 +2503,7 @@ export async function getPagePathWiseConversions(req, res) {
     let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => ({
       "Page Path": pagePath,
       "Total Sessions": pagePathData.TotalSessions,
+      "Total Purchases": pagePathData.TotalPurchases,
       "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions) * 100 : 0.00,
       "MonthlyData": Object.values(pagePathData.MonthlyData),
     }))

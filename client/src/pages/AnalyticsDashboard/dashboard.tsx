@@ -1,21 +1,17 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from "date-fns"
-import { Blend, Filter, LineChart, RefreshCw } from "lucide-react"
+import { Blend, LineChart, RefreshCw, Settings } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import AdAccountMetricsCard, { CampaignGrid } from "./AdAccountsMetricsCard.tsx"
-import { AdAccountData, AggregatedMetrics, GoogleAdAccountData } from '@/pages/Dashboard/interfaces.ts'
+import { AdAccountData, GoogleAdAccountData } from '@/pages/Dashboard/interfaces.ts'
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
 import { Button } from '@/components/ui/button.tsx';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 type DataSource = 'all' | 'facebook' | 'google'
+import { CustomTabs } from '../ConversionReportPage/components/CustomTabs.tsx';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu.tsx';
+
 
 
 
@@ -26,19 +22,36 @@ export default function Dashboard() {
   })
   const [isLoading, setIsLoading] = useState(false);
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
-  const [aggregatedMetrics, setAggregatedMetrics] = useState<AggregatedMetrics | null>(null)
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
+  const [activeTab, setActiveTab] = useState<string>('all'); 
   const [dataSource, setDataSource] = useState<DataSource>('all');
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
+  const [locale, setLocale] = useState<"en-IN" | "en-US">("en-IN"); 
+  const [rawMetrics, setRawMetrics] = useState({
+    totalSpent: 0,
+    totalRevenue: 0,
+    totalROAS: 0,
+    totalPurchases: 0,
+    totalCTR: 0,
+    totalCPC: 0,
+    totalCPM: 0,
+    totalCPP: 0,
+  });
   const { brandId } = useParams();
   const navigate = useNavigate();
+  const tabs: { label: string; value: DataSource }[] = [
+    { label: "All Data", value: "all" },
+    { label: "Meta", value: "facebook" },
+    { label: "Google", value: "google" },
+  ];
 
-  const handleDataSourceChange = (newSource: DataSource) => {
-    if (newSource !== dataSource) {
-      setDataSource(newSource);
+  const handleDataSourceChange = (newValue: string) => {
+    const selectedTab = tabs.find((tab) => tab.value === newValue);
+    if (selectedTab && selectedTab.value !== dataSource) {
+      setActiveTab(selectedTab.value); 
+      setDataSource(selectedTab.value); 
     }
   };
+
 
   const fetchAdData = useCallback(async () => {
     setIsLoading(true);
@@ -88,7 +101,7 @@ export default function Dashboard() {
         dataSource === 'google' ? [] : fbData,
         dataSource === 'facebook' ? undefined : googleData
       );
-      setLastUpdated(new Date());
+   
     } catch (error) {
       console.error('Error fetching ad data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -117,14 +130,14 @@ export default function Dashboard() {
     return () => clearInterval(intervalId);
   }, [fetchAdData]);
 
-
-  const calculateAggregatedMetrics = (fbData: AdAccountData[], googleData: GoogleAdAccountData | undefined) => {
+  
+  const calculateAggregatedMetrics = useCallback((fbData: AdAccountData[], googleData: GoogleAdAccountData | undefined) => {
     let totalSpent = 0;
     let totalRevenue = 0;
     let totalPurchases = 0;
     let totalClicks = 0;
     let totalImpressions = 0;
-
+  
     if (fbData?.length) {
       fbData.forEach(account => {
         totalSpent += parseFloat(account.spend || '0');
@@ -134,7 +147,7 @@ export default function Dashboard() {
         totalImpressions += parseFloat(account.impressions || '0');
       });
     }
-
+  
     if (googleData) {
       totalSpent += parseFloat(googleData.adMetrics.totalSpend || '0');
       totalRevenue += parseFloat(googleData.adMetrics.totalConversionsValue || '0');
@@ -142,84 +155,115 @@ export default function Dashboard() {
       totalClicks += parseFloat(googleData.adMetrics.totalClicks || '0');
       totalImpressions += parseFloat(googleData.adMetrics.totalImpressions || '0');
     }
-    // console.log(totalR)
-
-    setAggregatedMetrics({
-      totalSpent: `₹ ${totalSpent.toLocaleString()}`,
-      totalRevenue: `₹ ${totalRevenue.toLocaleString()}`,
-      totalROAS: (totalRevenue / totalSpent).toFixed(2).toString(),
-      totalPurchases: totalPurchases.toLocaleString(),
-      totalCTR: `${((totalClicks / totalImpressions) * 100).toFixed(2)} %`,
-      totalCPC: (totalSpent / totalClicks).toFixed(2).toString(),
+  
+    setRawMetrics({
+      totalSpent,
+      totalRevenue,
+      totalROAS: totalRevenue / totalSpent || 0,
+      totalPurchases,
+      totalCTR: (totalClicks / totalImpressions) * 100 || 0,
+      totalCPC: totalSpent / totalClicks || 0,
+      totalCPM: (totalSpent * 1000) / totalImpressions || 0,
+      totalCPP: totalSpent / totalPurchases || 0,
     });
-  };
+  }, []);
 
 
-  const metrics = [
-    {
-      label: 'Amount Spent',
-      value: aggregatedMetrics ? aggregatedMetrics.totalSpent : '₹ 0',
-      tooltipContent: 'The sum of ad spends for all advertising platform'
-    },
-    {
-      label: 'Revenue',
-      value: aggregatedMetrics ? aggregatedMetrics.totalRevenue : '₹ 0',
-      tooltipContent: 'Revenue from Ads Purchases'
-    },
-    {
-      label: 'ROAS (Ads only)',
-      value: aggregatedMetrics ? aggregatedMetrics.totalROAS : '0.00',
-      tooltipContent: 'Blended ROAS = Ads Purchases vaue / Blended Ad Spend'
-    },
-    {
-      label: 'Ads Purchases',
-      value: aggregatedMetrics ? aggregatedMetrics.totalPurchases : '0.00',
-      tooltipContent: 'Ads Purchases = Fb Ads Purchase + Google Conversions'
-    },
-    {
-      label: 'CTR',
-      value: aggregatedMetrics ? aggregatedMetrics.totalCTR : '0.00',
-      tooltipContent: 'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100'
-    },
-    {
-      label: 'CPC',
-      value: aggregatedMetrics ? aggregatedMetrics.totalCPC : '0.00',
-      tooltipContent: 'Average CPC from all advertising platforms = (Blended Ad Spend / Blended Clicks )'
-    }
-  ];
+  const formattedMetrics = useMemo(() => {
+    return {
+      totalSpent: `₹ ${rawMetrics.totalSpent.toLocaleString(locale)}`,
+      totalRevenue: `₹ ${rawMetrics.totalRevenue.toLocaleString(locale)}`,
+      totalROAS: Number((rawMetrics.totalROAS).toFixed(2)).toLocaleString(locale),
+      totalPurchases: rawMetrics.totalPurchases.toLocaleString(locale),
+      totalCTR: `${Number((rawMetrics.totalCTR).toFixed(2)).toLocaleString(locale)} %`,
+      totalCPC: Number((rawMetrics.totalCPC).toFixed(2)).toLocaleString(locale),
+      totalCPM: Number((rawMetrics.totalCPM).toFixed(2)).toLocaleString(locale),
+      totalCPP: Number((rawMetrics.totalCPP).toFixed(2)).toLocaleString(locale),
+    };
+  }, [rawMetrics, locale]);
+    
+
+// Use formattedMetrics for rendering
+const metrics = [
+  {
+    label: 'Amount Spent',
+    value: formattedMetrics.totalSpent,
+    tooltipContent: 'The sum of ad spends for all advertising platforms',
+  },
+  {
+    label: 'Revenue',
+    value: formattedMetrics.totalRevenue,
+    tooltipContent: 'Revenue from Ads Purchases',
+  },
+  {
+    label: 'ROAS (Ads only)',
+    value: formattedMetrics.totalROAS,
+    tooltipContent: 'Blended ROAS = Ads Purchases value / Blended Ad Spend',
+  },
+  {
+    label: 'Ads Purchases',
+    value: formattedMetrics.totalPurchases,
+    tooltipContent: 'Ads Purchases = Fb Ads Purchase + Google Conversions',
+  },
+  {
+    label: 'CTR',
+    value: formattedMetrics.totalCTR,
+    tooltipContent:
+      'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100',
+  },
+  {
+    label: 'CPC',
+    value: formattedMetrics.totalCPC,
+    tooltipContent:
+      'Average CPC from all advertising platforms = (Blended Ad Spend / Blended Clicks)',
+  },
+  {
+    label: 'CPM',
+    value: formattedMetrics.totalCPM,
+    tooltipContent:
+      'Average CPM from all advertising platforms = (Blended Ad Spend * 1000 / Blended Impressions)',
+  },
+  {
+    label: 'CPP',
+    value: formattedMetrics.totalCPP,
+    tooltipContent:
+      'Average CPP from all advertising platforms = (Blended Ad Spend / Blended Purchases)',
+  },
+];
+
 
   const googleMetrics = [
     {
       label: 'Total Cost',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalSpend}` : ' 0',
+      value: googleAdMetrics ? `₹ ${new Intl.NumberFormat(locale).format(parseFloat(googleAdMetrics?.adMetrics.totalSpend))}` : ' 0',
     },
     {
       label: 'Conversion Value',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalConversionsValue}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalConversionsValue).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'ROAS',
-      value: googleAdMetrics ? googleAdMetrics?.adMetrics.roas : '0.00',
+      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics.roas).toLocaleString(locale) : '0.00',
     },
     {
       label: 'Conversions',
-      value: googleAdMetrics ? googleAdMetrics?.adMetrics.totalConversions : '0',
+      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics.totalConversions).toLocaleString(locale) : '0',
     },
     {
       label: 'CPC',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCPC}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCPC).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'CPM',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCPM}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCPM).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'CTR',
-      value: googleAdMetrics ? `${googleAdMetrics?.adMetrics.totalCTR} %` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics.totalCTR).toLocaleString(locale)} %` : ' 0',
     },
     {
       label: 'Cost Per Conversion',
-      value: googleAdMetrics ? `₹ ${googleAdMetrics?.adMetrics.totalCostPerConversion}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCostPerConversion).toLocaleString(locale)}` : ' 0',
     },
   ]
 
@@ -230,7 +274,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 shadow-md">
+      <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 ">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="rounded-lg bg-secondary p-2 transition-transform duration-300 ease-in-out hover:scale-110">
@@ -242,8 +286,8 @@ export default function Dashboard() {
               </h1>
             </div>
           </div>
-
-          <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+          <div className="flex flex-row items-center space-x-2">
+          <div className="transition-transform duration-300 ease-in-out hover:scale-105 ">
             <DatePickerWithRange
               date={date}
               setDate={setDate}
@@ -253,8 +297,39 @@ export default function Dashboard() {
               }}
             />
           </div>
+   
+                <div className="md:flex items-center hidden">
+                
+                  <Button
+                    onClick={handleManualRefresh}
+                    disabled={isLoading}
+                    className="flex items-center"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+
+                  </Button>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={locale} onValueChange={(value) => setLocale(value as "en-IN" | "en-US")}>
+                      <DropdownMenuRadioItem value="en-IN">Indian Formatting</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="en-US">Western Formatting</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              
+          </div>
         </div>
       </header>
+      <div className="bg-white px-6 sticky top-0 z-10">
+        <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleDataSourceChange} />
+      </div>
+
 
       {/* Main content */}
       <main className="p-4 md:p-6 lg:px-8">
@@ -276,36 +351,8 @@ export default function Dashboard() {
                   </svg>
                 )}
               </div>
-              <div className="flex flex-row items-center space-x-2">
-                <div className="md:flex items-center hidden">
-                  {lastUpdated && (
-                    <span className="text-sm text-gray-600 mr-4">
-                      Last updated: {lastUpdated.toLocaleTimeString()}
-                    </span>
-                  )}
-                  <Button
-                    onClick={handleManualRefresh}
-                    disabled={isLoading}
-                    className="flex items-center"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-
-                  </Button>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className='bg-cyan-800'><Filter className="h-5 w-5 mr-2" />Filter</Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={dataSource} onValueChange={(value) => handleDataSourceChange(value as DataSource)}>
-                      <DropdownMenuRadioItem value="all">All Data</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="facebook">Facebook Ads</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="google">Google Ads</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-              </div>
+              
+          
 
             </h2>
             <AdAccountMetricsCard metrics={metrics} date={date || { from: new Date(), to: new Date() }} isLoading={isLoading} icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} />
@@ -315,10 +362,10 @@ export default function Dashboard() {
 
         {(dataSource === 'all' || dataSource === 'facebook') && fbAdAccountsMetrics?.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
           const fbmetrics = [
-            { label: 'Amount Spent', value: `₹ ${accountMetrics.spend || '0'}` },
+            { label: 'Amount Spent', value: `₹ ${parseFloat(accountMetrics.spend || '0').toLocaleString(locale)}` },
             {
               label: 'Revenue',
-              value: `₹ ${parseFloat(accountMetrics.Revenue?.value || '0').toLocaleString()}`
+              value: `₹ ${parseFloat(accountMetrics.Revenue?.value || '0').toLocaleString(locale)}`
             },
             {
               label: 'ROAS (Ads only)',
@@ -327,24 +374,28 @@ export default function Dashboard() {
                 : '0'
             },
             { label: 'Ads Purchases', value: accountMetrics.purchases?.value || '0' },
-            { label: 'CPC (All clicks)', value: `₹ ${parseFloat(accountMetrics.cpc || '0').toLocaleString()}` },
-            { label: 'CPM', value: `₹ ${parseFloat(accountMetrics.cpm || '0').toFixed(2).toLocaleString()}` },
+            { label: 'CPC (All clicks)', value: `₹ ${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpc || '0'))}` },
+            { label: 'CPM', value: `₹ ${new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(parseFloat(accountMetrics.cpm || '0'))}` },
             { label: 'CTR', value: `${parseFloat(accountMetrics.ctr || '0').toFixed(2)} %` },
-            { label: 'Cost per Purchase (All)', value: `₹ ${parseFloat(accountMetrics.cpp || '0').toLocaleString()}` },
+            { label: 'Cost per Purchase (All)', value: `₹ ${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpp || '0'))}` },
           ];
 
           return (
             <>
-            <AdAccountMetricsCard
-              key={index}
-              icon="Facebook"
-              title={`Facebook - ${accountMetrics.account_name}`}
-              metrics={fbmetrics}  // Pass fbmetrics for the current account
-              date={date || { from: new Date(), to: new Date() }}
-              isLoading={isLoading}
-              errorMessage={accountMetrics.message}
-            />
-            <CampaignGrid campaigns={accountMetrics.campaigns || []} isLoading={isLoading} icon="Facebook" />
+              <AdAccountMetricsCard
+                key={index}
+                icon="Facebook"
+                title={`Facebook - ${accountMetrics.account_name}`}
+                metrics={fbmetrics}  // Pass fbmetrics for the current account
+                date={date || { from: new Date(), to: new Date() }}
+                isLoading={isLoading}
+                errorMessage={accountMetrics.message}
+              />
+              <CampaignGrid 
+                campaigns={accountMetrics.campaigns || []} 
+                isLoading={isLoading} 
+                icon="Facebook" 
+              />
             </>
           );
         })}
@@ -353,14 +404,14 @@ export default function Dashboard() {
           (dataSource === 'all' || dataSource === 'google') && (
             googleAdMetrics && Object.keys(googleAdMetrics).length > 0 ? (
               <>
-              <AdAccountMetricsCard
-                icon="Google"
-                title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
-                metrics={googleMetrics}
-                date={date || { from: new Date(), to: new Date() }}
-                isLoading={isLoading}
-              />
-              <CampaignGrid campaigns={googleAdMetrics.campaignData || []} isLoading={isLoading} icon="Google" />
+                <AdAccountMetricsCard
+                  icon="Google"
+                  title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
+                  metrics={googleMetrics}
+                  date={date || { from: new Date(), to: new Date() }}
+                  isLoading={isLoading}
+                />
+                <CampaignGrid campaigns={googleAdMetrics.campaignData || []} isLoading={isLoading} icon="Google" />
               </>
             ) : (
               <section>

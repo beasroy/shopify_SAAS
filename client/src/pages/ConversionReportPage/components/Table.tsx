@@ -179,7 +179,7 @@ export default function ConversionTable({
     columnIndex: number
   ) => {
     const value = row[column];
-
+  
     if (typeof value !== "number") {
       return (
         <td
@@ -190,9 +190,9 @@ export default function ConversionTable({
         </td>
       );
     }
-
+  
     let bgColor = "bg-background";
-
+  
     if (
       (currentMetric === "Sessions" && column === "Total Sessions") ||
       (currentMetric === "Conv. Rate" && column === "Avg Conv. Rate")
@@ -201,21 +201,35 @@ export default function ConversionTable({
       const convRate = row["Avg Conv. Rate"] as number;
       bgColor = getMetricColor(sessions, convRate);
     }
-
+  
+    const totalPurchases =
+      typeof row["Total Purchases"] === "number"
+        ? row["Total Purchases"].toLocaleString()
+        : null;
+  
     return (
       <td
         className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
         style={{ left: `${130 + 100 + columnIndex * 130}px` }}
       >
-        {currentMetric.toLowerCase() === "sessions" && column === "Total Sessions"
-          ? renderCell(value)
-          : currentMetric.toLowerCase() === "conv. rate" &&
-            column === "Avg Conv. Rate"
-            ? renderCell(value, true)
-            : ""}
+        {currentMetric.toLowerCase() === "sessions" && column === "Total Sessions" ? (
+          renderCell(value)
+        ) : currentMetric.toLowerCase() === "conv. rate" && column === "Avg Conv. Rate" ? (
+          <div className="flex flex-col">
+            <span>{renderCell(value, true)}</span>
+            {totalPurchases && (
+              <span className="text-xs text-gray-500 mt-1">
+                Total Purchases: {totalPurchases}
+              </span>
+            )}
+          </div>
+        ) : (
+          ""
+        )}
       </td>
     );
   };
+  
 
 
   const totalRows = allRows.length;

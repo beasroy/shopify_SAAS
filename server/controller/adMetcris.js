@@ -191,8 +191,8 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
         // Fetch both reports in parallel
         const [adLevelReport, campaignLevelReport] = await Promise.all([
             customer.report({
-                entity: "ad_group_ad",
-                attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+                entity: "customer",
+                attributes: ["customer.descriptive_name"],
                 metrics: [
                     "metrics.cost_micros",
                     "metrics.conversions_value",
@@ -203,6 +203,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
                 from_date: startDate,
                 to_date: endDate,
             }),
+            
             customer.report({
                 entity: "campaign",
                 attributes: ["campaign.id", "campaign.name", "customer.descriptive_name"],

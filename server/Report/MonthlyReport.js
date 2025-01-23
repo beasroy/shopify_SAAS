@@ -383,13 +383,12 @@ export const monthlyGoogleAdData = async (brandId) => {
             const formattedDate = currentDate.format('YYYY-MM-DD');
             // Fetch the ad-level report using the ad_group_ad entity
             const adsReport = await customer.report({
-                entity: "ad_group_ad",
-                attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+                entity: "customer",
+                attributes: ["customer.descriptive_name"],
                 metrics: [
                     "metrics.cost_micros",
                     "metrics.conversions_value",
                 ],
-                segments: ["segments.date"],
                 from_date: formattedDate,
                 to_date: formattedDate,
             });

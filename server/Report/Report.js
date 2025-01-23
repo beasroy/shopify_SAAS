@@ -270,178 +270,6 @@ export const fetchFBAdReport = async (brandId) => {
     };
     return finalResponse;
 
-    // const startDate = moment('2024-11-01').startOf('day');
-    // const endDate = moment('2024-11-29').endOf('day');
-
-    // const batchRequests = [];
-    // const results = [];
-    // const requestDates = []; // Array to store dates for each batch request
-
-    // // Iterate through the date range in chunks of 8 days
-    // let currentChunkStartDate = startDate.clone();
-    // while (currentChunkStartDate.isBefore(endDate)) {
-    //   const currentChunkEndDate = moment.min(currentChunkStartDate.clone().add(15, 'days'), endDate); // 8-day chunk
-
-    //   // Iterate day by day within the 8-day chunk
-    //   let currentDay = currentChunkStartDate.clone();
-    //   while (currentDay.isSameOrBefore(currentChunkEndDate)) {
-    //     // Prepare batch requests for each ad account for the current day
-    //     adAccountIds.forEach((accountId) => {
-    //       const requestUrl = `${accountId}/insights?fields=spend,purchase_roas&time_range={"since":"${currentDay.format('YYYY-MM-DD')}","until":"${currentDay.format('YYYY-MM-DD')}"}`;
-    //       batchRequests.push({
-    //         method: 'GET',
-    //         relative_url: requestUrl,
-    //       });
-    //       requestDates.push({ accountId, date: currentDay.clone() }); // Store the date for each request
-    //       // console.log(`Generated request for account ${accountId} on date ${currentDay.format('YYYY-MM-DD')}: ${requestUrl}`);
-    //     });
-
-    //     // Send the batch request if the limit is reached or if it's the last set of requests
-    //     if (batchRequests.length >= 50 || currentDay.isSame(currentChunkEndDate)) {
-    //       // console.log(`Sending batch request with ${batchRequests.length} requests...`);
-
-    //       try {
-    //         const response = await axios.post(
-    //           `https://graph.facebook.com/v21.0/`,
-    //           { batch: batchRequests },
-    //           {
-    //             headers: {
-    //               'Content-Type': 'application/json',
-    //             },
-    //             params: {
-    //               access_token: accessToken,
-    //             },
-    //           }
-    //         );
-
-    //         // console.log('Batch request response:', response.data);
-
-    //         // Process the response
-    //         response.data.forEach((res, index) => {
-    //           const { accountId, date } = requestDates[index];
-    //           if (res.code === 200) {
-    //             const result = JSON.parse(res.body);
-    //             // console.log(`Success response for account ${accountId} on ${date.format('YYYY-MM-DD')}:`, result);
-
-    //             if (result.data && result.data.length > 0) {
-    //               const insight = result.data[0];
-    //               const formattedResult = {
-    //                 adAccountId: accountId,
-    //                 date: date.format('YYYY-MM-DD'),
-    //                 spend: insight.spend || '0',
-    //                 purchase_roas: (insight.purchase_roas && insight.purchase_roas.length > 0)
-    //                   ? insight.purchase_roas.map(roas => ({
-    //                     action_type: roas.action_type || 'N/A',
-    //                     value: roas.value || '0',
-    //                   }))
-    //                   : [],
-    //               };
-
-    //               results.push(formattedResult);
-    //             } else {
-    //               results.push({
-    //                 adAccountId: accountId,
-    //                 date: date.format('YYYY-MM-DD'),
-    //                 message: `No data for this date.`,
-    //               });
-    //             }
-    //           } else {
-    //             results.push({
-    //               adAccountId: accountId,
-    //               date: date.format('YYYY-MM-DD'),
-    //               message: `Error fetching data: ${res.body}`,
-    //             });
-    //             console.log(`Error for account ${accountId} on ${date.format('YYYY-MM-DD')}: ${res.body}`);
-    //           }
-    //         });
-    //       } catch (error) {
-    //         console.error('Error during batch request:', error);
-    //       } finally {
-    //         batchRequests.length = 0;
-    //         requestDates.length = 0; // Reset requestDates for the next round
-    //       }
-    //     }
-
-    //     // Move to the next day within the chunk
-    //     currentDay.add(1, 'days');
-    //   }
-
-    //   // Move to the next 8-day chunk
-    //   currentChunkStartDate = currentChunkEndDate.clone().add(1, 'days');
-    // }
-
-    // // After the main loop completes, check for any remaining requests that need to be sent
-    // if (batchRequests.length > 0) {
-    //   // console.log(`Sending final batch request with ${batchRequests.length} requests...`);
-
-    //   try {
-    //     const response = await axios.post(
-    //       `https://graph.facebook.com/v21.0/`,
-    //       { batch: batchRequests },
-    //       {
-    //         headers: {
-    //           'Content-Type': 'application/json',
-    //         },
-    //         params: {
-    //           access_token: accessToken,
-    //         },
-    //       }
-    //     );
-
-    //     // console.log('Final batch request response:', response.data);
-
-    //     // Process the response for the final batch
-    //     response.data.forEach((res, index) => {
-    //       const { accountId, date } = requestDates[index];
-
-    //       if (res.code === 200) {
-    //         const result = JSON.parse(res.body);
-    //         console.log(`Success response for account ${accountId} on ${date.format('YYYY-MM-DD')}:`, result);
-
-    //         if (result.data && result.data.length > 0) {
-    //           const insight = result.data[0];
-    //           const formattedResult = {
-    //             adAccountId: accountId,
-    //             date: date.format('YYYY-MM-DD'),
-    //             spend: insight.spend || '0',
-    //             purchase_roas: (insight.purchase_roas && insight.purchase_roas.length > 0)
-    //               ? insight.purchase_roas.map(roas => ({
-    //                 action_type: roas.action_type || 'N/A',
-    //                 value: roas.value || '0',
-    //               }))
-    //               : [],
-    //           };
-
-    //           results.push(formattedResult);
-    //         } else {
-    //           results.push({
-    //             adAccountId: accountId,
-    //             date: date.format('YYYY-MM-DD'),
-    //             message: `No data for this date.`,
-    //           });
-    //         }
-    //       } else {
-    //         results.push({
-    //           adAccountId: accountId,
-    //           date: date.format('YYYY-MM-DD'),
-    //           message: `Error fetching data: ${res.body}`,
-    //         });
-    //         console.log(`Error for account ${accountId} on ${date.format('YYYY-MM-DD')}: ${res.body}`);
-    //       }
-    //     });
-    //   } catch (error) {
-    //     console.error('Error during final batch request:', error);
-    //   }
-    // }
-
-    // const fbmetrics = {
-    //   success: true,
-    //   data: results,
-    // };
-    // console.log(fbmetrics);
-  
-
-
   } catch (error) {
     console.error('Error fetching Facebook Ad Account data:', error);
     return {
@@ -489,13 +317,12 @@ export const getGoogleAdData = async (brandId) => {
 
     // Fetch the ad-level report using the ad_group_ad entity
     const adsReport = await customer.report({
-      entity: "ad_group_ad",
-      attributes: ["ad_group.id", "ad_group_ad.ad.id", "ad_group_ad.ad.name", "customer.descriptive_name"],
+      entity: "customer",
+      attributes: ["customer.descriptive_name"],
       metrics: [
         "metrics.cost_micros",
         "metrics.conversions_value",
       ],
-      segments: ["segments.date"],
       from_date: startDate,
       to_date: endDate,
     });
@@ -521,7 +348,7 @@ export const getGoogleAdData = async (brandId) => {
       googleSales: totalSales.toFixed(2),
     }
  
-    // Return the result object
+    console.log('Google Ad Data:', result, startDate, endDate);
     return {
       success: true,
       data: result,

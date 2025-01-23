@@ -2702,6 +2702,163 @@ export async function getPageTitleWiseConversions(req, res) {
   }
 }
 
+export async function getCountryWiseConversions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const {
+      startDate,
+      endDate,
+      userId,
+      sessionsFilter,
+      convRateFilter
+    } = req.body;
+
+    // Validate filter formats if provided
+    if (sessionsFilter && (!sessionsFilter.value || !sessionsFilter.operator)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sessions filter must include both value and operator'
+      });
+    }
+
+    if (convRateFilter && (!convRateFilter.value || !convRateFilter.operator)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Conversion rate filter must include both value and operator'
+      });
+    }
+
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ]);
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found.'
+      });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [
+        { name: 'yearMonth' },
+        { name: 'country' }
+      ],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'ecommercePurchases' }
+      ]
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+
+    const Rows = response?.data?.rows || [];
+
+    const groupedData = Rows.reduce((acc, row) => {
+      const yearMonth = row.dimensionValues[0]?.value;
+      const Country = row.dimensionValues[1]?.value;
+      const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
+      const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
+
+      if (!acc[Country]) {
+        acc[Country] = {
+          MonthlyData: {},
+          TotalSessions: 0,
+          TotalPurchases: 0,
+        };
+      }
+
+      if (!acc[Country].MonthlyData[yearMonth]) {
+        acc[Country].MonthlyData[yearMonth] = {
+          Month: yearMonth,
+          Sessions: 0,
+          Purchases: 0,
+          "Conv. Rate": 0.00
+        };
+      }
+
+      acc[Country].MonthlyData[yearMonth].Sessions += sessions;
+      acc[Country].MonthlyData[yearMonth].Purchases += purchases;
+      acc[Country].TotalSessions += sessions;
+      acc[Country].TotalPurchases += purchases;
+
+      const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
+      acc[Country].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+
+      return acc;
+    }, {});
+
+    let data = Object.entries(groupedData)
+      .map(([country, countryData]) => ({
+        "Country": country,
+        "Total Sessions": countryData.TotalSessions,
+        "Total Purchases": countryData.TotalPurchases,
+        "Avg Conv. Rate": countryData.TotalSessions > 0 ? (countryData.TotalPurchases / countryData.TotalSessions) * 100 : 0.00,
+        "MonthlyData": Object.values(countryData.MonthlyData),
+      }));
+
+
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+    res.status(200).json({
+      reportType: `Monthly Data for All Country Sorted by Month`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
+      data: limitedData,
+    });
+  } catch (error) {
+    console.error('Error fetching Country-Based Monthly Data:', error);
+
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch Country-Based Monthly Data.' });
+  }
+}
+
 function getAdjustedDates(startDate, endDate) {
   if (startDate && endDate) {
     return { adjustedStartDate: startDate, adjustedEndDate: endDate };

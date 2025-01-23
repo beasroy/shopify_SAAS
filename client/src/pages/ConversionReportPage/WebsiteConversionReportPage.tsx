@@ -18,6 +18,7 @@ import { CustomTabs } from './components/CustomTabs';
 import CampaignConversion from './components/CampaignConversion';
 import PagePathConversion from './components/PagePathConversion';
 import PageTitleConversion from './components/PageTitleConversion';
+import CountryConversion from './components/CountryConversion';
 
 const WebsiteConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -43,6 +44,7 @@ const WebsiteConversionReportPage: React.FC = () => {
   const tabs = [
     { label: 'Channel', value: 'channel' },
     { label: 'Campaign', value: 'campaign' },
+    { label: 'Country', value: 'country' },
     { label: 'City', value: 'city' },
     { label: 'Region', value: 'region' },
     { label: 'Landing Page', value: 'landingPage' },
@@ -51,6 +53,7 @@ const WebsiteConversionReportPage: React.FC = () => {
   ];
 
   const refs = {
+    country: useRef<HTMLDivElement>(null),
     city: useRef<HTMLDivElement>(null),
     region: useRef<HTMLDivElement>(null),
     channel: useRef<HTMLDivElement>(null),
@@ -171,6 +174,9 @@ const WebsiteConversionReportPage: React.FC = () => {
             </div>
             <div id="campaign" ref={refs.campaign} >
               <CampaignConversion dateRange={date} />
+            </div>
+            <div id="country" ref={refs.country} >
+              <CountryConversion dateRange={date} />
             </div>
             <div id="city" ref={refs.city} >
               <CityTypeConversion dateRange={date} />

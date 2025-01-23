@@ -11,8 +11,10 @@ import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
+import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
+import {getGoogleAdData} from "./Report/Report.js";
 
 
 
@@ -21,7 +23,7 @@ import setupBrandRoutes from "./routes/BrandSetup.js";
 const app = express();
 dotenv.config();
 
-
+getGoogleAdData('671b6925d3c4f462d681ef47')
 connectDB();
 
 app.use(cors({
@@ -45,6 +47,7 @@ dataOperationRouter.use("/report",excelReportRoutes);
 dataOperationRouter.use("/performance",targetReportRoutes);
 dataOperationRouter.use("/segment",segmentReportRoutes);
 dataOperationRouter.use("/setup",setupBrandRoutes);
+dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
 
 
 setupCronJobs();

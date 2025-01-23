@@ -5,7 +5,8 @@ import {
     getDeviceTypeWiseConversions, getGenderWiseConversions, getPageWiseConversions,
     getChannelWiseConversions, getDailyAddToCartAndCheckouts, getGenderMetrics,
     getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions,
-    getSourceWiseConversions, getBrowserWiseConversions, getPagePathWiseConversions, getPageTitleWiseConversions
+    getSourceWiseConversions, getBrowserWiseConversions, getPagePathWiseConversions, getPageTitleWiseConversions,
+    getCountryWiseConversions
 } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
@@ -32,5 +33,5 @@ router.post('/browserConversionReport/:brandId', verifyAuth, getBrowserWiseConve
 router.post('/sourceConversionReport/:brandId', verifyAuth, getSourceWiseConversions)
 router.post('/pagePathConversionReport/:brandId', verifyAuth, getPagePathWiseConversions)
 router.post('/pageTitleConversionReport/:brandId', verifyAuth, getPageTitleWiseConversions)
-
+router.post('/countryConversionReport/:brandId', verifyAuth, getCountryWiseConversions)
 export default router;

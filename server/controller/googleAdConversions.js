@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { config } from 'dotenv';
 import moment from 'moment';
 import Brand from '../models/Brands.js';
@@ -28,11 +27,11 @@ export async function fetchGoogleAdCityConversions(req, res) {
 
         // Ensure a valid month-based date range
         if (!startDate || !endDate) {
-            endDate = moment().endOf('month').format('YYYY-MM-01');
-            startDate = moment(endDate).subtract(3, 'months').format('YYYY-MM-01');
+            endDate = moment().endOf('month').format('YYYY-MM-DD');
+            startDate = moment().subtract(6, 'months').startOf('month').format('YYYY-MM-DD');
         } else {
-            startDate = moment(startDate).startOf('month').format('YYYY-MM-01');
-            endDate = moment(endDate).startOf('month').format('YYYY-MM-01');
+            startDate = moment(startDate).startOf('month').format('YYYY-MM-DD');
+            endDate = moment(endDate).endOf('month').format('YYYY-MM-DD');
         }
 
         const customer = client.Customer({
@@ -42,41 +41,60 @@ export async function fetchGoogleAdCityConversions(req, res) {
         });
 
         const query = `
-            SELECT 
-                segments.month,
-                geo_target_constant.name,
-                metrics.impressions,
-                metrics.clicks,
+           SELECT
                 metrics.cost_micros,
-                metrics.conversions,
-                metrics.ctr
-            FROM campaign_location_view
-            WHERE segments.month >= '${startDate}'
-            AND segments.month < '${endDate}'
-            AND metrics.impressions > 0
-            ORDER BY 
-                segments.month, 
-                metrics.impressions DESC
+                metrics.conversions_value,
+                metrics.cost_per_conversion,
+                segments.month,
+                segments.geo_target_city
+            FROM
+                user_location_view
+            WHERE
+                segments.date BETWEEN '${startDate}' AND '${endDate}'
         `;
 
         const results = await customer.query(query);
 
-        const processedReport = results.map(row => ({
-            month: row.segments.month,
-            city: row.geo_target_constant.name,
-            impressions: row.metrics.impressions,
-            clicks: row.metrics.clicks,
-            costMicros: row.metrics.cost_micros,
-            costUSD: row.metrics.cost_micros / 1000000,
-            conversions: row.metrics.conversions,
-            ctr: row.metrics.ctr
+        // Accumulate data month-wise for each city
+        const cityMonthData = results.reduce((acc, row) => {
+            const city = row.segments.geo_target_city;
+            const month = row.segments.month;
+
+            if (!acc[city]) {
+                acc[city] = {
+                  MonthlyData: {},
+                  TotalSessions: 0,
+                  TotalPurchases: 0,
+                };
+              }
+
+            if (!acc[city].MonthlyData[month]) {
+                acc[city].MonthlyData[month] = {
+                    Month:month,
+                    Cost: 0.00,
+                    "Conv. Value": 0.00,
+                    "Conv. Value/ Cost": 0.00
+                };
+            }
+
+            // Accumulate cost and conversions
+            acc[city].MonthlyData[month].Cost += row.metrics.cost_micros / 1_000_000; 
+            acc[city].MonthlyData[month]["Conv. Value"] += row.metrics.conversions_value;
+            acc[city].MonthlyData[month]["Conv. Value/ Cost"] += row.metrics.cost_per_conversion;
+
+            return acc;
+        }, {});
+
+        // Format the accumulated data for response
+        const formattedData = Object.entries(cityMonthData).map(([city, cityData]) => ({
+            City:city,
+            MonthlyData: Object.values(cityData.MonthlyData)
         }));
 
         return res.json({
             success: true,
-            data: processedReport,
+            data: formattedData,
         });
-
     } catch (error) {
         console.error("Failed to fetch Google Ads location metrics:", error);
         return res.status(500).json({

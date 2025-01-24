@@ -14,10 +14,11 @@ export interface RowData {
 interface ConversionTableProps {
   data: RowData[];
   primaryColumn: string;
-  secondaryColumns: string[];
+  secondaryColumns?: string[];
   monthlyDataKey: string;
   monthlyMetrics: string[];
   isFullScreen: boolean;
+  rows?: number;
 }
 
 export default function ConversionTable({
@@ -26,11 +27,12 @@ export default function ConversionTable({
   secondaryColumns,
   monthlyDataKey,
   monthlyMetrics,
-  isFullScreen
+  isFullScreen,
+  rows
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
-  const rowsPerPage = 8;
+  const rowsPerPage = rows ? rows: 8;
   const rowsPerChunk = 30;
 
   const getTableHeight = () => {
@@ -276,7 +278,7 @@ export default function ConversionTable({
               <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
                 Metric
               </th>
-              {secondaryColumns.map((column, index) => renderColumnHeader(column, index))}
+              {secondaryColumns?.map((column, index) => renderColumnHeader(column, index))}
               {months.map((month) => (
                 <th
                   key={month}
@@ -303,7 +305,7 @@ export default function ConversionTable({
                   <td className="sticky left-[130px] min-w-[100px] bg-background whitespace-nowrap p-2 text-xs border-r border-border">
                     {metric}
                   </td>
-                  {secondaryColumns.map((column, index) => renderMetricValue(row, column, metric, index))}
+                  {secondaryColumns?.map((column, index) => renderMetricValue(row, column, metric, index))}
                   {months.map((month) => {
                     const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
                       (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month

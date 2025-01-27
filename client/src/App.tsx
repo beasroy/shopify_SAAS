@@ -14,7 +14,7 @@ import ReportsPage from './pages/ReportPage/ReportsPage.tsx';
 import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
 import AudienceConversionReportPage from './pages/ConversionReportPage/AudienceConversionReportPage.tsx';
 import WebsiteConversionReportPage from './pages/ConversionReportPage/WebsiteConversionReportPage.tsx';
-import GoogleAdsDashboard from './pages/GoogleAdsHub/Dahboard.tsx';
+import GoogleAdsDashboard from './pages/GoogleAdsHub/Dashboard.tsx';
 
 function App() {
   return (

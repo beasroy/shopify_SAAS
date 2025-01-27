@@ -25,7 +25,7 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [date, setDate] = useState<DateRange | undefined>(propDateRange);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,7 +46,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/segment/gender/${brandId}`, {
+      const response = await axiosInstance.post(`/api/segment/product/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate, 
       }, { withCredentials: true })
 
@@ -77,10 +77,9 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Gender";
+  const primaryColumn = "Product";
   const monthlyDataKey = "MonthlyData";
-  const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
-  const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
+  const monthlyMetrics = ["Cost","Clicks","Conversions", "Conversion Rate"];
 
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
@@ -88,7 +87,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Gender Insights</h2>
+            <h2 className="text-lg font-medium">Product Insights</h2>
             <GoogleLogo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -109,7 +108,6 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
-                secondaryColumns={secondaryColumns}
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
@@ -124,4 +122,4 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
   );
 };
 
-export default Gender;
+export default Product;

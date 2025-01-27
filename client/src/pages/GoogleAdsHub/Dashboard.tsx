@@ -7,6 +7,8 @@ import SearchTerm from './components/SearchTerm';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import Age from './components/Age';
 import Gender from './components/Gender';
+// import Product from './components/Product';
+// import Brand from './components/Brand';
 
 
 const GoogleAdsDashboard: React.FC = () => {
@@ -21,12 +23,16 @@ const GoogleAdsDashboard: React.FC = () => {
     { label: 'Search Term', value: 'searchterm' },
     { label: 'Age', value: 'age' },
     { label: 'Gender', value: 'gender' },
+    // { label: 'Product', value: 'product'},
+    // { label: 'Brand', value: 'brand'}
   ];
 
   const refs = {
     searchterm: useRef<HTMLDivElement>(null),
     age: useRef<HTMLDivElement>(null),
     gender: useRef<HTMLDivElement>(null),
+    // product: useRef<HTMLDivElement>(null),
+    // brand: useRef<HTMLDivElement>(null)
   };
 
   // Observer to highlight active tab based on scroll position
@@ -115,6 +121,12 @@ const GoogleAdsDashboard: React.FC = () => {
             <div id="gender" ref={refs.gender}>
               <Gender dateRange={date} />
             </div>
+            {/* <div id="product" ref={refs.product}>
+              <Product dateRange={date} />
+            </div>
+            <div id="brand" ref={refs.brand}>
+              <Brand dateRange={date} />
+            </div> */}
           </div>
         </div>
       </div>

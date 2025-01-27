@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight} from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 
 export interface MonthlyData {
@@ -19,6 +19,7 @@ interface ConversionTableProps {
   monthlyMetrics: string[];
   isFullScreen: boolean;
   rows?: number;
+  height?: number;
 }
 
 export default function ConversionTable({
@@ -28,17 +29,21 @@ export default function ConversionTable({
   monthlyDataKey,
   monthlyMetrics,
   isFullScreen,
-  rows
+  rows,
+  height
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
-  const rowsPerPage = rows ? rows: 8;
+  const rowsPerPage = rows ? rows : 8;
   const rowsPerChunk = 30;
 
-  const getTableHeight = () => {
-    return isFullScreen ? 'max-h-[calc(100vh-130px)]' : 'max-h-[400px]';
-  };
-
+  const getTableHeight = (height?: number) => {
+    const defaultHeight = 130;
+    console.log('Received height:', height); // Debug log
+    const calculatedHeight = height || defaultHeight;
+    console.log('Using height:', calculatedHeight); // Debug log
+    return isFullScreen ? `max-h-[calc(100vh-${calculatedHeight}px)]` : 'max-h-[400px]';
+};
   const months = useMemo(() => {
     if (!Array.isArray(data)) {
       console.error("Data is not an array:", data);
@@ -115,7 +120,7 @@ export default function ConversionTable({
     };
   }, [data]);
 
-  
+
 
   useEffect(() => {
     if (!isFullScreen) {
@@ -170,6 +175,12 @@ export default function ConversionTable({
         {metric === 'Conv. Rate' && (
           <div className="text-xs text-muted-foreground">{`Purchases: ${monthData['Purchases'] ?? 0}`}</div>
         )}
+        {metric === 'Cost' && (
+          <div className="text-xs text-muted-foreground">{`clicks: ${monthData['Clicks'] ?? 0}`}</div>
+        )}
+        {metric === 'Conv. Value/ Cost' && (
+          <div className="text-xs text-muted-foreground">{`conv. rate: ${Number(monthData['Conversion Rate']).toFixed(2) ?? 0} %`}</div>
+        )}
       </td>
     );
   };
@@ -181,7 +192,7 @@ export default function ConversionTable({
     columnIndex: number
   ) => {
     const value = row[column];
-  
+    
     if (typeof value !== "number") {
       return (
         <td
@@ -195,28 +206,48 @@ export default function ConversionTable({
   
     let bgColor = "bg-background";
   
-    if (
-      (currentMetric === "Sessions" && column === "Total Sessions") ||
-      (currentMetric === "Conv. Rate" && column === "Avg Conv. Rate")
-    ) {
-      const sessions = row["Total Sessions"] as number;
-      const convRate = row["Avg Conv. Rate"] as number;
-      bgColor = getMetricColor(sessions, convRate);
+    // Check if the current metric and column match specific conditions for color
+    if (currentMetric && column) {
+      if (column.includes("Sessions") || column.includes("Rate")) {
+        const sessions = row["Total Sessions"] as number;
+        const convRate = row["Avg Conv. Rate"] as number;
+        bgColor = getMetricColor(sessions, convRate);
+      }
     }
   
-    const totalPurchases =
-      typeof row["Total Purchases"] === "number"
-        ? row["Total Purchases"].toLocaleString()
-        : null;
+    const totalPurchases = typeof row["Total Purchases"] === "number" 
+      ? row["Total Purchases"].toLocaleString() 
+      : null;
+    const totalConvValue = typeof row["Total Conv. Value"] === "number"
+      ? row["Total Conv. Value"].toFixed(2) 
+      : null;
   
     return (
       <td
         className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
         style={{ left: `${130 + 100 + columnIndex * 130}px` }}
       >
-        {currentMetric.toLowerCase() === "sessions" && column === "Total Sessions" ? (
+        {/* Only show cost when currentMetric is "Cost" */}
+        {currentMetric.toLowerCase() === "cost" && column === "Total Cost" ? (
+          <div className="flex flex-col">
+            <span>{renderCell(value)}</span>
+          </div>
+        ) : 
+        /* Only show conv value/cost when currentMetric is "Conv. Value/Cost" */
+        currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
+          <div className="flex flex-col">
+            <span>{renderCell(value)}</span>
+            {totalConvValue && (
+              <span className="text-xs text-gray-500 mt-1">
+                Total Conv. Value: {totalConvValue}
+              </span>
+            )}
+          </div>
+        ) : 
+        currentMetric.toLowerCase() === "sessions" && column.includes("Sessions") ? (
           renderCell(value)
-        ) : currentMetric.toLowerCase() === "conv. rate" && column === "Avg Conv. Rate" ? (
+        ) : 
+        currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
           <div className="flex flex-col">
             <span>{renderCell(value, true)}</span>
             {totalPurchases && (
@@ -232,7 +263,6 @@ export default function ConversionTable({
     );
   };
   
-
 
   const totalRows = allRows.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -268,7 +298,7 @@ export default function ConversionTable({
 
   return (
     <div className="w-full border border-border rounded-lg flex flex-col">
-      <div className={`relative overflow-x-auto ${getTableHeight()}`} onScroll={isFullScreen ? handleScroll : undefined}>
+      <div className={`relative overflow-x-auto ${getTableHeight(height)}`} onScroll={isFullScreen ? handleScroll : undefined}>
         <table className="w-full">
           <thead>
             <tr>

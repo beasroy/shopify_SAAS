@@ -78,8 +78,9 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
 
   // Extract columns dynamically from the API response
   const primaryColumn = "Search Term";
+  const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
   const monthlyDataKey = "MonthlyData";
-  const monthlyMetrics = ["Cost","Clicks","Conversions","Conv. Value/ Cost", "Conversion Rate"];
+  const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
 
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
@@ -108,6 +109,7 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
+                secondaryColumns={secondaryColumns}
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}

@@ -11,10 +11,15 @@ interface TableProps {
 }
 
 const getConditionalColors = (value: number, average: number) => {
+  const epsilon = 0.0001; // Small tolerance for floating-point comparisons
+
   if (value > average) return 'bg-green-100 text-green-800';
   if (value < average) return 'bg-red-50 text-red-800';
-  return 'bg-yellow-50 text-yellow-700';
+  if (Math.abs(value - average) < epsilon) return 'bg-yellow-100 text-yellow-700'; // Handles approximate equality
+
+  return 'bg-yellow-100 text-yellow-700';
 };
+
 
 const ReportTable: React.FC<TableProps> = ({
   columns = [],
@@ -40,7 +45,7 @@ const ReportTable: React.FC<TableProps> = ({
   const dataRef = useRef(data);
   const filteredDataRef = useRef<any[]>([]);
 
-  const comparisonColumns = ['Add To Cart Rate', 'Checkout Rate', 'Purchase Rate'];
+  const comparisonColumns = ['Add To Cart Rate', 'Checkout Rate', 'Purchase Rate', 'Sessions'];
 
   const parsePercentage = (value: string): number => {
     return parseFloat(value?.replace('%', '').trim()) || 0;
@@ -78,11 +83,17 @@ const ReportTable: React.FC<TableProps> = ({
     const averages: Record<string, number> = {};
     comparisonColumns.forEach((key) => {
       const validData = data.filter(item => item[key] !== undefined && !isNaN(parsePercentage(item[key] || '0')));
-      averages[key] = validData.length > 0 ?
-        validData.reduce((sum, item) => sum + parsePercentage(item[key] || '0'), 0) / validData.length : 0;
+      const average = validData.length > 0
+        ? validData.reduce((sum, item) => sum + parsePercentage(item[key] || '0'), 0) / validData.length
+        : 0;
+
+      // Convert "Sessions" to an integer, others remain as decimals
+      averages[key] = key === 'Sessions' ? Math.round(average) : parseFloat(average.toFixed(2));
     });
     return averages;
   }, [data]);
+
+
 
   const allTimeAverageValues = useMemo(() => {
     const averages: Record<string, number> = {};
@@ -368,7 +379,7 @@ const ReportTable: React.FC<TableProps> = ({
                     }}
                     onClick={() => handleSort(column)}
                   >
-                   <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center">
                       <div className="flex items-center justify-center mb-1">
                         <span>{column}</span>
                         {isNumericColumn(column) && (
@@ -387,7 +398,10 @@ const ReportTable: React.FC<TableProps> = ({
                       </div>
                       {isComparisonCol && averageValues[column] !== undefined && (
                         <span className="text-xs text-gray-500">
-                          avg: {averageValues[column]?.toFixed(2)}%
+                          avg: {column === 'Sessions'
+                            ? Math.round(averageValues[column])
+                            : averageValues[column]?.toFixed(2)}
+                          {column !== 'Sessions' ? '%' : ''}
                         </span>
                       )}
                     </div>
@@ -489,8 +503,11 @@ const ReportTable: React.FC<TableProps> = ({
                       }}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        {isComparisonColumn ? `${(cellValue as number).toFixed(2)}%` : cellValue}
-                        {/* {isComparisonColumn && getConditionalIcon(cellValue as number, averageValues[column])} */}
+                        {isComparisonColumn
+                          ? column !== 'Sessions'
+                            ? `${(cellValue as number).toFixed(2)}%`
+                            : cellValue
+                          : cellValue}
                       </div>
                     </td>
                   );
@@ -499,7 +516,6 @@ const ReportTable: React.FC<TableProps> = ({
             ))}
           </tbody>
         </table>
-
       </div>
       {!isFullScreen && (
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">

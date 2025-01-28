@@ -60,7 +60,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    let { startDate, endDate, userId, limit } = req.body;
+    let { startDate, endDate, userId} = req.body;
 
     if (!startDate || !endDate) {
       const now = new Date();
@@ -99,11 +99,10 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       ],
       orderBys: [
         {
-          desc: false,
+          desc: true,
           dimension: { dimensionName: 'date' },
         },
       ],
-      limit: limit
     };
 
     const response = await axios.post(

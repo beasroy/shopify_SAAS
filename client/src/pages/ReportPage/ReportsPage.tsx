@@ -1,11 +1,6 @@
 import React from 'react';
 import { DateRange } from 'react-day-picker';
 import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetricsPage';
-import CityBasedReports from '@/pages/ReportPage/component/CitySessionPage';
-import LandingPageSession from './component/LandingPageSession';
-import AgeReportPage from './component/AgeReportPage';
-import GenderBasedReports from '@/pages/ReportPage/component/GenderReportPage';
-import ChannelSessionPage from './component/RefferingChannelPage';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
@@ -73,21 +68,7 @@ const ReportsPage: React.FC = () => {
                 <section className="my-6">
                   <DailyEcommerceMetrics dateRange={date} />
                 </section>
-                <section className="mb-6">
-                  <CityBasedReports dateRange={date} />
-                </section>
-                <section className="mb-6">
-                  <LandingPageSession dateRange={date} />
-                </section>
-                <section className="mb-6">
-                  <ChannelSessionPage dateRange={date} />
-                </section>
-                <section className="mb-6">
-                  <AgeReportPage dateRange={date} />
-                </section>
-                <section className="mb-6">
-                  <GenderBasedReports dateRange={date} />
-                </section>
+             
               </>
             )}
           </>

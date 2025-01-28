@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams } from 'react-router-dom';
 import { format } from "date-fns";
-import { ChevronDown, Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
+import {  Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,7 +47,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  const [rowsToShow, setRowsToShow] = useState<string>('50');
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const {user}= useUser();
@@ -83,7 +82,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
           startDate: startDate,
           endDate: endDate,
           userId: user?.id,
-          limit: rowsToShow
         },
         { withCredentials: true }
       );
@@ -110,7 +108,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, brandId, rowsToShow]);
+  }, [startDate, endDate, brandId]);
 
   useEffect(() => {
     fetchMetrics();
@@ -198,19 +196,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
              <Button onClick={toggleFullScreen} size="icon" variant="outline">
               {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </Button>
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Show {rowsToShow === '10000' ? 'all' : rowsToShow} rows
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onSelect={() => setRowsToShow('50')}>Show 50 rows</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setRowsToShow('100')}>Show 100 rows</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setRowsToShow('10000')}>Show all rows</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
           </div>
         </div>
 

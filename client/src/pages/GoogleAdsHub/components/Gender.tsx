@@ -113,7 +113,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
-                rows={10}
+                isAdsTable={true}
               />
             </div>
           )}

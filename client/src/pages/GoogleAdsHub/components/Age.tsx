@@ -113,6 +113,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
+                isAdsTable={true}
               />
             </div>
           )}

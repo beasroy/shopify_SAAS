@@ -19,7 +19,7 @@ interface ConversionTableProps {
   monthlyMetrics: string[];
   isFullScreen: boolean;
   rows?: number;
-  height?: number;
+  isAdsTable?:boolean;
 }
 
 export default function ConversionTable({
@@ -30,20 +30,23 @@ export default function ConversionTable({
   monthlyMetrics,
   isFullScreen,
   rows,
-  height
+  isAdsTable
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([]);
   const rowsPerPage = rows ? rows : 8;
   const rowsPerChunk = 30;
 
-  const getTableHeight = (height?: number) => {
-    const defaultHeight = 130;
-    console.log('Received height:', height); // Debug log
-    const calculatedHeight = height || defaultHeight;
-    console.log('Using height:', calculatedHeight); // Debug log
-    return isFullScreen ? `max-h-[calc(100vh-${calculatedHeight}px)]` : 'max-h-[400px]';
-};
+  const getTableHeight = () => {
+    if (isFullScreen) {
+      if (isAdsTable) {
+        return 'max-h-[calc(100vh-90px)]';
+      }
+      return 'max-h-[calc(100vh-130px)]';
+    }
+    return 'max-h-[400px]';
+  };
+
   const months = useMemo(() => {
     if (!Array.isArray(data)) {
       console.error("Data is not an array:", data);
@@ -298,7 +301,7 @@ export default function ConversionTable({
 
   return (
     <div className="w-full border border-border rounded-lg flex flex-col">
-      <div className={`relative overflow-x-auto ${getTableHeight(height)}`} onScroll={isFullScreen ? handleScroll : undefined}>
+      <div className={`relative overflow-x-auto ${getTableHeight()}`} onScroll={isFullScreen ? handleScroll : undefined}>
         <table className="w-full">
           <thead>
             <tr>

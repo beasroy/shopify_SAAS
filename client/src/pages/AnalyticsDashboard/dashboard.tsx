@@ -164,7 +164,7 @@ export default function Dashboard() {
       totalCTR: (totalClicks / totalImpressions) * 100 || 0,
       totalCPC: totalSpent / totalClicks || 0,
       totalCPM: (totalSpent * 1000) / totalImpressions || 0,
-      totalCPP: totalSpent / totalPurchases || 0,
+      totalCPP: totalPurchases > 0 ? (totalSpent / totalPurchases) : 0 ,
     });
   }, []);
 

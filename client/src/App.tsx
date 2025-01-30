@@ -15,6 +15,7 @@ import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
 import AudienceConversionReportPage from './pages/ConversionReportPage/AudienceConversionReportPage.tsx';
 import WebsiteConversionReportPage from './pages/ConversionReportPage/WebsiteConversionReportPage.tsx';
 import GoogleAdsDashboard from './pages/GoogleAdsHub/Dashboard.tsx';
+import FbReportPage from './pages/FbReports/FbReportPage.tsx';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
           <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
           <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
+          <Route path = '/meta-reports/:brandId' element={<FbReportPage />} />
           <Route path = '/google-ads-hub/:brandId' element={<GoogleAdsDashboard />} />
           <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />
           <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />

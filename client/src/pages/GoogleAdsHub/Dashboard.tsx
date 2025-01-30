@@ -92,7 +92,7 @@ const GoogleAdsDashboard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <SquareChartGantt className="h-6 w-6" />
                 <h1 className="text-xl font-semibold">
-                  Google Ads Reorts
+                  Google Ads Reports
                 </h1>
               </div>
               <div className='flex items-center gap-3'>

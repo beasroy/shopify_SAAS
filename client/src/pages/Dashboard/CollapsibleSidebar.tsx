@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ChartNoAxesCombined, CalendarRange, LineChart, SquareChartGantt, } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ChartNoAxesCombined, CalendarRange, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
@@ -8,7 +8,8 @@ import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import { FaMeta } from "react-icons/fa6";
+import { SiGoogleads } from "react-icons/si";
 
 
 export interface Brand {
@@ -94,7 +95,8 @@ export default function CollapsibleSidebar() {
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
         { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> },
-        { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SquareChartGantt size={20} /> },
+        { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}`,icon: <FaMeta size={18} />},
+        { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },
         
         {
             name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,

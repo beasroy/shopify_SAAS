@@ -143,7 +143,7 @@ export default function ConversionTable({
 
   const renderCell = (value: number | string, isPercentage: boolean = false) => {
     if (typeof value === "number") {
-      return isPercentage ? `${value.toFixed(2)} %` : value.toLocaleString();
+      return isPercentage ? `${value.toFixed(2)} %` : value.toFixed(2);
     }
     return value;
   };
@@ -183,6 +183,9 @@ export default function ConversionTable({
         )}
         {metric === 'Conv. Value/ Cost' && (
           <div className="text-xs text-muted-foreground">{`conv. rate: ${Number(monthData['Conversion Rate']).toFixed(2) ?? 0} %`}</div>
+        )}
+        {metric === 'Purchase ROAS' && (
+          <div className="text-xs text-muted-foreground">{`PCV: ${Number(monthData['Purchase Conversion Value']).toFixed(2) ?? 0}`}</div>
         )}
       </td>
     );
@@ -225,6 +228,7 @@ export default function ConversionTable({
       ? row["Total Conv. Value"].toFixed(2) 
       : null;
   
+  
     return (
       <td
         className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
@@ -259,7 +263,11 @@ export default function ConversionTable({
               </span>
             )}
           </div>
-        ) : (
+        ) : currentMetric.toLowerCase()==="spend" && column.includes("Total Spend")?(
+          renderCell(value)
+        ) : currentMetric.toLowerCase()== "purchase roas" && column.includes("Total Purchase ROAS")?(
+          renderCell(value)
+        ): (
           ""
         )}
       </td>

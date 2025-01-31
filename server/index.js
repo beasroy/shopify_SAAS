@@ -15,6 +15,7 @@ import fbReportRoutes from "./routes/fbReport.js"
 import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
+import userRoutes from "./routes/user.js";
 import {getGoogleAdData} from "./Report/Report.js";
 
 
@@ -49,7 +50,8 @@ dataOperationRouter.use("/performance",targetReportRoutes);
 dataOperationRouter.use("/segment",segmentReportRoutes);
 dataOperationRouter.use("/setup",setupBrandRoutes);
 dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
-dataOperationRouter.use("/fbReport",fbReportRoutes)
+dataOperationRouter.use("/fbReport",fbReportRoutes);
+dataOperationRouter.use("/users",userRoutes);
 
 
 setupCronJobs();

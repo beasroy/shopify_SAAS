@@ -443,45 +443,37 @@ export const getShopifyAuthUrl = (req, res)=>{
   
     res.json({ success: true,authUrl });
 }
-export const handleShopifyCallback = async (request) => {
-    const url = new URL(request.url);
+export const handleShopifyCallback = async (request, res) => {
+    const absoluteUrl = `${request.protocol}://${request.get('host')}${request.originalUrl}`;
+    const url = new URL(absoluteUrl); // Now it's a valid absolute URL
+
     const code = url.searchParams.get('code');
     const shop = url.searchParams.get('shop');
     const clientId = process.env.SHOPIFY_CLIENT_ID;
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-  
+
     if (!code || !shop) {
-      return {
-        error: 'Missing required parameters: code or shop',
-      };
+      return res.status(400).json({ error: 'Missing required parameters: code or shop' });
     }
-  
+
     try {
       const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
         client_id: clientId,
         client_secret: clientSecret,
         code: code,
       });
-  
-      if (tokenResponse.data && tokenResponse.data.access_token) {
-        // Return the access token
-        const isProduction = process.env.NODE_ENV === 'production';
 
+      if (tokenResponse.data && tokenResponse.data.access_token) {
+        const isProduction = process.env.NODE_ENV === 'production';
         const clientURL = isProduction
             ? 'https://parallels.messold.com/dashboard'
             : 'http://localhost:5173/dashboard';
 
-        return res.redirect(clientURL + `?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
+        return res.redirect(`${clientURL}?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
       } else {
-        return {
-          error: 'Unable to get access token',
-          details: tokenResponse.data,
-        };
+        return res.status(500).json({ error: 'Unable to get access token', details: tokenResponse.data });
       }
     } catch (error) {
-      return {
-        error: 'Error occurred while fetching the access token',
-        details: error.response?.data || error.message,
-      };
+      return res.status(500).json({ error: 'Error occurred while fetching the access token', details: error.response?.data || error.message });
     }
-  };
+};

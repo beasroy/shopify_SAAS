@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import ReportTable from "@/pages/ReportPage/component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent"
@@ -57,6 +58,12 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   useEffect(() => {
     setDate(propDateRange);
   }, [propDateRange]);
+
+  useEffect(() => {
+    if (!isFullScreen) {
+      setDate(propDateRange);
+    }
+  }, [isFullScreen, propDateRange]);
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -155,7 +162,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
 
   return (
     <Card className={`mx-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-    <CardContent className="mt-4">
+    <CardContent >
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
@@ -163,6 +170,17 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
             <Ga4Logo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            
+          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange
+                    date={date}
+                    setDate={setDate}
+                    defaultDate={{
+                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      to: new Date()
+                    }}
+                  />
+                </div>}
             <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>

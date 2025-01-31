@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
-import moment from "moment";
+import NodeCache from 'node-cache';
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 config();
@@ -48,37 +48,35 @@ export async function getGoogleAccessToken(refreshToken) {
   }
 }
 
-
+const cache = new NodeCache({ stdTTL: 86400 });
 export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
-
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({ success: false, message: 'Brand not found.' });
-    }
-
-    const propertyId = brand.ga4Account?.PropertyID;
-
     let { startDate, endDate, userId} = req.body;
 
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentDayOfMonth = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      currentDayOfMonth.setHours(23, 59, 59, 999);
+      const brandCacheKey = `brand_${brandId}`;
+      const userCacheKey = `user_${userId}`;
+  
+      // Try to get cached brand and user data
+      let brand = cache.get(brandCacheKey);
+      let user = cache.get(userCacheKey);
+  
+      // Fetch from DB only if not cached
+      if (!brand) {
+        brand = await Brand.findById(brandId).lean();
+        if (brand) cache.set(brandCacheKey, brand);
+      }
+  
+      if (!user) {
+        user = await User.findById(userId).lean();
+        if (user) cache.set(userCacheKey, user);
+      }
+  
+      if (!brand || !user) {
+        return res.status(404).json({ success: false, message: !brand ? 'Brand not found.' : 'User not found' });
+      }
 
-      const formatToLocalDateString = (date) =>
-        date.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD format
-
-      startDate = formatToLocalDateString(firstDayOfMonth);
-      endDate = formatToLocalDateString(currentDayOfMonth);
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    const propertyId = brand.ga4Account?.PropertyID;
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken) {
@@ -88,8 +86,12 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
+    const now = new Date();
+    const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
+
     const requestBody = {
-      dateRanges: [{ startDate, endDate }],
+      dateRanges: [{ startDate: startDate || defaultStartDate, endDate: endDate || defaultEndDate }],
       dimensions: [{ name: 'date' }],
       metrics: [
         { name: 'sessions' },
@@ -127,17 +129,21 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     }
 
     const data = rows.map((row) => {
-      const Date = row.dimensionValues[0]?.value;
-      const formattedDate = moment(Date).format("DD-MM-YYYY");
+      const date = `${row.dimensionValues[0]?.value.substring(6, 8)}-${row.dimensionValues[0]?.value.substring(4, 6)}-${row.dimensionValues[0]?.value.substring(0, 4)}`;
+      const sessions = (row.metricValues[0]?.value) || 0;
+      const addToCarts = (row.metricValues[1]?.value) || 0;
+      const checkouts = (row.metricValues[2]?.value) || 0;
+      const purchases = (row.metricValues[3]?.value) || 0;
+
       return {
-        Date: formattedDate,
-        Sessions: row.metricValues[0]?.value || 0,
-        "Add To Cart": row.metricValues[1]?.value || 0,
-        "Add To Cart Rate": `${((row.metricValues[1]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        Checkouts: row.metricValues[2]?.value || 0,
-        "Checkout Rate": `${((row.metricValues[2]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
-        Purchases: row.metricValues[3]?.value || 0,
-        "Purchase Rate": `${((row.metricValues[3]?.value / row.metricValues[0]?.value) * 100).toFixed(2)} %` || 0,
+        Date: date,
+        Sessions: sessions,
+        'Add To Cart': addToCarts,
+        'Add To Cart Rate': sessions ? `${((addToCarts / sessions) * 100).toFixed(2)}%` : '0%',
+        Checkouts: checkouts,
+        'Checkout Rate': sessions ? `${((checkouts / sessions) * 100).toFixed(2)}%` : '0%',
+        Purchases: purchases,
+        'Purchase Rate': sessions ? `${((purchases / sessions) * 100).toFixed(2)}%` : '0%',
       };
     });
 

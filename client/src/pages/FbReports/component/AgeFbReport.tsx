@@ -10,6 +10,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 
 type ApiResponse = {
@@ -19,6 +20,7 @@ type ApiResponse = {
             "Age": string;
             "Total Spend": number;
             "Total Purchase ROAS": number;
+            "Total PCV": number;
             MonthlyData?: Array<{
                 Month: string;
                 spend: number;
@@ -33,7 +35,7 @@ interface CityBasedReportsProps {
     dateRange: DateRange | undefined;
 }
 
-const AgeFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
     const [date, setDate] = useState<DateRange | undefined>(propDateRange);
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -42,7 +44,7 @@ const AgeFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRang
 
     const { user } = useUser();
     const { brandId } = useParams();
-    const toggleFullScreen = (accountId:string) => {
+    const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
     };
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -83,6 +85,11 @@ const AgeFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRang
     const handleManualRefresh = () => {
         fetchData();
     };
+    useEffect(() => {
+        if (!fullScreenAccount) {
+          setDate(propDateRange);
+        }
+      }, [fullScreenAccount, propDateRange]);
 
     // Extract columns dynamically from the API response
     const primaryColumn = "Age";
@@ -124,6 +131,16 @@ const AgeFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRang
                                         </CardTitle>
                                     </div>
                                     <div className="flex items-center space-x-2">
+                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                            <DatePickerWithRange
+                                                date={date}
+                                                setDate={setDate}
+                                                defaultDate={{
+                                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                                    to: new Date()
+                                                }}
+                                            />
+                                        </div>}
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}

@@ -2,6 +2,9 @@ import Brand from '../models/Brands.js';
 import User from "../models/User.js";
 import axios from "axios";
 import moment from 'moment';
+import NodeCache from 'node-cache';
+
+const dataCache = new NodeCache({ stdTTL: 86400 });
 
 function getDateRange(startDate, endDate) {
     return {
@@ -10,25 +13,65 @@ function getDateRange(startDate, endDate) {
     };
 }
 
+async function fetchBrandAndUserData(brandId, userId) {
+   
+    const brandsCacheKey = `brand_${brandId}`;
+    const usersCacheKey = `user_${userId}`;
+    
+    let brand = dataCache.get(brandsCacheKey);
+    let user = dataCache.get(usersCacheKey);
+    
+    const fetchPromises = [];
+    
+    if (!brand) {
+        fetchPromises.push(
+            Brand.findById(brandId)
+                .select('fbAdAccounts')
+                .lean()
+                .then(brandData => {
+                    if (brandData) {
+                        dataCache.set(brandsCacheKey, brandData);
+                        brand = brandData;
+                    }
+                })
+        );
+    }
+    
+    if (!user) {
+        fetchPromises.push(
+            User.findById(userId)
+                .select('fbAccessToken')
+                .lean()
+                .then(userData => {
+                    if (userData) {
+                        dataCache.set(usersCacheKey, userData);
+                        user = userData;
+                    }
+                })
+        );
+    }
+    
+    if (fetchPromises.length > 0) {
+        await Promise.all(fetchPromises);
+    }
+    
+    if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
+        throw new Error(
+            !brand?.fbAdAccounts?.length
+                ? 'No Facebook Ads accounts found for this brand.'
+                : 'No Facebook accesstoken found for this user.'
+        );
+    }
+    return { brand, user };
+};
+
 export const fetchFbAgeReports = async(req,res)=>{
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
 
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
-
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
         async function fetchTopAge(accountId){
@@ -93,6 +136,7 @@ export const fetchFbAgeReports = async(req,res)=>{
                             "Age": insight.age,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -122,13 +166,15 @@ export const fetchFbAgeReports = async(req,res)=>{
 
                     ageData.MonthlyData.set(monthKey, monthData);
                     ageData["Total Spend"] += spend;
-                    ageData["Total Purchase ROAS"] += purchaseRoas;
+                    ageData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedAges = Array.from(allData.values())
                     .map(age => ({
                         ...age,
+                        "Total Purchase ROAS": age["Total Spend"] > 0 ? 
+                        age["Total PCV"] / age["Total Spend"] : 0,
                         MonthlyData: Array.from(age.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -156,7 +202,7 @@ export const fetchFbAgeReports = async(req,res)=>{
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -190,20 +236,7 @@ export const fetchFbGenderReports = async(req,res)=>{
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
-
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
         async function fetchTopGeders(accountId){
@@ -268,6 +301,7 @@ export const fetchFbGenderReports = async(req,res)=>{
                             "Gender": insight.gender,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -297,13 +331,15 @@ export const fetchFbGenderReports = async(req,res)=>{
 
                     genderData.MonthlyData.set(monthKey, monthData);
                     genderData["Total Spend"] += spend;
-                    genderData["Total Purchase ROAS"] += purchaseRoas;
+                    genderData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedGenders = Array.from(allData.values())
                     .map(gender => ({
                         ...gender,
+                        "Total Purchase ROAS": gender["Total Spend"] > 0?
+                        gender["Total PCV"] / gender["Total Spend"] : 0,
                         MonthlyData: Array.from(gender.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -331,7 +367,7 @@ export const fetchFbGenderReports = async(req,res)=>{
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -365,19 +401,7 @@ export const fetchFbDeviceReports = async(req,res)=>{
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
@@ -443,6 +467,7 @@ export const fetchFbDeviceReports = async(req,res)=>{
                             "Device": insight.impression_device,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -472,13 +497,15 @@ export const fetchFbDeviceReports = async(req,res)=>{
 
                     deviceData.MonthlyData.set(monthKey, monthData);
                     deviceData["Total Spend"] += spend;
-                    deviceData["Total Purchase ROAS"] += purchaseRoas;
+                    deviceData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedDevices = Array.from(allData.values())
                     .map(device => ({
                         ...device,
+                        "Total Purchase ROAS": device["Total Spend"] > 0?
+                        device["Total PCV"] / device["Total Spend"] : 0,
                         MonthlyData: Array.from(device.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -506,7 +533,7 @@ export const fetchFbDeviceReports = async(req,res)=>{
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -540,19 +567,7 @@ export const fetchFbCountryReports = async (req, res) => {
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
@@ -618,6 +633,7 @@ export const fetchFbCountryReports = async (req, res) => {
                             "Country": insight.country,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -647,13 +663,15 @@ export const fetchFbCountryReports = async (req, res) => {
 
                     countryData.MonthlyData.set(monthKey, monthData);
                     countryData["Total Spend"] += spend;
-                    countryData["Total Purchase ROAS"] += purchaseRoas;
+                    countryData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedCountries = Array.from(allData.values())
                     .map(country => ({
                         ...country,
+                        "Total Purchase ROAS": country["Total Spend"] > 0?
+                        country["Total PCV"] / country["Total Spend"] : 0,
                         MonthlyData: Array.from(country.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -681,7 +699,7 @@ export const fetchFbCountryReports = async (req, res) => {
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -710,197 +728,12 @@ export const fetchFbCountryReports = async (req, res) => {
     }
 };
 
-export const fetchFbRegionReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
-    const { brandId } = req.params;
-
-    try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
-
-        const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
-
-        async function fetchTopRegionsForAccount(accountId) {
-            const cleanedAccountId = accountId.replace(/^act_/, '');
-            const MAX_REGIONS = 300;
-            const allData = new Map();
-            let after = null;
-            let shouldContinue = true;
-
-            try {
-                do {
-                    const params = new URLSearchParams({
-                        access_token: user.fbAccessToken,
-                        fields: 'spend,purchase_roas,action_values,account_name',
-                        time_range: JSON.stringify({
-                            since: adjustedStartDate,
-                            until: adjustedEndDate
-                        }),
-                        breakdowns: 'region',
-                        time_increment: 'monthly',
-                        limit: 500,
-                        sort: 'spend_descending'
-                    });
-
-                    if (after) params.append('after', after);
-
-                    const response = await axios.get(
-                        `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${params}`
-                    );
-
-                    if (!response.data.data?.length) break;
-
-
-                    const processedRegionsInBatch = new Set();
-
-                    for (const insight of response.data.data) {
-
-                        if (allData.size >= MAX_REGIONS && !allData.has(insight.region)) {
-                            shouldContinue = false;
-                            break;
-                        }
-
-                        processedRegionsInBatch.add(insight.region);
-
-                        if (!allData.has(insight.region)) {
-                            allData.set(insight.region, {
-                                Region: insight.region,
-                                "Total Spend": 0,
-                                "Total Purchase ROAS": 0,
-                                MonthlyData: new Map(),
-                                account_name: insight.account_name
-                            });
-                        }
-
-                        const regionData = allData.get(insight.region);
-                        const monthKey = moment(insight.date_start).format('YYYYMM');
-
-                        const spend = parseFloat(insight.spend || 0);
-                        const purchaseRoas = parseFloat(
-                            insight.purchase_roas?.find(
-                                action => action.action_type === 'omni_purchase'
-                            )?.value || 0
-                        );
-                        const conversionValue = parseFloat(
-                            insight.action_values?.find(
-                                action => action.action_type === 'purchase'
-                            )?.value || 0
-                        );
-
-                        const monthData = regionData.MonthlyData.get(monthKey) || {
-                            Month: monthKey,
-                            "Spend": 0,
-                            "Purchase ROAS": 0,
-                            "Purchase Conversion Value": 0
-                        };
-
-                        monthData["Spend"] += spend;
-                        monthData["Purchase ROAS"] += purchaseRoas;
-                        monthData["Purchase Conversion Value"] += conversionValue;
-
-                        regionData.MonthlyData.set(monthKey, monthData);
-                        regionData["Total Spend"] += spend;
-                        regionData["Total Purchase ROAS"] += purchaseRoas;
-                    }
-
-                    after = response.data.paging?.cursors?.after;
-
-                    if (!shouldContinue && processedRegionsInBatch.size === 0) {
-                        break;
-                    }
-                } while (after && shouldContinue);
-
-                // 4. Efficient final data transformation
-                if (allData.size > 0) {
-                    const formattedRegions = Array.from(allData.values())
-                        .sort((a, b) => b["Total Spend"] - a["Total Spend"])
-                        .slice(0, MAX_REGIONS)
-                        .map(region => ({
-                            ...region,
-                            MonthlyData: Array.from(region.MonthlyData.values())
-                                .sort((a, b) => a.Month.localeCompare(b.Month))
-                        }));
-
-                    return {
-                        accountId,
-                        data: {
-                            account_name: formattedRegions[0].account_name,
-                            regionData: formattedRegions
-                        }
-                    };
-                }
-            } catch (error) {
-                console.error(`Error fetching data for account ${cleanedAccountId}:`, {
-                    status: error.response?.status,
-                    statusText: error.response?.statusText,
-                    data: error.response?.data,
-                    headers: error.response?.headers
-                });
-            }
-            return { accountId, data: null };
-        }
-
-        const BATCH_SIZE = 5;
-        const results = [];
-        for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
-            const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(
-                batch.map(accountId => fetchTopRegionsForAccount(accountId))
-            );
-            results.push(...batchResults);
-        }
-
-        const formattedResults = results
-            .filter(result => result.data !== null)
-            .map(result => result.data);
-
-        return res.status(200).json({
-            success: true,
-            data: formattedResults,
-            metadata: {
-                dateRange: { start: adjustedStartDate, end: adjustedEndDate }
-            }
-        });
-
-    } catch (error) {
-        console.error('Error fetching Facebook Ad Account region data:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'An error occurred while fetching Facebook Ad Account region data',
-            error: error.message
-        });
-    }
-};
-
 export const fetchFbAudienceReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
@@ -966,6 +799,7 @@ export const fetchFbAudienceReports = async (req, res) => {
                             "Audience Segments": insight.user_segment_key,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -995,13 +829,15 @@ export const fetchFbAudienceReports = async (req, res) => {
 
                     audienceData.MonthlyData.set(monthKey, monthData);
                     audienceData["Total Spend"] += spend;
-                    audienceData["Total Purchase ROAS"] += purchaseRoas;
+                    audienceData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedAudiences = Array.from(allData.values())
                     .map(audience => ({
                         ...audience,
+                        "Total Purchase ROAS": audience["Total Spend"] > 0?
+                        audience["Total PCV"] / audience["Total Spend"] : 0,
                         MonthlyData: Array.from(audience.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -1029,7 +865,7 @@ export const fetchFbAudienceReports = async (req, res) => {
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -1057,26 +893,14 @@ export const fetchFbAudienceReports = async (req, res) => {
         });
     }
 };
+////////////////////////
 
 export const fetchFbPlatformReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
-
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
         async function fetchTopPlatformsForAccount(accountId) {
@@ -1094,7 +918,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                         until: adjustedEndDate
                     }),
                     breakdowns: 'publisher_platform',
-                    limit: 1000,
+                    limit: 2000,
                     sort: 'spend_descending'
                 });
 
@@ -1122,7 +946,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                     }),
                     breakdowns: 'publisher_platform',
                     time_increment: 'monthly',
-                    limit: 500,
+                    limit: 2000,
                     filtering: JSON.stringify([{
                         field: "publisher_platform",
                         operator: "IN",
@@ -1141,6 +965,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                             "Platforms": insight.publisher_platform,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
+                            "Total PCV":0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -1170,13 +995,15 @@ export const fetchFbPlatformReports = async (req, res) => {
 
                     platformData.MonthlyData.set(monthKey, monthData);
                     platformData["Total Spend"] += spend;
-                    platformData["Total Purchase ROAS"] += purchaseRoas;
+                    platformData["Total PCV"] += conversionValue;
                 }
 
                 // Transform final data
                 const formattedPlatforms = Array.from(allData.values())
                     .map(platform => ({
                         ...platform,
+                        "Total Purchase ROAS": platform["Total Spend"] > 0?
+                        platform["Total PCV"] / platform["Total Spend"] : 0,
                         MonthlyData: Array.from(platform.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -1204,7 +1031,7 @@ export const fetchFbPlatformReports = async (req, res) => {
             }
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -1238,20 +1065,7 @@ export const fetchFbPlacementReports = async (req, res) => {
     const { brandId } = req.params;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).select('fbAdAccounts').lean(),
-            User.findById(userId).select('fbAccessToken').lean()
-        ]);
-
-        if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-            return res.status(404).json({
-                success: false,
-                message: !brand?.fbAdAccounts?.length
-                    ? 'No Facebook Ads accounts found for this brand.'
-                    : 'No Facebook accesstoken found for this user.'
-            });
-        }
-
+        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
         async function fetchTopPlacementsForAccount(accountId) {
@@ -1272,7 +1086,7 @@ export const fetchFbPlacementReports = async (req, res) => {
                         }),
                         breakdowns: 'publisher_platform,platform_position',
                         time_increment: 'monthly',
-                        limit: 500,
+                        limit: 2000,
                         sort: 'spend_descending'
                     });
 
@@ -1301,6 +1115,7 @@ export const fetchFbPlacementReports = async (req, res) => {
                                 Placements: insight.platform_position,
                                 "Total Spend": 0,
                                 "Total Purchase ROAS": 0,
+                                "Total PCV": 0,
                                 MonthlyData: new Map(),
                                 account_name: insight.account_name
                             });
@@ -1334,7 +1149,7 @@ export const fetchFbPlacementReports = async (req, res) => {
 
                         placementData.MonthlyData.set(monthKey, monthData);
                         placementData["Total Spend"] += spend;
-                        placementData["Total Purchase ROAS"] += purchaseRoas;
+                        placementData["Total PCV"] += conversionValue;
                     }
 
                     after = response.data.paging?.cursors?.after;
@@ -1351,6 +1166,8 @@ export const fetchFbPlacementReports = async (req, res) => {
                         .slice(0, MAX_PLACEMENTS)
                         .map(placement => ({
                             ...placement,
+                            "Total Purchase ROAS": placement["Total Spend"] > 0?
+                            placement["Total PCV"] / placement["Total Spend"] : 0,
                             MonthlyData: Array.from(placement.MonthlyData.values())
                                 .sort((a, b) => a.Month.localeCompare(b.Month))
                         }));
@@ -1374,7 +1191,7 @@ export const fetchFbPlacementReports = async (req, res) => {
             return { accountId, data: null };
         }
 
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);

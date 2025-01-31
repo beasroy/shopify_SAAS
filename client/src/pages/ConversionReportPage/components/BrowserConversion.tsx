@@ -13,6 +13,10 @@ import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+
 
 type ApiResponse = {
     reportType: string;
@@ -33,13 +37,18 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
-    const [sessionsFilter, setSessionsFilter] = useState<{ value: number; operator: string } | null>(null);
-    const [convRateFilter, setConvRateFilter] = useState<{ value: number; operator: string } | null>(null);
+    const componentId = 'browser-conversion';
     const { user } = useUser();
     const { brandId } = useParams();
+
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
     };
+
+    const { sessionsFilter, convRateFilter } = useSelector((state: RootState) =>
+        state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null }
+    );
+
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
     const axiosInstance = createAxiosInstance();
@@ -71,6 +80,12 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         setDate(propDateRange);
     }, [propDateRange]);
 
+    useEffect(() => {
+        if (!isFullScreen) {
+          setDate(propDateRange);
+        }
+      }, [isFullScreen, propDateRange]);
+
     const handleManualRefresh = () => {
         fetchData();
     };
@@ -91,20 +106,29 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                         <Ga4Logo />
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
+                        {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                            <DatePickerWithRange
+                                date={date}
+                                setDate={setDate}
+                                defaultDate={{
+                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                    to: new Date()
+                                }}
+                            />
+                        </div>}
                         <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
                             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
-                        <FilterConversions  sessionFilter={sessionsFilter} setSessionsFilter={setSessionsFilter}
-            convRateFilter={convRateFilter} setConvRateFilter={setConvRateFilter} />
-            <ExcelDownload
-              data={apiResponse?.data || []}
-              fileName={`${primaryColumn}_Conversion_Report`}
-              primaryColumn={primaryColumn}
-              secondaryColumns={secondaryColumns}
-              monthlyDataKey={monthlyDataKey}
-              monthlyMetrics={monthlyMetrics}
-              disabled={loading}
-            />
+                        <FilterConversions componentId={componentId} />
+                        <ExcelDownload
+                            data={apiResponse?.data || []}
+                            fileName={`${primaryColumn}_Conversion_Report`}
+                            primaryColumn={primaryColumn}
+                            secondaryColumns={secondaryColumns}
+                            monthlyDataKey={monthlyDataKey}
+                            monthlyMetrics={monthlyMetrics}
+                            disabled={loading}
+                        />
                         <Button onClick={toggleFullScreen} size="icon" variant="outline">
                             {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                         </Button>

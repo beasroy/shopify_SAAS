@@ -10,6 +10,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 
 type ApiResponse = {
@@ -19,6 +20,7 @@ type ApiResponse = {
             "Placements": string;
             "Total Spend": number;
             "Total Purchase ROAS": number;
+            "Total PCV": number;
             MonthlyData?: Array<{
                 Month: string;
                 spend: number;
@@ -33,7 +35,7 @@ interface CityBasedReportsProps {
     dateRange: DateRange | undefined;
 }
 
-const PlacementFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
     const [date, setDate] = useState<DateRange | undefined>(propDateRange);
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -42,7 +44,7 @@ const PlacementFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDa
 
     const { user } = useUser();
     const { brandId } = useParams();
-    const toggleFullScreen = (accountId:string) => {
+    const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
     };
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -79,6 +81,12 @@ const PlacementFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     useEffect(() => {
         setDate(propDateRange);
     }, [propDateRange]);
+
+    useEffect(() => {
+        if (!fullScreenAccount) {
+            setDate(propDateRange);
+        }
+    }, [fullScreenAccount, propDateRange]);
 
     const handleManualRefresh = () => {
         fetchData();
@@ -124,6 +132,16 @@ const PlacementFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                                         </CardTitle>
                                     </div>
                                     <div className="flex items-center space-x-2">
+                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                            <DatePickerWithRange
+                                                date={date}
+                                                setDate={setDate}
+                                                defaultDate={{
+                                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                                    to: new Date()
+                                                }}
+                                            />
+                                        </div>}
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}

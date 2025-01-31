@@ -19,7 +19,7 @@ interface ConversionTableProps {
   monthlyMetrics: string[];
   isFullScreen: boolean;
   rows?: number;
-  isAdsTable?:boolean;
+  isAdsTable?: boolean;
 }
 
 export default function ConversionTable({
@@ -141,9 +141,16 @@ export default function ConversionTable({
     return 'bg-red-50';
   };
 
-  const renderCell = (value: number | string, isPercentage: boolean = false) => {
+  const renderCell = (value: number | string, type?: 'spend' | 'percentage' | 'default') => {
     if (typeof value === "number") {
-      return isPercentage ? `${value.toFixed(2)} %` : value.toFixed(2);
+      switch (type) {
+        case 'spend':
+          return Math.round(value).toLocaleString();
+        case 'percentage':
+          return `${value.toFixed(2)} %`;
+        default:
+          return value.toFixed(2);
+      }
     }
     return value;
   };
@@ -173,7 +180,7 @@ export default function ConversionTable({
 
     return (
       <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
-        {renderCell(value, metric.toLowerCase().includes('rate'))}
+        {renderCell(value, metric.toLowerCase().includes('rate')? 'percentage' :metric.toLowerCase().includes('spend')? 'spend': 'default')}
         {/* Additional cell for Purchases */}
         {metric === 'Conv. Rate' && (
           <div className="text-xs text-muted-foreground">{`Purchases: ${monthData['Purchases'] ?? 0}`}</div>
@@ -198,7 +205,7 @@ export default function ConversionTable({
     columnIndex: number
   ) => {
     const value = row[column];
-    
+
     if (typeof value !== "number") {
       return (
         <td
@@ -209,9 +216,9 @@ export default function ConversionTable({
         </td>
       );
     }
-  
+
     let bgColor = "bg-background";
-  
+
     // Check if the current metric and column match specific conditions for color
     if (currentMetric && column) {
       if (column.includes("Sessions") || column.includes("Rate")) {
@@ -220,15 +227,16 @@ export default function ConversionTable({
         bgColor = getMetricColor(sessions, convRate);
       }
     }
-  
-    const totalPurchases = typeof row["Total Purchases"] === "number" 
-      ? row["Total Purchases"].toLocaleString() 
+
+    const totalPurchases = typeof row["Total Purchases"] === "number"
+      ? row["Total Purchases"].toLocaleString()
       : null;
     const totalConvValue = typeof row["Total Conv. Value"] === "number"
-      ? row["Total Conv. Value"].toFixed(2) 
+      ? row["Total Conv. Value"].toFixed(2)
       : null;
-  
-  
+    const totalPCV = typeof row["Total PCV"] === "number"
+      ? row["Total PCV"].toFixed(2)
+      : null;
     return (
       <td
         className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
@@ -239,41 +247,48 @@ export default function ConversionTable({
           <div className="flex flex-col">
             <span>{renderCell(value)}</span>
           </div>
-        ) : 
-        /* Only show conv value/cost when currentMetric is "Conv. Value/Cost" */
-        currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
-          <div className="flex flex-col">
-            <span>{renderCell(value)}</span>
-            {totalConvValue && (
-              <span className="text-xs text-gray-500 mt-1">
-                Total Conv. Value: {totalConvValue}
-              </span>
-            )}
-          </div>
-        ) : 
-        currentMetric.toLowerCase() === "sessions" && column.includes("Sessions") ? (
-          renderCell(value)
-        ) : 
-        currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
-          <div className="flex flex-col">
-            <span>{renderCell(value, true)}</span>
-            {totalPurchases && (
-              <span className="text-xs text-gray-500 mt-1">
-                Total Purchases: {totalPurchases}
-              </span>
-            )}
-          </div>
-        ) : currentMetric.toLowerCase()==="spend" && column.includes("Total Spend")?(
-          renderCell(value)
-        ) : currentMetric.toLowerCase()== "purchase roas" && column.includes("Total Purchase ROAS")?(
-          renderCell(value)
-        ): (
-          ""
-        )}
+        ) :
+          /* Only show conv value/cost when currentMetric is "Conv. Value/Cost" */
+          currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
+            <div className="flex flex-col">
+              <span>{renderCell(value)}</span>
+              {totalConvValue && (
+                <span className="text-xs text-gray-500 mt-1">
+                  Total Conv. Value: {totalConvValue}
+                </span>
+              )}
+            </div>
+          ) :
+            currentMetric.toLowerCase() === "sessions" && column.includes("Sessions") ? (
+              renderCell(value)
+            ) :
+              currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
+                <div className="flex flex-col">
+                  <span>{renderCell(value, 'percentage')}</span>
+                  {totalPurchases && (
+                    <span className="text-xs text-gray-500 mt-1">
+                      Total Purchases: {totalPurchases}
+                    </span>
+                  )}
+                </div>
+              ) : currentMetric.toLowerCase() === "spend" && column.includes("Total Spend") ? (
+                renderCell(value, 'spend')
+              ) : currentMetric.toLowerCase() == "purchase roas" && column.includes("Total Purchase ROAS") ? (
+                <div className="flex flex-col">
+                <span>{renderCell(value)}</span>
+                {totalPCV && (
+                  <span className="text-xs text-gray-500 mt-1">
+                    Total PCV: {totalPCV}
+                  </span>
+                )}
+                </div>
+              ) : (
+                ""
+              )}
       </td>
     );
   };
-  
+
 
   const totalRows = allRows.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);

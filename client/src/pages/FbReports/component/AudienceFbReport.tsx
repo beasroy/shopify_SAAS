@@ -10,6 +10,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 
 type ApiResponse = {
@@ -19,6 +20,7 @@ type ApiResponse = {
             "Audience Segments": string;
             "Total Spend": number;
             "Total Purchase ROAS": number;
+            "Total PCV":number;
             MonthlyData?: Array<{
                 Month: string;
                 spend: number;
@@ -80,6 +82,12 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         setDate(propDateRange);
     }, [propDateRange]);
 
+    useEffect(() => {
+        if (!fullScreenAccount) {
+          setDate(propDateRange);
+        }
+      }, [fullScreenAccount, propDateRange]);
+
     const handleManualRefresh = () => {
         fetchData();
     };
@@ -124,6 +132,16 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                         </CardTitle>
                                     </div>
                                     <div className="flex items-center space-x-2">
+                                    {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                            <DatePickerWithRange
+                                                date={date}
+                                                setDate={setDate}
+                                                defaultDate={{
+                                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                                    to: new Date()
+                                                }}
+                                            />
+                                        </div>}
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}

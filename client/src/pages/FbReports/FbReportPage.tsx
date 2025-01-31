@@ -4,7 +4,6 @@ import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import { FaMeta } from "react-icons/fa6";
-import RegionFbReport from './component/RegionFbReport';
 import AudienceFbReport from './component/AudienceFbReport';
 import PlacementFbReport from './component/PlacementFbReport';
 import PlatformFbReport from './component/PlatformFbReport';
@@ -27,7 +26,6 @@ const FbReportPage: React.FC = () => {
         { label: 'Age', value: 'age' },
         { label: 'Gender', value: 'gender' },
         { label: 'Country', value: 'country' },
-        { label: 'Region', value: 'region' },
         { label: 'Platform', value: 'platform' },
         { label: 'Placement', value: 'placement' },
         { label: 'Impression Device', value: 'impressionDevice' },
@@ -66,11 +64,6 @@ const FbReportPage: React.FC = () => {
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-auto">
                     <div className="px-6 py-4 space-y-6">
-                        {activeTab === 'region' && (
-                            <div id="region">
-                                <RegionFbReport dateRange={date} />
-                            </div>
-                        )}
                         {activeTab === 'audienceSegments' && (
                             <div id="audienceSegments">
                                 <AudienceFbReport dateRange={date} />

@@ -1,6 +1,6 @@
 
 import { UserProvider } from './context/UserContext';
-import { BrowserRouter as Router,Route,Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import AuthForm from "./Auth/AuthForm.tsx";
 import { Toaster } from "@/components/ui/toaster"
 import AnalyticsDashboard from './pages/AnalyticsDashboard/AnalyticsDashboard.tsx';
@@ -16,34 +16,40 @@ import AudienceConversionReportPage from './pages/ConversionReportPage/AudienceC
 import WebsiteConversionReportPage from './pages/ConversionReportPage/WebsiteConversionReportPage.tsx';
 import GoogleAdsDashboard from './pages/GoogleAdsHub/Dashboard.tsx';
 import FbReportPage from './pages/FbReports/FbReportPage.tsx';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store';
 
 function App() {
   return (
-
-    <UserProvider>
-      <BrandProvider>
-      <TokenErrorProvider>
-      <Router>
-        <Toaster />
-        <Routes>
-          <Route path="/" element={<AuthForm />} />
-          <Route path="/dashboard" element={<GeneralDashboard />} />
-          <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard/>} />
-          <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />
-          <Route path ="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
-          <Route path = '/performance-metrics' element={<PerformanceDashboard />} />
-          <Route path = '/segment-dashboard/:brandId' element={<SegmentDashboard />} />
-          <Route path = '/meta-reports/:brandId' element={<FbReportPage />} />
-          <Route path = '/google-ads-hub/:brandId' element={<GoogleAdsDashboard />} />
-          <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />
-          <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />
-          <Route path="/callback" element={<GoogleCallback />} />
-        </Routes>
-      </Router>
-      </TokenErrorProvider>
-      </BrandProvider>
-    </UserProvider>
-  );
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <UserProvider>
+          <BrandProvider>
+            <TokenErrorProvider>
+              <Router>
+                <Toaster />
+                <Routes>
+                  <Route path="/" element={<AuthForm />} />
+                  <Route path="/dashboard" element={<GeneralDashboard />} />
+                  <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard />} />
+                  <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />
+                  <Route path="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
+                  <Route path='/performance-metrics' element={<PerformanceDashboard />} />
+                  <Route path='/segment-dashboard/:brandId' element={<SegmentDashboard />} />
+                  <Route path='/meta-reports/:brandId' element={<FbReportPage />} />
+                  <Route path='/google-ads-hub/:brandId' element={<GoogleAdsDashboard />} />
+                  <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />
+                  <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />
+                  <Route path="/callback" element={<GoogleCallback />} />
+                </Routes>
+              </Router>
+            </TokenErrorProvider>
+          </BrandProvider>
+        </UserProvider>
+        </PersistGate>
+        </Provider>
+        );
 }
 
-export default App;
+        export default App;

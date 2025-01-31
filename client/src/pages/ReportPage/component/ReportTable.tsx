@@ -307,6 +307,13 @@ const ReportTable: React.FC<TableProps> = ({
     setCurrentPage(pageNumber);
   };
 
+  const columnPairs = {
+    'Add To Cart': 'Add To Cart Rate',
+    'Checkouts': 'Checkout Rate',
+    'Purchases': 'Purchase Rate'
+  };
+  
+
   return (
     <>
       <div
@@ -488,14 +495,20 @@ const ReportTable: React.FC<TableProps> = ({
                 {columns.slice(1).map((column) => {
                   const cellValue = item[column as keyof typeof item];
                   const isComparisonColumn = comparisonColumns.includes(column);
+                  const isPairedColumn = column in columnPairs;
 
+                  let colorClass = 'text-gray-800';
+                  if (isComparisonColumn) {
+                    colorClass = getConditionalColors(cellValue as number, averageValues[column]);
+                  } else if (isPairedColumn) {
+                    const rateColumn = columnPairs[column as keyof typeof columnPairs];
+                    const rateValue = item[rateColumn] as number;
+                    colorClass = getConditionalColors(rateValue, averageValues[rateColumn]);
+                  }
                   return (
                     <td
                       key={column}
-                      className={`p-3 text-sm font-normal border-r border-gray-300 ${isComparisonColumn
-                        ? `${getConditionalColors(cellValue as number, averageValues[column])}`
-                        : 'text-gray-800'
-                        }`}
+                      className={`p-3 text-sm font-normal border-r border-gray-300 ${colorClass}`}
                       style={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -503,10 +516,8 @@ const ReportTable: React.FC<TableProps> = ({
                       }}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        {isComparisonColumn
-                          ? column !== 'Sessions'
-                            ? `${(cellValue as number).toFixed(2)}%`
-                            : cellValue
+                        {column.includes('Rate')
+                          ? `${(cellValue as number).toFixed(2)}%`
                           : cellValue}
                       </div>
                     </td>

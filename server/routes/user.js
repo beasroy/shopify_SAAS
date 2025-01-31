@@ -1,6 +1,6 @@
 import express from 'express';
 import { addBrandToUser } from '../controller/user.js';
-import { verifyAuth } from '../middleware/verifyAuth';
+import { verifyAuth } from '../middleware/verifyAuth.js';
 
 const router = express.Router();
 

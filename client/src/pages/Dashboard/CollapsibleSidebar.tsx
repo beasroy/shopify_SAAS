@@ -3,13 +3,15 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, Use
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
-import { useBrand } from '@/context/BrandContext';
+import { setSelectedBrandId, setBrands } from "@/store/slices/BrandSlice.ts";
 import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FaMeta } from "react-icons/fa6";
 import { SiGoogleads } from "react-icons/si";
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from "../../store/index.ts";
 
 
 export interface Brand {
@@ -21,14 +23,15 @@ export interface Brand {
 }
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(true);
-    const { selectedBrandId, setSelectedBrandId, brands, setBrands } = useBrand();
     const { user, setUser } = useUser();
     const location = useLocation();
     const navigate = useNavigate();
     const sidebarRef = useRef<HTMLDivElement>(null);
     const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
-
+    const dispatch = useDispatch();
+    const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
+    const brands = useSelector((state: RootState) => state.brand.brands);
     // Fetch brands
     useEffect(() => {
         const fetchBrands = async () => {
@@ -45,11 +48,10 @@ export default function CollapsibleSidebar() {
                 );
 
                 const fetchedBrands = response.data;
-                setBrands(fetchedBrands);
+                dispatch(setBrands(fetchedBrands)); // Store brands in Redux
 
-
-                const storedSelectedBrandId = localStorage.getItem('selectedBrandId');
-                if (!storedSelectedBrandId && !selectedBrandId && fetchedBrands.length > 0) {
+                // If no brand is selected, default to the first brand
+                if (!selectedBrandId && fetchedBrands.length > 0) {
                     setSelectedBrandId(fetchedBrands[0]._id);
                 }
             } catch (error) {

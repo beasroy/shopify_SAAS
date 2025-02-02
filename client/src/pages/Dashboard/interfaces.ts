@@ -104,7 +104,7 @@ export interface GoogleAdAccountData {
 }
 
 export interface AdMetrics {
-  totalSpend: string; // Number type since it's a monetary value
+  totalSpent: string; // Number type since it's a monetary value
   roas: string; // Number type as it's a ratio
   totalConversionsValue: string; // Number type as it's a monetary value
   totalConversions: string; // Number type as it's a numeric value

@@ -2,12 +2,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
-import { useBrand } from "@/context/BrandContext";
 import { Activity, Target, TrendingUp, ArrowUpRight } from "lucide-react";
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BrandSetup from "./components/BrandForm";
 import LandingSlides from "./components/LandingSlides";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/index.ts"
+
 
 // Define the Brand interface
 interface Brand {
@@ -18,7 +20,7 @@ interface Brand {
 
 export default function CombinedDashboard() {
     const { user, setUser, showLandingPopup, setShowLandingPopup } = useUser();
-    const { brands } = useBrand();
+    const brands = useSelector((state: RootState) => state.brand.brands);
     const [activeTab, setActiveTab] = useState("landing");
     const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
     const [achievedSales, setAchievedSales] = useState<{ [key: string]: number }>({});

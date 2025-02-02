@@ -89,7 +89,7 @@ export default function Dashboard() {
             { startDate, endDate },
             { withCredentials: true }
           );
-          googleData = googleAdResponse.data.data;
+          googleData = googleAdResponse.data?.data || [];
           console.log(googleData);
           setGoogleAdMetrics(googleData);
         } catch (googleError) {
@@ -148,13 +148,14 @@ export default function Dashboard() {
       });
     }
   
-    if (googleData) {
-      totalSpent += parseFloat(googleData.adMetrics.totalSpend || '0');
+    if (googleData?.adMetrics) {
+      totalSpent += parseFloat(googleData.adMetrics.totalSpent || '0');
       totalRevenue += parseFloat(googleData.adMetrics.totalConversionsValue || '0');
       totalPurchases += parseFloat(googleData.adMetrics.totalConversions || '0');
       totalClicks += parseFloat(googleData.adMetrics.totalClicks || '0');
       totalImpressions += parseFloat(googleData.adMetrics.totalImpressions || '0');
     }
+    
   
     setRawMetrics({
       totalSpent,
@@ -235,35 +236,35 @@ const metrics = [
   const googleMetrics = [
     {
       label: 'Total Cost',
-      value: googleAdMetrics ? `₹ ${new Intl.NumberFormat(locale).format(parseFloat(googleAdMetrics?.adMetrics.totalSpend))}` : ' 0',
+      value: googleAdMetrics ? `₹ ${new Intl.NumberFormat(locale).format(parseFloat(googleAdMetrics?.adMetrics?.totalSpent))}` : ' 0',
     },
     {
       label: 'Conversion Value',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalConversionsValue).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalConversionsValue).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'ROAS',
-      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics.roas).toLocaleString(locale) : '0.00',
+      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics?.roas).toLocaleString(locale) : '0.00',
     },
     {
       label: 'Conversions',
-      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics.totalConversions).toLocaleString(locale) : '0',
+      value: googleAdMetrics ? parseFloat(googleAdMetrics?.adMetrics?.totalConversions).toLocaleString(locale) : '0',
     },
     {
       label: 'CPC',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCPC).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCPC).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'CPM',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCPM).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCPM).toLocaleString(locale)}` : ' 0',
     },
     {
       label: 'CTR',
-      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics.totalCTR).toLocaleString(locale)} %` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCTR).toLocaleString(locale)} %` : ' 0',
     },
     {
       label: 'Cost Per Conversion',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics.totalCostPerConversion).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCostPerConversion).toLocaleString(locale)}` : ' 0',
     },
   ]
 

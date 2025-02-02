@@ -52,7 +52,7 @@ export default function CollapsibleSidebar() {
 
                 // If no brand is selected, default to the first brand
                 if (!selectedBrandId && fetchedBrands.length > 0) {
-                    setSelectedBrandId(fetchedBrands[0]._id);
+                    dispatch(setSelectedBrandId(fetchedBrands[0]._id));
                 }
             } catch (error) {
                 console.error('Error fetching brands:', error);

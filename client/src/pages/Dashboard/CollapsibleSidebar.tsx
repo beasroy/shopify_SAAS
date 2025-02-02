@@ -3,7 +3,7 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, Use
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
-import { setSelectedBrandId, setBrands } from "@/store/slices/BrandSlice.ts";
+import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
 import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/assets/messold-icon.png";
@@ -74,10 +74,7 @@ export default function CollapsibleSidebar() {
             if (response.status === 200) {
                 setUser(null);
                 localStorage.removeItem('user');
-                setSelectedBrandId(null);
-                localStorage.removeItem('selectedBrandId');
-                setBrands([]);
-                localStorage.removeItem('brands');
+                dispatch(resetBrand());
                 navigate('/');
             }
         } catch (error) {
@@ -174,7 +171,7 @@ export default function CollapsibleSidebar() {
                                         path={`/analytics-dashboard/${brand._id}`}
                                         text={brand.name.replace(/_/g, ' ')}
                                         onClick={() => {
-                                            setSelectedBrandId(brand._id);
+                                            dispatch(setSelectedBrandId(brand._id));
                                             navigate(`/analytics-dashboard/${brand._id}`);
                                         }}
                                         isSelected={selectedBrandId === brand._id}

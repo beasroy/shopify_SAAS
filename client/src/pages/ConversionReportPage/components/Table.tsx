@@ -105,23 +105,40 @@ export default function ConversionTable({
   }, [isFullScreen, allRows, loadedRows, currentPage]);
 
   const thresholds = useMemo(() => {
-    let totalSessions = 0;
-    let totalConvRate = 0;
-    let count = 0;
+    let totalSessions = 0, totalConvRate = 0, sessionCount = 0;
+    let totalSpend = 0, totalPurchaseROAS = 0, spendCount = 0;
+    let totalCost = 0, totalConvValuePerCost = 0, costCount = 0;
 
     data.forEach(row => {
       if (typeof row['Total Sessions'] === 'number' && typeof row['Avg Conv. Rate'] === 'number') {
         totalSessions += Number(row['Total Sessions']);
         totalConvRate += Number(row['Avg Conv. Rate']);
-        count++;
+        sessionCount++;
+      }
+
+      if (typeof row['Total Spend'] === 'number' && typeof row['Total Purchase ROAS'] === 'number') {
+        totalSpend += Number(row['Total Spend']);
+        totalPurchaseROAS += Number(row['Total Purchase ROAS']);
+        spendCount++;
+      }
+
+      if (typeof row['Total Cost'] === 'number' && typeof row['Conv. Value / Cost'] === 'number') {
+        totalCost += Number(row['Total Cost']);
+        totalConvValuePerCost += Number(row['Conv. Value / Cost']);
+        costCount++;
       }
     });
 
     return {
-      avgSessions: totalSessions / count,
-      avgConvRate: totalConvRate / count
+      avgSessions: sessionCount > 0 ? totalSessions / sessionCount : 0,
+      avgConvRate: sessionCount > 0 ? totalConvRate / sessionCount : 0,
+      avgSpend: spendCount > 0 ? totalSpend / spendCount : 0,
+      avgPurchaseROAS: spendCount > 0 ? totalPurchaseROAS / spendCount : 0,
+      avgCost: costCount > 0 ? totalCost / costCount : 0,
+      avgConvValuePerCost: costCount > 0 ? totalConvValuePerCost / costCount : 0,
     };
   }, [data]);
+
 
 
 
@@ -131,15 +148,47 @@ export default function ConversionTable({
     }
   }, [isFullScreen]);
 
-  const getMetricColor = (sessions: number, convRate: number) => {
-    const isHighSessions = sessions >= thresholds.avgSessions;
-    const isGoodConversion = convRate >= thresholds.avgConvRate;
+  const getMetricColor = ({
+    sessions,
+    convRate,
+    spend,
+    purchaseROAS,
+    cost,
+    convValuePerCost
+  }: {
+    sessions?: number;
+    convRate?: number;
+    spend?: number;
+    purchaseROAS?: number;
+    cost?: number;
+    convValuePerCost?: number
+  }) => {
+    const isHighSessions = sessions !== undefined && sessions >= thresholds.avgSessions;
+    const isGoodConversion = convRate !== undefined && convRate >= thresholds.avgConvRate;
+    const isHighSpent = spend !== undefined && spend >= thresholds.avgSpend;
+    const isGoodROAS = purchaseROAS !== undefined && purchaseROAS >= thresholds.avgPurchaseROAS;
+    const isHighCost = cost !== undefined && cost >= thresholds.avgCost;
+    const isGoodConvValuePerCost = convValuePerCost !== undefined && convValuePerCost >= thresholds.avgConvValuePerCost;
 
-    if (isHighSessions && isGoodConversion) return 'bg-green-100';
-    if (isHighSessions && !isGoodConversion) return 'bg-blue-100';
-    if (!isHighSessions && isGoodConversion) return 'bg-yellow-100';
-    return 'bg-red-50';
+    // Prioritizing Sessions & Conversion Rate
+    if (isHighSessions && isGoodConversion) return 'bg-green-100'; // Best case (high traffic & conversions)
+    if (isHighSessions && !isGoodConversion) return 'bg-blue-100'; // High traffic, poor conversion
+    if (!isHighSessions && isGoodConversion) return 'bg-yellow-100'; // Low traffic, good conversion
+
+    // Prioritizing Spend & Purchase ROAS
+    if (isHighSpent && isGoodROAS) return 'bg-green-100'; // Profitable with high spend
+    if (isHighSpent && !isGoodROAS) return 'bg-blue-100'; // High spend, poor ROAS
+    if (!isHighSpent && isGoodROAS) return 'bg-yellow-100'; // Low spend, good ROAS
+
+    // Prioritizing Spend & Purchase ROAS
+    if (isHighCost && isGoodConvValuePerCost) return 'bg-green-100'; // Profitable with high cost
+    if (isHighCost && !isGoodConvValuePerCost) return 'bg-blue-100'; // High cost, poor ROAS
+    if (!isHighCost && isGoodConvValuePerCost) return 'bg-yellow-100'; // Low cost, good ROAS
+
+    return 'bg-red-50'; // Default case (poor metrics)
   };
+
+
 
   const renderCell = (value: number | string, type?: 'spend' | 'percentage' | 'default') => {
     if (typeof value === "number") {
@@ -154,6 +203,7 @@ export default function ConversionTable({
     }
     return value;
   };
+
 
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
     if (!monthData) {
@@ -172,16 +222,45 @@ export default function ConversionTable({
       typeof monthData['Sessions'] === 'number' &&
       typeof monthData['Conv. Rate'] === 'number'
     ) {
-      bgColor = getMetricColor(
-        Number(monthData['Sessions']),
-        Number(monthData['Conv. Rate'])
-      );
+      bgColor = getMetricColor({
+        sessions: Number(monthData['Sessions']),
+        convRate: Number(monthData['Conv. Rate']),
+      });
     }
+
+    if (
+      (metric === 'Spend' || metric === 'Purchase ROAS') &&
+      typeof monthData['Spend'] === 'number' &&
+      typeof monthData['Purchase ROAS'] === 'number'
+    ) {
+      bgColor = getMetricColor({
+        spend: Number(monthData['Spend']),
+        purchaseROAS: Number(monthData['Purchase ROAS'])
+      });
+    }
+
+    if (
+      (metric === 'Cost' || metric === 'Conv. Value/ Cost') &&
+      typeof monthData['Cost'] === 'number' &&
+      typeof monthData['Conv. Value/ Cost'] === 'number'
+    ) {
+      bgColor = getMetricColor({
+        cost: Number(monthData['Cost']),
+        convValuePerCost: Number(monthData['Conv. Value/ Cost'])
+      });
+    }
+
 
     return (
       <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
-        {renderCell(value, metric.toLowerCase().includes('rate')? 'percentage' :metric.toLowerCase().includes('spend')? 'spend': 'default')}
-        {/* Additional cell for Purchases */}
+        {renderCell(
+          value,
+          metric.toLowerCase().includes('rate')
+            ? 'percentage'
+            : metric.toLowerCase().includes('spend') || metric.toLowerCase().includes('cost')
+              ? 'spend'
+              : 'default'
+        )}  
         {metric === 'Conv. Rate' && (
           <div className="text-xs text-muted-foreground">{`Purchases: ${monthData['Purchases'] ?? 0}`}</div>
         )}
@@ -224,7 +303,23 @@ export default function ConversionTable({
       if (column.includes("Sessions") || column.includes("Rate")) {
         const sessions = row["Total Sessions"] as number;
         const convRate = row["Avg Conv. Rate"] as number;
-        bgColor = getMetricColor(sessions, convRate);
+        bgColor = getMetricColor({ sessions, convRate });
+      }
+    }
+
+    if (currentMetric && column) {
+      if (column.includes("Spend") || column.includes("ROAS")) {
+        const spend = row["Total Spend"] as number;
+        const purchaseROAS = row["Total Purchase ROAS"] as number;
+        bgColor = getMetricColor({ spend, purchaseROAS });
+      }
+    }
+
+    if (currentMetric && column) {
+      if (column.includes("Cost") || column.includes("Conv. Value / Cost")) {
+        const cost = row["Total Cost"] as number;
+        const convValuePerCost = row["Conv. Value / Cost"] as number;
+        bgColor = getMetricColor({ cost, convValuePerCost });
       }
     }
 
@@ -245,7 +340,7 @@ export default function ConversionTable({
         {/* Only show cost when currentMetric is "Cost" */}
         {currentMetric.toLowerCase() === "cost" && column === "Total Cost" ? (
           <div className="flex flex-col">
-            <span>{renderCell(value)}</span>
+            <span>{renderCell(value, 'spend')}</span>
           </div>
         ) :
           /* Only show conv value/cost when currentMetric is "Conv. Value/Cost" */
@@ -275,12 +370,12 @@ export default function ConversionTable({
                 renderCell(value, 'spend')
               ) : currentMetric.toLowerCase() == "purchase roas" && column.includes("Total Purchase ROAS") ? (
                 <div className="flex flex-col">
-                <span>{renderCell(value)}</span>
-                {totalPCV && (
-                  <span className="text-xs text-gray-500 mt-1">
-                    Total PCV: {totalPCV}
-                  </span>
-                )}
+                  <span>{renderCell(value)}</span>
+                  {totalPCV && (
+                    <span className="text-xs text-gray-500 mt-1">
+                      Total PCV: {totalPCV}
+                    </span>
+                  )}
                 </div>
               ) : (
                 ""
@@ -302,6 +397,14 @@ export default function ConversionTable({
       thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`;
     } else if (column === 'Avg Conv. Rate') {
       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`;
+    } else if (column === 'Total Spend') {
+      thresholdValue = `(avg: ${Math.round(thresholds.avgSpend).toLocaleString()})`;
+    } else if (column === 'Total Purchase ROAS') {
+      thresholdValue = `(avg: ${Math.round(thresholds.avgPurchaseROAS).toFixed(2)})`;
+    } else if (column === 'Total Cost') {
+      thresholdValue = `(avg: ${Math.round(thresholds.avgCost).toLocaleString()})`;
+    } else if (column === 'Conv. Value / Cost') {
+      thresholdValue = `(avg: ${Math.round(thresholds.avgConvValuePerCost).toFixed(2)})`;
     }
 
     return (

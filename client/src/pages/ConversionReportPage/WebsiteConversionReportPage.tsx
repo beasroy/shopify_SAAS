@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
-import { useBrand } from '@/context/BrandContext';
 import { useParams } from 'react-router-dom';
 import ConnectGA4 from '../ReportPage/ConnectGA4Page';
 import { Palette, Radar } from 'lucide-react';
@@ -19,6 +18,8 @@ import CampaignConversion from './components/CampaignConversion';
 import PagePathConversion from './components/PagePathConversion';
 import PageTitleConversion from './components/PageTitleConversion';
 import CountryConversion from './components/CountryConversion';
+import { useSelector } from 'react-redux';
+import { RootState } from "@/store/index.ts";
 
 const WebsiteConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -26,7 +27,7 @@ const WebsiteConversionReportPage: React.FC = () => {
     to: new Date(),
   });
   const { brandId } = useParams<{ brandId: string }>();
-  const { brands } = useBrand();
+  const brands = useSelector((state: RootState) => state.brand.brands);
   const selectedBrand = brands.find((brand) => brand._id === brandId);
   const hasGA4Account = selectedBrand?.ga4Account ?? false;
   const { tokenError } = useTokenError();

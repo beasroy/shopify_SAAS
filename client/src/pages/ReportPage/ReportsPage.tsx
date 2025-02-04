@@ -4,12 +4,13 @@ import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetrics
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
-import { useBrand } from '@/context/BrandContext';
 import { useParams } from 'react-router-dom';
 import ConnectGA4 from './ConnectGA4Page';
 import { ChartNoAxesCombined } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from './NoGA4AccessPage.';
+import { useSelector} from 'react-redux';
+import { RootState } from '@/store';
 
 
 
@@ -20,7 +21,7 @@ const ReportsPage: React.FC = () => {
   });
   const isLoading = false;
   const { brandId } = useParams<{ brandId: string }>();
-  const { brands } = useBrand();
+  const brands  = useSelector((state : RootState) => state.brand.brands);
   const selectedBrand = brands.find((brand) => brand._id === brandId);
   const hasGA4Account = selectedBrand?.ga4Account ?? false;
   const { tokenError } = useTokenError();

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,11 +36,11 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'age-conversion';
 
-  const { sessionsFilter, convRateFilter } = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null }
+  const filters = useSelector((state: RootState) => 
+    state.conversionFilters[componentId] || {}
   );
   
-  const { user } = useUser();
+  const user = useSelector((state:RootState)=> state.user.user);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -54,22 +53,35 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Transform filters into a format suitable for your API
+      const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
+        if (filter) {
+          const apiColumnName = {
+            "Total Sessions": "sessionsFilter",
+            "Avg Conv Rate": "convRateFilter",
+          }[column] || column;
+
+          acc[apiColumnName] = filter;
+        }
+        return acc;
+      }, {});
 
       const response = await axiosInstance.post(`/api/analytics/ageConversionReport/${brandId}`, {
-        userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter, convRateFilter
-      }, { withCredentials: true })
+        userId: user?.id, 
+        startDate: startDate, 
+        endDate: endDate, 
+        ...transformedFilters  // Spread the transformed filters
+      }, { withCredentials: true });
 
       const fetchedData = response.data || [];
-
       setApiResponse(fetchedData);
 
     } catch (error) {
       console.error("Error fetching data:", error);
-
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
+  }, [brandId, startDate, endDate, filters, user?.id]);
 
   useEffect(() => {
     fetchData();
@@ -120,7 +132,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <FilterConversions componentId={componentId} /> 
+            <FilterConversions componentId={componentId} availableColumns={["Total Sessions", "Avg Conv Rate"]}  /> 
             <ExcelDownload
               data={apiResponse?.data || []}
               fileName={`${primaryColumn}_Conversion_Report`}

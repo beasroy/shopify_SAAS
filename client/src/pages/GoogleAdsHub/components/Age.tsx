@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { RootState } from "@/store";
+import { useSelector } from "react-redux";
 
 
 type ApiResponse = {
@@ -32,7 +33,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   
   
-  const { user } = useUser();
+  const user = useSelector((state:RootState)=>state.user.user);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);

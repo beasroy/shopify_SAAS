@@ -9,7 +9,7 @@ import AdMetrics from "../models/AdMetrics.js";
 
 
 config();
- 
+
 
 export const fetchTotalSales = async (brandId) => {
   try {
@@ -37,7 +37,7 @@ export const fetchTotalSales = async (brandId) => {
     // Calculate the start and end of yesterday in IST, converted to UTC
     const startOfYesterday = new Date(yesterdayIST.clone().startOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
     const endOfYesterday = new Date(yesterdayIST.clone().endOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
-    
+
     console.log(startOfYesterday); // Expected output: 2024-10-29T18:30:00.000Z
     console.log(endOfYesterday);   // Expected output: 2024-10-30T18:29:59.999Z
 
@@ -347,7 +347,7 @@ export const getGoogleAdData = async (brandId) => {
       googleRoas,
       googleSales: totalSales.toFixed(2),
     }
- 
+
     console.log('Google Ad Data:', result, startDate, endDate);
     return {
       success: true,
@@ -456,17 +456,16 @@ export const addReportData = async (brandId) => {
 };
 
 
-
-
 export const calculateMetricsForAllBrands = async () => {
   try {
     const brands = await Brand.find({});
+    console.log(brands.length , brands);
     logger.info(`Found ${brands.length} brands for metrics calculation.`);
 
     const metricsPromises = brands.map(async (brand) => {
       const brandIdString = brand._id.toString();
       logger.info(`Starting metrics processing for brand: ${brandIdString}`);
-      
+
       try {
         const result = await addReportData(brandIdString);
         if (result.success) {
@@ -481,7 +480,7 @@ export const calculateMetricsForAllBrands = async () => {
       logger.info(`Completed metrics processing for brand: ${brandIdString}`);
     });
 
-    const settledResults = await Promise.allSettled(metricsPromises);
+    // const settledResults = await Promise.allSettled(metricsPromises);
     logger.info("All brand metrics promises settled:", settledResults);
     logger.info("Completed metrics calculation for all brands.");
   } catch (error) {

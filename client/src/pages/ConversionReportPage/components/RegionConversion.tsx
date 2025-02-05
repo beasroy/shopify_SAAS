@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,11 +36,8 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'region-conversion'
-
-  const {sessionsFilter , convRateFilter} = useSelector((state : RootState) => 
-    state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null });
   
-  const { user } = useUser();
+  const user = useSelector((state: RootState)=> state.user.user);
   const { brandId } = useParams();
 
   const toggleFullScreen = () => {
@@ -52,23 +48,39 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const axiosInstance = createAxiosInstance();
 
-  const fetchData = useCallback(async () => {
+  const filters = useSelector((state: RootState) => 
+    state.conversionFilters[componentId] || {}
+  );
+
+const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/analytics/regionConversionReport/${brandId}`, {
-        userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter , convRateFilter
-      }, { withCredentials: true })
-
-      const fetchedData = response.data || [];
-
-      setApiResponse(fetchedData);
-
+        const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
+            if (filter) {
+              const apiColumnName = {
+                "Total Sessions": "sessionsFilter",
+                "Avg Conv Rate": "convRateFilter",
+              }[column] || column;
+    
+              acc[apiColumnName] = filter;
+            }
+            return acc;
+          }, {});
+    
+        const response = await axiosInstance.post(`/api/analytics/regionConversionReport/${brandId}`, {
+            userId: user?.id,
+            startDate,
+            endDate,  ...transformedFilters  // Spread the transformed filters
+        });
+        const fetchedData = response.data || [];
+        setApiResponse(fetchedData);
     } catch (error) {
-      console.error("Error fetching data:", error);
+        console.error("Error fetching data:", error);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
+}, [brandId, startDate, endDate, filters, user?.id]);
+
 
   useEffect(() => {
     fetchData();

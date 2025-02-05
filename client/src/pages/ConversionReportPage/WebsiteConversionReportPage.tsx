@@ -3,6 +3,7 @@ import { DateRange } from 'react-day-picker';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { useParams } from 'react-router-dom';
+import ConnectGA4 from '../ReportPage/ConnectGA4Page';
 import { Palette, Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
@@ -19,7 +20,6 @@ import PageTitleConversion from './components/PageTitleConversion';
 import CountryConversion from './components/CountryConversion';
 import { useSelector } from 'react-redux';
 import { RootState } from "@/store/index.ts";
-import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 
 const WebsiteConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -115,15 +115,8 @@ const WebsiteConversionReportPage: React.FC = () => {
   }
 
   if (!hasGA4Account) {
-    return <ConnectPlatform
-      platform="google analytics"
-      brandId={brandId ?? ''}
-      onSuccess={(platform, accountName, accountId) => {
-        console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
-      }} />;
+    return <ConnectGA4 />;
   }
-
-
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -136,7 +129,7 @@ const WebsiteConversionReportPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Radar className="h-6 w-6" />
                 <h1 className="text-xl font-semibold">
-                  Camapign and Website Performance
+                Camapign and Website Performance
                 </h1>
               </div>
               <div className='flex items-center gap-3'>

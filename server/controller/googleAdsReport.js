@@ -2,7 +2,6 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
-import { compareValues } from './analytics.js';
 
 
 const client = new GoogleAdsApi({
@@ -31,7 +30,7 @@ function getAdjustedDates(startDate, endDate) {
 
 export async function fetchSearchTermMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, userId } = req.body;
 
     try {
         const [brand, user] = await Promise.all([
@@ -127,34 +126,17 @@ export async function fetchSearchTermMetrics(req, res) {
 
                 // Calculate the Total Conv. Value / Cost
                 const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0; // Avoid division by zero
-                const monthlyDataArray = Array.from(MonthlyData.values())
-                .sort((a, b) => a.Month.localeCompare(b.Month));
+
                 return {
                     "Search Term": searchTerm,
                     "Total Cost": totalCost,
                     "Conv. Value / Cost": totalConvValueCostRatio,
                     "Total Conv. Value": totalConvValue,
-                    MonthlyData: monthlyDataArray,
+                    MonthlyData: Array.from(MonthlyData.values()),
                 };
-            })
+            }).slice(0, 500);
 
-            let limitedData = formattedData.slice(0,500);
-
-            if (costFilter || convValuePerCostFilter) {
-                limitedData = limitedData.filter(item => {
-                  const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-          
-                  const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-          
-                  return costCondition && convValuePerCostCondition;
-                });
-              }
-
-        return res.json({ success: true, data: limitedData });
+        return res.json({ success: true, data: formattedData });
     } catch (error) {
         console.error("Failed to fetch Google Ads search term metrics:", error);
         return res.status(500).json({

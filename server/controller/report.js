@@ -88,20 +88,5 @@ export const getMetricsbyID = async (req, res) => {
     }
 };
 
-export const deleteBrandMetrics = async (req, res) => {
-    try {
-        const { brandIds } = req.body; 
-        
-        if (!brandIds || !Array.isArray(brandIds) || brandIds.length === 0) {
-            return res.status(400).json({ message: 'Invalid or missing brand IDs' });
-        }
 
-        const result = await AdMetrics.deleteMany({ brandId: { $in: brandIds } });
-
-        res.status(200).json({ message: 'AdMetrics data deleted successfully', deletedCount: result.deletedCount });
-    } catch (error) {
-        console.error('Error deleting AdMetrics data:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-}
 

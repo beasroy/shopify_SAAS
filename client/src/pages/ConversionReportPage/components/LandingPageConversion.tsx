@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
+import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -36,8 +37,10 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'landingPage-conversion'
 
+  const {sessionsFilter , convRateFilter} = useSelector((state : RootState) => 
+    state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null });
 
-  const user = useSelector((state: RootState)=>state.user.user);
+  const { user } = useUser();
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -48,39 +51,24 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
 
   const axiosInstance = createAxiosInstance();
 
-  const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {}
-  );
-
-const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
-            if (filter) {
-              const apiColumnName = {
-                "Total Sessions": "sessionsFilter",
-                "Avg Conv Rate": "convRateFilter",
-              }[column] || column;
-    
-              acc[apiColumnName] = filter;
-            }
-            return acc;
-          }, {});
-    
-        const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
-            userId: user?.id,
-            startDate,
-            endDate,  ...transformedFilters  // Spread the transformed filters
-        });
-        const fetchedData = response.data || [];
-        setApiResponse(fetchedData);
-    } catch (error) {
-        console.error("Error fetching data:", error);
-    } finally {
-        setLoading(false);
-    }
-}, [brandId, startDate, endDate, filters, user?.id]);
 
+      const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
+        userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter, convRateFilter
+      }, { withCredentials: true })
+
+      const fetchedData = response.data || [];
+
+      setApiResponse(fetchedData);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
   useEffect(() => {
     fetchData();

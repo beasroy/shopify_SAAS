@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
+import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
-import { RootState } from "@/store";
-import { useSelector } from "react-redux";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 
 type ApiResponse = {
@@ -43,7 +42,7 @@ const PlatformFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [fullScreenAccount, setFullScreenAccount] = useState('');
 
 
-    const user = useSelector((state:RootState)=>state.user.user);
+    const { user } = useUser();
     const { brandId } = useParams();
     const toggleFullScreen = (accountId:string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);

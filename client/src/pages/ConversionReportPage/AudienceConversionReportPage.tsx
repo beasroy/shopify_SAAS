@@ -3,6 +3,7 @@ import { DateRange } from 'react-day-picker';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { useParams } from 'react-router-dom';
+import ConnectGA4 from '../ReportPage/ConnectGA4Page';
 import { Palette, Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
@@ -18,7 +19,6 @@ import BrowserConversion from './components/BrowserConversion';
 import SourceConversion from './components/SourceConversion';
 import { useSelector } from 'react-redux';
 import { RootState } from "@/store/index.ts";
-import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 
 const AudienceConversionReportPage: React.FC = () => {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -112,12 +112,7 @@ const AudienceConversionReportPage: React.FC = () => {
   }
 
   if (!hasGA4Account) {
-    return   <ConnectPlatform
-    platform="google analytics"
-    brandId={brandId ?? ''}
-    onSuccess={(platform, accountName, accountId) => {
-      console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
-    }} /> ;
+    return <ConnectGA4 />;
   }
 
   return (

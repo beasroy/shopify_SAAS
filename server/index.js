@@ -16,7 +16,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
-import {calculateMetricsForAllBrands, getGoogleAdData} from "./Report/Report.js";
+import {getGoogleAdData} from "./Report/Report.js";
 
 
 
@@ -61,7 +61,6 @@ const PORT = process.env.PORT || 5000;
 app.get('/', (req, res) => {
   res.send('Hello, World!'); 
 });
-
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);

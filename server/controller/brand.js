@@ -52,8 +52,8 @@ export const updateBrands = async(req,res) =>{
         const {brandid}=req.params;
         const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
 
-        if (!brandid) {
-            return res.status(400).json({ error: 'Brand ID required.' });
+        if (!brandid || !name) {
+            return res.status(400).json({ error: 'Brand ID and name are required.' });
           }
       
           const updateData = {

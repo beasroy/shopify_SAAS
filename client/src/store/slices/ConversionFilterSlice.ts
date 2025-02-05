@@ -7,7 +7,8 @@ interface FilterValue {
 
 interface ConversionFiltersState {
   [componentId: string]: {
-    [key: string]: FilterValue | null;
+    sessionsFilter: FilterValue | null;
+    convRateFilter: FilterValue | null;
   };
 }
 
@@ -17,35 +18,40 @@ const conversionFiltersSlice = createSlice({
   name: 'conversionFilters',
   initialState,
   reducers: {
-    // Generic filter setter that works for any column
-    setFilter: (
+    setSessionsFilter: (
       state,
       action: PayloadAction<{
         componentId: string;
-        column: string;
         filter: FilterValue | null;
       }>
     ) => {
-      const { componentId, column, filter } = action.payload;
-      
-      // Initialize the component's filters if not exist
+      const { componentId, filter } = action.payload;
       if (!state[componentId]) {
-        state[componentId] = {};
+        state[componentId] = { sessionsFilter: null, convRateFilter: null };
       }
-      
-      // Set the filter for the specific column
-      state[componentId][column] = filter;
+      state[componentId].sessionsFilter = filter;
     },
-    
-    // Clear filters for a specific component
+    setConvRateFilter: (
+      state,
+      action: PayloadAction<{
+        componentId: string;
+        filter: FilterValue | null;
+      }>
+    ) => {
+      const { componentId, filter } = action.payload;
+      if (!state[componentId]) {
+        state[componentId] = { sessionsFilter: null, convRateFilter: null };
+      }
+      state[componentId].convRateFilter = filter;
+    },
     clearFilters: (state, action: PayloadAction<string>) => {
       const componentId = action.payload;
       if (state[componentId]) {
-        state[componentId] = {};
+        state[componentId] = { sessionsFilter: null, convRateFilter: null };
       }
     },
   },
 });
 
-export const { setFilter, clearFilters } = conversionFiltersSlice.actions;
+export const { setSessionsFilter, setConvRateFilter, clearFilters } = conversionFiltersSlice.actions;
 export default conversionFiltersSlice.reducer;

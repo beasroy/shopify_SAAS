@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
+import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,7 +38,9 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'source-conversion'
 
-    const user = useSelector((state: RootState)=> state.user.user)
+    const { sessionsFilter, convRateFilter } = useSelector((state: RootState) =>
+        state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null });
+    const { user } = useUser();
     const { brandId } = useParams();
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
@@ -46,29 +49,13 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
     const axiosInstance = createAxiosInstance();
 
-    const filters = useSelector((state: RootState) => 
-        state.conversionFilters[componentId] || {}
-      );
-
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
-                if (filter) {
-                  const apiColumnName = {
-                    "Total Sessions": "sessionsFilter",
-                    "Avg Conv Rate": "convRateFilter",
-                  }[column] || column;
-        
-                  acc[apiColumnName] = filter;
-                }
-                return acc;
-              }, {});
-        
             const response = await axiosInstance.post(`/api/analytics/sourceConversionReport/${brandId}`, {
                 userId: user?.id,
                 startDate,
-                endDate,  ...transformedFilters  // Spread the transformed filters
+                endDate, sessionsFilter, convRateFilter
             });
             const fetchedData = response.data || [];
             setApiResponse(fetchedData);
@@ -77,8 +64,7 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, filters, user?.id]);
-
+    }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
     useEffect(() => {
         fetchData();

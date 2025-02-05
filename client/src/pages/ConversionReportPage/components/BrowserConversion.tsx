@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
+import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,41 +38,28 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'browser-conversion';
-    const user = useSelector((state: RootState)=>state.user.user);
+    const { user } = useUser();
     const { brandId } = useParams();
 
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
     };
 
+    const { sessionsFilter, convRateFilter } = useSelector((state: RootState) =>
+        state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null }
+    );
 
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
     const axiosInstance = createAxiosInstance();
 
-    const filters = useSelector((state: RootState) => 
-        state.conversionFilters[componentId] || {}
-      );
-
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
-                if (filter) {
-                  const apiColumnName = {
-                    "Total Sessions": "sessionsFilter",
-                    "Avg Conv Rate": "convRateFilter",
-                  }[column] || column;
-        
-                  acc[apiColumnName] = filter;
-                }
-                return acc;
-              }, {});
-        
             const response = await axiosInstance.post(`/api/analytics/browserConversionReport/${brandId}`, {
                 userId: user?.id,
                 startDate,
-                endDate,  ...transformedFilters  // Spread the transformed filters
+                endDate, sessionsFilter, convRateFilter
             });
             const fetchedData = response.data || [];
             setApiResponse(fetchedData);
@@ -80,7 +68,7 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, filters, user?.id]);
+    }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
     useEffect(() => {
         fetchData();
@@ -131,7 +119,7 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                         <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
                             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
-                        <FilterConversions componentId={componentId} availableColumns={["Total Sessions", "Avg Conv Rate"]} />
+                        <FilterConversions componentId={componentId} />
                         <ExcelDownload
                             data={apiResponse?.data || []}
                             fileName={`${primaryColumn}_Conversion_Report`}

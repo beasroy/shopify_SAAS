@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useToast } from "../hooks/use-toast"
 import { FcGoogle } from "react-icons/fc";
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store'
-import { setUser } from '@/store/slices/UserSlice'
+import { useUser } from '../context/UserContext';
 
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true)
@@ -20,11 +18,13 @@ export default function AuthForm() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [errors, setErrors] = useState({ username: '', email: '', password: '' })
-  const user = useSelector((state: RootState) => state.user.user);
-  const dispatch = useDispatch();
+  const { user, setUser} = useUser();
 
   useEffect(() => {
     if (user) {
+      // if (!user.hasSeenLandingSlides) {
+      //   setShowLandingPopup(true);
+      // }
       navigate('/dashboard');
     }
   }, [user, navigate]);
@@ -88,7 +88,7 @@ export default function AuthForm() {
             // Only set hasSeenLandingSlides to false if the user has no brands
             hasSeenLandingSlides: response.data.user.brands && response.data.user.brands.length > 0 
           };
-          dispatch(setUser(userData))
+          setUser(userData);
           // Only show landing popup if user has no brands
           // setShowLandingPopup(!(response.data.user.brands && response.data.user.brands.length > 0));
 

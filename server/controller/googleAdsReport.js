@@ -2,6 +2,7 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
+import { compareValues } from './analytics.js';
 
 
 const client = new GoogleAdsApi({
@@ -30,7 +31,7 @@ function getAdjustedDates(startDate, endDate) {
 
 export async function fetchSearchTermMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
 
     try {
         const [brand, user] = await Promise.all([
@@ -126,17 +127,34 @@ export async function fetchSearchTermMetrics(req, res) {
 
                 // Calculate the Total Conv. Value / Cost
                 const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0; // Avoid division by zero
-
+                const monthlyDataArray = Array.from(MonthlyData.values())
+                    .sort((a, b) => a.Month.localeCompare(b.Month));
                 return {
                     "Search Term": searchTerm,
                     "Total Cost": totalCost,
                     "Conv. Value / Cost": totalConvValueCostRatio,
                     "Total Conv. Value": totalConvValue,
-                    MonthlyData: Array.from(MonthlyData.values()),
+                    MonthlyData: monthlyDataArray,
                 };
-            }).slice(0, 500);
+            })
 
-        return res.json({ success: true, data: formattedData });
+        let limitedData = formattedData.slice(0, 500);
+
+        if (costFilter || convValuePerCostFilter) {
+            limitedData = limitedData.filter(item => {
+                const costCondition = costFilter
+                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                    : true;
+
+                const convValuePerCostCondition = convValuePerCostFilter
+                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                    : true;
+
+                return costCondition && convValuePerCostCondition;
+            });
+        }
+
+        return res.json({ success: true, data: limitedData });
     } catch (error) {
         console.error("Failed to fetch Google Ads search term metrics:", error);
         return res.status(500).json({
@@ -150,7 +168,7 @@ export async function fetchSearchTermMetrics(req, res) {
 
 export async function fetchAgeMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
 
     const ageRanges = {
         0: "UNSPECIFIED",
@@ -216,7 +234,7 @@ export async function fetchAgeMetrics(req, res) {
             const ageRangeType = ageRanges[row.ad_group_criterion.age_range.type] || 'UNKNOWN';
 
             if (!ageRangeData.has(ageRangeType)) {
-                ageRangeData.set(ageRangeType, { 
+                ageRangeData.set(ageRangeType, {
                     MonthlyData: new Map(),
                     TotalConversionValue: 0,
                     TotalCost: 0
@@ -244,8 +262,8 @@ export async function fetchAgeMetrics(req, res) {
             monthData["Conversion Value"] += conversionValue;
 
             // Calculate Conv. Value/Cost for the month
-            monthData["Conv. Value/ Cost"] = monthData.Cost > 0 
-                ? monthData["Conversion Value"] / monthData.Cost 
+            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                ? monthData["Conversion Value"] / monthData.Cost
                 : 0;
 
             ageRangeData.get(ageRangeType).MonthlyData.set(row.segments.month, monthData);
@@ -263,17 +281,33 @@ export async function fetchAgeMetrics(req, res) {
 
                 return {
                     "Age Range": ageRange,
-                    "Total Cost":TotalCost,
+                    "Total Cost": TotalCost,
                     "Total Conv. Value": TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0 
-                        ? TotalConversionValue / TotalCost 
+                    "Conv. Value / Cost": TotalCost > 0
+                        ? TotalConversionValue / TotalCost
                         : 0,
                     MonthlyData: monthlyDataArray,
                 };
             })
-            .slice(0, 500);
 
-        return res.json({ success: true, data: formattedData });
+
+        let limitedData = formattedData.slice(0, 500);
+
+        if (costFilter || convValuePerCostFilter) {
+            limitedData = limitedData.filter(item => {
+                const costCondition = costFilter
+                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                    : true;
+
+                const convValuePerCostCondition = convValuePerCostFilter
+                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                    : true;
+
+                return costCondition && convValuePerCostCondition;
+            });
+        }
+
+        return res.json({ success: true, data: limitedData });
     } catch (error) {
         console.error("Failed to fetch Google Ads age range metrics:", error);
         return res.status(500).json({
@@ -286,7 +320,7 @@ export async function fetchAgeMetrics(req, res) {
 
 export async function fetchGenderMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
 
     const genderTypes = {
         0: "UNSPECIFIED",
@@ -348,7 +382,7 @@ export async function fetchGenderMetrics(req, res) {
             const genderType = genderTypes[row.ad_group_criterion.gender.type] || 'UNKNOWN';
 
             if (!genderData.has(genderType)) {
-                genderData.set(genderType, { 
+                genderData.set(genderType, {
                     MonthlyData: new Map(),
                     TotalConversionValue: 0,
                     TotalCost: 0
@@ -376,8 +410,8 @@ export async function fetchGenderMetrics(req, res) {
             monthData["Conversion Value"] += conversionValue;
 
             // Calculate Conv. Value/Cost for the month
-            monthData["Conv. Value/ Cost"] = monthData.Cost > 0 
-                ? monthData["Conversion Value"] / monthData.Cost 
+            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                ? monthData["Conversion Value"] / monthData.Cost
                 : 0;
 
             genderData.get(genderType).MonthlyData.set(row.segments.month, monthData);
@@ -395,17 +429,31 @@ export async function fetchGenderMetrics(req, res) {
 
                 return {
                     "Gender": gender,
-                    "Total Cost":TotalCost,
-                    "Total Conv. Value":TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0 
-                        ? TotalConversionValue / TotalCost 
+                    "Total Cost": TotalCost,
+                    "Total Conv. Value": TotalConversionValue,
+                    "Conv. Value / Cost": TotalCost > 0
+                        ? TotalConversionValue / TotalCost
                         : 0,
                     MonthlyData: monthlyDataArray,
                 };
             })
-            .slice(0, 500);
+        let limitedData = formattedData.slice(0, 500);
 
-        return res.json({ success: true, data: formattedData });
+        if (costFilter || convValuePerCostFilter) {
+            limitedData = limitedData.filter(item => {
+                const costCondition = costFilter
+                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                    : true;
+
+                const convValuePerCostCondition = convValuePerCostFilter
+                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                    : true;
+
+                return costCondition && convValuePerCostCondition;
+            });
+        }
+        return res.json({ success: true, data: limitedData });
+
     } catch (error) {
         console.error("Failed to fetch Google Ads gender metrics:", error);
         return res.status(500).json({
@@ -661,7 +709,6 @@ export async function fetchBrandMetrics(req, res) {
         });
     }
 }
-
 
 
 

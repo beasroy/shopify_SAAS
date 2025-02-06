@@ -7,7 +7,7 @@ import { OAuth2Client } from 'google-auth-library';
 config();
 
 // Helper function to compare values based on operator
-const compareValues = (value, filterValue, operator) => {
+export const compareValues = (value, filterValue, operator) => {
   switch (operator.toLowerCase()) {
     case 'gt':
     case '>':

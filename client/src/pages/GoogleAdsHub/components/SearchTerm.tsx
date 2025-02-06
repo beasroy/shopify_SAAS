@@ -9,7 +9,7 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
 
@@ -34,7 +34,7 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
 
-  const user = useSelector((state: RootState) => state.user.user);
+  const user = useSelector((state: RootState) => state.user.user ,shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -44,11 +44,11 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
 
   const axiosInstance = createAxiosInstance();
 
-  const componentId = 'search-term'; // Add a unique component identifier
+  const componentId = 'google-ads-search-term'; // Add a unique component identifier
 
   // Get filters from Redux
   const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {}
+    state.conversionFilters[componentId] || {} , shallowEqual
   );
 
   const transformedFilters = useMemo(() => {

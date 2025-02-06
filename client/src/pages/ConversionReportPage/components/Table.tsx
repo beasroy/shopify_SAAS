@@ -53,18 +53,29 @@ export default function ConversionTable({
       return [];
     }
 
+    const getMonthName = (monthNumber: string): string => {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return months[parseInt(monthNumber) - 1];
+    };
+
+
     const allMonths = new Set<string>();
     data.forEach((row) => {
       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
       if (Array.isArray(monthlyData)) {
         monthlyData.forEach((month) => {
           if (month?.Month) {
-            allMonths.add(`${month.Month.slice(0, 4)}-${month.Month.slice(4)}`);
+            const year = month.Month.slice(0, 4);
+            const monthNum = month.Month.slice(4);
+            allMonths.add(`${getMonthName(monthNum)}-${year}`);
           }
         });
       }
     });
-    return Array.from(allMonths).sort().reverse();
+    return Array.from(allMonths).reverse();
   }, [data, monthlyDataKey]);
 
   const allRows = useMemo(() => {
@@ -204,7 +215,6 @@ export default function ConversionTable({
     return value;
   };
 
-
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
     if (!monthData) {
       return (
@@ -260,7 +270,7 @@ export default function ConversionTable({
             : metric.toLowerCase().includes('spend') || metric.toLowerCase().includes('cost')
               ? 'spend'
               : 'default'
-        )}  
+        )}
         {metric === 'Conv. Rate' && (
           <div className="text-xs text-muted-foreground">{`Purchases: ${monthData['Purchases'] ?? 0}`}</div>
         )}
@@ -384,6 +394,62 @@ export default function ConversionTable({
     );
   };
 
+  const renderMetricRow = (row: RowData, metricIndex: number) => {
+    const metric = monthlyMetrics[metricIndex];
+    
+    // Determine the background color for both primary and metric columns
+    let bgColor = 'bg-background';
+    
+    if (secondaryColumns) {
+      const sessions = row["Total Sessions"] as number;
+      const convRate = row["Avg Conv. Rate"] as number;
+      const spend = row["Total Spend"] as number;
+      const purchaseROAS = row["Total Purchase ROAS"] as number;
+      const cost = row["Total Cost"] as number;
+      const convValuePerCost = row["Conv. Value / Cost"] as number;
+
+      if (metric === 'Sessions' || metric === 'Conv. Rate') {
+        bgColor = getMetricColor({ sessions, convRate });
+      } else if (metric === 'Spend' || metric === 'Purchase ROAS') {
+        bgColor = getMetricColor({ spend, purchaseROAS });
+      } else if (metric === 'Cost' || metric === 'Conv. Value/ Cost') {
+        bgColor = getMetricColor({ cost, convValuePerCost });
+      }
+    }
+
+    return (
+      <tr key={`${row[primaryColumn]}-${metric}`}>
+        <td className={`sticky left-0 min-w-[130px] max-w-[200px] p-2 text-xs border-r border-border ${bgColor}`}>
+          {metricIndex === 0
+            ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
+              ? renderCell(row[primaryColumn])
+              : "")
+            : ""}
+        </td>
+        <td className={`sticky left-[130px] min-w-[100px] whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
+          {metric}
+        </td>
+        {secondaryColumns?.map((column, index) => renderMetricValue(row, column, metric, index))}
+        {months.map((month) => {
+          const getMonthNumber = (monthName: string): number => {
+            const months = [
+              'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+            ];
+            return months.indexOf(monthName) + 1;
+          };
+          const [monthName, year] = month.split('-'); 
+          const monthNum = getMonthNumber(monthName); 
+          const monthFormat = `${year}${monthNum.toString().padStart(2, '0')}`; 
+
+          const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
+            (m) => m.Month === monthFormat
+          );
+          return renderMonthCell(monthData, metric);
+        })}
+      </tr>
+    );
+  };
 
   const totalRows = allRows.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage);
@@ -449,31 +515,9 @@ export default function ConversionTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {displayRows.map(({ dataIndex, metricIndex }) => {
-              const row = data[dataIndex];
-              const metric = monthlyMetrics[metricIndex];
-              return (
-                <tr key={`${row[primaryColumn]}-${metric}`}>
-                  <td className="sticky left-0 min-w-[130px] max-w-[200px] bg-background p-2 text-xs border-r border-border">
-                    {metricIndex === 0
-                      ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
-                        ? renderCell(row[primaryColumn])
-                        : "")
-                      : ""}
-                  </td>
-                  <td className="sticky left-[130px] min-w-[100px] bg-background whitespace-nowrap p-2 text-xs border-r border-border">
-                    {metric}
-                  </td>
-                  {secondaryColumns?.map((column, index) => renderMetricValue(row, column, metric, index))}
-                  {months.map((month) => {
-                    const monthData = (row[monthlyDataKey] as MonthlyData[]).find(
-                      (m) => `${m.Month.slice(0, 4)}-${m.Month.slice(4)}` === month
-                    );
-                    return renderMonthCell(monthData, metric);
-                  })}
-                </tr>
-              );
-            })}
+          {displayRows.map(({ dataIndex, metricIndex }) => 
+              renderMetricRow(data[dataIndex], metricIndex)
+            )}
           </tbody>
         </table>
       </div>

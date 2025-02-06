@@ -16,10 +16,10 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import ReportTable from "@/pages/ReportPage/component/ReportTable"
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent"
-import { useUser } from "@/context/UserContext"
-;
 import { Card, CardContent } from "@/components/ui/card";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 interface EcommerceMetric {
   "Date": string
@@ -50,7 +50,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const {user}= useUser();
+  const user = useSelector((state: RootState) => state.user.user)
   const axiosInstance = createAxiosInstance();
  
 

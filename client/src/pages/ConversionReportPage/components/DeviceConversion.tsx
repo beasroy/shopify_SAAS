@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
 import { useParams } from "react-router-dom";
@@ -12,7 +12,7 @@ import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
@@ -36,7 +36,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'device-conversion'
 
-  const user = useSelector((state: RootState) => state.user.user);
+  const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -47,28 +47,30 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
   const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {}
+    state.conversionFilters[componentId] || {} , shallowEqual
   );
+
+  const transformedFilters = useMemo(() => {
+    return Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
+      if (filter) {
+        const apiColumnName = {
+          "Total Sessions": "sessionsFilter",
+          "Avg Conv Rate": "convRateFilter",
+        }[column] || column;
+
+        acc[apiColumnName] = filter;
+      }
+      return acc;
+    }, {});
+  }, [filters]);
 
 const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
-            if (filter) {
-              const apiColumnName = {
-                "Total Sessions": "sessionsFilter",
-                "Avg Conv Rate": "convRateFilter",
-              }[column] || column;
-    
-              acc[apiColumnName] = filter;
-            }
-            return acc;
-          }, {});
-    
-        const response = await axiosInstance.post(`/api/analytics/deviceConversionReport/${brandId}`, {
+        const response = await axiosInstance.post(`/api/analytics/deviceTypeConversionReport/${brandId}`, {
             userId: user?.id,
             startDate,
-            endDate,  ...transformedFilters  // Spread the transformed filters
+            endDate,  ...transformedFilters  
         });
         const fetchedData = response.data || [];
         setApiResponse(fetchedData);
@@ -77,7 +79,7 @@ const fetchData = useCallback(async () => {
     } finally {
         setLoading(false);
     }
-}, [brandId, startDate, endDate, filters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters, user?.id]);
 
 
   useEffect(() => {

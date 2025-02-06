@@ -17,7 +17,6 @@ const conversionFiltersSlice = createSlice({
   name: 'conversionFilters',
   initialState,
   reducers: {
-    // Generic filter setter that works for any column
     setFilter: (
       state,
       action: PayloadAction<{
@@ -28,19 +27,21 @@ const conversionFiltersSlice = createSlice({
     ) => {
       const { componentId, column, filter } = action.payload;
       
-      // Initialize the component's filters if not exist
+      // Only create new reference if needed
       if (!state[componentId]) {
         state[componentId] = {};
       }
       
-      // Set the filter for the specific column
-      state[componentId][column] = filter;
+      // Only update if value actually changed
+      if (JSON.stringify(state[componentId][column]) !== JSON.stringify(filter)) {
+        state[componentId][column] = filter;
+      }
     },
     
-    // Clear filters for a specific component
     clearFilters: (state, action: PayloadAction<string>) => {
       const componentId = action.payload;
-      if (state[componentId]) {
+      // Only delete if filters exist
+      if (Object.keys(state[componentId] || {}).length > 0) {
         state[componentId] = {};
       }
     },

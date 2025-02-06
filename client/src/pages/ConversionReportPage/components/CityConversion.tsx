@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
 import { useParams } from "react-router-dom";
@@ -12,7 +12,7 @@ import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
@@ -47,24 +47,26 @@ const CityTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const axiosInstance = createAxiosInstance();
 
   const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {}
+    state.conversionFilters[componentId] || {} , shallowEqual
   );
+
+  const transformedFilters = useMemo(() => {
+    return Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
+      if (filter) {
+        const apiColumnName = {
+          "Total Sessions": "sessionsFilter",
+          "Avg Conv Rate": "convRateFilter",
+        }[column] || column;
+
+        acc[apiColumnName] = filter;
+      }
+      return acc;
+    }, {});
+  }, [filters]);
 
 const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        const transformedFilters = Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
-            if (filter) {
-              const apiColumnName = {
-                "Total Sessions": "sessionsFilter",
-                "Avg Conv Rate": "convRateFilter",
-              }[column] || column;
-    
-              acc[apiColumnName] = filter;
-            }
-            return acc;
-          }, {});
-    
         const response = await axiosInstance.post(`/api/analytics/cityConversionReport/${brandId}`, {
             userId: user?.id,
             startDate,
@@ -77,7 +79,7 @@ const fetchData = useCallback(async () => {
     } finally {
         setLoading(false);
     }
-}, [brandId, startDate, endDate, filters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters, user?.id]);
 
 
   useEffect(() => {

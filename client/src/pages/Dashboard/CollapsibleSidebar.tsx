@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ChartNoAxesCombined, CalendarRange, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '../../context/UserContext';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
 import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +11,7 @@ import { FaMeta } from "react-icons/fa6";
 import { SiGoogleads } from "react-icons/si";
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from "../../store/index.ts";
+import { clearUser } from '@/store/slices/UserSlice.ts';
 
 
 export interface Brand {
@@ -23,7 +23,6 @@ export interface Brand {
 }
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(true);
-    const { user, setUser } = useUser();
     const location = useLocation();
     const navigate = useNavigate();
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -32,6 +31,7 @@ export default function CollapsibleSidebar() {
     const dispatch = useDispatch();
     const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
     const brands = useSelector((state: RootState) => state.brand.brands);
+    const user = useSelector((state: RootState) => state.user.user);
     // Fetch brands
     useEffect(() => {
         const fetchBrands = async () => {
@@ -72,8 +72,7 @@ export default function CollapsibleSidebar() {
         try {
             const response = await axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true });
             if (response.status === 200) {
-                setUser(null);
-                localStorage.removeItem('user');
+                dispatch(clearUser());
                 dispatch(resetBrand());
                 navigate('/');
             }

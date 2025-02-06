@@ -2,12 +2,14 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '../hooks/use-toast';
-import { useUser } from '../context/UserContext';
+import { useDispatch} from 'react-redux';
+import { setUser } from '@/store/slices/UserSlice'
+
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
-    const { setUser } = useUser();
     const { toast } = useToast();
+    const dispatch = useDispatch();
     const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
@@ -45,7 +47,7 @@ const GoogleCallback = () => {
         
                         if (login.data.success) {
                             console.log('Login successful, redirecting to /dashboard');
-                            setUser(login.data.user);
+                            dispatch(setUser(login.data.user));
                             navigate('/dashboard');
                             return;
                         } else {

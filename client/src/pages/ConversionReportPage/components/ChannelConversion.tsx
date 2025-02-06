@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,14 +36,7 @@ const ChannelConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'channel-conversion'
 
-<<<<<<< HEAD
-  const {sessionsFilter , convRateFilter} = useSelector((state : RootState) => 
-    state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null });
-
-  const { user } = useUser();
-=======
   const user = useSelector((state: RootState) => state.user.user , shallowEqual) ;
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -53,18 +45,6 @@ const ChannelConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
   const axiosInstance = createAxiosInstance();
 
-<<<<<<< HEAD
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.post(`/api/analytics/channelConversionReport/${brandId}`, {
-        userId: user?.id,
-        startDate,
-        endDate, sessionsFilter, convRateFilter
-      });
-      const fetchedData = response.data || [];
-      setApiResponse(fetchedData);
-=======
   const filters = useSelector((state: RootState) => 
     state.conversionFilters[componentId] || {} , shallowEqual
   );
@@ -94,18 +74,13 @@ const fetchData = useCallback(async () => {
         });
         const fetchedData = response.data || [];
         setApiResponse(fetchedData);
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
-<<<<<<< HEAD
-  }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
-=======
 }, [brandId, startDate, endDate, transformedFilters, user?.id]);
 
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
 
   useEffect(() => {
     fetchData();

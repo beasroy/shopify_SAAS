@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -37,13 +36,7 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'device-conversion'
 
-<<<<<<< HEAD
-  const {sessionsFilter , convRateFilter} = useSelector((state : RootState) => 
-    state.conversionFilters[componentId] || { sessionsFilter: null, convRateFilter: null });
-  const { user } = useUser();
-=======
   const user = useSelector((state: RootState) => state.user.user, shallowEqual);
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -53,14 +46,6 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
-<<<<<<< HEAD
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.post(`/api/analytics/deviceTypeConversionReport/${brandId}`, {
-        userId: user?.id, startDate: startDate, endDate: endDate, sessionsFilter, convRateFilter
-      }, { withCredentials: true })
-=======
   const filters = useSelector((state: RootState) => 
     state.conversionFilters[componentId] || {} , shallowEqual
   );
@@ -95,19 +80,7 @@ const fetchData = useCallback(async () => {
         setLoading(false);
     }
 }, [brandId, startDate, endDate, transformedFilters, user?.id]);
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
 
-      const fetchedData = response.data || [];// eslint-disable-line
-
-      setApiResponse(fetchedData);
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
-
-    } finally {
-      setLoading(false);
-    }
-  }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
 
   useEffect(() => {
     fetchData();

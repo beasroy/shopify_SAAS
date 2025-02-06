@@ -53,8 +53,6 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
     const axiosInstance = createAxiosInstance();
 
-<<<<<<< HEAD
-=======
     const filters = useSelector((state: RootState) => 
         state.conversionFilters[componentId] || {} ,shallowEqual
       );
@@ -72,7 +70,6 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         }, {});
       }, [filters]);
       
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -88,11 +85,7 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         } finally {
             setLoading(false);
         }
-<<<<<<< HEAD
-    }, [brandId, startDate, endDate, sessionsFilter, convRateFilter]);
-=======
     }, [brandId, startDate, endDate, transformedFilters, user?.id]);
->>>>>>> aff93dff9a21a444aa9af1ede2c68dd36ed4a108
 
     useEffect(() => {
         fetchData();

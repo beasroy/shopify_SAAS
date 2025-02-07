@@ -101,7 +101,11 @@ export default function PlatformModal({
             accountsSetter = setFacebookAdsAccounts;
             break;
         }
+        console.log(`Calling API: ${baseURL}${endpoint} with userId: ${userId}`);
 
+        if (!endpoint) {
+          throw new Error('Invalid platform');
+        }
         const response = await axios.post(
           `${baseURL}${endpoint}`,
           { userId },
@@ -249,7 +253,7 @@ export default function PlatformModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Connect {platform} Account</DialogTitle>
         </DialogHeader>

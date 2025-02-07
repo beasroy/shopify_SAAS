@@ -6,7 +6,7 @@ import PlatformModal from '@/components/dashboard_component/PlatformModal';
 
 const platformConfigs = {
   'google analytics': {
-    title: "Google Analytics 4",
+    title: "Google analytics",
     description: "Unlock powerful insights for your store",
     icon: <PieChart className="h-16 w-16 text-blue-500 animate-bounce" />,
     benefits: [

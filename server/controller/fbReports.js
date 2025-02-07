@@ -14,15 +14,15 @@ function getDateRange(startDate, endDate) {
 }
 
 async function fetchBrandAndUserData(brandId, userId) {
-   
+
     const brandsCacheKey = `brand_${brandId}`;
     const usersCacheKey = `user_${userId}`;
-    
+
     let brand = dataCache.get(brandsCacheKey);
     let user = dataCache.get(usersCacheKey);
-    
+
     const fetchPromises = [];
-    
+
     if (!brand) {
         fetchPromises.push(
             Brand.findById(brandId)
@@ -36,7 +36,7 @@ async function fetchBrandAndUserData(brandId, userId) {
                 })
         );
     }
-    
+
     if (!user) {
         fetchPromises.push(
             User.findById(userId)
@@ -50,11 +50,11 @@ async function fetchBrandAndUserData(brandId, userId) {
                 })
         );
     }
-    
+
     if (fetchPromises.length > 0) {
         await Promise.all(fetchPromises);
     }
-    
+
     if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
         throw new Error(
             !brand?.fbAdAccounts?.length
@@ -64,8 +64,69 @@ async function fetchBrandAndUserData(brandId, userId) {
     }
     return { brand, user };
 };
+const calculateBlendedAgeSummary = (accountsData) => {
+    // Initialize data structure for blended metrics
+    const blendedData = new Map();
 
-export const fetchFbAgeReports = async(req,res)=>{
+    // Aggregate data across all accounts
+    accountsData.forEach(account => {
+        account.ageData.forEach(ageGroup => {
+            if (!blendedData.has(ageGroup.Age)) {
+                blendedData.set(ageGroup.Age, {
+                    Age: ageGroup.Age,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                });
+            }
+
+            const currentAgeData = blendedData.get(ageGroup.Age);
+
+            // Add to totals
+            currentAgeData["Total Spend"] += ageGroup["Total Spend"];
+            currentAgeData["Total PCV"] += ageGroup["Total PCV"];
+
+            // Process monthly data
+            ageGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentAgeData.MonthlyData.has(monthKey)) {
+                    currentAgeData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentAgeData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            });
+        });
+    });
+
+    // Transform final data
+    const blendedSummary = Array.from(blendedData.values())
+        .map(age => ({
+            ...age,
+            "Total Purchase ROAS": age["Total Spend"] > 0 ?
+                age["Total PCV"] / age["Total Spend"] : 0,
+            MonthlyData: Array.from(age.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedAgeData: blendedSummary
+    };
+};
+
+export const fetchFbAgeReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
@@ -74,13 +135,13 @@ export const fetchFbAgeReports = async(req,res)=>{
         const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        async function fetchTopAge(accountId){
+        async function fetchTopAge(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
-            const MAX_AGE=300;
+            const MAX_AGE = 300;
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -173,15 +234,15 @@ export const fetchFbAgeReports = async(req,res)=>{
                 const formattedAges = Array.from(allData.values())
                     .map(age => ({
                         ...age,
-                        "Total Purchase ROAS": age["Total Spend"] > 0 ? 
-                        age["Total PCV"] / age["Total Spend"] : 0,
+                        "Total Purchase ROAS": age["Total Spend"] > 0 ?
+                            age["Total PCV"] / age["Total Spend"] : 0,
                         MonthlyData: Array.from(age.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
                     .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
 
                 return {
-                    accountId, 
+                    accountId,
                     data: {
                         account_name: formattedAges[0]?.account_name,
                         ageData: formattedAges
@@ -216,9 +277,15 @@ export const fetchFbAgeReports = async(req,res)=>{
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedAgeSummary(formattedResults);
+        }
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedAgeData: blendedSummary ? blendedSummary.blendedAgeData : []
         });
 
     } catch (error) {
@@ -231,7 +298,62 @@ export const fetchFbAgeReports = async(req,res)=>{
     }
 };
 
-export const fetchFbGenderReports = async(req,res)=>{
+const calculateBlendedGenderSummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach(account => {
+        account.genderData.forEach(genderGroup => {
+            if (!blendedData.has(genderGroup.Gender)) {
+                blendedData.set(genderGroup.Gender, {
+                    "Gender": genderGroup.Gender,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentgenderData = blendedData.get(genderGroup.Gender);
+
+            // Add to totals
+            currentgenderData["Total Spend"] += genderGroup["Total Spend"];
+            currentgenderData["Total PCV"] += genderGroup["Total PCV"];
+
+            genderGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentgenderData.MonthlyData.has(monthKey)) {
+                    currentgenderData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentgenderData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(gender => ({
+            ...gender,
+            "Total Purchase ROAS": gender["Total Spend"] > 0 ?
+                gender["Total PCV"] / gender["Total Spend"] : 0,
+            MonthlyData: Array.from(gender.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedGenderData: blendedSummary
+    };
+}
+
+export const fetchFbGenderReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
@@ -239,13 +361,13 @@ export const fetchFbGenderReports = async(req,res)=>{
         const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        async function fetchTopGeders(accountId){
+        async function fetchTopGeders(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
-            const MAX_GENDER=300;
+            const MAX_GENDER = 300;
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -338,18 +460,18 @@ export const fetchFbGenderReports = async(req,res)=>{
                 const formattedGenders = Array.from(allData.values())
                     .map(gender => ({
                         ...gender,
-                        "Total Purchase ROAS": gender["Total Spend"] > 0?
-                        gender["Total PCV"] / gender["Total Spend"] : 0,
+                        "Total Purchase ROAS": gender["Total Spend"] > 0 ?
+                            gender["Total PCV"] / gender["Total Spend"] : 0,
                         MonthlyData: Array.from(gender.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
                     .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
 
                 return {
-                    accountId, 
+                    accountId,
                     data: {
                         account_name: formattedGenders[0]?.account_name,
-                        genderData: formattedGenders
+                        genderData: formattedGenders,
                     }
                 };
 
@@ -380,10 +502,16 @@ export const fetchFbGenderReports = async(req,res)=>{
         const formattedResults = results
             .filter(result => result.data !== null)
             .map(result => result.data);
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedGenderSummary(formattedResults);
+        }
 
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedGenderData: blendedSummary ? blendedSummary.blendedGenderData : []
         });
 
     } catch (error) {
@@ -396,7 +524,62 @@ export const fetchFbGenderReports = async(req,res)=>{
     }
 };
 
-export const fetchFbDeviceReports = async(req,res)=>{
+const calculateBlendedDeviceSummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach((account) => {
+        account.deviceData.forEach((deviceGroup) => {
+            if (!blendedData.has(deviceGroup.Device)) {
+                blendedData.set(deviceGroup.Device, {
+                    "Device": deviceGroup.Device,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentdeviceData = blendedData.get(deviceGroup.Device);
+
+            // Add to totals
+            currentdeviceData["Total Spend"] += deviceGroup["Total Spend"];
+            currentdeviceData["Total PCV"] += deviceGroup["Total PCV"];
+
+            deviceGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentdeviceData.MonthlyData.has(monthKey)) {
+                    currentdeviceData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentdeviceData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(device => ({
+            ...device,
+            "Total Purchase ROAS": device["Total Spend"] > 0 ?
+                device["Total PCV"] / device["Total Spend"] : 0,
+            MonthlyData: Array.from(device.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedDeviceData: blendedSummary
+    };
+}
+
+export const fetchFbDeviceReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
@@ -405,13 +588,13 @@ export const fetchFbDeviceReports = async(req,res)=>{
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        async function fetchTopDevices(accountId){
+        async function fetchTopDevices(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
-            const MAX_DEVICE=300;
+            const MAX_DEVICE = 300;
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -504,8 +687,8 @@ export const fetchFbDeviceReports = async(req,res)=>{
                 const formattedDevices = Array.from(allData.values())
                     .map(device => ({
                         ...device,
-                        "Total Purchase ROAS": device["Total Spend"] > 0?
-                        device["Total PCV"] / device["Total Spend"] : 0,
+                        "Total Purchase ROAS": device["Total Spend"] > 0 ?
+                            device["Total PCV"] / device["Total Spend"] : 0,
                         MonthlyData: Array.from(device.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -547,9 +730,17 @@ export const fetchFbDeviceReports = async(req,res)=>{
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedDeviceSummary(formattedResults);
+        }
+
+
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedDeviceData: blendedSummary ? blendedSummary.blendedDeviceData : []
         });
 
     } catch (error) {
@@ -561,6 +752,61 @@ export const fetchFbDeviceReports = async(req,res)=>{
         });
     }
 };
+
+const calculateBlendedCountrySummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach((account) => {
+        account.countryData.forEach((countryGroup) => {
+            if (!blendedData.has(countryGroup.Country)) {
+                blendedData.set(countryGroup.Country, {
+                    "Country": countryGroup.Country,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentcountryData = blendedData.get(countryGroup.Country);
+
+            // Add to totals
+            currentcountryData["Total Spend"] += countryGroup["Total Spend"];
+            currentcountryData["Total PCV"] += countryGroup["Total PCV"];
+
+            countryGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentcountryData.MonthlyData.has(monthKey)) {
+                    currentcountryData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentcountryData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(country => ({
+            ...country,
+            "Total Purchase ROAS": country["Total Spend"] > 0 ?
+                country["Total PCV"] / country["Total Spend"] : 0,
+            MonthlyData: Array.from(country.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedCountryData: blendedSummary
+    };
+}
 
 export const fetchFbCountryReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
@@ -577,7 +823,7 @@ export const fetchFbCountryReports = async (req, res) => {
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -670,8 +916,8 @@ export const fetchFbCountryReports = async (req, res) => {
                 const formattedCountries = Array.from(allData.values())
                     .map(country => ({
                         ...country,
-                        "Total Purchase ROAS": country["Total Spend"] > 0?
-                        country["Total PCV"] / country["Total Spend"] : 0,
+                        "Total Purchase ROAS": country["Total Spend"] > 0 ?
+                            country["Total PCV"] / country["Total Spend"] : 0,
                         MonthlyData: Array.from(country.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -713,9 +959,16 @@ export const fetchFbCountryReports = async (req, res) => {
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedCountrySummary(formattedResults);
+        }
+
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedCountryData: blendedSummary ? blendedSummary.blendedCountryData : []
         });
 
     } catch (error) {
@@ -728,6 +981,61 @@ export const fetchFbCountryReports = async (req, res) => {
     }
 };
 
+const calculateBlendedAudienceSummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach((account) => {
+        account.audienceData.forEach((audienceGroup) => {
+            if (!blendedData.has(audienceGroup["Audience Segments"])) {
+                blendedData.set(audienceGroup["Audience Segments"], {
+                    "Audience Segments": audienceGroup["Audience Segments"],
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentAudienceData = blendedData.get(audienceGroup["Audience Segments"]);
+
+            // Add to totals
+            currentAudienceData["Total Spend"] += audienceGroup["Total Spend"];
+            currentAudienceData["Total PCV"] += audienceGroup["Total PCV"];
+
+            audienceGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentAudienceData.MonthlyData.has(monthKey)) {
+                    currentAudienceData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentAudienceData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(audience => ({
+            ...audience,
+            "Total Purchase ROAS": audience["Total Spend"] > 0 ?
+                audience["Total PCV"] / audience["Total Spend"] : 0,
+            MonthlyData: Array.from(audience.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedAudienceData: blendedSummary
+    };
+}
+
 export const fetchFbAudienceReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
@@ -739,11 +1047,11 @@ export const fetchFbAudienceReports = async (req, res) => {
 
         async function fetchTopAudiencesForAccount(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
-            const MAX_AUDIENCE = 300;
+            const MAX_AUDIENCE = 500;
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -836,8 +1144,8 @@ export const fetchFbAudienceReports = async (req, res) => {
                 const formattedAudiences = Array.from(allData.values())
                     .map(audience => ({
                         ...audience,
-                        "Total Purchase ROAS": audience["Total Spend"] > 0?
-                        audience["Total PCV"] / audience["Total Spend"] : 0,
+                        "Total Purchase ROAS": audience["Total Spend"] > 0 ?
+                            audience["Total PCV"] / audience["Total Spend"] : 0,
                         MonthlyData: Array.from(audience.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -865,7 +1173,7 @@ export const fetchFbAudienceReports = async (req, res) => {
             }
         }
 
-        const BATCH_SIZE = 10;
+        const BATCH_SIZE = 5;
         const results = [];
         for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
             const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
@@ -879,9 +1187,16 @@ export const fetchFbAudienceReports = async (req, res) => {
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedAudienceSummary(formattedResults);
+        }
+
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedAudienceData: blendedSummary ? blendedSummary.blendedAudienceData : []
         });
 
     } catch (error) {
@@ -893,7 +1208,60 @@ export const fetchFbAudienceReports = async (req, res) => {
         });
     }
 };
-////////////////////////
+const calculateBlendedPlatformSummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach((account) => {
+        account.platformData.forEach((platformGroup) => {
+            if (!blendedData.has(platformGroup.Platforms)) {
+                blendedData.set(platformGroup.Platforms, {
+                    "Platforms": platformGroup.Platforms,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentPlatformData = blendedData.get(platformGroup.Platforms);
+
+            // Add to totals
+            currentPlatformData["Total Spend"] += platformGroup["Total Spend"];
+            currentPlatformData["Total PCV"] += platformGroup["Total PCV"];
+
+            platformGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentPlatformData.MonthlyData.has(monthKey)) {
+                    currentPlatformData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentPlatformData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(platform => ({
+            ...platform,
+            "Total Purchase ROAS": platform["Total Spend"] > 0 ?
+                platform["Total PCV"] / platform["Total Spend"] : 0,
+            MonthlyData: Array.from(platform.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedPlatformData: blendedSummary
+    };
+}
 
 export const fetchFbPlatformReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
@@ -909,7 +1277,7 @@ export const fetchFbPlatformReports = async (req, res) => {
             const allData = new Map();
 
             try {
-              
+
                 const aggregateParams = new URLSearchParams({
                     access_token: user.fbAccessToken,
                     fields: 'spend,account_name',
@@ -965,7 +1333,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                             "Platforms": insight.publisher_platform,
                             "Total Spend": 0,
                             "Total Purchase ROAS": 0,
-                            "Total PCV":0,
+                            "Total PCV": 0,
                             MonthlyData: new Map(),
                             account_name: insight.account_name
                         });
@@ -1002,8 +1370,8 @@ export const fetchFbPlatformReports = async (req, res) => {
                 const formattedPlatforms = Array.from(allData.values())
                     .map(platform => ({
                         ...platform,
-                        "Total Purchase ROAS": platform["Total Spend"] > 0?
-                        platform["Total PCV"] / platform["Total Spend"] : 0,
+                        "Total Purchase ROAS": platform["Total Spend"] > 0 ?
+                            platform["Total PCV"] / platform["Total Spend"] : 0,
                         MonthlyData: Array.from(platform.MonthlyData.values())
                             .sort((a, b) => a.Month.localeCompare(b.Month))
                     }))
@@ -1045,9 +1413,16 @@ export const fetchFbPlatformReports = async (req, res) => {
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedPlatformSummary(formattedResults);
+        }
+
         return res.status(200).json({
             success: true,
             data: formattedResults,
+            blendedPlatformData: blendedSummary ? blendedSummary.blendedPlatformData : []
         });
 
     } catch (error) {
@@ -1059,6 +1434,61 @@ export const fetchFbPlatformReports = async (req, res) => {
         });
     }
 };
+
+const calculateBlendedPlacementSummary = (accountsData) => {
+    const blendedData = new Map();
+    accountsData.forEach((account) => {
+        account.placementData.forEach((placementGroup) => {
+            if (!blendedData.has(placementGroup.Placements)) {
+                blendedData.set(placementGroup.Placements, {
+                    "Placements": placementGroup.Placements,
+                    "Total Spend": 0,
+                    "Total PCV": 0,
+                    MonthlyData: new Map()
+                })
+            }
+            const currentPlacementData = blendedData.get(placementGroup.Placements);
+
+            // Add to totals
+            currentPlacementData["Total Spend"] += placementGroup["Total Spend"];
+            currentPlacementData["Total PCV"] += placementGroup["Total PCV"];
+
+            placementGroup.MonthlyData.forEach(month => {
+                const monthKey = month.Month;
+                if (!currentPlacementData.MonthlyData.has(monthKey)) {
+                    currentPlacementData.MonthlyData.set(monthKey, {
+                        Month: monthKey,
+                        "Spend": 0,
+                        "Purchase ROAS": 0,
+                        "Purchase Conversion Value": 0
+                    });
+                }
+
+                const currentMonthData = currentPlacementData.MonthlyData.get(monthKey);
+                currentMonthData["Spend"] += month["Spend"];
+                currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+            })
+        })
+    })
+    const blendedSummary = Array.from(blendedData.values())
+        .map(placement => ({
+            ...placement,
+            "Total Purchase ROAS": placement["Total Spend"] > 0 ?
+                placement["Total PCV"] / placement["Total Spend"] : 0,
+            MonthlyData: Array.from(placement.MonthlyData.values())
+                .map(month => ({
+                    ...month,
+                    "Purchase ROAS": month["Spend"] > 0 ?
+                        month["Purchase Conversion Value"] / month["Spend"] : 0
+                }))
+                .sort((a, b) => a.Month.localeCompare(b.Month))
+        }))
+        .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
+
+    return {
+        blendedPlacementData: blendedSummary
+    };
+}
 
 export const fetchFbPlacementReports = async (req, res) => {
     const { startDate, endDate, userId } = req.body;
@@ -1166,8 +1596,8 @@ export const fetchFbPlacementReports = async (req, res) => {
                         .slice(0, MAX_PLACEMENTS)
                         .map(placement => ({
                             ...placement,
-                            "Total Purchase ROAS": placement["Total Spend"] > 0?
-                            placement["Total PCV"] / placement["Total Spend"] : 0,
+                            "Total Purchase ROAS": placement["Total Spend"] > 0 ?
+                                placement["Total PCV"] / placement["Total Spend"] : 0,
                             MonthlyData: Array.from(placement.MonthlyData.values())
                                 .sort((a, b) => a.Month.localeCompare(b.Month))
                         }));
@@ -1205,12 +1635,16 @@ export const fetchFbPlacementReports = async (req, res) => {
             .filter(result => result.data !== null)
             .map(result => result.data);
 
+        let blendedSummary = null;
+
+        if (brand.fbAdAccounts.length > 1) {
+            blendedSummary = calculateBlendedPlacementSummary(formattedResults);
+        }
+
         return res.status(200).json({
             success: true,
             data: formattedResults,
-            metadata: {
-                dateRange: { start: adjustedStartDate, end: adjustedEndDate }
-            }
+            blendedPlacementData: blendedSummary ? blendedSummary.blendedPlacementData : []
         });
 
     } catch (error) {

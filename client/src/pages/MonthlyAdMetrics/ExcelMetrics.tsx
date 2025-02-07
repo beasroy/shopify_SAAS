@@ -3,15 +3,15 @@ import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
-import { CalendarRange,ChevronDown, ChevronRight, SearchX } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DateRange } from "react-day-picker"
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
+import { CalendarRange, ChevronDown, ChevronRight} from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShopifyLogo } from "../GeneralisedDashboard/components/OtherPlatformModalContent"
 import { FacebookLogo, GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store"
+import Header from "@/components/dashboard_component/Header"
 
 
 
@@ -55,8 +55,8 @@ function TooltipHeader({ title, tooltip, colSpan = 1, rowSpan, isSubHeader = fal
     return (
         <th
             className={`${isSubHeader
-                    ? 'text-sm font-medium'
-                    : 'font-medium'
+                ? 'text-sm font-medium'
+                : 'font-medium'
                 } text-center whitespace-nowrap bg-gray-100 border border-gray-300 text-gray-800 z-50`}
             colSpan={colSpan}
             rowSpan={rowSpan}
@@ -86,7 +86,12 @@ export const ExcelMetricsPage: React.FC<any> = () => {
     const [metricsData, setMetricsData] = useState<MonthlyAggregate[]>([])
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
-    const [date, setDate] = useState<DateRange | undefined>(undefined);
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+        from: dateFrom,
+        to: dateTo
+    }), [dateFrom, dateTo]);
     const [expandedMonths, setExpandedMonths] = useState<string[]>([])
     const { brandId } = useParams();
 
@@ -179,45 +184,20 @@ export const ExcelMetricsPage: React.FC<any> = () => {
         <div className="flex h-screen">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden bg-gray-100">
-             
-                <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 shadow-md">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <div className="rounded-lg bg-secondary p-2 transition-transform duration-300 ease-in-out hover:scale-110">
-                                <CalendarRange className="h-6 w-6 text-secondary-foreground" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-secondary-foreground to-primary">
-                                Marketing Insights Tracker
-                                </h1>
-                            </div>
-                        </div>
 
-                        <div className="flex flex-row gap-3 transition-transform duration-300 ease-in-out hover:scale-105">
-                            <DatePickerWithRange date={date} setDate={setDate} />
-                            {date && (
-                                <Button
-                                    onClick={() => setDate(undefined)}
-                                    className="px-3 py-2 bg-red-500 hover:bg-red-600 transition-colors"
-                                >
-                                    <SearchX className="w-5 h-5" />
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </header>
+                <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
 
                 <Card className="m-6">
                     <CardContent>
                         <div className="flex flex-row items-center my-4 gap-4">
-                        <h2 className="text-lg font-semibold text-gray-900 ">
-                            Key Performance Metrics by Month with Daily Drill-Down
-                        </h2>
-                        <div className="flex flex-row gap-2">
-                            <FacebookLogo width={20} height={20}/>
-                            <GoogleLogo width={20} height={20}/>
-                            <ShopifyLogo width={20} height={20}/>
-                        </div>
+                            <h2 className="text-lg font-semibold text-gray-900 ">
+                                Key Performance Metrics by Month with Daily Drill-Down
+                            </h2>
+                            <div className="flex flex-row gap-2">
+                                <FacebookLogo width={20} height={20} />
+                                <GoogleLogo width={20} height={20} />
+                                <ShopifyLogo width={20} height={20} />
+                            </div>
                         </div>
 
                         {loading ? (

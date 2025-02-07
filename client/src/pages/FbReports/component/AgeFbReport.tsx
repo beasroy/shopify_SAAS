@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,9 @@ import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { setDate } from "@/store/slices/DateSlice";
 
 
 type ApiResponse = {
@@ -36,13 +38,19 @@ interface CityBasedReportsProps {
 }
 
 const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-    const [date, setDate] = useState<DateRange | undefined>(propDateRange);
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+      from: dateFrom,
+      to: dateTo
+    }), [dateFrom, dateTo]);
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
+    const dispatch = useDispatch();
 
 
-    const { user } = useUser();
+    const user = useSelector((state : RootState) =>state.user.user);
     const { brandId } = useParams();
     const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
@@ -79,15 +87,22 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     }, [fetchData]);
 
     useEffect(() => {
-        setDate(propDateRange);
-    }, [propDateRange]);
-
-    const handleManualRefresh = () => {
-        fetchData();
-    };
-    useEffect(() => {
+        if (propDateRange) {
+          dispatch(setDate({
+            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+          }));
+        }
+      }, [propDateRange]);
+      
+      useEffect(() => {
         if (!fullScreenAccount) {
-          setDate(propDateRange);
+          if (propDateRange) {
+          dispatch(setDate({
+            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+          }));
+        }
         }
       }, [fullScreenAccount, propDateRange]);
 
@@ -96,6 +111,10 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     const monthlyDataKey = "MonthlyData";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
+
+    const handleManualRefresh = () => {
+        fetchData();
+    };
 
     return (
         <div>
@@ -133,12 +152,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                                     <div className="flex items-center space-x-2">
                                         {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                                             <DatePickerWithRange
-                                                date={date}
-                                                setDate={setDate}
-                                                defaultDate={{
-                                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                                    to: new Date()
-                                                }}
+                                                
                                             />
                                         </div>}
                                         <Button

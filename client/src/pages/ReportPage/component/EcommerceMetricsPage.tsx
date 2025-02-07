@@ -18,8 +18,9 @@ import { FilterComponent, FilterItem } from "@/components/dashboard_component/Fi
 import { Ga4Logo } from "../../GeneralisedDashboard/components/OtherPlatformModalContent"
 import { Card, CardContent } from "@/components/ui/card";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
+import { setDate } from "@/store/slices/DateSlice";
 
 interface EcommerceMetric {
   "Date": string
@@ -38,7 +39,12 @@ interface EcommerceMetricsProps {
 }
 
 const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: propDateRange }) => {
-  const [date, setDate] = useState<DateRange | undefined>(propDateRange);
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
   const [filteredData, setFilteredData] = useState<EcommerceMetric[]>([]);
   const [data, setData] = useState<EcommerceMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,17 +57,27 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const user = useSelector((state: RootState) => state.user.user)
+  const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
  
 
-  // Update date state when prop changes
   useEffect(() => {
-    setDate(propDateRange);
+    if (propDateRange) {
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+      }));
+    }
   }, [propDateRange]);
 
   useEffect(() => {
     if (!isFullScreen) {
-      setDate(propDateRange);
+      if (propDateRange) {
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+      }));
+    }
     }
   }, [isFullScreen, propDateRange]);
 
@@ -173,12 +189,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
             
           {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                   <DatePickerWithRange
-                    date={date}
-                    setDate={setDate}
-                    defaultDate={{
-                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                      to: new Date()
-                    }}
+                   
                   />
                 </div>}
             <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">

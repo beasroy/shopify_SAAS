@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { createSelector } from '@reduxjs/toolkit'
 import { CalendarIcon } from "lucide-react"
 import { addDays, format, subDays, subMonths, subYears } from "date-fns"
 import type { DateRange } from "react-day-picker"
@@ -6,57 +7,106 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { useDispatch, useSelector } from 'react-redux'
+import { setDate, clearDate } from "@/store/slices/DateSlice"
+import { RootState } from '@/store'
 
 type DatePickerWithRangeProps = {
-  date: DateRange | undefined
-  setDate: (date: DateRange | undefined) => void
   defaultDate?: DateRange
   resetToFirstPage?: () => void
 }
 
-export function DatePickerWithRange({ date, setDate, defaultDate, resetToFirstPage }: DatePickerWithRangeProps) {
-  const [tempDate, setTempDate] = useState<DateRange | undefined>(date || defaultDate)
+// Memoized selector
+const selectDateRange = createSelector(
+  (state: RootState) => state.date.from,
+  (state: RootState) => state.date.to,
+  (from, to) => ({
+    from,
+    to
+  })
+);
+
+export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePickerWithRangeProps) {
+  const dispatch = useDispatch()
+  const dateRange = useSelector(selectDateRange)
+
+  // Memoize the initial date
+  const initialDate = useMemo(() => {
+    if (dateRange) {
+      return {
+        from: dateRange.from ? new Date(dateRange.from) : undefined,
+        to: dateRange.to ? new Date(dateRange.to) : undefined
+      };
+    }
+    return defaultDate ? {
+      from: defaultDate.from ? new Date(defaultDate.from) : undefined,
+      to: defaultDate.to ? new Date(defaultDate.to) : undefined
+    } : undefined;
+  }, [dateRange, defaultDate]);
+  const [tempDate, setTempDate] = useState<DateRange | undefined>(initialDate)
   const [open, setOpen] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
-  const today = new Date()
-  const daysSinceSunday = today.getDay()
-  const startOfThisWeek = subDays(today, daysSinceSunday)
-  const endOfThisWeek = addDays(startOfThisWeek, 6)
-  const startOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  const startOfLastWeek = subDays(startOfThisWeek, 7)
-  const endOfLastWeek = subDays(startOfThisWeek,1)
+
+  // Memoize date calculations
+  const dates = useMemo(() => {
+    const today = new Date()
+    const daysSinceSunday = today.getDay()
+    const startOfThisWeek = subDays(today, daysSinceSunday)
+    const endOfThisWeek = addDays(startOfThisWeek, 6)
+    const startOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    const startOfLastWeek = subDays(startOfThisWeek, 7)
+    const endOfLastWeek = subDays(startOfThisWeek, 1)
+
+    return {
+      today,
+      startOfThisWeek,
+      endOfThisWeek,
+      startOfThisMonth,
+      endOfThisMonth,
+      startOfLastWeek,
+      endOfLastWeek
+    }
+  }, [])
 
   useEffect(() => {
-    if (!date && defaultDate) {
-      setDate(defaultDate)
+    if (!dateRange.from && !dateRange.to && defaultDate) {
+      dispatch(setDate({
+        from: defaultDate.from ? defaultDate.from.toISOString() : undefined,
+        to: defaultDate.to ? defaultDate.to.toISOString() : undefined
+      }));
     }
-  }, [date, defaultDate, setDate])
+  }, [dateRange, defaultDate, dispatch])
 
-  const handleUpdate = () => {
-    setDate(tempDate)
+  const handleUpdate = useCallback(() => {
+    if (tempDate) {
+      dispatch(setDate({
+        from: tempDate.from ? tempDate.from.toISOString() : undefined,
+        to: tempDate.to ? tempDate.to.toISOString() : undefined
+      }));
+    }
     if (resetToFirstPage) {
-      resetToFirstPage()
+      resetToFirstPage();
     }
     setOpen(false)
-  }
+  }, [dispatch, resetToFirstPage, tempDate])
 
-  const clearDateRange = () => {
+  const clearDateRange = useCallback(() => {
     setTempDate(undefined)
     setSelectedPreset(null)
-    setDate(undefined)
+    dispatch(clearDate())
     if (resetToFirstPage) {
       resetToFirstPage()
     }
     setOpen(false)
-  }
+  }, [dispatch, resetToFirstPage])
 
-  const setPresetRange = (from: Date, to: Date) => {
+  const setPresetRange = useCallback((from: Date, to: Date) => {
     const newRange = { from, to }
     setTempDate(newRange)
-  }
+  }, [])
 
-  const formatDateRange = (range: DateRange | undefined) => {
+  const formatDateRange = useCallback((range: DateRange | undefined) => {
     if (!range) {
       return defaultDate && defaultDate.from && defaultDate.to
         ? `${format(defaultDate.from, "LLL dd, y")} - ${format(defaultDate.to, "LLL dd, y")}`
@@ -69,7 +119,32 @@ export function DatePickerWithRange({ date, setDate, defaultDate, resetToFirstPa
       return format(range.from, "LLL dd, y")
     }
     return "Pick a date"
-  }
+  }, [defaultDate])
+
+  // Memoize presets array
+  const presets = useMemo(() => [
+    { label: "Today", fn: () => setPresetRange(dates.today, dates.today) },
+    { label: "Yesterday", fn: () => setPresetRange(subDays(dates.today, 1), subDays(dates.today, 1)) },
+    { label: "This Week", fn: () => setPresetRange(dates.startOfThisWeek, dates.endOfThisWeek) },
+    { label: "Last 7 Days", fn: () => setPresetRange(subDays(dates.today, 6), dates.today) },
+    { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
+    { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 29), dates.today) },
+    { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.endOfThisMonth) },
+    { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
+    { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
+    { label: "Last Year", fn: () => setPresetRange(subYears(dates.today, 1), dates.today) },
+  ], [dates, setPresetRange])
+
+  const handleCalendarSelect = useCallback((range: DateRange | undefined) => {
+    if (range?.from && !range.to) {
+      setTempDate({ from: range.from, to: range.from })
+    } else if (range?.from && range?.to && range.from > range.to) {
+      setTempDate({ from: range.from, to: range.from })
+    } else {
+      setTempDate(range)
+    }
+    setSelectedPreset(null)
+  }, [])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,19 +165,8 @@ export function DatePickerWithRange({ date, setDate, defaultDate, resetToFirstPa
         <div className="flex">
           <div className="border-r p-2 w-[140px] overflow-y-auto" style={{ maxHeight: "240px" }}>
             <div className="space-y-1">
-              <h1 className="text-xs pb-2 px-2 font-medium  border-b">Custom</h1>
-              {[
-                { label: "Today", fn: () => setPresetRange(today, today) },
-                { label: "Yesterday", fn: () => setPresetRange(subDays(today, 1), subDays(today, 1)) },
-                { label: "This Week", fn: () => setPresetRange(startOfThisWeek, endOfThisWeek) },
-                { label: "Last 7 Days", fn: () => setPresetRange(subDays(today, 6), today) },
-                { label: "Last week", fn: () => setPresetRange(startOfLastWeek, endOfLastWeek) },
-                { label: "Last 30 Days", fn: () => setPresetRange(subDays(today, 29), today) },
-                { label: "This Month", fn: () => setPresetRange(startOfThisMonth, endOfThisMonth) },
-                { label: "Last 3 Months", fn: () => setPresetRange(subMonths(today, 3), today) },
-                { label: "Last 6 Months", fn: () => setPresetRange(subMonths(today, 6), today) },
-                { label: "Last Year", fn: () => setPresetRange(subYears(today, 1), today) },
-              ].map((preset) => (
+              <h1 className="text-xs pb-2 px-2 font-medium border-b">Custom</h1>
+              {presets.map((preset) => (
                 <Button
                   key={preset.label}
                   size="sm"
@@ -125,18 +189,9 @@ export function DatePickerWithRange({ date, setDate, defaultDate, resetToFirstPa
             <Calendar
               initialFocus
               mode="range"
-              defaultMonth={tempDate?.from || defaultDate?.from || today}
+              defaultMonth={tempDate?.from || defaultDate?.from || dates.today}
               selected={tempDate}
-              onSelect={(range) => {
-                if (range?.from && !range.to) {
-                  setTempDate({ from: range.from, to: range.from })
-                } else if (range?.from && range?.to && range.from > range.to) {
-                  setTempDate({ from: range.from, to: range.from })
-                } else {
-                  setTempDate(range)
-                }
-                setSelectedPreset(null)
-              }}
+              onSelect={handleCalendarSelect}
               numberOfMonths={2}
             />
           </div>
@@ -153,4 +208,3 @@ export function DatePickerWithRange({ date, setDate, defaultDate, resetToFirstPa
     </Popover>
   )
 }
-

@@ -1,25 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from "date-fns"
-import { Blend, LineChart, RefreshCw, Settings } from "lucide-react"
-import { DateRange } from "react-day-picker"
+import { Blend, LineChart} from "lucide-react"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import AdAccountMetricsCard, { CampaignGrid } from "./AdAccountsMetricsCard.tsx"
 import { AdAccountData, GoogleAdAccountData } from '@/pages/Dashboard/interfaces.ts'
-import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange.tsx'
-import { Button } from '@/components/ui/button.tsx';
 type DataSource = 'all' | 'facebook' | 'google'
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs.tsx';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu.tsx';
+import Header from '@/components/dashboard_component/Header.tsx';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/index.ts';
 
 
 
 
 export default function Dashboard() {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: new Date(),
-  })
   const [isLoading, setIsLoading] = useState(false);
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
@@ -43,6 +38,14 @@ export default function Dashboard() {
     { label: "Meta", value: "facebook" },
     { label: "Google", value: "google" },
   ];
+
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
+
 
   const handleDataSourceChange = (newValue: string) => {
     const selectedTab = tabs.find((tab) => tab.value === newValue);
@@ -268,65 +271,22 @@ const metrics = [
     },
   ]
 
-  const handleManualRefresh = () => {
-    fetchAdData();
-  };
-
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300 ">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="rounded-lg bg-secondary p-2 transition-transform duration-300 ease-in-out hover:scale-110">
-              <LineChart className="h-6 w-6 text-secondary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-secondary-foreground to-primary">
-                AdMetrics Dashboard
-              </h1>
-            </div>
-          </div>
-          <div className="flex flex-row items-center space-x-2">
-          <div className="transition-transform duration-300 ease-in-out hover:scale-105 ">
-            <DatePickerWithRange
-              date={date}
-              setDate={setDate}
-              defaultDate={{
-                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                to: new Date()
-              }}
-            />
-          </div>
-   
-                <div className="md:flex items-center hidden">
-                
-                  <Button
-                    onClick={handleManualRefresh}
-                    disabled={isLoading}
-                    className="flex items-center"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        <Header
+      title="AdMetrics Dashboard"
+      Icon={LineChart}
+      showDatePicker={true}
+      showSettings={true}
+      showRefresh={true}
+      isLoading={false}
+      handleManualRefresh={() => {
+        fetchAdData();
+      }} 
+      locale={locale}
+      setLocale={setLocale}/>
 
-                  </Button>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={locale} onValueChange={(value) => setLocale(value as "en-IN" | "en-US")}>
-                      <DropdownMenuRadioItem value="en-IN">Indian Formatting</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="en-US">Western Formatting</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              
-          </div>
-        </div>
-      </header>
       <div className="bg-white px-6 sticky top-0 z-10">
         <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleDataSourceChange} />
       </div>
@@ -356,7 +316,15 @@ const metrics = [
           
 
             </h2>
-            <AdAccountMetricsCard metrics={metrics} date={date || { from: new Date(), to: new Date() }} isLoading={isLoading} icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} />
+            <AdAccountMetricsCard 
+              metrics={metrics} 
+              date={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} 
+              isLoading={isLoading} 
+              icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} 
+            />
           </section>
         </div>
 
@@ -388,7 +356,10 @@ const metrics = [
                 icon="Facebook"
                 title={`Facebook - ${accountMetrics.account_name}`}
                 metrics={fbmetrics}  // Pass fbmetrics for the current account
-                date={date || { from: new Date(), to: new Date() }}
+                date={{ 
+                  from: date.from ? new Date(date.from) : undefined,
+                  to: date.to ? new Date(date.to) : undefined 
+                }}
                 isLoading={isLoading}
                 errorMessage={accountMetrics.message}
               />
@@ -409,7 +380,10 @@ const metrics = [
                   icon="Google"
                   title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
                   metrics={googleMetrics}
-                  date={date || { from: new Date(), to: new Date() }}
+                  date={{ 
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined 
+                  }}
                   isLoading={isLoading}
                 />
                 <CampaignGrid campaigns={googleAdMetrics.campaignData || []} isLoading={isLoading} icon="Google" />

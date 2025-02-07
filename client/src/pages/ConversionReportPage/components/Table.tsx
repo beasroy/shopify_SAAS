@@ -476,7 +476,7 @@ export default function ConversionTable({
     return (
       <th
         key={column}
-        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100"
+        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100"
         style={{ left: `${130 + 100 + index * 130}px` }}
       >
         <div className="flex flex-col">
@@ -497,17 +497,17 @@ export default function ConversionTable({
         <table className="w-full">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 min-w-[130px]  w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+              <th className="sticky left-0 top-0 min-w-[130px]  w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100">
                 {primaryColumn}
               </th>
-              <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-medium text-muted-foreground border-r border-border bg-slate-100">
+              <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100">
                 Metric
               </th>
               {secondaryColumns?.map((column, index) => renderColumnHeader(column, index))}
               {months.map((month) => (
                 <th
                   key={month}
-                  className="sticky top-0 min-w-[100px] z-10 px-2 py-2.5 text-right text-sm font-medium text-muted-foreground whitespace-nowrap border-r border-border bg-zinc-50"
+                  className="sticky top-0 min-w-[100px] z-10 px-2 py-2.5 text-right text-sm font-semibold text-black/70 whitespace-nowrap border-r border-border bg-zinc-50"
                 >
                   {month}
                 </th>

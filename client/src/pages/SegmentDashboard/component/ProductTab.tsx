@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { ArrowUp, ArrowDown, ArrowUpDown, Filter, ChevronLeft, X, CheckCircle, AlertCircle, RefreshCw, BarChart2, Tag, Layers, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +7,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix
 import { GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard'
 import { Button } from '@/components/ui/button'
 import { format } from "date-fns"
-import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 type Metrics = {
     products: number
@@ -63,7 +64,12 @@ export default function ProductTab() {
     const [filterData, setFilterData] = useState<any>({});
     const cacheRef = useRef<{ [key: string]: { data: any; timestamp: number } }>({});
     const POLL_INTERVAL = 5 * 60 * 1000;
-    const [date, setDate] = useState<DateRange | undefined>(undefined);
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+      from: dateFrom,
+      to: dateTo
+    }), [dateFrom, dateTo]);
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
@@ -372,12 +378,7 @@ export default function ProductTab() {
                 </div>
                 <div className="flex items-center gap-2">
                     <DatePickerWithRange
-                        date={date}
-                        setDate={setDate}
-                        defaultDate={{
-                            from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                            to: new Date(),
-                        }}
+                      
                     />
                     <Button variant="outline" size="icon">
                         <Filter className={`h-4 w-4 ${filterApplied ? 'text-blue-600' : 'text-gray-600'}`} />

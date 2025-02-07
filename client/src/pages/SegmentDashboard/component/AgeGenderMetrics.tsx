@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { format } from "date-fns";
-import { DateRange } from "react-day-picker";
 import { GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 type TabConfig = {
     id: string;
@@ -124,10 +125,12 @@ export default function AgeAndGenderMetrics() {
     const [graphData, setGraphData] = useState<any>(null);
     const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(['totalClicks', 'totalCost']);
 
-    const [date, setDate] = useState<DateRange | undefined>({
-        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        to: new Date()
-    });
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+      from: dateFrom,
+      to: dateTo
+    }), [dateFrom, dateTo]);
 
     // Add handleMetricChange function
     const handleMetricChange = (metric: MetricKey) => {
@@ -521,12 +524,7 @@ export default function AgeAndGenderMetrics() {
                     </div>
                     <div className="flex items-center gap-2">
                         <DatePickerWithRange
-                            date={date}
-                            setDate={setDate}
-                            defaultDate={{
-                                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                to: new Date(),
-                            }}
+                            
                         />
                         {showGraph && (
                             <div className="flex gap-2">

@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { DateRange } from 'react-day-picker';
+import React, { useMemo, useState } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
-import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import { FaMeta } from "react-icons/fa6";
 import AudienceFbReport from './component/AudienceFbReport';
@@ -11,16 +9,26 @@ import CountryFbReport from './component/CountryFbReport';
 import DeviceFbReport from './component/DeviceFbReport';
 import GenderFbReport from './component/GenderFbReport';
 import AgeFbReport from './component/AgeFbReport';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import Header from '@/components/dashboard_component/Header';
 
 
 
 
 const FbReportPage: React.FC = () => {
-    const [date, setDate] = useState<DateRange | undefined>({
-        from: new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1),
-        to: new Date(),
-    });
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+      from: dateFrom,
+      to: dateTo
+    }), [dateFrom, dateTo]);
     const [activeTab, setActiveTab] = useState('age');
+
+    const dateRange={ 
+        from: date.from ? new Date(date.from) : undefined,
+        to: date.to ? new Date(date.to) : undefined 
+      }
 
     const tabs = [
         { label: 'Age', value: 'age' },
@@ -43,17 +51,7 @@ const FbReportPage: React.FC = () => {
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex-none">
-                    <header className="bg-white px-6 py-3 border-b">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <FaMeta className="h-6 w-6" />
-                                <h1 className="text-xl font-semibold">Meta Reports</h1>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <DatePickerWithRange date={date} setDate={setDate} />
-                            </div>
-                        </div>
-                    </header>
+                   <Header title='Meta Reports' Icon={FaMeta} showDatePicker={true}/>
 
                     {/* Tabs */}
                     <div className="bg-white px-6 sticky top-0 z-10">
@@ -66,37 +64,37 @@ const FbReportPage: React.FC = () => {
                     <div className="px-6 py-4 space-y-6">
                         {activeTab === 'audienceSegments' && (
                             <div id="audienceSegments">
-                                <AudienceFbReport dateRange={date} />
+                                <AudienceFbReport dateRange={dateRange} />
                             </div>
                         )}
                         {activeTab === 'placement' && (
                             <div id="placement">
-                                <PlacementFbReport dateRange={date} />
+                                <PlacementFbReport dateRange={dateRange} />
                             </div>
                         )}
                         {activeTab === 'platform' && (
                             <div id="platform">
-                                <PlatformFbReport dateRange={date} />
+                                <PlatformFbReport dateRange={dateRange} />
                             </div>
                         )}
                          {activeTab === 'country' && (
                             <div id="country">
-                                <CountryFbReport dateRange={date} />
+                                <CountryFbReport dateRange={dateRange} />
                             </div>
                         )}
                          {activeTab === 'impressionDevice' && (
                             <div id="impressionDevice">
-                                <DeviceFbReport dateRange={date} />
+                                <DeviceFbReport dateRange={dateRange} />
                             </div>
                         )}
                         {activeTab === 'gender' && (
                             <div id="gender">
-                                <GenderFbReport dateRange={date} />
+                                <GenderFbReport dateRange={dateRange} />
                             </div>
                         )}
                          {activeTab === 'age' && (
                             <div id="age">
-                                <AgeFbReport dateRange={date} />
+                                <AgeFbReport dateRange={dateRange} />
                             </div>
                         )}
                     </div>

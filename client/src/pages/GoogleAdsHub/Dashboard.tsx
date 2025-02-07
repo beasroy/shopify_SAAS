@@ -1,23 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DateRange } from 'react-day-picker';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
-import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { SquareChartGantt } from 'lucide-react';
 import SearchTerm from './components/SearchTerm';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import Age from './components/Age';
 import Gender from './components/Gender';
+import { useSelector } from 'react-redux';
+import { useMemo } from 'react';
+import { RootState } from '@/store';
+import Header from '@/components/dashboard_component/Header';
+import { useParams } from 'react-router-dom';
+import { useTokenError } from '@/context/TokenErrorContext';
+import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
+import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 // import Product from './components/Product';
 // import Brand from './components/Brand';
 
 
 const GoogleAdsDashboard: React.FC = () => {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1),
-    to: new Date(),
-  });
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
   const [activeTab, setActiveTab] = useState('searchterm');
   const containerRef = useRef<HTMLDivElement>(null);
+  const brands = useSelector((state: RootState) => state.brand.brands);
+  const { brandId } = useParams<{ brandId: string }>();
+  const selectedBrand = brands.find((brand) => brand._id === brandId);
+  const hasGoogleAdAccount = selectedBrand?.googleAdAccount ? selectedBrand.googleAdAccount.length > 0 : false;
+  const { tokenError } = useTokenError();
 
   const tabs = [
     { label: 'Search Term', value: 'searchterm' },
@@ -85,24 +98,23 @@ const GoogleAdsDashboard: React.FC = () => {
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-hidden flex flex-col">
+      {tokenError ? (
+          <NoGA4AcessPage />
+        ) : !hasGoogleAdAccount ? (
+          <>
+            <ConnectPlatform
+              platform="google ads"
+              brandId={brandId ?? ''}
+              onSuccess={(platform, accountName, accountId) => {
+                console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
+              }}
+            />
+          </>
+        ) : (
+          <>
         {/* Header */}
         <div className="flex-none">
-          <header className="bg-white px-6 py-3 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <SquareChartGantt className="h-6 w-6" />
-                <h1 className="text-xl font-semibold">
-                  Google Ads Reports
-                </h1>
-              </div>
-              <div className='flex items-center gap-3'>
-                <DatePickerWithRange
-                  date={date}
-                  setDate={setDate}
-                />
-              </div>
-            </div>
-          </header>
+        <Header showDatePicker={true} Icon={SquareChartGantt} title='Google Ads Reports' />
           {/* Tabs */}
           <div className="bg-white px-6 sticky top-0 z-10">
             <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
@@ -113,13 +125,22 @@ const GoogleAdsDashboard: React.FC = () => {
         <div ref={containerRef} className="flex-1 overflow-auto">
           <div className="px-6 py-4 space-y-6">
             <div id="searchterm" ref={refs.searchterm}>
-              <SearchTerm dateRange={date} />
+              <SearchTerm dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="age" ref={refs.age}>
-              <Age dateRange={date} />
+              <Age dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="gender" ref={refs.gender}>
-              <Gender dateRange={date} />
+              <Gender dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             {/* <div id="product" ref={refs.product}>
               <Product dateRange={date} />
@@ -129,6 +150,8 @@ const GoogleAdsDashboard: React.FC = () => {
             </div> */}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -7,9 +7,10 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns"
-import { DateRange } from "react-day-picker"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 interface SearchTerm {
   id: string;
@@ -44,7 +45,12 @@ export default function SearchTermTable() {
   const [statusOptions, setStatusOptions] = useState<[]>([]);
   const [selectedAdGroup, setSelectedAdGroup] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
@@ -249,12 +255,7 @@ export default function SearchTermTable() {
             </Popover>
             <div className="flex items-center space-x-4">
               <DatePickerWithRange
-                date={date}
-                setDate={setDate}
-                defaultDate={{
-                  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                  to: new Date(),
-                }}
+              
               />
               <Button
                 variant="outline"

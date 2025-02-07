@@ -4,19 +4,21 @@ import storage from "redux-persist/lib/storage";
 import conversionFiltersReducer from "./slices/ConversionFilterSlice";
 import brandReducer from "./slices/BrandSlice.ts"
 import userReducer from "./slices/UserSlice.ts"
+import dateReducer from "./slices/DateSlice.ts"
 
 // Combine all reducers
 const rootReducer = combineReducers({
   conversionFilters: conversionFiltersReducer,
   brand: brandReducer, 
   user: userReducer, 
+  date: dateReducer
 });
 
 // Persist config - specify which slices to persist
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["conversionFilters", "brand", "user"], // Persist both conversionFilters & brand
+  whitelist: ["conversionFilters", "brand", "user", "date"], // Persist both conversionFilters & brand
 };
 
 // Apply persistReducer to the rootReducer

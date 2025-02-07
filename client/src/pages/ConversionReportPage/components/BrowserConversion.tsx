@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "./Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
@@ -13,9 +12,10 @@ import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
-import { shallowEqual, useSelector } from 'react-redux';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { setDate } from "@/store/slices/DateSlice";
 
 
 type ApiResponse = {
@@ -33,12 +33,19 @@ interface CityBasedReportsProps {
 
 
 const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-    const [date, setDate] = useState<DateRange | undefined>(propDateRange);
+    const dateFrom = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
+    const date = useMemo(() => ({
+      from: dateFrom,
+      to: dateTo
+    }), [dateFrom, dateTo]);
+  
+    const dispatch = useDispatch();
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'browser-conversion';
-    const { user } = useUser();
+    const user = useSelector((state:RootState) => state.user.user);
     const { brandId } = useParams();
 
     const toggleFullScreen = () => {
@@ -94,12 +101,22 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     }, [fetchData]);
 
     useEffect(() => {
-        setDate(propDateRange);
-    }, [propDateRange]);
-
-    useEffect(() => {
+        if (propDateRange) {
+          dispatch(setDate({
+            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+          }));
+        }
+      }, [propDateRange]);
+    
+      useEffect(() => {
         if (!isFullScreen) {
-          setDate(propDateRange);
+          if (propDateRange) {
+          dispatch(setDate({
+            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+          }));
+        }
         }
       }, [isFullScreen, propDateRange]);
 
@@ -125,8 +142,6 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                     <div className="flex flex-wrap items-center gap-3">
                         {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                             <DatePickerWithRange
-                                date={date}
-                                setDate={setDate}
                                 defaultDate={{
                                     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                                     to: new Date()

@@ -1,16 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { DateRange } from 'react-day-picker';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
-import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import { useParams } from 'react-router-dom';
-import ConnectGA4 from '../ReportPage/ConnectGA4Page';
-import { Palette, Radar } from 'lucide-react';
+import {  Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import CityTypeConversion from './components/CityConversion';
 import ChannelConversion from './components/ChannelConversion';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import RegionConversion from './components/RegionConversion';
 import LandingPageConversion from './components/LandingPageConversion';
 import { CustomTabs } from './components/CustomTabs';
@@ -20,12 +15,16 @@ import PageTitleConversion from './components/PageTitleConversion';
 import CountryConversion from './components/CountryConversion';
 import { useSelector } from 'react-redux';
 import { RootState } from "@/store/index.ts";
+import Header from '@/components/dashboard_component/Header';
+import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 
 const WebsiteConversionReportPage: React.FC = () => {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1),
-    to: new Date(),
-  });
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
   const { brandId } = useParams<{ brandId: string }>();
   const brands = useSelector((state: RootState) => state.brand.brands);
   const selectedBrand = brands.find((brand) => brand._id === brandId);
@@ -115,7 +114,14 @@ const WebsiteConversionReportPage: React.FC = () => {
   }
 
   if (!hasGA4Account) {
-    return <ConnectGA4 />;
+    if (!hasGA4Account) {
+      return <ConnectPlatform
+        platform="google analytics"
+        brandId={brandId ?? ''}
+        onSuccess={(platform, accountName, accountId) => {
+          console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
+        }} />;
+    }
   }
 
   return (
@@ -124,42 +130,13 @@ const WebsiteConversionReportPage: React.FC = () => {
       <div className="flex-1 h-screen overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex-none">
-          <header className="bg-white px-6 py-3 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Radar className="h-6 w-6" />
-                <h1 className="text-xl font-semibold">
-                Camapign and Website Performance
-                </h1>
-              </div>
-              <div className='flex items-center gap-3'>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <Palette className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80">
-                    <div className="grid gap-4">
-                      <h3 className="font-medium leading-none">Color Information</h3>
-                      <div className="grid gap-2">
-                        {colorInfo.map(({ color, condition }) => (
-                          <div key={color} className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded ${color}`} />
-                            <span className="text-xs">{condition}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                <DatePickerWithRange
-                  date={date}
-                  setDate={setDate}
-                />
-              </div>
-            </div>
-          </header>
+        <Header
+            title="Campaign and Website Performance"
+            Icon={Radar}
+            showDatePicker={true}
+            showColorPalette={true}
+            colorInfo={colorInfo}
+           />
 
           {/* Tabs */}
           <div className="bg-white px-6 sticky top-0 z-10">
@@ -171,28 +148,52 @@ const WebsiteConversionReportPage: React.FC = () => {
         <div ref={containerRef} className="flex-1 overflow-auto">
           <div className="px-6 py-4 space-y-6">
             <div id="channel" ref={refs.channel} >
-              <ChannelConversion dateRange={date} />
+              <ChannelConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="campaign" ref={refs.campaign} >
-              <CampaignConversion dateRange={date} />
+              <CampaignConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="country" ref={refs.country} >
-              <CountryConversion dateRange={date} />
+              <CountryConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="city" ref={refs.city} >
-              <CityTypeConversion dateRange={date} />
+              <CityTypeConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="region" ref={refs.region} >
-              <RegionConversion dateRange={date} />
+              <RegionConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="landingPage" ref={refs.landingPage}>
-              <LandingPageConversion dateRange={date} />
+              <LandingPageConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="pagePath" ref={refs.pagePath}>
-              <PagePathConversion dateRange={date} />
+              <PagePathConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
             <div id="pageTitle" ref={refs.pageTitle}>
-              <PageTitleConversion dateRange={date} />
+              <PageTitleConversion dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
           </div>
         </div>

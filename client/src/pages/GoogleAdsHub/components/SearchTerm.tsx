@@ -9,9 +9,11 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
-import { shallowEqual, useSelector } from "react-redux";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
+import { setDate } from "@/store/slices/DateSlice";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
 
 type ApiResponse = {
@@ -28,7 +30,13 @@ interface CityBasedReportsProps {
 }
 
 const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-  const [date, setDate] = useState<DateRange | undefined>(propDateRange);
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
+  const dispatch = useDispatch();
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -94,8 +102,26 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
 }, [fetchData]);
 
 useEffect(() => {
-    setDate(propDateRange);
+  if (propDateRange) {
+    dispatch(setDate({
+      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+    }));
+  }
 }, [propDateRange]);
+
+useEffect(() => {
+  if (!isFullScreen) {
+    if (propDateRange) {
+    dispatch(setDate({
+      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+    }));
+  }
+  }
+}, [isFullScreen, propDateRange]);
+
+
 
   const handleManualRefresh = () => {
     fetchData();
@@ -117,6 +143,11 @@ useEffect(() => {
             <GoogleLogo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange
+                   
+                  />
+                </div>}
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>

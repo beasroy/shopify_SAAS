@@ -36,7 +36,7 @@ const ReportTable: React.FC<TableProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [loadedRows, setLoadedRows] = useState<any[]>([]);
   const rowsPerChunk = 30;
-  const rowsPerPage = 7;
+  const rowsPerPage = 10;
   const isDateTable = columns[0] === 'Date';
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -206,17 +206,20 @@ const ReportTable: React.FC<TableProps> = ({
 
   const handleSort = (column: string) => {
     if (!isNumericColumn(column)) return;
-
+  
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortColumn(column);
       setSortDirection('asc');
     }
+    
+    
   };
 
   const isNumericColumn = (column: string) => {
     return [
+      'Date',
       'Add To Cart',
       'Checkouts',
       'Sessions',
@@ -267,12 +270,13 @@ const ReportTable: React.FC<TableProps> = ({
       isFullScreen &&
       (dataRef.current !== data ||
         filterLabel !== null ||
-        sortColumn !== null)
+        sortColumn !== null ||
+        sortDirection)  // Add sortDirection to trigger updates
     ) {
       setLoadedRows(filteredDataRef.current.slice(0, rowsPerChunk));
       dataRef.current = data;
     }
-  }, [data, filterLabel, sortColumn, isFullScreen]);
+  }, [data, filterLabel, sortColumn, sortDirection, isFullScreen]);
 
   const loadMoreRows = () => {
     if (isFullScreen && loadedRows.length < filteredDataRef.current.length) {
@@ -321,7 +325,7 @@ const ReportTable: React.FC<TableProps> = ({
         className="rounded-md overflow-x-auto relative border"
         style={{
           width: '100%',
-          maxHeight: isFullScreen ? 'calc(100vh - 105px)' : 'calc(100vh - 350px)',
+          maxHeight: isFullScreen ? 'calc(100vh - 105px)' : 'calc(100vh - 200px)',
           overflowX: 'auto',
         }}
         onScroll={isFullScreen ? handleScroll : undefined}
@@ -339,9 +343,9 @@ const ReportTable: React.FC<TableProps> = ({
             <tr>
               {columns[0] !== 'Date' && allTimeData && (
                 <th
-                  className="font-bold p-2 text-gray-800 text-sm border-b-2 sticky left-0 bg-gray-100 z-30 border-r border-gray-300"
+                  className="font-bold p-1 text-gray-800 text-sm border-b-2 sticky left-0 bg-gray-100 z-30 border-r border-gray-300"
                   style={{
-                    width: `${columnWidths[0] + 10}px`,
+                    width: `${columnWidths[0]}px`,
                     minWidth: '200px',
                     position: 'sticky',
                     left: 0,
@@ -364,7 +368,7 @@ const ReportTable: React.FC<TableProps> = ({
                   <th
                     key={column}
                     className={`
-            font-bold p-2 text-gray-800 text-sm border-b-2 
+            font-bold p-1 text-gray-800 text-sm border-b-2 
             capitalize sticky top-0 bg-gray-100 
             border-r border-gray-300 
             ${isNumericColumn(column) ? 'cursor-pointer' : ''}
@@ -372,7 +376,7 @@ const ReportTable: React.FC<TableProps> = ({
             ${isFirstColumn && columns[0] !== 'Date' && allTimeData ? 'sticky left-[150px]' : ''}
           `}
                     style={{
-                      width: `${columnWidths[colIndex] + 10}px`,
+                      width: `${columnWidths[colIndex] + 1}px`,
                       minWidth: '200px',
                       ...(isFirstColumn && {
                         left: needsLeftSticky

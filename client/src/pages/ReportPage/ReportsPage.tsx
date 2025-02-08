@@ -3,7 +3,7 @@ import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetrics
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { useParams } from 'react-router-dom';
-import { ChartNoAxesCombined } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from './NoGA4AccessPage.';
 import { useSelector } from 'react-redux';
@@ -50,11 +50,11 @@ const ReportsPage: React.FC = () => {
         ) : (
           <>
             {/* Existing page content */}
-           <Header title='E-Commerce Insighhts' Icon={ChartNoAxesCombined} showDatePicker={true} />
+           <Header title='E-Commerce Insighhts' Icon={ShoppingCart} showDatePicker={true} />
             {isLoading ? (
               <TableSkeleton />
             ) : (
-              <section className="my-6">
+              <section className="my-3">
                 <DailyEcommerceMetrics dateRange={dateRange} />
               </section>
             )}

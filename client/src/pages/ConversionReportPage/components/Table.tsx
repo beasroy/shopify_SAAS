@@ -183,17 +183,17 @@ export default function ConversionTable({
 
     // Prioritizing Sessions & Conversion Rate
     if (isHighSessions && isGoodConversion) return 'bg-green-100'; // Best case (high traffic & conversions)
-    if (isHighSessions && !isGoodConversion) return 'bg-blue-100'; // High traffic, poor conversion
+    if (isHighSessions && !isGoodConversion) return 'bg-[#E0F4FF]'; // High traffic, poor conversion
     if (!isHighSessions && isGoodConversion) return 'bg-yellow-100'; // Low traffic, good conversion
 
     // Prioritizing Spend & Purchase ROAS
     if (isHighSpent && isGoodROAS) return 'bg-green-100'; // Profitable with high spend
-    if (isHighSpent && !isGoodROAS) return 'bg-blue-100'; // High spend, poor ROAS
+    if (isHighSpent && !isGoodROAS) return 'bg-[#E0F4FF]'; // High spend, poor ROAS
     if (!isHighSpent && isGoodROAS) return 'bg-yellow-100'; // Low spend, good ROAS
 
     // Prioritizing Spend & Purchase ROAS
     if (isHighCost && isGoodConvValuePerCost) return 'bg-green-100'; // Profitable with high cost
-    if (isHighCost && !isGoodConvValuePerCost) return 'bg-blue-100'; // High cost, poor ROAS
+    if (isHighCost && !isGoodConvValuePerCost) return 'bg-[#E0F4FF]'; // High cost, poor ROAS
     if (!isHighCost && isGoodConvValuePerCost) return 'bg-yellow-100'; // Low cost, good ROAS
 
     return 'bg-red-50'; // Default case (poor metrics)
@@ -218,7 +218,7 @@ export default function ConversionTable({
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
     if (!monthData) {
       return (
-        <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-border bg-background">
+        <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs border-r border-slate-300 bg-background">
           -
         </td>
       );
@@ -262,7 +262,7 @@ export default function ConversionTable({
 
 
     return (
-      <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
+      <td className={`w-[100px]  text-right whitespace-nowrap p-2 text-xs border-r border-slate-300 ${bgColor}`}>
         {renderCell(
           value,
           metric.toLowerCase().includes('rate')
@@ -298,7 +298,7 @@ export default function ConversionTable({
     if (typeof value !== "number") {
       return (
         <td
-          className="sticky top-0 min-w-[130px] p-2 text-xs border-r border-border bg-background"
+          className="sticky top-0 min-w-[130px] p-2 text-xs border-r border-slate-300 bg-background"
           style={{ left: `${130 + 100 + columnIndex * 130}px` }}
         >
           {""}
@@ -344,7 +344,7 @@ export default function ConversionTable({
       : null;
     return (
       <td
-        className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-border ${bgColor}`}
+        className={`sticky top-0 min-w-[130px] p-2 text-xs border-r border-slate-300 ${bgColor}`}
         style={{ left: `${130 + 100 + columnIndex * 130}px` }}
       >
         {/* Only show cost when currentMetric is "Cost" */}
@@ -419,14 +419,14 @@ export default function ConversionTable({
 
     return (
       <tr key={`${row[primaryColumn]}-${metric}`}>
-        <td className={`sticky left-0 min-w-[130px] max-w-[200px] p-2 text-xs border-r border-border ${bgColor}`}>
+        <td className={`sticky left-0 min-w-[130px] max-w-[200px] p-2 text-xs border-r border-slate-300 ${bgColor}`}>
           {metricIndex === 0
             ? (typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
               ? renderCell(row[primaryColumn])
               : "")
             : ""}
         </td>
-        <td className={`sticky left-[130px] min-w-[100px] whitespace-nowrap p-2 text-xs border-r border-border ${bgColor}`}>
+        <td className={`sticky left-[130px] min-w-[100px] whitespace-nowrap p-2 text-xs border-r border-slate-300 ${bgColor}`}>
           {metric}
         </td>
         {secondaryColumns?.map((column, index) => renderMetricValue(row, column, metric, index))}
@@ -476,7 +476,7 @@ export default function ConversionTable({
     return (
       <th
         key={column}
-        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100"
+        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-b border-slate-300 bg-slate-100"
         style={{ left: `${130 + 100 + index * 130}px` }}
       >
         <div className="flex flex-col">
@@ -492,29 +492,29 @@ export default function ConversionTable({
   };
 
   return (
-    <div className="w-full border border-border rounded-lg flex flex-col">
+    <div className="w-full rounded-lg border flex flex-col">
       <div className={`relative overflow-x-auto ${getTableHeight()}`} onScroll={isFullScreen ? handleScroll : undefined}>
         <table className="w-full">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 min-w-[130px]  w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100">
+              <th className="sticky left-0 top-0 min-w-[130px]  w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-b border-slate-300 bg-slate-100">
                 {primaryColumn}
               </th>
-              <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-border bg-slate-100">
+              <th className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2 py-2.5 text-left text-sm font-semibold text-black/70 border-r border-b border-slate-300 bg-slate-100">
                 Metric
               </th>
               {secondaryColumns?.map((column, index) => renderColumnHeader(column, index))}
               {months.map((month) => (
                 <th
                   key={month}
-                  className="sticky top-0 min-w-[100px] z-10 px-2 py-2.5 text-right text-sm font-semibold text-black/70 whitespace-nowrap border-r border-border bg-zinc-50"
+                  className="sticky top-0 min-w-[100px] z-10 px-2 py-2.5 text-right text-sm font-semibold text-black/70 whitespace-nowrap border-r border-b border-slate-300  bg-zinc-50"
                 >
                   {month}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-slate-300">
           {displayRows.map(({ dataIndex, metricIndex }) => 
               renderMetricRow(data[dataIndex], metricIndex)
             )}
@@ -523,7 +523,7 @@ export default function ConversionTable({
       </div>
 
       {!isFullScreen && (
-        <div className="border-t border-border p-2.5 flex items-center justify-between bg-background">
+        <div className="border-t border-slate-300 p-2.5 flex items-center justify-between bg-background">
           <div className="text-sm text-muted-foreground">
             Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of {totalRows} rows
           </div>

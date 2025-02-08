@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ChartNoAxesCombined, CalendarRange, LineChart } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
@@ -89,13 +89,9 @@ export default function CollapsibleSidebar() {
     }, [location.pathname, setSelectedBrandId]);
 
     const dashboards = [
-        { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} /> },
-        { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
-        { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ChartNoAxesCombined size={20} /> },
-        { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}`,icon: <FaMeta size={18} />},
-        { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },
-        
+        { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
+        { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} /> },
         {
             name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,
             subItems: [
@@ -108,7 +104,10 @@ export default function CollapsibleSidebar() {
                     path: `/conversion-reports/${selectedBrandId}/performance`
                 }
             ]
-        }
+        },
+        { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}`,icon: <FaMeta size={18} />},
+        { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },  
+        { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
     ];
 
 
@@ -167,11 +166,11 @@ export default function CollapsibleSidebar() {
                                 {brands.map(brand => (
                                     <SidebarChild
                                         key={brand._id}
-                                        path={`/analytics-dashboard/${brand._id}`}
+                                        path={`/ad-metrics/${brand._id}}`}
                                         text={brand.name.replace(/_/g, ' ')}
                                         onClick={() => {
                                             dispatch(setSelectedBrandId(brand._id));
-                                            navigate(`/analytics-dashboard/${brand._id}`);
+                                            navigate(`/ad-metrics/${brand._id}`);
                                         }}
                                         isSelected={selectedBrandId === brand._id}
                                     />

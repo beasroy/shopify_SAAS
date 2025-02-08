@@ -65,19 +65,19 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ data, primaryCo
 
     return [
       { name: 'Top Performers', color: 'text-green-700', bgColor: 'bg-green-100', count: categorizedItems['Top Performers'].length, items: categorizedItems['Top Performers'] },
-      { name: 'High Traffic', color: 'text-blue-700', bgColor: 'bg-blue-100', count: categorizedItems['High Traffic'].length, items: categorizedItems['High Traffic'] },
+      { name: 'High Traffic', color: 'text-blue-700', bgColor: 'bg-[#E0F4FF]', count: categorizedItems['High Traffic'].length, items: categorizedItems['High Traffic'] },
       { name: 'Good Converters', color: 'text-yellow-700', bgColor: 'bg-yellow-100', count: categorizedItems['Good Converters'].length, items: categorizedItems['Good Converters'] },
       { name: 'Underperformers', color: 'text-red-700', bgColor: 'bg-red-50', count: categorizedItems['Underperformers'].length, items: categorizedItems['Underperformers'] }
     ];
   }, [data, thresholds, primaryColumn]);
 
   return (
-    <div className="my-2.5 border border-gray-200 rounded-lg overflow-hidden">
+    <div className="my-2.5 border border-gray-300 rounded-lg overflow-hidden">
       <div className="flex items-stretch h-9">
         {categories.map((category) => (
           <div
             key={category.name}
-            className={`relative flex-grow ${category.bgColor} cursor-pointer transition-all duration-300 ease-in-out`}
+            className={`relative flex-grow ${category.bgColor} border-r border-gray-300 cursor-pointer transition-all duration-300 ease-in-out`}
             onClick={() => setExpandedCategory(expandedCategory === category.name ? null : category.name)}
           >
             <div className="absolute inset-0 flex items-center justify-center">

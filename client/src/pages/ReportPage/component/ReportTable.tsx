@@ -186,36 +186,35 @@ const ReportTable: React.FC<TableProps> = ({
       'Purchase Rate': parsePercentage(item?.['Purchase Rate'] || '0'),
     })), [data, rowPerformanceLabels, isDateTable]);
 
-  const sortedData = useMemo(() => {
-    if (sortColumn) {
+    const sortedData = useMemo(() => {
+      if (!sortColumn) return parsedData;
+    
       return [...parsedData].sort((a, b) => {
-        const aValue = typeof a[sortColumn] === 'number'
-          ? a[sortColumn]
-          : parseFloat((a[sortColumn] || '0').toString().replace('%', '').trim());
-        const bValue = typeof b[sortColumn] === 'number'
-          ? b[sortColumn]
-          : parseFloat((b[sortColumn] || '0').toString().replace('%', '').trim());
-
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+    
+        // Handle Date sorting
+        if (sortColumn === 'Date') {
+          return sortDirection === 'asc'
+            ? new Date(aValue).getTime() - new Date(bValue).getTime()
+            : new Date(bValue).getTime() - new Date(aValue).getTime();
+        }
+    
+        // Handle Numeric sorting
+        const aNum = typeof aValue === 'number'
+          ? aValue
+          : parseFloat((aValue || '0').toString().replace('%', '').trim());
+        const bNum = typeof bValue === 'number'
+          ? bValue
+          : parseFloat((bValue || '0').toString().replace('%', '').trim());
+    
+        if (aNum < bNum) return sortDirection === 'asc' ? -1 : 1;
+        if (aNum > bNum) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       });
-    }
-    return parsedData;
-  }, [parsedData, sortColumn, sortDirection]);
+    }, [parsedData, sortColumn, sortDirection]);
+    
 
-  const handleSort = (column: string) => {
-    if (!isNumericColumn(column)) return;
-  
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-    
-    
-  };
 
   const isNumericColumn = (column: string) => {
     return [
@@ -227,6 +226,16 @@ const ReportTable: React.FC<TableProps> = ({
       'Visitors',
       ...comparisonColumns,
     ].includes(column);
+  };
+  const handleSort = (column: string) => {
+    if (!isNumericColumn(column)) return;
+  
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    } 
   };
 
   const handleClickLabel = (label: string, type: string) => {

@@ -2,6 +2,7 @@ import axios from 'axios';
 import { config } from 'dotenv';
 import moment from 'moment';
 import Brand from '../models/Brands.js';
+import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
 
 config();
@@ -155,16 +156,24 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
 
 export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate } = req.body;
+    let { startDate, endDate , userId } = req.body;
 
     try {
-        const brand = await Brand.findById(brandId);
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean(),
+        ]);
 
-        if (!brand) {
+        if (!brand || !user) {
             return res.status(404).json({
                 success: false,
-                message: 'Brand not found.',
+                message: !brand ? 'Brand not found.' : 'User not found.',
             });
+        }
+
+        const refreshToken = user.googleRefreshToken;
+        if (!refreshToken) {
+            return res.status(200).json([]);
         }
 
         const adAccountId = brand.googleAdAccount;
@@ -184,7 +193,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
 
         const customer = client.Customer({
             customer_id: adAccountId,
-            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            refresh_token: refreshToken,
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 

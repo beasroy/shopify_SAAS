@@ -9,7 +9,6 @@ const client = new GoogleAdsApi({
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
     developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-    refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
 
 export async function fetchGoogleAdCityConversions(req, res) {

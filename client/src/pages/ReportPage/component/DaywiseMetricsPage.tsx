@@ -22,8 +22,8 @@ import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import NewReportTable from "./NewReportTable";
 
-interface EcommerceMetric {
-  "Date": string
+interface DaywiseMetric {
+  "Day": string
   "Add To Carts": string
   "Checkout": string
   "Sessions": string
@@ -34,19 +34,19 @@ interface EcommerceMetric {
 }
 
   
-interface EcommerceMetricsProps {
+interface DaywiseMetricProps {
   dateRange: DateRange | undefined;
 }
 
-const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: propDateRange }) => {
+const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateRange }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
-  const [filteredData, setFilteredData] = useState<EcommerceMetric[]>([]);
-  const [data, setData] = useState<EcommerceMetric[]>([]);
+  const [filteredData, setFilteredData] = useState<DaywiseMetric[]>([]);
+  const [data, setData] = useState<DaywiseMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
 
@@ -100,7 +100,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     try {
 
       const DailyAnalyticsResponse = await axiosInstance.post(
-        `/api/analytics/atcreport/${brandId}`,
+        `/api/analytics/dayAtcReport/${brandId}`,
         {
           startDate: startDate,
           endDate: endDate,
@@ -126,7 +126,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
       }
 
     } catch (error) {
-      console.error('Error fetching e-commerce metrics data:', error);
+      console.error('Error fetching day wise metrics data:', error);
      
     } finally {
       setIsLoading(false);
@@ -151,7 +151,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     
     filters.forEach(filter => {
       result = result.filter(item => {
-        const value = item[filter.column as keyof EcommerceMetric] as string;
+        const value = item[filter.column as keyof DaywiseMetric] as string;
         if (['>', '<', '='].includes(filter.operator)) {
           const numValue = parseFloat(value);
           const filterValue = parseFloat(filter.value);
@@ -182,7 +182,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Daily E-Commerce Analytics</h2>
+            <h2 className="text-lg font-medium">Day wise E-Commerce Analytics</h2>
             <Ga4Logo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -255,4 +255,4 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   );
 };
 
-export default EcommerceMetricsPage;
+export default DaywiseMetricsPage;

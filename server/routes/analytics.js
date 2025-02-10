@@ -6,7 +6,7 @@ import {
     getChannelWiseConversions, getDailyAddToCartAndCheckouts, getGenderMetrics,
     getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions,
     getSourceWiseConversions, getBrowserWiseConversions, getPagePathWiseConversions, getPageTitleWiseConversions,
-    getCountryWiseConversions
+    getCountryWiseConversions, getDayWiseAddToCartAndCheckouts
 } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
@@ -14,6 +14,7 @@ const router = express.Router();
 
 
 router.post('/atcreport/:brandId', verifyAuth, getDailyAddToCartAndCheckouts);
+router.post('/dayAtcReport/:brandId', verifyAuth, getDayWiseAddToCartAndCheckouts)
 router.post('/ageReport/:brandId', verifyAuth, getAgeMetrics)
 router.post('/genderReport/:brandId', verifyAuth, getGenderMetrics)
 router.post('/locationReport/:brandId', verifyAuth, getLocationMetrics)

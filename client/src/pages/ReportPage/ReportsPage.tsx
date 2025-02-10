@@ -1,4 +1,4 @@
-import React, { useMemo} from 'react';
+import React, { useMemo, useState } from 'react';
 import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetricsPage';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
@@ -10,11 +10,11 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import ConnectPlatform from './ConnectPlatformPage';
 import Header from '@/components/dashboard_component/Header';
-
-
+import DaywiseMetricsPage from './component/DaywiseMetricsPage';
+import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 
 const ReportsPage: React.FC = () => {
-  
+
   const isLoading = false;
   const { brandId } = useParams<{ brandId: string }>();
   const brands = useSelector((state: RootState) => state.brand.brands);
@@ -28,10 +28,21 @@ const ReportsPage: React.FC = () => {
     to: dateTo
   }), [dateFrom, dateTo]);
 
-  const dateRange={ 
+  const dateRange = {
     from: date.from ? new Date(date.from) : undefined,
-    to: date.to ? new Date(date.to) : undefined 
+    to: date.to ? new Date(date.to) : undefined
   }
+  const [activeTab, setActiveTab] = useState('daily');
+
+  const tabs = [
+    { label: 'Daily Metrics', value: 'daily' },
+    { label: 'Day wise Metrics', value: 'day wise' },
+  ];
+
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -41,7 +52,7 @@ const ReportsPage: React.FC = () => {
           <NoGA4AcessPage />
         ) : !hasGA4Account ? (
           <>
-             <ConnectPlatform
+            <ConnectPlatform
               platform="google analytics"
               brandId={brandId ?? ''}
               onSuccess={(platform, accountName, accountId) => {
@@ -50,12 +61,20 @@ const ReportsPage: React.FC = () => {
         ) : (
           <>
             {/* Existing page content */}
-           <Header title='E-Commerce Insighhts' Icon={ShoppingCart} showDatePicker={true} />
+            <Header title='E-Commerce Insighhts' Icon={ShoppingCart} showDatePicker={true} />
+            <div className="bg-white px-6 sticky top-0 z-10">
+              <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
+            </div>
             {isLoading ? (
               <TableSkeleton />
             ) : (
               <section className="my-3">
-                <DailyEcommerceMetrics dateRange={dateRange} />
+                {activeTab === 'daily' && (
+                  <DailyEcommerceMetrics dateRange={dateRange} />
+                )}
+                {activeTab === 'day wise' && (
+                  <DaywiseMetricsPage dateRange={dateRange} />
+                )}
               </section>
             )}
           </>

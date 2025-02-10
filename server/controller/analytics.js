@@ -160,6 +160,139 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
   }
 }
 
+export async function getDayWiseAddToCartAndCheckouts(req, res) {
+  try {
+    const { brandId } = req.params;
+    let { startDate, endDate, userId } = req.body;
+
+    const brandCacheKey = `brand_${brandId}`;
+    const userCacheKey = `user_${userId}`;
+
+    let brand = cache.get(brandCacheKey);
+    let user = cache.get(userCacheKey);
+
+    if (!brand) {
+      brand = await Brand.findById(brandId).lean();
+      if (brand) cache.set(brandCacheKey, brand);
+    }
+
+    if (!user) {
+      user = await User.findById(userId).lean();
+      if (user) cache.set(userCacheKey, user);
+    }
+
+    if (!brand || !user) {
+      return res.status(404).json({ success: false, message: !brand ? 'Brand not found.' : 'User not found' });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(200).json([]);
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    const now = new Date();
+    const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
+
+    const requestBody = {
+      dateRanges: [{ startDate: startDate || defaultStartDate, endDate: endDate || defaultEndDate }],
+      dimensions: [{ name: 'date' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'addToCarts' },
+        { name: 'checkouts' },
+        { name: 'ecommercePurchases' },
+      ],
+      orderBys: [
+        {
+          desc: true,
+          dimension: { dimensionName: 'date' },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const rows = response?.data?.rows;
+    if (!rows || rows.length === 0) {
+      console.warn("No data found in the response.");
+      return res.status(200).json({
+        reportType: 'Day-Wise Add to Cart, Checkout, and Session Data',
+        data: [],
+      });
+    }
+
+    // Object to store accumulated data per weekday
+    const weeklyData = {
+      Monday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Tuesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Wednesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+      Thursday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+      Friday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+      Saturday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+      Sunday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+    };
+
+    // Process data and accumulate it based on weekday
+    rows.forEach((row) => {
+      const rawDate = row.dimensionValues[0]?.value; // Format: YYYYMMDD
+      const dateObj = new Date(`${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`);
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+      const sessions = parseInt(row.metricValues[0]?.value) || 0;
+      const addToCarts = parseInt(row.metricValues[1]?.value) || 0;
+      const checkouts = parseInt(row.metricValues[2]?.value) || 0;
+      const purchases = parseInt(row.metricValues[3]?.value) || 0;
+
+      weeklyData[dayName].Sessions += sessions;
+      weeklyData[dayName]['Add To Cart'] += addToCarts;
+      weeklyData[dayName].Checkouts += checkouts;
+      weeklyData[dayName].Purchases += purchases;
+    });
+
+    // Convert aggregated object to array format
+    const aggregatedData = Object.keys(weeklyData).map((day) => {
+      const { Sessions, 'Add To Cart': AddToCarts, Checkouts, Purchases } = weeklyData[day];
+      return {
+        Day: day,
+        Sessions,
+        'Add To Cart': AddToCarts,
+        'Add To Cart Rate': Sessions ? `${((AddToCarts / Sessions) * 100).toFixed(2)}%` : '0%',
+        Checkouts,
+        'Checkout Rate': Sessions ? `${((Checkouts / Sessions) * 100).toFixed(2)}%` : '0%',
+        Purchases,
+        'Purchase Rate': Sessions ? `${((Purchases / Sessions) * 100).toFixed(2)}%` : '0%',
+      };
+    });
+
+    res.status(200).json({
+      reportType: 'Day-Wise Add to Cart, Checkout, and Session Data',
+      data: aggregatedData,
+    });
+  } catch (error) {
+    console.error('Error fetching day-wise Add to Cart and Checkout data:', error.response?.data || error.message);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    }
+    res.status(500).json({ error: 'Failed to fetch day-wise Add to Cart and Checkout data.' });
+  }
+}
+
+
 export async function getLandingPageMetrics(req, res) {
   try {
     const { brandId } = req.params;

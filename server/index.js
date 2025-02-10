@@ -16,7 +16,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
-import {getGoogleAdData} from "./Report/Report.js";
+
 
 
 
@@ -25,7 +25,6 @@ import {getGoogleAdData} from "./Report/Report.js";
 const app = express();
 dotenv.config();
 
-getGoogleAdData('671b6925d3c4f462d681ef47')
 connectDB();
 
 app.use(cors({

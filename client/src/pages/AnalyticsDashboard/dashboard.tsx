@@ -55,6 +55,10 @@ export default function Dashboard() {
     }
   };
 
+  const user = useSelector((state : RootState) => state.user.user);
+
+  const userId = user?.id;
+
 
   const fetchAdData = useCallback(async () => {
     setIsLoading(true);
@@ -89,7 +93,7 @@ export default function Dashboard() {
         try {
           const googleAdResponse = await axios.post(
             `${baseURL}/api/metrics/googleAdAndCampaign/${brandId}`,
-            { startDate, endDate },
+            { startDate, endDate, userId },
             { withCredentials: true }
           );
           googleData = googleAdResponse.data?.data || [];
@@ -114,7 +118,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, date, dataSource, brandId]);
+  }, [navigate, date, dataSource, brandId, userId]);
 
 
 

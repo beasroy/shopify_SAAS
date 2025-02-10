@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -33,38 +33,32 @@ export default function CollapsibleSidebar() {
     const brands = useSelector((state: RootState) => state.brand.brands);
     const user = useSelector((state: RootState) => state.user.user);
     // Fetch brands
-    useEffect(() => {
-        const fetchBrands = async () => {
-            try {
-                if (!user?.brands || user.brands.length === 0) {
-                    console.warn('No brand IDs found in user context.');
-                    return;
-                }
-
-                const response = await axios.post(
-                    `${baseURL}/api/brands/filter`,
-                    { brandIds: user.brands },
-                    { withCredentials: true }
-                );
-
-                const fetchedBrands = response.data;
-                dispatch(setBrands(fetchedBrands)); // Store brands in Redux
-
-                // If no brand is selected, default to the first brand
-                if (!selectedBrandId && fetchedBrands.length > 0) {
-                    dispatch(setSelectedBrandId(fetchedBrands[0]._id));
-                }
-            } catch (error) {
-                console.error('Error fetching brands:', error);
+    const fetchBrands = useCallback(async () => {
+        try {
+            if (!user?.brands || user.brands.length === 0) {
+                console.warn('No brand IDs found in user context.');
+                return;
             }
-        };
-
+    
+            const response = await axios.post(
+                `${baseURL}/api/brands/filter`,
+                { brandIds: user.brands },
+                { withCredentials: true }
+            );
+    
+            dispatch(setBrands(response.data));
+    
+            if (!selectedBrandId && response.data.length > 0) {
+                dispatch(setSelectedBrandId(response.data[0]._id));
+            }
+        } catch (error) {
+            console.error('Error fetching brands:', error);
+        }
+    }, [user?.brands]); // Only depends on user.brands and baseURL
+    
+    useEffect(() => {
         fetchBrands();
-    }, [user?.brands, setBrands, setSelectedBrandId, baseURL, selectedBrandId]);
-
-
-
-
+    }, [fetchBrands]); // Will only run when user.brands changes
 
     const toggleSidebar = () => setIsExpanded(prev => !prev);
 

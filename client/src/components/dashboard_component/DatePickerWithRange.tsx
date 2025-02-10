@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { createSelector } from '@reduxjs/toolkit'
 import { CalendarIcon } from "lucide-react"
-import { addDays, format, subDays, subMonths, subYears } from "date-fns"
+import { addDays, endOfYear, format, startOfYear, subDays, subMonths, subYears } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -57,6 +57,14 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
     const startOfLastWeek = subDays(startOfThisWeek, 7)
     const endOfLastWeek = subDays(startOfThisWeek, 1)
+    const quarter = Math.floor(today.getMonth() / 3); // Get current quarter (0-based)
+    const startOfThisQuarter = new Date(today.getFullYear(), quarter * 3, 1)
+    const endOfThisQuarter = new Date(today.getFullYear(),(quarter + 1)* 3, 0)
+
+    const lastQuarter = Math.floor(today.getMonth() / 3) - 1; // Get last quarter
+    const year = lastQuarter < 0 ? today.getFullYear() - 1 : today.getFullYear(); // Adjust year if needed
+    const startOfLastQuarter = new Date(year, ((lastQuarter + 4) % 4) * 3, 1); // Start of last quarter
+    const endOfLastQuarter = new Date(year, ((lastQuarter + 5) % 4) * 3, 0); // End of last quarter
 
     return {
       today,
@@ -65,7 +73,11 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
       startOfThisMonth,
       endOfThisMonth,
       startOfLastWeek,
-      endOfLastWeek
+      endOfLastWeek,
+      startOfThisQuarter,
+      endOfThisQuarter,
+      startOfLastQuarter,
+      endOfLastQuarter
     }
   }, [])
 
@@ -132,7 +144,11 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.endOfThisMonth) },
     { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
     { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
-    { label: "Last Year", fn: () => setPresetRange(subYears(dates.today, 1), dates.today) },
+    { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter , dates.endOfThisQuarter)},
+    { label: "Last Quarter", fn: () => setPresetRange(dates.startOfLastQuarter , dates.endOfLastQuarter)},
+    { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31))}, 
+    { label: "Last 365 Days" , fn: () => setPresetRange(subDays(dates.today, 365), dates.today) },
+    { label: "Last Year", fn: () => setPresetRange(subYears(startOfYear(new Date()), 1), subYears(endOfYear(new Date()), 1)) }
   ], [dates, setPresetRange])
 
   const handleCalendarSelect = useCallback((range: DateRange | undefined) => {
@@ -193,6 +209,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
               selected={tempDate}
               onSelect={handleCalendarSelect}
               numberOfMonths={2}
+              disabled={(date) =>
+                date > new Date() || date < new Date("1900-01-01")
+              }
             />
           </div>
         </div>

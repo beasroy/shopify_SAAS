@@ -16,6 +16,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
+import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js"
 
 
 
@@ -54,6 +55,8 @@ dataOperationRouter.use("/users",userRoutes);
 
 
 setupCronJobs();
+
+// monthlyCalculateMetricsForAllBrands("2024-01-01", "2025-02-10", "674eac6efa51d4ab3d414d02");
 
 const PORT = process.env.PORT || 5000;
 

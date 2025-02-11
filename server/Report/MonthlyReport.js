@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
+import User from "../models/User.js";
 import Shopify from 'shopify-api-node'
-import moment from "moment";
 import axios from "axios";
 import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
@@ -18,7 +18,9 @@ config();
 
 
 
-export const monthlyFetchTotalSales = async (brandId) => {
+import moment from 'moment';
+
+export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
         console.log('Fetching orders...');
 
@@ -29,7 +31,7 @@ export const monthlyFetchTotalSales = async (brandId) => {
 
         const access_token = brand.shopifyAccount?.shopifyAccessToken;
         if (!access_token) {
-            return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
+            throw new Error('Access token is missing or invalid.');
         }
 
         const shopify = new Shopify({
@@ -37,13 +39,15 @@ export const monthlyFetchTotalSales = async (brandId) => {
             accessToken: access_token,
         });
 
-        const startDate = moment('2024-11-01').startOf('day');
-        const endDate = moment('2024-11-14').endOf('day');
         const dailySales = [];
-        let currentDay = startDate.clone();
-        while (currentDay.isSameOrBefore(endDate)) {
-            const startOfDay = new Date(currentDay.clone().startOf('day')).toISOString();
-            const endOfDay = new Date(currentDay.clone().endOf('day')).toISOString();
+
+        // Ensure `startDate` and `endDate` are Moment.js objects
+        let currentDay = moment(startDate);  // Convert startDate to Moment.js object
+        const endMoment = moment(endDate);   // Convert endDate to Moment.js object
+
+        while (currentDay.isSameOrBefore(endMoment)) {
+            const startOfDay = currentDay.clone().startOf('day').toISOString();
+            const endOfDay = currentDay.clone().endOf('day').toISOString();
 
             console.log(startOfDay, endOfDay);
 
@@ -51,7 +55,7 @@ export const monthlyFetchTotalSales = async (brandId) => {
                 status: 'any',
                 created_at_min: startOfDay,
                 created_at_max: endOfDay,
-                limit: 250, // Fetch 250 orders per request
+                limit: 250,
             };
 
             let hasNextPage = true;
@@ -68,12 +72,12 @@ export const monthlyFetchTotalSales = async (brandId) => {
                 try {
                     const response = await shopify.order.list(queryParams);
                     if (!response || response.length === 0) {
-                        break; // Exit the loop if no orders are found
+                        break;
                     }
 
                     orders = orders.concat(response);
                     pageInfo = response.nextPageParameters?.page_info || null;
-                    hasNextPage = !!pageInfo; // Continue fetching if there are more pages
+                    hasNextPage = !!pageInfo;
                 } catch (error) {
                     console.error('Error while fetching orders:', error);
                     throw new Error(`Error fetching orders: ${error.message}`);
@@ -82,15 +86,17 @@ export const monthlyFetchTotalSales = async (brandId) => {
 
             console.log(`Successfully fetched ${orders.length} orders for ${currentDay.format('YYYY-MM-DD')}`);
 
-            const totalSalesForDay = calculateTotalSales(orders, startOfDay, endOfDay);
+            const { totalSales, refundAmount, shopifySales } = calculateTotalSales(orders, startOfDay, endOfDay);
             dailySales.push({
                 date: currentDay.format('YYYY-MM-DD'),
-                totalSales: totalSalesForDay,
+                totalSales,
+                refundAmount,
+                shopifySales
             });
 
-            currentDay.add(1, 'day'); // Move to the next day
+            currentDay.add(1, 'day');
         }
-        console.log(dailySales); //
+        console.log(dailySales);
 
         return dailySales;
 
@@ -100,239 +106,200 @@ export const monthlyFetchTotalSales = async (brandId) => {
     }
 };
 
+
 function calculateTotalSales(orders, startDate, endDate) {
     let startUTC, endUTC;
-    if (startDate && endDate) {// Parse start and end dates as
+    if (startDate && endDate) {
         startUTC = new Date(startDate).getTime();
         endUTC = new Date(endDate).getTime();
-    } else {
-        const now = new Date(); // Get the current date
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
-        endUTC = now.getTime();// End of the month in milliseconds
     }
 
-    const totalSales = orders.reduce((sum, order) => {
-        const total_price = parseFloat(order.total_price) || 0;
+    let totalRefunds = 0;
+    let grossSales = 0;
 
-        // Calculate total refund amount for the order
-        const refundAmount = order.refunds.reduce((refundSum, refund) => {
-            const refundDateUTC = new Date(refund.created_at).getTime();
+    orders.forEach((order) => {
+        const orderDate = new Date(order.created_at).getTime();
+        if (orderDate >= startUTC && orderDate <= endUTC) {
+            const totalPrice = Number(order.total_price || 0);
+            grossSales += totalPrice;
+            const orderRefunds = order.refunds.reduce((refundSum, refund) => {
+                const refundDateUTC = new Date(refund.created_at).getTime();
 
-            // Check if the refund date falls within the specified date range
-            if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-                const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
-                    return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
-                }, 0);
+                if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
+                    const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
+                        return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
+                    }, 0);
 
-                // Log the refund deduction
-                console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
+                    return refundSum + lineItemRefunds;
+                }
+                return refundSum;
+            }, 0);
 
-                return refundSum + lineItemTotal;
-            }
+            totalRefunds += orderRefunds;
+        }
+    });
 
-            // If the refund date is not in the date range, return the current sum
-            return refundSum;
-        }, 0);
-
-        // Return the net sales for this order
-        return sum + total_price - refundAmount;
-    }, 0);
-
-    return totalSales;
+    return {
+        totalSales: grossSales,
+        refundAmount: totalRefunds,
+        shopifySales: grossSales - totalRefunds
+    };
 }
 
-export const monthlyFetchFBAdReport = async (brandId) => {
-    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-
+export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate) => {
     try {
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
+        // Validate and convert input dates to Moment objects
+        const start = moment(startDate);
+        const end = moment(endDate);
+
+        if (!start.isValid() || !end.isValid()) {
+            throw new Error('Invalid date format provided');
+        }
+
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean(),
+        ]);
+
+        if (!brand || !user) {
             return {
                 success: false,
-                message: 'Brand not found.',
+                message: !brand ? 'Brand not found.' : 'User not found.',
+                data: []
             };
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!adAccountIds?.length) {
             return {
                 success: false,
                 message: 'No Facebook Ads accounts found for this brand.',
-                data: [],
+                data: []
             };
         }
 
-        const startDate = moment('2024-11-01').startOf('day');
-        const endDate = moment('2024-11-14').endOf('day');
+        const accessToken = user.fbAccessToken;
+        if (!accessToken) {
+            return {
+                success: false,
+                message: 'Access token is missing or invalid.',
+                data: []
+            };
+        }
 
-        const batchRequests = [];
         const results = [];
-        const requestDates = []; // Array to store dates for each batch request
+        let currentChunkStart = start.clone();
+        
+        // Process in chunks of 15 days
+        while (currentChunkStart.isSameOrBefore(end)) {
+            const chunkEnd = moment.min(
+                currentChunkStart.clone().add(15, 'days'),
+                end
+            );
 
-        // Iterate through the date range in chunks of 8 days
-        let currentChunkStartDate = startDate.clone();
-        while (currentChunkStartDate.isBefore(endDate)) {
-            const currentChunkEndDate = moment.min(currentChunkStartDate.clone().add(15, 'days'), endDate); // 8-day chunk
+            // Process day by day within the chunk
+            const batchRequests = [];
+            const requestDates = [];
+            let currentDay = currentChunkStart.clone();
 
-            // Iterate day by day within the 8-day chunk
-            let currentDay = currentChunkStartDate.clone();
-            while (currentDay.isSameOrBefore(currentChunkEndDate)) {
-                // Prepare batch requests for each ad account for the current day
-                adAccountIds.forEach((accountId) => {
-                    const requestUrl = `${accountId}/insights?fields=spend,purchase_roas&time_range={"since":"${currentDay.format('YYYY-MM-DD')}","until":"${currentDay.format('YYYY-MM-DD')}"}`;
-                    batchRequests.push({
-                        method: 'GET',
-                        relative_url: requestUrl,
-                    });
-                    requestDates.push({ accountId, date: currentDay.clone() }); // Store the date for each request
-                    // console.log(`Generated request for account ${accountId} on date ${currentDay.format('YYYY-MM-DD')}: ${requestUrl}`);
+            while (currentDay.isSameOrBefore(chunkEnd)) {
+                const formattedDay = currentDay.format('YYYY-MM-DD');
+
+                // Create batch requests for each account
+                adAccountIds.forEach(accountId => {
+                    const requestUrl = `${accountId}/insights?fields=spend,purchase_roas&time_range={"since":"${formattedDay}","until":"${formattedDay}"}`;
+                    batchRequests.push({ method: 'GET', relative_url: requestUrl });
+                    requestDates.push({ accountId, date: currentDay.clone() });
                 });
 
-                // Send the batch request if the limit is reached or if it's the last set of requests
-                if (batchRequests.length >= 50 || currentDay.isSame(currentChunkEndDate)) {
-                    // console.log(`Sending batch request with ${batchRequests.length} requests...`);
-
+                // Process batch if limit reached or last day
+                if (batchRequests.length >= 50 || currentDay.isSame(chunkEnd)) {
                     try {
                         const response = await axios.post(
-                            `https://graph.facebook.com/v21.0/`,
+                            'https://graph.facebook.com/v21.0/',
                             { batch: batchRequests },
                             {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                params: {
-                                    access_token: accessToken,
-                                },
+                                headers: { 'Content-Type': 'application/json' },
+                                params: { access_token: accessToken }
                             }
                         );
 
-                        // console.log('Batch request response:', response.data);
-
-                        // Process the response
-                        response.data.forEach((res, index) => {
+                        // Process responses
+                        response.data?.forEach((res, index) => {
                             const { accountId, date } = requestDates[index];
+                            const formattedDate = date.format('YYYY-MM-DD');
+
                             if (res.code === 200) {
-                                const result = JSON.parse(res.body);
-                                // console.log(`Success response for account ${accountId} on ${date.format('YYYY-MM-DD')}:`, result);
+                                try {
+                                    const result = JSON.parse(res.body);
+                                    const insight = result.data?.[0];
 
-                                if (result.data && result.data.length > 0) {
-                                    const insight = result.data[0];
-                                    const formattedResult = {
-                                        adAccountId: accountId,
-                                        date: date.format('YYYY-MM-DD'),
-                                        spend: insight.spend || '0',
-                                        purchase_roas: (insight.purchase_roas && insight.purchase_roas.length > 0)
-                                            ? insight.purchase_roas.map(roas => ({
+                                    if (insight) {
+                                        results.push({
+                                            adAccountId: accountId,
+                                            date: formattedDate,
+                                            spend: insight.spend || '0',
+                                            purchase_roas: insight.purchase_roas?.map(roas => ({
                                                 action_type: roas.action_type || 'N/A',
-                                                value: roas.value || '0',
-                                            }))
-                                            : [],
-                                    };
-
-                                    results.push(formattedResult);
-                                } else {
+                                                value: roas.value || '0'
+                                            })) || []
+                                        });
+                                    } else {
+                                        results.push({
+                                            adAccountId: accountId,
+                                            date: formattedDate,
+                                            spend: '0',
+                                            purchase_roas: []
+                                        });
+                                    }
+                                } catch (parseError) {
+                                    console.error(`Error parsing response for ${accountId} on ${formattedDate}:`, parseError);
                                     results.push({
                                         adAccountId: accountId,
-                                        date: date.format('YYYY-MM-DD'),
-                                        message: `No data for this date.`,
+                                        date: formattedDate,
+                                        spend: '0',
+                                        purchase_roas: []
                                     });
                                 }
                             } else {
+                                console.error(`Error for account ${accountId} on ${formattedDate}:`, res.body);
                                 results.push({
                                     adAccountId: accountId,
-                                    date: date.format('YYYY-MM-DD'),
-                                    message: `Error fetching data: ${res.body}`,
+                                    date: formattedDate,
+                                    spend: '0',
+                                    purchase_roas: []
                                 });
-                                console.log(`Error for account ${accountId} on ${date.format('YYYY-MM-DD')}: ${res.body}`);
                             }
                         });
-                    } catch (error) {
-                        console.error('Error during batch request:', error);
-                    } finally {
-                        batchRequests.length = 0;
-                        requestDates.length = 0; // Reset requestDates for the next round
-                    }
-                }
-
-                // Move to the next day within the chunk
-                currentDay.add(1, 'days');
-            }
-
-            // Move to the next 8-day chunk
-            currentChunkStartDate = currentChunkEndDate.clone().add(1, 'days');
-        }
-
-        // After the main loop completes, check for any remaining requests that need to be sent
-        if (batchRequests.length > 0) {
-            // console.log(`Sending final batch request with ${batchRequests.length} requests...`);
-
-            try {
-                const response = await axios.post(
-                    `https://graph.facebook.com/v21.0/`,
-                    { batch: batchRequests },
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        params: {
-                            access_token: accessToken,
-                        },
-                    }
-                );
-
-                // console.log('Final batch request response:', response.data);
-
-                // Process the response for the final batch
-                response.data.forEach((res, index) => {
-                    const { accountId, date } = requestDates[index];
-
-                    if (res.code === 200) {
-                        const result = JSON.parse(res.body);
-                        console.log(`Success response for account ${accountId} on ${date.format('YYYY-MM-DD')}:`, result);
-
-                        if (result.data && result.data.length > 0) {
-                            const insight = result.data[0];
-                            const formattedResult = {
-                                adAccountId: accountId,
-                                date: date.format('YYYY-MM-DD'),
-                                spend: insight.spend || '0',
-                                purchase_roas: (insight.purchase_roas && insight.purchase_roas.length > 0)
-                                    ? insight.purchase_roas.map(roas => ({
-                                        action_type: roas.action_type || 'N/A',
-                                        value: roas.value || '0',
-                                    }))
-                                    : [],
-                            };
-
-                            results.push(formattedResult);
-                        } else {
+                    } catch (batchError) {
+                        console.error('Batch request error:', batchError);
+                        // Add empty results for failed batch
+                        requestDates.forEach(({ accountId, date }) => {
                             results.push({
                                 adAccountId: accountId,
                                 date: date.format('YYYY-MM-DD'),
-                                message: `No data for this date.`,
+                                spend: '0',
+                                purchase_roas: []
                             });
-                        }
-                    } else {
-                        results.push({
-                            adAccountId: accountId,
-                            date: date.format('YYYY-MM-DD'),
-                            message: `Error fetching data: ${res.body}`,
                         });
-                        console.log(`Error for account ${accountId} on ${date.format('YYYY-MM-DD')}: ${res.body}`);
                     }
-                });
-            } catch (error) {
-                console.error('Error during final batch request:', error);
+
+                    // Reset batch arrays
+                    batchRequests.length = 0;
+                    requestDates.length = 0;
+                }
+
+                currentDay.add(1, 'days');
             }
+
+            // Move to next chunk
+            currentChunkStart = chunkEnd.clone().add(1, 'days');
         }
 
-        const fbmetrics = {
+        return {
             success: true,
-            data: results,
+            data: results
         };
-        console.log(fbmetrics);
-        return fbmetrics;
 
     } catch (error) {
         console.error('Error fetching Facebook Ad Account data:', error);
@@ -340,18 +307,22 @@ export const monthlyFetchFBAdReport = async (brandId) => {
             success: false,
             message: 'An error occurred while fetching Facebook Ad Account data.',
             error: error.message,
+            data: [] // Always include data property even in error case
         };
     }
 };
 
 
-export const monthlyGoogleAdData = async (brandId) => {
+export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) => {
     try {
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean(),
+        ])
+        if (!brand || !user) {
             return {
                 success: false,
-                message: 'Brand not found.',
+                message: !brand ? 'Brand not found.' : 'User not found.',
             };
         }
 
@@ -364,24 +335,28 @@ export const monthlyGoogleAdData = async (brandId) => {
             };
         }
 
-        const startDate = moment('2024-11-01').startOf('day');
-        const endDate = moment('2024-11-14').endOf('day');
+        const refreshToken = user.googleRefreshToken;
+        if (!refreshToken) {
+            return {
+                success: false,
+                message: 'No refresh token found for this user.',
+                data: [],
+            };
+        }
 
         const customer = client.Customer({
             customer_id: adAccountId,
-            refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+            refresh_token: refreshToken,
             login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
         });
 
         const metricsByDate = [];
 
-        // Iterate over each day in the specified date range
         let currentDate = moment(startDate);
         const end = moment(endDate);
 
         while (currentDate.isSameOrBefore(end)) {
             const formattedDate = currentDate.format('YYYY-MM-DD');
-            // Fetch the ad-level report using the ad_group_ad entity
             const adsReport = await customer.report({
                 entity: "customer",
                 attributes: ["customer.descriptive_name"],
@@ -403,20 +378,14 @@ export const monthlyGoogleAdData = async (brandId) => {
                 totalSpend += spend;
                 totalConversionsValue += row.metrics.conversions_value || 0;
             }
-
-            // Calculate aggregated metrics
             const googleRoas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
             const totalSales = googleRoas * totalSpend || 0;
-
-
             metricsByDate.push({
                 date: formattedDate,
                 googleSpend: totalSpend.toFixed(2),
                 googleRoas: googleRoas.toFixed(2),
                 googleSales: totalSales.toFixed(2),
             });
-
-            // Move to the next day
             currentDate = currentDate.add(1, 'day');
         }
         console.log(metricsByDate)
@@ -434,125 +403,219 @@ export const monthlyGoogleAdData = async (brandId) => {
     }
 };
 
-export const monthlyAddReportData = async (brandId) => {
+
+export const monthlyAddReportData = async (brandId, startDate, endDate, userId) => {
     try {
-        const fbDataResult = await monthlyFetchFBAdReport(brandId);
-        const fbData = fbDataResult.data;
-
-        // Fetch Shopify sales data for all relevant dates at once
-        const shopifySalesData = await monthlyFetchTotalSales(brandId); // this returns an array of { date: 'YYYY-MM-DD', totalSales: number }
-
-        const googleDataResult = await monthlyGoogleAdData(brandId);
-        const googleData = googleDataResult.data;
-
-        // Initialize an object to accumulate metrics by date
-        const metricsByDate = {};
-
-        // Create a map for easy lookup of Shopify sales and Google data by date
-        const shopifySalesMap = {};
-        shopifySalesData.forEach(sale => {
-            shopifySalesMap[sale.date] = sale.totalSales; // Map date to total sales
-        });
-
-        const googleDataMap = {};
-        googleData.forEach(entry => {
-            googleDataMap[entry.date] = {
-                googleSpend: parseFloat(entry.googleSpend) || 0,
-                googleROAS: parseFloat(entry.googleRoas) || 0,
-                googleSales: parseFloat(entry.googleSales) || 0,
-            };
-        });
-
-        // Iterate over the fbData to accumulate metrics
-        fbData.forEach(account => {
-            const date = account.date;
-
-            // Initialize the metrics entry for the date if it doesn't exist
-            if (!metricsByDate[date]) {
-                metricsByDate[date] = {
-                    totalMetaSpend: 0,
-                    totalMetaROAS: 0,
-                    shopifySales: 0, // Initialize shopify sales
-                    googleSpend: 0,
-                    googleROAS: 0,
-                    googleSales: 0,
-                };
-            }
-
-            // Accumulate the data for the current account
-            metricsByDate[date].totalMetaSpend += parseFloat(account.spend) || 0;
-            if (account.purchase_roas && account.purchase_roas.length > 0) {
-                metricsByDate[date].totalMetaROAS += account.purchase_roas.reduce(
-                    (acc, roas) => acc + (parseFloat(roas.value) || 0),
-                    0
-                );
-            }
-
-            // Include Google data for the current date if available
-            if (googleDataMap[date]) {
-                metricsByDate[date].googleSpend = googleDataMap[date].googleSpend;
-                metricsByDate[date].googleROAS = googleDataMap[date].googleROAS;
-                metricsByDate[date].googleSales = googleDataMap[date].googleSales;
-            }
-        });
-
-        // Now iterate over the accumulated metrics to save them
-        for (const date in metricsByDate) {
-            const { totalMetaSpend, totalMetaROAS, googleSpend, googleROAS, googleSales } = metricsByDate[date];
-
-            // Fetch shopify sales for the current date
-            const shopifySales = shopifySalesMap[date] || 0; // Default to 0 if no sales for that date
-
-            // Calculate metrics for the current date
-            const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
-            const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
-            const totalSpend = metaSpend + googleSpend;
-            const metaSales = metaSpend * metaROAS;
-            const totalSales = metaSales + googleSales;
-            const grossROI = totalSpend > 0 ? totalSales / totalSpend : 0;
-            const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
-
-            const dateInIST = new Date(date); // Use the original date
-            dateInIST.setUTCHours(0, 0, 0, 0); // Set to midnight UTC
-
-            // Create a new Metrics document for the current date
-            const metricsEntry = new AdMetrics({
-                brandId,
-                date: dateInIST, // Ensure date is in the correct format
-                metaSpend,
-                metaROAS,
-                googleSpend,
-                googleROAS,
-                googleSales,
-                shopifySales,
-                totalSpend: totalSpend.toFixed(2),
-                grossROI: grossROI.toFixed(2),
-                netROI: netROI.toFixed(2),
-            });
-
-            // Save the document
-            await metricsEntry.save();
-            console.log('Metrics entry saved for date', date, ':', metricsEntry);
+        if (!brandId || !startDate || !endDate || !userId) {
+            throw new Error('Missing required parameters');
         }
 
-        // Return success response with metrics by date
+        const results = [];
+        const currentStart = moment(startDate);
+        const finalEnd = moment(endDate);
+
+        // Validate input dates
+        if (!currentStart.isValid() || !finalEnd.isValid()) {
+            throw new Error('Invalid date format provided');
+        }
+
+        // Process data in chunks of 3 months
+        for (let chunkStart = currentStart.clone(); chunkStart.isBefore(finalEnd); ) {
+            let chunkEnd = moment.min(chunkStart.clone().add(3, 'months'), finalEnd);
+
+            const formattedStart = chunkStart.format('YYYY-MM-DD');
+            const formattedEnd = chunkEnd.format('YYYY-MM-DD');
+
+            console.log(`Processing chunk: ${formattedStart} to ${formattedEnd}`);
+
+            try {
+                // Parallel fetch of all data sources with validation
+                const [fbDataResult, shopifySalesData, googleDataResult] = await Promise.all([
+                    monthlyFetchFBAdReport(brandId, userId, formattedStart, formattedEnd)
+                        .catch(err => {
+                            console.error('Error fetching FB data:', err);
+                            return { data: [] };
+                        }),
+                    monthlyFetchTotalSales(brandId, formattedStart, formattedEnd)
+                        .catch(err => {
+                            console.error('Error fetching Shopify data:', err);
+                            return [];
+                        }),
+                    monthlyGoogleAdData(brandId, userId, formattedStart, formattedEnd)
+                        .catch(err => {
+                            console.error('Error fetching Google data:', err);
+                            return { data: [] };
+                        })
+                ]);
+
+                // Validate response structures
+                const fbData = Array.isArray(fbDataResult?.data) ? fbDataResult.data : [];
+                const shopifyData = Array.isArray(shopifySalesData) ? shopifySalesData : [];
+                const googleData = Array.isArray(googleDataResult?.data) ? googleDataResult.data : [];
+
+                // Create lookup maps
+                const metricsByDate = new Map();
+
+                // Process Shopify data
+                const shopifySalesMap = new Map(
+                    shopifyData.map(sale => [
+                        sale.date,
+                        {
+                            totalSales: parseFloat(sale.totalSales) || 0,
+                            refundAmount: parseFloat(sale.refundAmount) || 0,
+                            shopifySales: parseFloat(sale.shopifySales) || 0
+                        }
+                    ])
+                );
+
+                // Process Google data
+                const googleDataMap = new Map(
+                    googleData.map(entry => [
+                        entry.date,
+                        {
+                            googleSpend: parseFloat(entry.googleSpend) || 0,
+                            googleROAS: parseFloat(entry.googleRoas) || 0,
+                            googleSales: parseFloat(entry.googleSales) || 0
+                        }
+                    ])
+                );
+
+                // Process Facebook data and merge with other sources
+                for (const account of fbData) {
+                    if (!account?.date) continue; // Skip invalid entries
+
+                    const { date, spend, purchase_roas = [] } = account;
+
+                    if (!metricsByDate.has(date)) {
+                        metricsByDate.set(date, {
+                            totalMetaSpend: 0,
+                            totalMetaROAS: 0,
+                            googleSpend: 0,
+                            googleROAS: 0,
+                            googleSales: 0
+                        });
+                    }
+
+                    const metrics = metricsByDate.get(date);
+                    metrics.totalMetaSpend += parseFloat(spend) || 0;
+                    metrics.totalMetaROAS += purchase_roas.reduce(
+                        (acc, roas) => acc + (parseFloat(roas?.value) || 0),
+                        0
+                    );
+
+                    // Merge Google data if available
+                    const googleMetrics = googleDataMap.get(date);
+                    if (googleMetrics) {
+                        metrics.googleSpend = googleMetrics.googleSpend;
+                        metrics.googleROAS = googleMetrics.googleROAS;
+                        metrics.googleSales = googleMetrics.googleSales;
+                    }
+                }
+
+                // Save metrics for each date
+                const savePromises = Array.from(metricsByDate.entries()).map(async ([date, metrics]) => {
+                    try {
+                        const shopifyData = shopifySalesMap.get(date) || getDefaultShopifyData();
+                        const metricsEntry = createMetricsEntry(brandId, date, metrics, shopifyData);
+                        
+                        await metricsEntry.save();
+                        console.log(`Metrics entry saved for date: ${date}`);
+                        return metricsEntry;
+                    } catch (err) {
+                        console.error(`Failed to save metrics for date ${date}:`, err);
+                        return null;
+                    }
+                });
+
+                const savedEntries = await Promise.all(savePromises);
+                const validEntries = savedEntries.filter(entry => entry !== null);
+
+                if (validEntries.length === 0) {
+                    console.warn(`No valid entries saved for chunk ${formattedStart} to ${formattedEnd}`);
+                }
+
+                results.push({
+                    startDate: formattedStart,
+                    endDate: formattedEnd,
+                    metrics: Object.fromEntries(metricsByDate),
+                    savedCount: validEntries.length
+                });
+
+            } catch (chunkError) {
+                console.error(`Error processing chunk ${formattedStart} to ${formattedEnd}:`, chunkError);
+                continue; // Continue with the next chunk instead of failing completely
+            }
+
+            // Move chunkStart forward to next period
+            chunkStart = chunkEnd.clone();
+        }
+
+        if (results.length === 0) {
+            return {
+                success: false,
+                message: 'No data was processed successfully.',
+                data: []
+            };
+        }
+
         return {
             success: true,
-            message: 'Metrics saved successfully.',
-            data: metricsByDate,
+            message: 'Metrics processing completed.',
+            data: results,
+            totalChunks: results.length,
+            totalSavedEntries: results.reduce((acc, chunk) => acc + (chunk.savedCount || 0), 0)
         };
+
     } catch (error) {
         console.error('Error calculating and saving metrics:', error);
         return {
             success: false,
             message: 'An error occurred while calculating and saving metrics.',
-            error: error.message,
+            error: error.message
         };
     }
 };
 
+// Helper functions
+const getDefaultShopifyData = () => ({
+    totalSales: 0,
+    refundAmount: 0,
+    shopifySales: 0
+});
 
-export const monthlyCalculateMetricsForAllBrands = async () => {
+const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
+    const { totalMetaSpend, totalMetaROAS, googleSpend, googleROAS, googleSales } = metrics;
+    const { totalSales, refundAmount, shopifySales } = shopifyData;
+
+    const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
+    const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
+    const totalSpend = metaSpend + googleSpend;
+    const metaSales = metaSpend * metaROAS;
+    const adTotalSales = metaSales + googleSales;
+    
+    const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
+    const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
+
+    return new AdMetrics({
+        brandId,
+        date: new Date(date), // Ensure UTC date
+        metaSpend,
+        metaROAS,
+        googleSpend,
+        googleROAS,
+        googleSales,
+        totalSales,
+        refundAmount,
+        shopifySales,
+        totalSpend: totalSpend.toFixed(2),
+        grossROI: grossROI.toFixed(2),
+        netROI: netROI.toFixed(2)
+    });
+};
+
+
+
+export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, userId) => {
     try {
         const brands = await Brand.find({});
         console.log(`Found ${brands.length} brands for metrics calculation.`);
@@ -562,7 +625,7 @@ export const monthlyCalculateMetricsForAllBrands = async () => {
             console.log(`Starting metrics processing for brand: ${brandIdString}`);
 
             try {
-                const result = await monthlyAddReportData(brandIdString);
+                const result = await monthlyAddReportData(brandIdString , startDate , endDate, userId);
                 if (result.success) {
                     console.log(`Metrics successfully saved for brand ${brandIdString}`);
                 } else {

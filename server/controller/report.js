@@ -37,17 +37,21 @@ export const getMetricsbyID = async (req, res) => {
                         month: { $month: "$date" },
                         year: { $year: "$date" }
                     },
+                    totalSales: { $sum : "$totalSales" },
+                    refundAmount: { $sum : "$refundAmount" },
+                    shopifySales: { $sum: "$shopifySales" },
                     metaSpend: { $sum: "$metaSpend" },
                     googleSpend: { $sum: "$googleSpend" },
                     totalSpend: { $sum: "$totalSpend" },
-                    shopifySales: { $sum: "$shopifySales" },
                     dailyMetrics: {
                         $push: {
                             date: "$date",
+                            totalSales: "$totalSales",
+                            refundAmount: "$refundAmount",
+                            shopifySales: "$shopifySales",
                             metaSpend: "$metaSpend",
                             googleSpend: "$googleSpend",
                             totalSpend: "$totalSpend",
-                            shopifySales: "$shopifySales",
                             metaROAS: "$metaROAS",
                             googleROAS: "$googleROAS",
                             grossROI: "$grossROI",
@@ -60,10 +64,12 @@ export const getMetricsbyID = async (req, res) => {
                 $project: {
                     month: "$_id.month",
                     year: "$_id.year",
+                    totalSales: 1,
+                    refundAmount: 1,
+                    shopifySales: 1,
                     metaSpend: 1,
                     googleSpend: 1,
                     totalSpend: 1,
-                    shopifySales: 1,
                     dailyMetrics: {
                         $sortArray: {
                             input: "$dailyMetrics",

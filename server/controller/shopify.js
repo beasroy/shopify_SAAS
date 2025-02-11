@@ -262,14 +262,12 @@ function calculateTotalSales(orders, startDate, endDate) {
   // Initialize tracking variables with precise decimal handling
 
   let totalRefunds = 0;
-  let totalDiscounts = 0;
   let grossSales = 0;
-  let totalTaxes = 0;
+
 
   // Detailed order processing
   orders.forEach((order) => {
     const orderDate = new Date(order.created_at).getTime();
-    const orderId = order.id;
 
     const orderSummaries = [];
     
@@ -277,19 +275,12 @@ function calculateTotalSales(orders, startDate, endDate) {
     // Only process orders within the specified date range
     if (orderDate >= startUTC && orderDate <= endUTC) {
       // Precise decimal parsing with fallback
-      const totalPrice = Number(order.subtotal_price || 0);
-      const totalDiscount = Number(order.total_discounts || 0);
-      const totalTax = Number(order.total_tax || 0);
+      const totalPrice = Number(order.total_price || 0);
 
 
       // Gross sales calculation
       grossSales += totalPrice;
-      
-      // Discount tracking
-      totalDiscounts += totalDiscount;
-      
-      // Tax tracking
-      totalTaxes += totalTax;
+
 
       // Refund calculation with detailed tracking
       const orderRefunds = order.refunds.reduce((refundSum, refund) => {
@@ -309,11 +300,9 @@ function calculateTotalSales(orders, startDate, endDate) {
       const orderSummary = {
         orderId: order.id,
         orderDate: new Date(order.created_at).toLocaleString(),
-        subtotal: totalPrice,
-        discounts: totalDiscount,
-        taxes: totalTax,
+        total: totalPrice,
         refunds: orderRefunds,
-        netSales: totalPrice - totalDiscount - orderRefunds
+        shopifySales: totalPrice - orderRefunds
       };
 
       orderSummaries.push(orderSummary)
@@ -326,26 +315,19 @@ function calculateTotalSales(orders, startDate, endDate) {
   });
 
   // Net sales calculation
-  const netSales = grossSales - totalRefunds - totalDiscounts;
-  const shopifySales = netSales + totalTaxes;
-
-  const totalSales = grossSales - totalDiscounts + totalTaxes;
+  const shopifySales = grossSales - totalRefunds 
+  const totalSales = grossSales;
+  const refundAmount = totalRefunds;
   // Detailed logging for debugging
   console.log('Sales Calculation Breakdown:', {
     shopifySales: shopifySales.toFixed(2),
-    totalRefunds: totalRefunds.toFixed(2),
-    totalDiscounts: totalDiscounts.toFixed(2),
-    totalTaxes: totalTaxes.toFixed(2),
-    netSales: netSales.toFixed(2),
+    refundAmount: refundAmount.toFixed(2),
     totalSales: (totalSales.toFixed(2))
   });
 
   return {
-    grossSales: Number(grossSales.toFixed(2)),
-    totalRefunds: Number(totalRefunds.toFixed(2)),
-    totalDiscounts: Number(totalDiscounts.toFixed(2)),
-    netSales: Number(netSales.toFixed(2)),
-    totalTaxes: Number(totalTaxes.toFixed(2)),
+    shopifySales: Number(shopifySales.toFixed(2)),
+    refundAmount: Number(refundAmount.toFixed(2)),
     totalSales: Number(totalSales.toFixed(2))
   };
 }

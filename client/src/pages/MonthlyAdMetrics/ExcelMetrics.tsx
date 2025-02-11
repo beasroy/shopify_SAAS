@@ -3,7 +3,7 @@ import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
-import { CalendarRange, ChevronDown } from "lucide-react"
+import { CalendarRange, ChevronDown, Maximize, Minimize } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,6 +12,8 @@ import { FacebookLogo, GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsM
 import { useSelector } from "react-redux"
 import type { RootState } from "@/store"
 import Header from "@/components/dashboard_component/Header"
+import { Button } from "@/components/ui/button"
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 
 interface DailyMetric {
     _id: string
@@ -90,6 +92,7 @@ export const ExcelMetricsPage: React.FC<any> = () => {
     const [metricsData, setMetricsData] = useState<MonthlyAggregate[]>([])
     const [loading, setLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
+    const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const dateFrom = useSelector((state: RootState) => state.date.from)
     const dateTo = useSelector((state: RootState) => state.date.to)
     const date = useMemo(
@@ -106,6 +109,15 @@ export const ExcelMetricsPage: React.FC<any> = () => {
     const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
 
     const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
+    const toggleFullScreen = () => {
+        setIsFullScreen(!isFullScreen);
+    };
+    const getTableHeight = () => {
+        if (isFullScreen) {
+            return 'max-h-[calc(100vh-80px)]';
+        }
+        return 'max-h-[calc(100vh-200px)]';
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -147,18 +159,21 @@ export const ExcelMetricsPage: React.FC<any> = () => {
         return `${value.toFixed(2)}`
     }
     const processedData = useMemo(() => {
+
         return metricsData.map((monthData: MonthlyAggregate) => {
+            const safeDivide = (numerator: number, denominator: number) => (denominator ? numerator / denominator : 0)
             const processedDailyMetrics = monthData.dailyMetrics.map((daily) => ({
                 ...daily,
                 metaSales: daily.metaSpend * (daily.metaROAS || 0),
                 googleSales: daily.googleSpend * (daily.googleROAS || 0),
+                ROI: safeDivide(daily.totalSales, daily.totalSpend)
             }))
 
             const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.metaSales, 0)
             const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0)
             const totalAdSales = metaSales + googleSales
 
-            const safeDivide = (numerator: number, denominator: number) => (denominator ? numerator / denominator : 0)
+
 
             return {
                 ...monthData,
@@ -169,6 +184,7 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                 googleROAS: safeDivide(googleSales, monthData.googleSpend),
                 grossROI: safeDivide(totalAdSales, monthData.totalSpend),
                 netROI: safeDivide(monthData.shopifySales, monthData.totalSpend),
+                ROI: safeDivide(monthData.totalSales, monthData.totalSpend),
                 dailyMetrics: processedDailyMetrics,
             }
         })
@@ -180,16 +196,31 @@ export const ExcelMetricsPage: React.FC<any> = () => {
             <div className="flex-1 h-screen overflow-hidden bg-gray-100">
                 <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
 
-                <Card className="m-6 ">
+                <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : 'm-6'}`}>
                     <CardContent>
-                        <div className="flex flex-row items-center my-4 gap-4">
-                            <h2 className="text-lg font-semibold text-gray-900 ">
-                                Key Performance Metrics by Month with Daily Drill-Down
-                            </h2>
-                            <div className="flex flex-row gap-2">
-                                <FacebookLogo width={20} height={20} />
-                                <GoogleLogo width={20} height={20} />
-                                <ShopifyLogo width={20} height={20} />
+                        <div className="flex flex-row items-center justify-between mb-3">
+                            <div className="flex flex-row items-center gap-4">
+                                <h2 className="text-lg font-semibold text-gray-900 ">
+                                    Key Performance Metrics by Month with Daily Drill-Down
+                                </h2>
+                                <div className="flex flex-row gap-2">
+                                    <FacebookLogo width={20} height={20} />
+                                    <GoogleLogo width={20} height={20} />
+                                    <ShopifyLogo width={20} height={20} />
+                                </div>
+                            </div>
+                            <div className="flex flex-row items-center gap-3">
+                                {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                    <DatePickerWithRange
+                                        defaultDate={{
+                                            from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                            to: new Date()
+                                        }}
+                                    />
+                                </div>}
+                                <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                                    {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                                </Button>
                             </div>
                         </div>
 
@@ -201,13 +232,12 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                             <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200">{error}</div>
                         ) : (
                             <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
-                                <div className="h-[calc(100vh-200px)] overflow-auto">
-                                    <table className="w-full border-collapse">
+                                <div className={`${getTableHeight()}  overflow-auto`}>
+                                    <table className={`w-full border-collapse`}>
                                         <thead className="sticky top-0 z-20 text-sm">
                                             <tr>
                                                 <th className="w-3 bg-gradient-to-r from-gray-50 to-gray-100 border-r border-gray-200 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-500/20" rowSpan={2} />
                                                 <TooltipHeader title="Date" tooltip="Date" rowSpan={2} />
-                                                <TooltipHeader title="Shopify" tooltip="Shopify Metrics" colSpan={3} />
                                                 <TooltipHeader title="Meta" tooltip="Meta Metrics" colSpan={3} />
                                                 <TooltipHeader title="Google" tooltip="Google Metrics" colSpan={3} />
                                                 <TooltipHeader
@@ -220,23 +250,25 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                     tooltip="Gross ROI = (MetaSales + GoogleSales)/ Total Spent"
                                                     rowSpan={2}
                                                 />
-
-                                                <TooltipHeader title="Net ROI" tooltip="Net ROI = Shopify Sales / Total Spend" rowSpan={2} />
+                                                <TooltipHeader title="Shopify" tooltip="Shopify Metrics" colSpan={5} />
                                             </tr>
                                             <tr>
-                                                <TooltipHeader title="Total Sales" tooltip="Sales for the day" isSubHeader />
-                                                <TooltipHeader title="Refund Amount" tooltip="Refund Amount" isSubHeader />
-                                                <TooltipHeader
-                                                    title="Shopify Sales"
-                                                    tooltip="Meta Sales = Meta Spent * Meta ROAS"
-                                                    isSubHeader
-                                                />
+
                                                 <TooltipHeader title="Spent" tooltip="Meta Spent" isSubHeader />
                                                 <TooltipHeader title="Sales" tooltip="Meta Sales = Meta Spent * Meta ROAS" isSubHeader />
                                                 <TooltipHeader title="ROAS" tooltip="Meta ROAS" isSubHeader />
                                                 <TooltipHeader title="Spent" tooltip="Google Spent" isSubHeader />
                                                 <TooltipHeader title="Sales" tooltip="Google Sales = Google Spent * Google ROAS" isSubHeader />
                                                 <TooltipHeader title="ROAS" tooltip="Google ROAS" isSubHeader />
+                                                <TooltipHeader title="Total Sales" tooltip="Sales for the day" isSubHeader />
+                                                <TooltipHeader title="ROI" tooltip="Total Sales / Total Spend" isSubHeader />
+                                                <TooltipHeader title="Returns" tooltip="Returns" isSubHeader />
+                                                <TooltipHeader
+                                                    title="Shopify Sales"
+                                                    tooltip="Shopify Sales = Total Sales - Returns"
+                                                    isSubHeader
+                                                />
+                                                <TooltipHeader title="Net ROI" tooltip="Net ROI = Shopify Sales / Total Spend" isSubHeader />
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -265,17 +297,9 @@ export const ExcelMetricsPage: React.FC<any> = () => {
 
                                                             </td>
                                                             <td className="px-4 py-3 text-left font-medium whitespace-nowrap">
-                                                                {format(new Date(monthData.year, monthData.month - 1), "MMMM yyyy")}
+                                                                {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
                                                             </td>
-                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
-                                                                {formatCurrency(monthData.totalSales)}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
-                                                                {formatCurrency(monthData.refundAmount)}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
-                                                                {formatCurrency(monthData.shopifySales)}
-                                                            </td>
+
                                                             <td className="px-4 py-3 text-right font-medium text-gray-700">
                                                                 {formatCurrency(monthData.metaSpend)}
                                                             </td>
@@ -301,6 +325,18 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                                 {formatPercentage(monthData.grossROI)}
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                                                {formatCurrency(monthData.totalSales)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                                                {formatPercentage(monthData.ROI)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                                                {formatCurrency(monthData.refundAmount)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                                                {formatCurrency(monthData.shopifySales)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-medium text-gray-700">
                                                                 {formatPercentage(monthData.netROI)}
                                                             </td>
                                                         </tr>
@@ -314,15 +350,7 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                                     <td className="px-4 py-1.5 text-xs text-left text-gray-600">
                                                                         {format(new Date(daily.date), "dd/MM/yyyy")}
                                                                     </td>
-                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
-                                                                        {formatCurrency(daily.totalSales)}
-                                                                    </td>
-                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
-                                                                        {formatCurrency(daily.refundAmount)}
-                                                                    </td>
-                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
-                                                                        {formatCurrency(daily.shopifySales)}
-                                                                    </td>
+
                                                                     <td className="px-4 py-1.5 text-xs text-right text-gray-700">
                                                                         {formatCurrency(daily.metaSpend)}
                                                                     </td>
@@ -346,6 +374,18 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                                                     </td>
                                                                     <td className="px-4 py-1.5 text-xs text-right  text-gray-700">
                                                                         {formatPercentage(daily.grossROI)}
+                                                                    </td>
+                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
+                                                                        {formatCurrency(daily.totalSales)}
+                                                                    </td>
+                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
+                                                                        {formatPercentage(daily.ROI)}
+                                                                    </td>
+                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
+                                                                        {formatCurrency(daily.refundAmount)}
+                                                                    </td>
+                                                                    <td className="px-4 py-1.5 text-xs text-right text-gray-700">
+                                                                        {formatCurrency(daily.shopifySales)}
                                                                     </td>
                                                                     <td className="px-4 py-1.5 text-xs text-right text-gray-700">
                                                                         {formatPercentage(daily.netROI)}

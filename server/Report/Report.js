@@ -6,10 +6,12 @@ import axios from "axios";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
+import User from "../models/User.js";
+import mongoose from "mongoose";
 
 
 config();
- 
+
 
 export const fetchTotalSales = async (brandId) => {
   try {
@@ -37,11 +39,11 @@ export const fetchTotalSales = async (brandId) => {
     // Calculate the start and end of yesterday in IST, converted to UTC
     const startOfYesterday = new Date(yesterdayIST.clone().startOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
     const endOfYesterday = new Date(yesterdayIST.clone().endOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
-    
+
     console.log(startOfYesterday); // Expected output: 2024-10-29T18:30:00.000Z
     console.log(endOfYesterday);   // Expected output: 2024-10-30T18:29:59.999Z
 
-
+    const dailySales = [];
 
     const queryParams = {
       status: 'any',
@@ -78,67 +80,14 @@ export const fetchTotalSales = async (brandId) => {
     }
 
     console.log(`Successfully fetched a total of ${orders.length} orders`);
-
-    const totalSales = calculateTotalSales(orders, startOfYesterday, endOfYesterday);
-    return totalSales; // Return only the total sales
-
-
-    // const startDate = moment('2024-11-01').startOf('day');
-    // const endDate = moment('2024-11-29').endOf('day');
-    // const dailySales = [];
-    // let currentDay = startDate.clone();
-    // while (currentDay.isSameOrBefore(endDate)) {
-    //   const startOfDay = new Date(currentDay.clone().startOf('day')).toISOString();
-    //   const endOfDay = new Date(currentDay.clone().endOf('day')).toISOString();
-
-    //   // console.log(startOfDay, endOfDay);
-
-    //   const queryParams = {
-    //     status: 'any',
-    //     created_at_min: startOfDay,
-    //     created_at_max: endOfDay,
-    //     limit: 250, // Fetch 250 orders per request
-    //   };
-
-    //   let hasNextPage = true;
-    //   let pageInfo;
-    //   let orders = [];
-
-    //   while (hasNextPage) {
-    //     if (pageInfo) {
-    //       queryParams.page_info = pageInfo;
-    //     } else {
-    //       delete queryParams.page_info;
-    //     }
-
-    //     try {
-    //       const response = await shopify.order.list(queryParams);
-    //       if (!response || response.length === 0) {
-    //         break; // Exit the loop if no orders are found
-    //       }
-
-    //       orders = orders.concat(response);
-    //       pageInfo = response.nextPageParameters?.page_info || null;
-    //       hasNextPage = !!pageInfo; // Continue fetching if there are more pages
-    //     } catch (error) {
-    //       console.error('Error while fetching orders:', error);
-    //       throw new Error(`Error fetching orders: ${error.message}`);
-    //     }
-    //   }
-
-    //   // console.log(`Successfully fetched ${orders.length} orders for ${currentDay.format('YYYY-MM-DD')}`);
-
-    //   const totalSalesForDay = calculateTotalSales(orders, startOfDay, endOfDay);
-    //   dailySales.push({
-    //     date: currentDay.format('YYYY-MM-DD'),
-    //     totalSales: totalSalesForDay,
-    //   });
-
-    //   currentDay.add(1, 'day'); // Move to the next day
-    // }
-    // console.log(dailySales); //
-
-    // return dailySales;
+    const { totalSales, refundAmount, shopifySales } = calculateTotalSales(orders, startOfYesterday, endOfYesterday);
+    dailySales.push({
+        totalSales,
+        refundAmount,
+        shopifySales
+    });
+    console.log(dailySales);
+    return dailySales; 
 
   } catch (error) {
     console.error('Error in fetchTotalSales:', error);
@@ -148,58 +97,64 @@ export const fetchTotalSales = async (brandId) => {
 
 function calculateTotalSales(orders, startDate, endDate) {
   let startUTC, endUTC;
-  if (startDate && endDate) {// Parse start and end dates as
-    startUTC = new Date(startDate).getTime();
-    endUTC = new Date(endDate).getTime();
-  } else {
-    const now = new Date(); // Get the current date
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    startUTC = firstDayOfMonth.getTime(); // Start of the month in milliseconds
-    endUTC = now.getTime();// End of the month in milliseconds
+  if (startDate && endDate) {
+      startUTC = new Date(startDate).getTime();
+      endUTC = new Date(endDate).getTime();
   }
 
-  const totalSales = orders.reduce((sum, order) => {
-    const total_price = parseFloat(order.total_price) || 0;
+  let totalRefunds = 0;
+  let grossSales = 0;
 
-    // Calculate total refund amount for the order
-    const refundAmount = order.refunds.reduce((refundSum, refund) => {
-      const refundDateUTC = new Date(refund.created_at).getTime();
+  orders.forEach((order) => {
+      const orderDate = new Date(order.created_at).getTime();
+      if (orderDate >= startUTC && orderDate <= endUTC) {
+          const totalPrice = Number(order.total_price || 0);
+          grossSales += totalPrice;
+          const orderRefunds = order.refunds.reduce((refundSum, refund) => {
+              const refundDateUTC = new Date(refund.created_at).getTime();
 
-      // Check if the refund date falls within the specified date range
-      if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-        const lineItemTotal = refund.refund_line_items.reduce((lineSum, lineItem) => {
-          return lineSum + parseFloat(lineItem.subtotal_set.shop_money.amount || 0);
-        }, 0);
+              if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
+                  const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
+                      return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
+                  }, 0);
 
-        // Log the refund deduction
-        console.log(`Refund of ${lineItemTotal} deducted for order ID: ${order.id} due to refund created on: ${refund.created_at}`);
+                  return refundSum + lineItemRefunds;
+              }
+              return refundSum;
+          }, 0);
 
-        return refundSum + lineItemTotal;
+          totalRefunds += orderRefunds;
       }
+  });
 
-      // If the refund date is not in the date range, return the current sum
-      return refundSum;
-    }, 0);
-
-    // Return the net sales for this order
-    return sum + total_price - refundAmount;
-  }, 0);
-
-  return totalSales;
+  return {
+      totalSales: grossSales,
+      refundAmount: totalRefunds,
+      shopifySales: grossSales - totalRefunds
+  };
 }
 
-export const fetchFBAdReport = async (brandId) => {
-  const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-
+export const fetchFBAdReport = async (brandId, userId) => {
   try {
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean(),
+    ])
+    if (!brand || !user) {
       return {
         success: false,
-        message: 'Brand not found.',
+        message: !brand ? 'Brand not found.' : 'User not found.',
       };
     }
 
+    const accessToken = user.fbAccessToken;
+    if (!accessToken) {
+      return {
+        success: false,
+        message: 'No Facebook accesstoken found for this User.',
+        data: [],
+      };
+    }
     const adAccountIds = brand.fbAdAccounts;
     if (!adAccountIds || adAccountIds.length === 0) {
       return {
@@ -285,15 +240,17 @@ const client = new GoogleAdsApi({
   client_id: process.env.GOOGLE_CLIENT_ID,
   client_secret: process.env.GOOGLE_CLIENT_SECRET,
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-  refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
-export const getGoogleAdData = async (brandId) => {
+export const getGoogleAdData = async (brandId, userId) => {
   try {
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean()
+    ])
+    if (!brand || !user) {
       return {
         success: false,
-        message: 'Brand not found.',
+        message: !brand ? 'Brand not found.' : 'User not found.',
       };
     }
 
@@ -306,12 +263,21 @@ export const getGoogleAdData = async (brandId) => {
       };
     }
 
+    const refreshToken = user.googleRefreshToken;
+    if (!refreshToken) {
+      return {
+        success: false,
+        message: 'No Google refreshtoken found for this User.',
+        data: [],
+      };
+    }
+
     const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
     const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
 
     const customer = client.Customer({
       customer_id: adAccountId,
-      refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
+      refresh_token: refreshToken,
       login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
     });
 
@@ -347,7 +313,7 @@ export const getGoogleAdData = async (brandId) => {
       googleRoas,
       googleSales: totalSales.toFixed(2),
     }
- 
+
     console.log('Google Ad Data:', result, startDate, endDate);
     return {
       success: true,
@@ -363,15 +329,12 @@ export const getGoogleAdData = async (brandId) => {
 };
 
 
-export const addReportData = async (brandId) => {
+export const addReportData = async (brandId, userId) => {
   try {
-
-    const fbDataResult = await fetchFBAdReport(brandId);
-
+    const fbDataResult = await fetchFBAdReport(brandId, userId);
     const fbData = fbDataResult.data;
 
-    const googleDataResult = await getGoogleAdData(brandId);
-
+    const googleDataResult = await getGoogleAdData(brandId, userId);
     const googleData = googleDataResult.data;
 
     // Initialize totals
@@ -386,13 +349,19 @@ export const addReportData = async (brandId) => {
           : 0;
       });
     } else {
-      // If no ad accounts, set values to zero
       totalMetaSpend = 0;
       totalMetaROAS = 0;
     }
-    // Fetch Shopify sales data
-    const shopifySales = await fetchTotalSales(brandId);
 
+    // Fetch Shopify sales data
+    const salesData = await fetchTotalSales(brandId);
+    
+    if (!salesData || salesData.length === 0) {
+      throw new Error('No sales data returned from fetchTotalSales');
+    }
+
+    // Destructure the sales data - using direct array access since we expect one day of data
+    const { totalSales, refundAmount, shopifySales } = salesData[0];
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
@@ -402,11 +371,10 @@ export const addReportData = async (brandId) => {
     const totalSpend = metaSpend + googleSpend;
     const metaSales = metaSpend * metaROAS;
     const googleSales = parseFloat(googleData.googleSales);
-    const totalSales = metaSales + googleSales;
-    const grossROI = totalSpend > 0 ? totalSales / totalSpend : 0;
+    const adSales = metaSales + googleSales; // Total sales from ads
+    const grossROI = totalSpend > 0 ? adSales / totalSpend : 0;
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
-    // Create a new Metrics document
     const metricsEntry = new AdMetrics({
       brandId,
       date: moment().subtract(1, "days").toDate(),
@@ -414,6 +382,8 @@ export const addReportData = async (brandId) => {
       metaROAS,
       googleSpend,
       googleROAS,
+      totalSales,
+      refundAmount,
       shopifySales,
       totalSpend: totalSpend.toFixed(2),
       grossROI: grossROI.toFixed(2),
@@ -424,22 +394,7 @@ export const addReportData = async (brandId) => {
     await metricsEntry.save();
 
     console.log('Metrics entry saved:', metricsEntry);
-
-    // console.log({
-    //   brandId,
-    //   date: moment().subtract(1, "days").toDate(),
-    //   metaSpend,
-    //   metaROAS,
-    //   googleSpend,
-    //   googleROAS,
-    //   googleSales,
-    //   shopifySales,
-    //   totalSpend: totalSpend.toFixed(2),
-    //   grossROI: grossROI.toFixed(2),
-    //   netROI: netROI.toFixed(2),
-    // });
-
-    // Return success response
+  
     return {
       success: true,
       message: 'Metrics saved successfully.',
@@ -457,7 +412,6 @@ export const addReportData = async (brandId) => {
 
 
 
-
 export const calculateMetricsForAllBrands = async () => {
   try {
     const brands = await Brand.find({});
@@ -465,29 +419,93 @@ export const calculateMetricsForAllBrands = async () => {
 
     const metricsPromises = brands.map(async (brand) => {
       const brandIdString = brand._id.toString();
-      logger.info(`Starting metrics processing for brand: ${brandIdString}`);
+      logger.info(`\n=== Processing brand: ${brandIdString} ===`);
       
       try {
-        const result = await addReportData(brandIdString);
-        if (result.success) {
-          logger.info(`Metrics successfully saved for brand ${brandIdString}`);
-        } else {
-          logger.error(`Failed to save metrics for brand ${brandIdString}: ${result.message}`);
+        // Debug: Log the exact query we're about to make
+        logger.info('Searching for user with brand ID (string):', brandIdString);
+        // Get all users and manually check brands
+        const allUsers = await User.find({});
+        logger.info('Total users in database:', allUsers.length);
+        
+        const usersWithBrand = allUsers.filter(user => 
+          user.brands && user.brands.includes(brandIdString)
+        );
+        logger.info('Users with matching brand (manual check):', usersWithBrand.length);
+        
+        if (usersWithBrand.length > 0) {
+          logger.info('Found matching users brands arrays:');
+          usersWithBrand.forEach(user => {
+            logger.info(`User ${user._id}: ${JSON.stringify(user.brands)}`);
+          });
         }
-      } catch (error) {
-        logger.error(`Error in addReportData for brand ${brandIdString}: ${error.message}`);
-      }
 
-      logger.info(`Completed metrics processing for brand: ${brandIdString}`);
+        // Use the first matching user if found
+        const userWithAccess =  usersWithBrand[0];
+
+        if (!userWithAccess) {
+          logger.warn(`No user found for brand ${brandIdString}`);
+          return {
+            brandId: brandIdString,
+            status: 'failed',
+            error: 'No user with access found'
+          };
+        }
+
+        const userId = userWithAccess._id.toString();
+        logger.info(`Successfully found user ${userId} for brand ${brandIdString}`);
+
+        const result = await addReportData(brandIdString, userId);
+        
+        logger.info(`Completed metrics processing for brand: ${brandIdString}`);
+        
+        return {
+          brandId: brandIdString,
+          status: result.success ? 'success' : 'failed',
+          ...(result.success ? { userId } : { error: result.message, userId }),
+        };
+
+      } catch (error) {
+        logger.error(`Error processing brand ${brandIdString}: ${error.message}`);
+        logger.error('Full error:', error);
+        return {
+          brandId: brandIdString,
+          status: 'error',
+          error: error.message
+        };
+      }
     });
 
     const settledResults = await Promise.allSettled(metricsPromises);
-    logger.info("All brand metrics promises settled:", settledResults);
-    logger.info("Completed metrics calculation for all brands.");
+    
+    const summary = settledResults.reduce((acc, result) => {
+      if (result.status === 'fulfilled') {
+        const value = result.value;
+        acc[value.status] = (acc[value.status] || 0) + 1;
+      } else {
+        acc.rejected = (acc.rejected || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    logger.info("Metrics calculation summary:", summary);
+
+    return {
+      success: true,
+      summary,
+      details: settledResults
+    };
+
   } catch (error) {
     logger.error('Error processing metrics for all brands:', error);
+    logger.error('Full error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 };
+
 
 
 

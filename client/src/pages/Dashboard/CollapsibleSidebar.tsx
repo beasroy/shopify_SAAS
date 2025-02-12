@@ -99,7 +99,23 @@ export default function CollapsibleSidebar() {
                 }
             ]
         },
-        { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}`,icon: <FaMeta size={18} />},
+        {
+            name: "Meta Insights", path: `/#`, icon: <FaMeta size={20} />,
+            subItems: [
+                {
+                    name: "Adaccount Summary",
+                    path: `/adaccount-summary/${selectedBrandId}`
+                },
+                {
+                    name: "Meta Campaigns",
+                    path: `/meta-campaigns/${selectedBrandId}`
+                },
+                {
+                    name: "Meta Reports",
+                    path: `/meta-reports/${selectedBrandId}`
+                }
+            ]
+        },
         { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },  
         { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
     ];

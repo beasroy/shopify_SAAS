@@ -66,8 +66,8 @@ function TooltipHeader({
         <th
             className={`
         ${isSubHeader ? 'text-xs font-medium' : 'font-semibold text-sm'}
-        text-center whitespace-nowrap border-b border-r border-gray-200 p-2
-        ${isSubHeader ? 'bg-gradient-to-b from-gray-50 to-gray-100' : 'bg-gradient-to-r from-gray-50 to-gray-100'}
+        text-center whitespace-nowrap border-r border-gray-400 p-2
+        ${isSubHeader ? 'bg-gradient-to-b from-gray-100 to-gray-200' : 'bg-gradient-to-r from-gray-100 to-gray-200'}
         relative overflow-hidden
         ${!isSubHeader ? 'after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-500/20' : ''}
       `}
@@ -236,7 +236,7 @@ export const ExcelMetricsPage: React.FC<any> = () => {
                                     <table className={`w-full border-collapse`}>
                                         <thead className="sticky top-0 z-20 text-sm">
                                             <tr>
-                                                <th className="w-3 bg-gradient-to-r from-gray-50 to-gray-100 border-r border-gray-200 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-500/20" rowSpan={2} />
+                                                <th className="w-3 bg-gradient-to-r from-gray-100 to-gray-200 border-r border-gray-400 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-500/20" rowSpan={2} />
                                                 <TooltipHeader title="Date" tooltip="Date" rowSpan={2} />
                                                 <TooltipHeader title="Meta" tooltip="Meta Metrics" colSpan={3} />
                                                 <TooltipHeader title="Google" tooltip="Google Metrics" colSpan={3} />

@@ -440,10 +440,7 @@ export const calculateMetricsForAllBrands = async () => {
           });
         }
 
-        // Use the first matching user if found
-        const userWithAccess =  usersWithBrand[0];
-
-        if (!userWithAccess) {
+        if (usersWithBrand.length === 0) {
           logger.warn(`No user found for brand ${brandIdString}`);
           return {
             brandId: brandIdString,
@@ -452,17 +449,42 @@ export const calculateMetricsForAllBrands = async () => {
           };
         }
 
-        const userId = userWithAccess._id.toString();
-        logger.info(`Successfully found user ${userId} for brand ${brandIdString}`);
+        // Try each user until one succeeds
+        let lastError = null;
+        for (const userWithAccess of usersWithBrand) {
+          try {
+            const userId = userWithAccess._id.toString();
+            logger.info(`Attempting with user ${userId} for brand ${brandIdString}`);
 
-        const result = await addReportData(brandIdString, userId);
-        
-        logger.info(`Completed metrics processing for brand: ${brandIdString}`);
-        
+            const result = await addReportData(brandIdString, userId);
+            
+            if (result.success) {
+              logger.info(`Successfully processed brand ${brandIdString} with user ${userId}`);
+              return {
+                brandId: brandIdString,
+                status: 'success',
+                userId
+              };
+            }
+
+            // If this user failed, store error and continue to next user
+            lastError = result.message;
+            logger.warn(`Failed with user ${userId}, trying next user if available. Error: ${result.message}`);
+
+          } catch (error) {
+            lastError = error.message;
+            logger.warn(`Error with user ${userWithAccess._id}: ${error.message}`);
+            continue;
+          }
+        }
+
+        // If we get here, all users failed
+        logger.error(`All users failed for brand ${brandIdString}. Last error: ${lastError}`);
         return {
           brandId: brandIdString,
-          status: result.success ? 'success' : 'failed',
-          ...(result.success ? { userId } : { error: result.message, userId }),
+          status: 'failed',
+          error: `All available users failed. Last error: ${lastError}`,
+          attemptedUsers: usersWithBrand.length
         };
 
       } catch (error) {

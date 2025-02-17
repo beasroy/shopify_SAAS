@@ -141,12 +141,12 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     { label: "Last 7 Days", fn: () => setPresetRange(subDays(dates.today, 6), dates.today) },
     { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
     { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 29), dates.today) },
-    { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.endOfThisMonth) },
+    { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.today) },
     { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
     { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
     { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter , dates.endOfThisQuarter)},
     { label: "Last Quarter", fn: () => setPresetRange(dates.startOfLastQuarter , dates.endOfLastQuarter)},
-    { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31))}, 
+    { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), dates.today)}, 
     { label: "Last 365 Days" , fn: () => setPresetRange(subDays(dates.today, 365), dates.today) },
     { label: "Last Year", fn: () => setPresetRange(subYears(startOfYear(new Date()), 1), subYears(endOfYear(new Date()), 1)) }
   ], [dates, setPresetRange])
@@ -210,7 +210,7 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
               onSelect={handleCalendarSelect}
               numberOfMonths={2}
               disabled={(date) =>
-                date > new Date() || date < new Date("1900-01-01")
+                date > new Date() || date < new Date("2023-01-01")
               }
             />
           </div>

@@ -5,20 +5,22 @@ import conversionFiltersReducer from "./slices/ConversionFilterSlice";
 import brandReducer from "./slices/BrandSlice.ts"
 import userReducer from "./slices/UserSlice.ts"
 import dateReducer from "./slices/DateSlice.ts"
+import campaignGroupsReducer from './slices/CampaignGroupSlice.ts';
 
 // Combine all reducers
 const rootReducer = combineReducers({
   conversionFilters: conversionFiltersReducer,
   brand: brandReducer, 
   user: userReducer, 
-  date: dateReducer
+  date: dateReducer,
+  campaignGroups: campaignGroupsReducer,
 });
 
 // Persist config - specify which slices to persist
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["conversionFilters", "brand", "user", "date"], // Persist both conversionFilters & brand
+  whitelist: ["conversionFilters", "brand", "user", "date" , "campaignGroups"], // Persist both conversionFilters & brand
 };
 
 // Apply persistReducer to the rootReducer

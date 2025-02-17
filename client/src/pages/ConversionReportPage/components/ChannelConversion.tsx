@@ -9,7 +9,7 @@ import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
-import PerformanceSummary from "./PerformanceSummary";
+import PerformanceSummary, { metricConfigs } from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
@@ -168,7 +168,7 @@ const fetchData = useCallback(async () => {
             <TableSkeleton />
           ) : (
             <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
@@ -13,6 +13,7 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import { useDispatch, useSelector } from "react-redux";
 import { setDate } from "@/store/slices/DateSlice";
 import { RootState } from "@/store";
+import PerformanceSummary, { metricConfigs } from "@/pages/ConversionReportPage/components/PerformanceSummary";
 
 
 type ApiResponse = {
@@ -155,13 +156,13 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
    
                          className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
                      >
-                         <CardHeader className="bg-white rounded-md">
+                         <div className="bg-white rounded-md pt-2 px-3">
                              <div className="flex items-center justify-between">
                                  <div className="flex items-center gap-2">
                                      <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                     <CardTitle className="text-lg font-medium">
+                                     <div className="text-lg font-medium">
                                          Blended Summary
-                                     </CardTitle>
+                                     </div>
                                  </div>
                                  <div className="flex items-center space-x-2">
                                      {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
@@ -192,9 +193,14 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                      </Button>
                                  </div>
                              </div>
-                         </CardHeader>
+                         </div>
                          <CardContent className="p-0">
                              <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                             <PerformanceSummary
+                                        data={blendedAudienceData || []}
+                                        primaryColumn={primaryColumn}
+                                        metricConfig={metricConfigs.spendAndRoas || {}}
+                                    />
                                  <ConversionTable
                                      data={Array.isArray(blendedAudienceData) ? blendedAudienceData : [blendedAudienceData]}
                                      primaryColumn={primaryColumn}
@@ -202,7 +208,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                      monthlyDataKey={monthlyDataKey}
                                      monthlyMetrics={monthlyMetrics}
                                      isFullScreen={fullScreenAccount === 'blended-summary'}
-                                     isAdsTable={true}
+                                     
                                  />
                              </div>
                          </CardContent>
@@ -213,13 +219,13 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                             key={index}
                             className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
                         >
-                            <CardHeader className="bg-white rounded-md">
+                            <div className="bg-white rounded-md pt-2 px-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                        <CardTitle className="text-lg font-medium">
+                                        <div className="text-lg font-medium">
                                             {account.account_name}
-                                        </CardTitle>
+                                        </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                     {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
@@ -250,9 +256,14 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                         </Button>
                                     </div>
                                 </div>
-                            </CardHeader>
+                            </div>
                             <CardContent className="p-0">
                                 <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                                <PerformanceSummary
+                                        data={account.audienceData || []}
+                                        primaryColumn={primaryColumn}
+                                        metricConfig={metricConfigs.spendAndRoas || {}}
+                                    />
                                     <ConversionTable
                                         data={account.audienceData}
                                         primaryColumn={primaryColumn}
@@ -260,7 +271,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                         monthlyDataKey={monthlyDataKey}
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
-                                        isAdsTable={true}
+                                       
                                     />
                                 </div>
                             </CardContent>

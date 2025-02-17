@@ -16,6 +16,7 @@ import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from '@/store';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
+import { metricConfigs } from "./PerformanceSummary";
 
 type ApiResponse = {
   reportType: string;
@@ -168,7 +169,7 @@ const fetchData = useCallback(async () => {
             <TableSkeleton />
           ) : (
             <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} />
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} />
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}

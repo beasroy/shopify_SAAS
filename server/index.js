@@ -16,13 +16,10 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
+// import { monthlyAddReportData} from "./Report/MonthlyReport.js"
 
 
-
-
-
-
-
+// monthlyAddReportData("679f90ab284d8d9b3b97d8c9","2023-01-01","2025-02-16","674eac6efa51d4ab3d414d02");
 const app = express();
 dotenv.config();
 
@@ -55,7 +52,6 @@ dataOperationRouter.use("/users",userRoutes);
 
 
 setupCronJobs();
-
 
 
 const PORT = process.env.PORT || 5000;

@@ -1,13 +1,13 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import Shopify from 'shopify-api-node'
-import moment from "moment";
+import moment from "moment-timezone";
 import axios from "axios";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
 import User from "../models/User.js";
-import mongoose from "mongoose";
+
 
 
 config();
@@ -15,124 +15,138 @@ config();
 
 export const fetchTotalSales = async (brandId) => {
   try {
-    console.log('Fetching orders...');
+      console.log('Fetching yesterday\'s orders...');
 
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      throw new Error('Brand not found.');
-    }
-
-    const access_token = brand.shopifyAccount?.shopifyAccessToken;
-    if (!access_token) {
-      return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
-    }
-
-    const shopify = new Shopify({
-      shopName: brand.shopifyAccount?.shopName,
-      accessToken: access_token,
-    });
-
-
-    // const Yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-    const yesterdayIST = moment().subtract(1, 'days');
-
-    // Calculate the start and end of yesterday in IST, converted to UTC
-    const startOfYesterday = new Date(yesterdayIST.clone().startOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
-    const endOfYesterday = new Date(yesterdayIST.clone().endOf('day').subtract(5, 'hours').subtract(30, 'minutes')).toISOString();
-
-    console.log(startOfYesterday); // Expected output: 2024-10-29T18:30:00.000Z
-    console.log(endOfYesterday);   // Expected output: 2024-10-30T18:29:59.999Z
-
-    const dailySales = [];
-
-    const queryParams = {
-      status: 'any',
-      created_at_min: startOfYesterday,
-      created_at_max: endOfYesterday,
-      limit: 250, // Fetch 250 orders per request
-    };
-
-
-    let hasNextPage = true;
-    let pageInfo;
-    let orders = [];
-
-    while (hasNextPage) {
-      if (pageInfo) {
-        queryParams.page_info = pageInfo;
-      } else {
-        delete queryParams.page_info;
+      const brand = await Brand.findById(brandId);
+      if (!brand) {
+          throw new Error('Brand not found.');
       }
 
-      try {
-        const response = await shopify.order.list(queryParams);
-        if (!response || response.length === 0) {
-          break; // Exit the loop if no orders are found
-        }
-
-        orders = orders.concat(response);
-        pageInfo = response.nextPageParameters?.page_info || null;
-        hasNextPage = !!pageInfo; // Continue fetching if there are more pages
-      } catch (error) {
-        console.error('Error while fetching orders:', error);
-        throw new Error(`Error fetching orders: ${error.message}`);
+      const access_token = brand.shopifyAccount?.shopifyAccessToken;
+      if (!access_token) {
+          throw new Error('Access token is missing or invalid.');
       }
-    }
 
-    console.log(`Successfully fetched a total of ${orders.length} orders`);
-    const { totalSales, refundAmount, shopifySales } = calculateTotalSales(orders, startOfYesterday, endOfYesterday);
-    dailySales.push({
-        totalSales,
-        refundAmount,
-        shopifySales
-    });
-    console.log(dailySales);
-    return dailySales; 
+      const shopify = new Shopify({
+          shopName: brand.shopifyAccount?.shopName,
+          accessToken: access_token,
+      });
+
+      // Get store timezone from Shopify shop data
+      const shopData = await shopify.shop.get();
+      const storeTimezone = shopData.iana_timezone || 'UTC';
+      console.log('Store timezone:', storeTimezone);
+
+      // Calculate yesterday's start and end in store's timezone
+      const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
+      const startOfYesterday = yesterday.clone().startOf('day').toISOString();
+      const endOfYesterday = yesterday.clone().endOf('day').toISOString();
+
+      console.log('Fetching data for:', {
+          startOfYesterday,
+          endOfYesterday,
+          storeTimezone
+      });
+
+      // Initialize yesterday's data structure
+      const yesterdaySales = {
+          date: yesterday.format('YYYY-MM-DD'),
+          grossSales: 0,
+          refundAmount: 0,
+          orderCount: 0
+      };
+
+      const queryParams = {
+          status: 'any',
+          created_at_min: startOfYesterday,
+          created_at_max: endOfYesterday,
+          limit: 250,
+          fields: 'id,created_at,total_price,refunds'
+      };
+
+      let hasNextPage = true;
+      let pageInfo;
+      let orders = [];
+
+      // Fetch all orders for yesterday
+      while (hasNextPage) {
+          if (pageInfo) {
+              queryParams.page_info = pageInfo;
+          } else {
+              delete queryParams.page_info;
+          }
+
+          try {
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+              
+              const response = await shopify.order.list(queryParams);
+              if (!response || response.length === 0) {
+                  break;
+              }
+
+              orders = orders.concat(response);
+              pageInfo = response.nextPageParameters?.page_info || null;
+              hasNextPage = !!pageInfo;
+
+          } catch (error) {
+              console.error('Error while fetching orders:', error);
+              if (error.statusCode === 429) {
+                  console.warn('Rate limit reached, retrying in 2 seconds...');
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  continue;
+              }
+              throw new Error(`Error fetching orders: ${error.message}`);
+          }
+      }
+
+      console.log(`Successfully fetched ${orders.length} orders for yesterday`);
+
+      // Process orders and refunds
+      orders.forEach(order => {
+          const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+          if (orderDate === yesterday.format('YYYY-MM-DD')) {
+              const orderAmount = Number(order.total_price || 0);
+              yesterdaySales.grossSales += orderAmount;
+              yesterdaySales.orderCount += 1;
+
+              // Process refunds
+              if (order.refunds && order.refunds.length > 0) {
+                  order.refunds.forEach(refund => {
+                      const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                      if (refundDate === yesterday.format('YYYY-MM-DD')) {
+                          const lineItemAmount = refund.refund_line_items.reduce((sum, item) => {
+                              return sum + Number(item.subtotal_set.shop_money.amount || 0);
+                          }, 0);
+
+                          const transactionAmount = refund.transactions ? refund.transactions.reduce((sum, trans) => {
+                              return sum + Number(trans.amount || 0);
+                          }, 0) : 0;
+
+                          const refundAmount = Math.max(lineItemAmount, transactionAmount);
+                          yesterdaySales.refundAmount += refundAmount;
+                      }
+                  });
+              }
+          }
+      });
+
+      // Calculate final amounts
+      const dailySales = [{
+          date: yesterdaySales.date,
+          totalSales: Number(yesterdaySales.grossSales.toFixed(2)),
+          refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
+          shopifySales: Number((yesterdaySales.grossSales - yesterdaySales.refundAmount).toFixed(2)),
+          orderCount: yesterdaySales.orderCount
+      }];
+
+      console.log('Yesterday\'s sales summary:', dailySales[0]);
+      return dailySales;
 
   } catch (error) {
-    console.error('Error in fetchTotalSales:', error);
-    throw new Error(`Failed to fetch total sales: ${error.message}`);
+      console.error('Error in fetchTotalSales:', error);
+      throw new Error(`Failed to fetch total sales: ${error.message}`);
   }
 };
-
-function calculateTotalSales(orders, startDate, endDate) {
-  let startUTC, endUTC;
-  if (startDate && endDate) {
-      startUTC = new Date(startDate).getTime();
-      endUTC = new Date(endDate).getTime();
-  }
-
-  let totalRefunds = 0;
-  let grossSales = 0;
-
-  orders.forEach((order) => {
-      const orderDate = new Date(order.created_at).getTime();
-      if (orderDate >= startUTC && orderDate <= endUTC) {
-          const totalPrice = Number(order.total_price || 0);
-          grossSales += totalPrice;
-          const orderRefunds = order.refunds.reduce((refundSum, refund) => {
-              const refundDateUTC = new Date(refund.created_at).getTime();
-
-              if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-                  const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
-                      return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
-                  }, 0);
-
-                  return refundSum + lineItemRefunds;
-              }
-              return refundSum;
-          }, 0);
-
-          totalRefunds += orderRefunds;
-      }
-  });
-
-  return {
-      totalSales: grossSales,
-      refundAmount: totalRefunds,
-      shopifySales: grossSales - totalRefunds
-  };
-}
 
 export const fetchFBAdReport = async (brandId, userId) => {
   try {
@@ -366,16 +380,17 @@ export const addReportData = async (brandId, userId) => {
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
     const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
-    const googleSpend = parseFloat(googleData.googleSpend);
-    const googleROAS = parseFloat(googleData.googleRoas);
+    const googleSpend= parseFloat(googleData.googleSpend) || 0;
+    const googleROAS = parseFloat(googleData.googleRoas) || 0;
     const totalSpend = metaSpend + googleSpend;
     const metaSales = metaSpend * metaROAS;
-    const googleSales = parseFloat(googleData.googleSales);
+    const googleSales = parseFloat(googleData.googleSales) || 0;
     const adSales = metaSales + googleSales; // Total sales from ads
     const grossROI = totalSpend > 0 ? adSales / totalSpend : 0;
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
+    
 
-    const metricsEntry = new AdMetrics({
+    const metricsEntry =new AdMetrics ({
       brandId,
       date: moment().subtract(1, "days").toDate(),
       metaSpend,

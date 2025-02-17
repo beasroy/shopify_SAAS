@@ -473,7 +473,7 @@ export const fetchFBCampaignData = async (req, res) => {
         const batchRequests = adAccountIds.flatMap((accountId) => [
             {
                 method: 'GET',
-                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas,frequency,cpm,account_name,actions,action_values}`,
+                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas,frequency,cpm,account_name,actions,action_values},status`,
             },
         ]);
 
@@ -499,15 +499,15 @@ export const fetchFBCampaignData = async (req, res) => {
                 account_name: '',
                 campaigns: [],
             };
-
             if (accountResponse.code === 200) {
                 const accountBody = JSON.parse(accountResponse.body);
                 if (accountBody.data && accountBody.data.length > 0) {
                     
-                    
+                   
                     // Process each campaign
                     accountBody.data.forEach(campaign => {
                         const insights = campaign.insights?.data?.[0];
+                        const status = campaign.status;
                         if (insights) {
                             campaignData.account_name = insights.account_name || '';
                             const content_view = insights.actions?.find(action => action.action_type === 'view_content')?.value || 0;
@@ -533,6 +533,7 @@ export const fetchFBCampaignData = async (req, res) => {
 
                             campaignData.campaigns.push({
                                 "Campaign": insights.campaign_name || "",
+                                "Status": status || "",
                                 "Amount spent": spend || 0,
                                 "Conversion Rate": parseFloat(conversionRate.toFixed(2)) || 0.00,
                                 "ROAS": roas || 0.00,

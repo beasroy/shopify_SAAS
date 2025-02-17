@@ -2,12 +2,13 @@
 import { config } from 'dotenv';
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
-import moment from 'moment';
 import axios from 'axios';
 
 config();
 
 
+
+import moment from 'moment-timezone';
 
 export const fetchShopifyData = async (req, res) => {
   try {
@@ -29,6 +30,9 @@ export const fetchShopifyData = async (req, res) => {
       accessToken: access_token
     });
 
+    const shopData = await shopify.shop.get();
+    const storeTimezone = shopData.iana_timezone || 'UTC';
+
     const { startDate, endDate } = req.query;
     let orders = [];
     let queryParams = {
@@ -36,33 +40,17 @@ export const fetchShopifyData = async (req, res) => {
       limit: 250, // Fetch 250 orders per request
     };
 
-
-    // if (startDate && endDate) {
-    //   const start = new Date(startDate);
-    //   const end = new Date(endDate);
-    //   queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0)).toISOString(); 
-    //   queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999)).toISOString(); 
-    // } else {
-    //   const now = new Date();
-    //   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    //   queryParams.created_at_min = firstDayOfMonth.toISOString(); 
-    //   queryParams.created_at_max = new Date(now.setHours(23, 59, 59, 999)).toISOString();
-    // }
-
-    const utcOffset = 5.5 * 60 * 60 * 1000;
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = moment.tz(startDate, storeTimezone).startOf('day'); // Start of the day in store's timezone
+      const end = moment.tz(endDate, storeTimezone).endOf('day'); // End of the day in store's timezone
 
-      // Adjust for +5:30 timezone
-      queryParams.created_at_min = new Date(start.setHours(0, 0, 0, 0) - utcOffset).toISOString(); // Start of the day at 6 AM in UTC
-      queryParams.created_at_max = new Date(end.setHours(23, 59, 59, 999) - utcOffset).toISOString();
+      queryParams.created_at_min = start.toISOString(); // Convert to UTC ISO format
+      queryParams.created_at_max = end.toISOString();
     } else {
-      const now = new Date();
-      const specificDate = new Date(now.getFullYear(), 1, 4); // February 4th (month is 0-based)
-
-      queryParams.created_at_min = new Date(specificDate.setHours(0, 0, 0, 0)).toISOString();
-      queryParams.created_at_max = new Date(specificDate.setHours(23, 59, 59, 999)).toISOString();
+      // Default to 4th February in store timezone if no date is provided
+      const defaultDate = moment.tz('2025-01-09', storeTimezone);
+      queryParams.created_at_min = defaultDate.startOf('day').toISOString();
+      queryParams.created_at_max = defaultDate.endOf('day').toISOString();
     }
 
     console.log('Query Parameters:', queryParams);
@@ -72,7 +60,6 @@ export const fetchShopifyData = async (req, res) => {
     let pageInfo;
 
     while (hasNextPage) {
-      // Add page_info to queryParams if it exists, otherwise remove it
       if (pageInfo) {
         queryParams = { page_info: pageInfo };
       } else {
@@ -83,7 +70,6 @@ export const fetchShopifyData = async (req, res) => {
       try {
         const response = await shopify.order.list(queryParams);
 
-        // If response is empty, no need to continue
         if (!response || response.length === 0) {
           console.log('No more orders found.');
           break; // Exit the loop if no orders are found
@@ -94,7 +80,7 @@ export const fetchShopifyData = async (req, res) => {
 
         // Check if there is a next page
         pageInfo = response.nextPageParameters?.page_info || null;
-        hasNextPage = !!pageInfo; // No more pages to fetch
+        hasNextPage = !!pageInfo;
       } catch (error) {
         console.error('Error while fetching orders:', error);
         hasNextPage = false;
@@ -108,13 +94,11 @@ export const fetchShopifyData = async (req, res) => {
 
     const totalsalesWithoutRefund = orders.reduce((sum, order) => {
       return sum + parseFloat(order.total_price);
-    }, 0)
+    }, 0);
     const averageOrderValue = totalOrders > 0 ? totalsalesWithoutRefund / totalOrders : 0;
 
+    const totalSales = calculateTotalSales(orders, queryParams.created_at_min, queryParams.created_at_max);
 
-    const totalSales = calculateTotalSales(orders, queryParams.created_at_min, queryParams.created_at_max)
-
-    // Respond with data including returns
     res.json({
       orders,
       totalOrders,
@@ -124,7 +108,6 @@ export const fetchShopifyData = async (req, res) => {
     console.error('Error in fetchShopifyData:', error);
     let errorMessage = 'Failed to fetch Shopify data';
 
-    // Improved error handling
     if (error.code === 'ECONNREFUSED') {
       errorMessage = 'Connection to Shopify API refused. Please check your network connection and Shopify store URL.';
     } else if (error.message.includes('Failed to fetch orders')) {
@@ -136,6 +119,7 @@ export const fetchShopifyData = async (req, res) => {
     res.status(500).json({ error: errorMessage });
   }
 };
+
 
 
 export const fetchShopifySales = async (req, res) => {
@@ -170,10 +154,10 @@ export const fetchShopifySales = async (req, res) => {
 
 
     const now = new Date();
-    const specificDate = new Date(now.getFullYear(), 1, 4); // February 4th (month is 0-based)
+    const specificDate = new Date(now.getFullYear(), 0, 9); // February 4th (month is 0-based)
 
-    queryParams.created_at_min = new Date(specificDate.setHours(0, 0, 0, 0)).toISOString();
-    queryParams.created_at_max = new Date(specificDate.setHours(23, 59, 59, 999)).toISOString();
+    queryParams.created_at_min = new Date(specificDate).toISOString();
+    queryParams.created_at_max = new Date(specificDate).toISOString();
 
 
 
@@ -248,87 +232,81 @@ export const fetchShopifySales = async (req, res) => {
 
 function calculateTotalSales(orders, startDate, endDate) {
   // Set up date range
-  let startUTC, endUTC;
-  if (startDate && endDate) {
-    startUTC = new Date(startDate).getTime();
-    endUTC = new Date(endDate).getTime();
-  } else {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    startUTC = firstDayOfMonth.getTime();
-    endUTC = now.getTime();
-  }
-
-  // Initialize tracking variables with precise decimal handling
+  const startUTC = new Date(startDate).getTime();
+  const endUTC = new Date(endDate).getTime();
 
   let totalRefunds = 0;
   let grossSales = 0;
+  const orderSummaries = [];
 
-
-  // Detailed order processing
+  // Process orders
   orders.forEach((order) => {
     const orderDate = new Date(order.created_at).getTime();
+    const totalPrice = Number(order.total_price || 0);
 
-    const orderSummaries = [];
-    
-    
-    // Only process orders within the specified date range
+    // Calculate gross sales only for orders within date range
     if (orderDate >= startUTC && orderDate <= endUTC) {
-      // Precise decimal parsing with fallback
-      const totalPrice = Number(order.total_price || 0);
-
-
-      // Gross sales calculation
       grossSales += totalPrice;
+    }
 
+    // Process refunds - consider all refunds that occurred within the date range,
+    // regardless of when the original order was created
+    const orderRefunds = order.refunds.reduce((refundSum, refund) => {
+      const refundDateUTC = new Date(refund.created_at).getTime();
 
-      // Refund calculation with detailed tracking
-      const orderRefunds = order.refunds.reduce((refundSum, refund) => {
-        const refundDateUTC = new Date(refund.created_at).getTime();
+      // Only include refunds processed within the specified date range
+      if (refundDateUTC <= endUTC) {
+        const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
+          return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
+        }, 0);
 
-        // Only include refunds within date range
-        if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-          const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
-            return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
-          }, 0);
+        return refundSum + lineItemRefunds;
+      }
+      return refundSum;
+    }, 0);
 
-          return refundSum + lineItemRefunds;
-        }
-        return refundSum;
-      }, 0);
-
+    // Only add to summaries if there were refunds in this period
+    if (orderRefunds > 0) {
       const orderSummary = {
         orderId: order.id,
         orderDate: new Date(order.created_at).toLocaleString(),
-        total: totalPrice,
-        refunds: orderRefunds,
-        shopifySales: totalPrice - orderRefunds
+        orderTotal: totalPrice,
+        refundsInPeriod: orderRefunds,
+        // Include refund dates for transparency
+        refundDates: order.refunds
+          .filter(refund => {
+            const refundDate = new Date(refund.created_at).getTime();
+            return refundDate >= startUTC && refundDate <= endUTC;
+          })
+          .map(refund => new Date(refund.created_at).toLocaleString())
       };
 
-      orderSummaries.push(orderSummary)
-
+      orderSummaries.push(orderSummary);
       totalRefunds += orderRefunds;
-
-      console.log(orderSummaries );
     }
-  
   });
 
-  // Net sales calculation
-  const shopifySales = grossSales - totalRefunds 
-  const totalSales = grossSales;
-  const refundAmount = totalRefunds;
-  // Detailed logging for debugging
+  const shopifySales = grossSales - totalRefunds;
+
+  // Debug logging
   console.log('Sales Calculation Breakdown:', {
+    periodStart: new Date(startUTC).toLocaleString(),
+    periodEnd: new Date(endUTC).toLocaleString(),
+    grossSales: grossSales.toFixed(2),
+    totalRefunds: totalRefunds.toFixed(2),
     shopifySales: shopifySales.toFixed(2),
-    refundAmount: refundAmount.toFixed(2),
-    totalSales: (totalSales.toFixed(2))
+    ordersWithRefunds: orderSummaries.length
   });
+
+  if (orderSummaries.length > 0) {
+    console.log('Orders with refunds in this period:', orderSummaries);
+  }
 
   return {
     shopifySales: Number(shopifySales.toFixed(2)),
-    refundAmount: Number(refundAmount.toFixed(2)),
-    totalSales: Number(totalSales.toFixed(2))
+    refundAmount: Number(totalRefunds.toFixed(2)),
+    totalSales: Number(grossSales.toFixed(2)),
+    orderSummaries // Including this for detailed reporting if needed
   };
 }
 

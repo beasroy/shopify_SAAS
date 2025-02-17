@@ -466,7 +466,7 @@ export default function ConversionTable({
     } else if (column === 'Total Spend') {
       thresholdValue = `(avg: ${Math.round(thresholds.avgSpend).toLocaleString()})`;
     } else if (column === 'Total Purchase ROAS') {
-      thresholdValue = `(avg: ${Math.round(thresholds.avgPurchaseROAS).toFixed(2)})`;
+      thresholdValue = `(avg: ${(thresholds.avgPurchaseROAS).toFixed(2)})`;
     } else if (column === 'Total Cost') {
       thresholdValue = `(avg: ${Math.round(thresholds.avgCost).toLocaleString()})`;
     } else if (column === 'Conv. Value / Cost') {

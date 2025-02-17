@@ -5,20 +5,12 @@ import Shopify from 'shopify-api-node'
 import axios from "axios";
 import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
-
-const client = new GoogleAdsApi({
-    client_id: process.env.GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-    refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
-});
-
-
+import moment from 'moment-timezone';
 config();
 
 
 
-import moment from 'moment';
+
 
 export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
@@ -39,23 +31,46 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
             accessToken: access_token,
         });
 
-        const dailySales = [];
+        // Get store timezone from Shopify shop data
+        const shopData = await shopify.shop.get();
+        const storeTimezone = shopData.iana_timezone || 'UTC';
+        console.log('Store timezone:', storeTimezone);
 
-        // Ensure `startDate` and `endDate` are Moment.js objects
-        let currentDay = moment(startDate);  // Convert startDate to Moment.js object
-        const endMoment = moment(endDate);   // Convert endDate to Moment.js object
+        // Initialize daily sales data structure using store's timezone
+        const dailySalesMap = {};
+        let currentDay = moment.tz(startDate, storeTimezone).startOf('day');
+        const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+
+        // Initialize data structure for all days in range
+        while (currentDay.isSameOrBefore(endMoment)) {
+            const dateStr = currentDay.format('YYYY-MM-DD');
+            dailySalesMap[dateStr] = {
+                date: dateStr,
+                grossSales: 0,
+                refundAmount: 0,
+                orderCount: 0
+            };
+            currentDay.add(1, 'day');
+        }
+
+        // Reset currentDay for order fetching
+        currentDay = moment.tz(startDate, storeTimezone).startOf('day');
+
+        // Store all orders that have refunds for later analysis
+        let ordersWithRefunds = [];
 
         while (currentDay.isSameOrBefore(endMoment)) {
-            const startOfDay = currentDay.clone().startOf('day').toISOString();
-            const endOfDay = currentDay.clone().endOf('day').toISOString();
+            const startOfDayISO = currentDay.clone().startOf('day').toISOString();
+            const endOfDayISO = currentDay.clone().endOf('day').toISOString();
 
-            console.log(startOfDay, endOfDay);
+            console.log('Fetching for date range:', startOfDayISO, endOfDayISO);
 
             const queryParams = {
                 status: 'any',
-                created_at_min: startOfDay,
-                created_at_max: endOfDay,
+                created_at_min: startOfDayISO,
+                created_at_max: endOfDayISO,
                 limit: 250,
+                fields: 'id,created_at,total_price,refunds' // Specify fields to ensure we get refunds
             };
 
             let hasNextPage = true;
@@ -70,33 +85,115 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                 }
 
                 try {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
                     const response = await shopify.order.list(queryParams);
                     if (!response || response.length === 0) {
                         break;
                     }
+
+                    // Store orders with refunds for analysis
+                    const ordersWithRefundsFromResponse = response.filter(order => 
+                        order.refunds && order.refunds.length > 0
+                    );
+                    ordersWithRefunds = ordersWithRefunds.concat(ordersWithRefundsFromResponse);
 
                     orders = orders.concat(response);
                     pageInfo = response.nextPageParameters?.page_info || null;
                     hasNextPage = !!pageInfo;
                 } catch (error) {
                     console.error('Error while fetching orders:', error);
+                    if (error.statusCode === 429) {
+                        console.warn('Rate limit reached, retrying in 2 seconds...');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
                     throw new Error(`Error fetching orders: ${error.message}`);
                 }
             }
 
-            console.log(`Successfully fetched ${orders.length} orders for ${currentDay.format('YYYY-MM-DD')}`);
+            // Process orders and their refunds
+            orders.forEach(order => {
+                const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+                const orderAmount = Number(order.total_price || 0);
 
-            const { totalSales, refundAmount, shopifySales } = calculateTotalSales(orders, startOfDay, endOfDay);
-            dailySales.push({
-                date: currentDay.format('YYYY-MM-DD'),
-                totalSales,
-                refundAmount,
-                shopifySales
+                // Log orders for January 9th
+                if (orderDate === '2025-02-04') {
+                    console.log('\nFound order for Jan 9th:', {
+                        order_id: order.id,
+                        created_at: order.created_at,
+                        total_price: orderAmount,
+                        has_refunds: order.refunds && order.refunds.length > 0,
+                        refunds_count: order.refunds ? order.refunds.length : 0
+                    });
+                }
+
+                if (dailySalesMap[orderDate]) {
+                    dailySalesMap[orderDate].grossSales += orderAmount;
+                    dailySalesMap[orderDate].orderCount += 1;
+                }
+
+                if (order.refunds && order.refunds.length > 0) {
+                    order.refunds.forEach(refund => {
+                        const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                        
+                        // Log all refund processing attempts
+                        console.log('\nProcessing refund:', {
+                            order_id: order.id,
+                            refund_id: refund.id,
+                            created_at: refund.created_at,
+                            refund_date: refundDate,
+                            line_items: refund.refund_line_items.length,
+                            transactions: refund.transactions ? refund.transactions.length : 0
+                        });
+
+                        // Calculate both line items and transaction amounts
+                        const lineItemAmount = refund.refund_line_items.reduce((sum, item) => {
+                            return sum + Number(item.subtotal_set.shop_money.amount || 0);
+                        }, 0);
+
+                        const transactionAmount = refund.transactions ? refund.transactions.reduce((sum, trans) => {
+                            return sum + Number(trans.amount || 0);
+                        }, 0) : 0;
+
+                        const refundAmount = Math.max(lineItemAmount, transactionAmount);
+
+                        console.log('Refund amounts calculated:', {
+                            line_item_amount: lineItemAmount,
+                            transaction_amount: transactionAmount,
+                            final_refund_amount: refundAmount
+                        });
+
+                        if (dailySalesMap[refundDate]) {
+                            dailySalesMap[refundDate].refundAmount += refundAmount;
+                            console.log(`Updated refund total for ${refundDate}: ${dailySalesMap[refundDate].refundAmount}`);
+                        }
+                    });
+                }
             });
 
             currentDay.add(1, 'day');
         }
-        console.log(dailySales);
+
+        // Log all orders with refunds found during the entire period
+        console.log('\nAll orders with refunds found:', ordersWithRefunds.map(order => ({
+            order_id: order.id,
+            created_at: order.created_at,
+            refunds: order.refunds.map(refund => ({
+                refund_id: refund.id,
+                created_at: refund.created_at,
+                amount: refund.refund_line_items.reduce((sum, item) => 
+                    sum + Number(item.subtotal_set.shop_money.amount || 0), 0
+                )
+            }))
+        })));
+
+        const dailySales = Object.values(dailySalesMap).map(day => ({
+            ...day,
+            shopifySales: Number((day.grossSales - day.refundAmount).toFixed(2)),
+            totalSales: Number(day.grossSales.toFixed(2)),
+            refundAmount: Number(day.refundAmount.toFixed(2))
+        }));
 
         return dailySales;
 
@@ -106,45 +203,6 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     }
 };
 
-
-function calculateTotalSales(orders, startDate, endDate) {
-    let startUTC, endUTC;
-    if (startDate && endDate) {
-        startUTC = new Date(startDate).getTime();
-        endUTC = new Date(endDate).getTime();
-    }
-
-    let totalRefunds = 0;
-    let grossSales = 0;
-
-    orders.forEach((order) => {
-        const orderDate = new Date(order.created_at).getTime();
-        if (orderDate >= startUTC && orderDate <= endUTC) {
-            const totalPrice = Number(order.total_price || 0);
-            grossSales += totalPrice;
-            const orderRefunds = order.refunds.reduce((refundSum, refund) => {
-                const refundDateUTC = new Date(refund.created_at).getTime();
-
-                if (refundDateUTC >= startUTC && refundDateUTC <= endUTC) {
-                    const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
-                        return lineSum + Number(lineItem.subtotal_set.shop_money.amount || 0);
-                    }, 0);
-
-                    return refundSum + lineItemRefunds;
-                }
-                return refundSum;
-            }, 0);
-
-            totalRefunds += orderRefunds;
-        }
-    });
-
-    return {
-        totalSales: grossSales,
-        refundAmount: totalRefunds,
-        shopifySales: grossSales - totalRefunds
-    };
-}
 
 export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate) => {
     try {
@@ -189,7 +247,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
 
         const results = [];
         let currentChunkStart = start.clone();
-        
+
         // Process in chunks of 15 days
         while (currentChunkStart.isSameOrBefore(end)) {
             const chunkEnd = moment.min(
@@ -344,6 +402,13 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
+        const client = new GoogleAdsApi({
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+            refresh_token: refreshToken,
+        });
+
         const customer = client.Customer({
             customer_id: adAccountId,
             refresh_token: refreshToken,
@@ -420,7 +485,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
         }
 
         // Process data in chunks of 3 months
-        for (let chunkStart = currentStart.clone(); chunkStart.isBefore(finalEnd); ) {
+        for (let chunkStart = currentStart.clone(); chunkStart.isBefore(finalEnd);) {
             let chunkEnd = moment.min(chunkStart.clone().add(3, 'months'), finalEnd);
 
             const formattedStart = chunkStart.format('YYYY-MM-DD');
@@ -517,7 +582,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                     try {
                         const shopifyData = shopifySalesMap.get(date) || getDefaultShopifyData();
                         const metricsEntry = createMetricsEntry(brandId, date, metrics, shopifyData);
-                        
+
                         await metricsEntry.save();
                         console.log(`Metrics entry saved for date: ${date}`);
                         return metricsEntry;
@@ -592,7 +657,7 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     const totalSpend = metaSpend + googleSpend;
     const metaSales = metaSpend * metaROAS;
     const adTotalSales = metaSales + googleSales;
-    
+
     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
     const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
@@ -625,7 +690,7 @@ export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, us
             console.log(`Starting metrics processing for brand: ${brandIdString}`);
 
             try {
-                const result = await monthlyAddReportData(brandIdString , startDate , endDate, userId);
+                const result = await monthlyAddReportData(brandIdString, startDate, endDate, userId);
                 if (result.success) {
                     console.log(`Metrics successfully saved for brand ${brandIdString}`);
                 } else {

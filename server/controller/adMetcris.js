@@ -156,7 +156,7 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
 
 export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate , userId } = req.body;
+    let { startDate, endDate, userId } = req.body;
 
     try {
         const [brand, user] = await Promise.all([
@@ -212,7 +212,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
                 from_date: startDate,
                 to_date: endDate,
             }),
-            
+
             customer.report({
                 entity: "campaign",
                 attributes: ["campaign.id", "campaign.name", "customer.descriptive_name"],
@@ -306,10 +306,10 @@ export const fetchFBAdAccountData = async (req, res) => {
 
     try {
         // Find the brand by ID
-        const [brand , user] = await Promise.all([
+        const [brand, user] = await Promise.all([
             Brand.findById(brandId).lean(),
             User.findById(userId).lean()
-        ]) 
+        ])
 
         if (!brand || !user) {
             return res.status(404).json({
@@ -434,10 +434,10 @@ export const fetchFBCampaignData = async (req, res) => {
 
     try {
         // Find the brand by ID
-        const [brand , user] = await Promise.all([
+        const [brand, user] = await Promise.all([
             Brand.findById(brandId).lean(),
             User.findById(userId).lean()
-        ]) 
+        ])
 
         if (!brand || !user) {
             return res.status(404).json({
@@ -473,7 +473,7 @@ export const fetchFBCampaignData = async (req, res) => {
         const batchRequests = adAccountIds.flatMap((accountId) => [
             {
                 method: 'GET',
-                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,purchase_roas,frequency,cpm,account_name,actions,action_values},status`,
+                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,reach,purchase_roas,frequency,cpm,account_name,actions,action_values,clicks,impressions,outbound_clicks_ctr,unique_inline_link_clicks,video_p50_watched_actions},status`,
             },
         ]);
 
@@ -502,8 +502,8 @@ export const fetchFBCampaignData = async (req, res) => {
             if (accountResponse.code === 200) {
                 const accountBody = JSON.parse(accountResponse.body);
                 if (accountBody.data && accountBody.data.length > 0) {
-                    
-                   
+
+
                     // Process each campaign
                     accountBody.data.forEach(campaign => {
                         const insights = campaign.insights?.data?.[0];
@@ -512,16 +512,28 @@ export const fetchFBCampaignData = async (req, res) => {
                             campaignData.account_name = insights.account_name || '';
                             const content_view = insights.actions?.find(action => action.action_type === 'view_content')?.value || 0;
                             const purchase = insights.actions?.find(action => action.action_type === 'purchase')?.value || 0;
-                            const addToCart = insights.actions?.find(action => action.action_type === 'add_to_cart')?.value || 0;
-                            const checkoutInitiated = insights.actions?.find(action => action.action_type === 'initiate_checkout')?.value || 0;
+                            const addToCart = Number(insights.actions?.find(action => action.action_type === 'add_to_cart')?.value) || 0;
+                            const checkoutInitiated = Number(insights.actions?.find(action => action.action_type === 'initiate_checkout')?.value) || 0;
                             const linkClick = insights.actions?.find(action => action.action_type === 'link_click')?.value || 0;
-
+                            const landingPageView = Number(insights.actions?.find(action => action.action_type === 'landing_page_view')?.value) || 0;
+                            const totalClicks = insights.clicks ||0;
                             const cvToatcRate = content_view > 0 ? (addToCart / content_view) * 100 : 0;
                             const atcToCIRate = addToCart > 0 ? (checkoutInitiated / addToCart) * 100 : 0;
                             const ciToPurchaseRate = checkoutInitiated > 0 ? (purchase / checkoutInitiated) * 100 : 0;
                             const conversionRate = linkClick > 0 ? (purchase / linkClick) * 100 : 0;
 
+                            const HighIntentClickRate = Number(parseFloat((((landingPageView + addToCart + checkoutInitiated) / totalClicks)*100).toFixed(2)));
+
+
                             const spend = parseFloat(insights.spend) || 0;
+                            const frequency = Number(parseFloat(insights.frequency).toFixed(2));
+                            const outboundCTR =  insights.outbound_clicks_ctr && insights.outbound_clicks_ctr.length > 0
+                            ? Number(parseFloat(insights.outbound_clicks_ctr[0].value).toFixed(2))
+                            : 0.00
+                            const uniqueLinkClicks = Number(insights.unique_inline_link_clicks) || 0;
+                            const reach =Number(insights.reach) || 0;
+
+                            const cpmReachBased = spend / (insights.reach / 1000) || 0;
                             const cpa = {
                                 content_view: content_view > 0 ? spend / content_view : 0,
                                 add_to_cart: addToCart > 0 ? spend / addToCart : 0,
@@ -531,15 +543,30 @@ export const fetchFBCampaignData = async (req, res) => {
 
                             const roas = parseFloat(parseFloat(insights.purchase_roas?.[0]?.value || 0).toFixed(2));
 
+                            const threeSecondsView = Number(insights.actions?.find(action => action.action_type === 'video_view')?.value) || 0;
+                            const HookRate = insights.impressions > 0 ? Number(parseFloat((threeSecondsView / insights.impressions) * 100).toFixed(2)) : 0;
+                            
+                            const video50Watched =  insights.video_p50_watched_actions&& insights.video_p50_watched_actions.length > 0
+                            ? Number(parseFloat(insights.video_p50_watched_actions[0].value).toFixed(2))
+                            : 0.00
+
+                            const HoldRate = insights.impressions > 0 ? Number(parseFloat((video50Watched / insights.impressions) * 100).toFixed(2)) : 0;
                             campaignData.campaigns.push({
                                 "Campaign": insights.campaign_name || "",
                                 "Status": status || "",
                                 "Amount spent": spend || 0,
                                 "Conversion Rate": parseFloat(conversionRate.toFixed(2)) || 0.00,
                                 "ROAS": roas || 0.00,
-                                "Frequency": Number(parseFloat(insights.frequency).toFixed(2)) || 0.00,
+                                "Frequency": frequency || 0.00,
                                 "CPM": Number(parseFloat(insights.cpm).toFixed(2)) || 0.00,
-                                "Link Click" : Number(linkClick),
+                                "CPM (Reach Based)": Number(parseFloat(cpmReachBased).toFixed(2)) || 0.00,
+                                "Link Click": Number(linkClick),
+                                "Outbound CTR":outboundCTR,
+                                "Audience Saturation Score" : outboundCTR > 0 ? Number(parseFloat((frequency / outboundCTR).toFixed(2))) * 100 : 0.00,
+                                "Reach v/s Unique Click" : uniqueLinkClicks > 0 ? Number(parseFloat((reach / uniqueLinkClicks).toFixed(2))) : 0.00,
+                                "High-Intent Click Rate": HighIntentClickRate || 0.00,
+                                "Hook Rate": HookRate || 0.00,
+                                "Hold Rate":HoldRate || 0.00,
                                 "Content View (CV)": Number(content_view),
                                 "Cost per CV": parseFloat(cpa.content_view.toFixed(2)),
                                 "Add To Cart (ATC)": Number(addToCart),

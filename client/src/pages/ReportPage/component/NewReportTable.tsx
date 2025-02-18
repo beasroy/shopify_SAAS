@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronsLeft, ChevronRight, ChevronsRight, ChevronLeft } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronsLeft, ChevronRight, ChevronsRight, ChevronLeft, GripVertical } from 'lucide-react';
 import { PageMetric } from '@/pages/ReportPage/component/LandingPageSession';
 import { Button } from '@/components/ui/button';
 
@@ -30,13 +30,12 @@ const NewReportTable: React.FC<TableProps> = ({
     const [columnWidths, setColumnWidths] = useState<number[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [loadedRows, setLoadedRows] = useState<any[]>([]);
-    const [resizing, setResizing] = useState<{ index: number | null; startX: number }>({
-      index: null,
-      startX: 0
-    });
+    const [columnOrder, setColumnOrder] = useState<string[]>(columns);
+    const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+    
   
     const rowsPerChunk = 30;
-    const rowsPerPage = 10;
+    const rowsPerPage = 9;
     const minColumnWidth = isFullScreen ? 100 : 150;
   
     const tableRef = useRef<HTMLTableElement>(null);
@@ -44,6 +43,35 @@ const NewReportTable: React.FC<TableProps> = ({
     const widthsRef = useRef<number[]>([]);
   
     const comparisonColumns = ['Add To Cart Rate', 'Checkout Rate', 'Purchase Rate', 'Sessions'];
+
+    useEffect(() => {
+      setColumnOrder(columns);
+    }, [columns]);
+  
+    const handleDragStart = (e: React.DragEvent, column: string) => {
+      setDraggedColumn(column);
+      e.dataTransfer.effectAllowed = 'move';
+    };
+  
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+  
+    const handleDrop = (e: React.DragEvent, targetColumn: string) => {
+      e.preventDefault();
+      if (!draggedColumn || draggedColumn === targetColumn) return;
+  
+      const newOrder = [...columnOrder];
+      const draggedIdx = newOrder.indexOf(draggedColumn);
+      const targetIdx = newOrder.indexOf(targetColumn);
+  
+      newOrder.splice(draggedIdx, 1);
+      newOrder.splice(targetIdx, 0, draggedColumn);
+  
+      setColumnOrder(newOrder);
+      setDraggedColumn(null);
+    };
 
     const parsePercentage = (value: string | number): number => {
         // If value is already a number, return it
@@ -76,58 +104,8 @@ const NewReportTable: React.FC<TableProps> = ({
     }
   }, [columns.length, isFullScreen]);
 
-  const handleResizeStart = (index: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setResizing({
-      index,
-      startX: e.pageX
-    });
-  };
+ 
 
-
-  useEffect(() => {
-    const handleResizeMove = (e: MouseEvent) => {
-      if (resizing.index === null) return;
-
-      const delta = e.pageX - resizing.startX;
-      const newWidths = [...widthsRef.current];
-      const currentWidth = newWidths[resizing.index];
-      const newWidth = Math.max(minColumnWidth, currentWidth + delta);
-
-      if (isFullScreen && resizing.index < columns.length - 1) {
-        // Adjust next column width to maintain total width in fullscreen
-        const nextIndex = resizing.index + 1;
-        const nextWidth = newWidths[nextIndex];
-        const combinedWidth = currentWidth + nextWidth;
-        const newNextWidth = Math.max(minColumnWidth, combinedWidth - newWidth);
-        
-        if (newWidth + newNextWidth >= combinedWidth) {
-          newWidths[resizing.index] = newWidth;
-          newWidths[nextIndex] = newNextWidth;
-        }
-      } else {
-        // Normal mode - just adjust the current column
-        newWidths[resizing.index] = newWidth;
-      }
-
-      setColumnWidths(newWidths);
-      widthsRef.current = newWidths;
-    };
-
-    const handleResizeEnd = () => {
-      setResizing({ index: null, startX: 0 });
-    };
-
-    if (resizing.index !== null) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleResizeMove);
-      document.removeEventListener('mouseup', handleResizeEnd);
-    };
-  }, [resizing, columns.length, isFullScreen, minColumnWidth]);
 
 
   const averageValues = useMemo(() => {
@@ -265,16 +243,21 @@ const NewReportTable: React.FC<TableProps> = ({
           capitalize border-r border-gray-300
           ${isNumericColumn(column) ? 'cursor-pointer' : ''}
           ${colIndex === 0 && !isFullScreen ? 'sticky left-0 z-30 bg-gray-100' : ''}
+          ${draggedColumn === column ? 'opacity-50' : ''}
+          hover:bg-gray-200 transition-colors duration-200
         `}
         style={{
-          width: `${columnWidths[colIndex]}px`,
-          minWidth: `${minColumnWidth}px`,
+          width: colIndex === 0 ? '180px' : `${columnWidths[colIndex]}px`,
         }}
-        onClick={() => handleSort(column)}
+        draggable
+        onDragStart={(e) => handleDragStart(e, column)}
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, column)}
       >
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center mb-1">
-            <span>{column}</span>
+        <div onClick={() => handleSort(column)} className="flex flex-col items-center">
+          <div  className="flex items-center justify-center gap-2 mb-1">
+            <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
+            <span >{column}</span>
             {isNumericColumn(column) && (
               <span className="ml-2">
                 {sortColumn === column ? (
@@ -284,7 +267,7 @@ const NewReportTable: React.FC<TableProps> = ({
                     <ArrowDown className="w-4 h-4 text-blue-600" />
                   )
                 ) : (
-                  <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                  ""
                 )}
               </span>
             )}
@@ -298,13 +281,6 @@ const NewReportTable: React.FC<TableProps> = ({
             </span>
           )}
         </div>
-        <div
-          onMouseDown={(e) => handleResizeStart(colIndex, e)}
-          className={`absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-200 ${
-            resizing.index === colIndex ? 'bg-blue-300' : ''
-          }`}
-          style={{ cursor: 'col-resize' }}
-        />
       </th>
     );
   };
@@ -326,40 +302,26 @@ const NewReportTable: React.FC<TableProps> = ({
           className="w-full text-center shadow-lg rounded-lg border border-gray-200"
           style={{
             tableLayout: 'fixed',
-            width: isFullScreen ? '100%' : columnWidths.reduce((sum, width) => sum + width, 0),
+            width: isFullScreen ? '100%' : 'auto',
             borderCollapse: 'separate',
             borderSpacing: 0,
           }}
         >
           <thead className="bg-gray-100">
             <tr>
-              {columns.map((column, index) => renderHeader(column, index))}
+              {columnOrder.map((column, index) => renderHeader(column, index))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {displayRows.map((item, index) => (
+            {displayRows.map((item, rowIndex) => (
               <tr
-                key={index}
+                key={rowIndex}
                 className={`${
-                  index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                  rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                 } hover:bg-gray-100 transition-colors duration-200`}
               >
-                <td
-                  className="p-3 text-sm font-normal sticky left-0 z-20 border-r border-gray-300"
-                  style={{
-                    width: `${columnWidths[0]}px`,
-                    minWidth: '180px',
-                    backgroundColor: index % 2 === 0 ? '#f9fafb' : '#ffffff',
-                    boxShadow: '2px 0 4px -2px rgba(0, 0, 0, 0.15)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {item[columns[0]]}
-                </td>
-                {columns.slice(1).map((column) => {
-                  const cellValue = item[column as keyof typeof item];
+                {columnOrder.map((column, colIndex) => {
+                  const cellValue = item[column];
                   const isComparisonColumn = comparisonColumns.includes(column);
                   const isPairedColumn = column in columnPairs;
 
@@ -374,13 +336,14 @@ const NewReportTable: React.FC<TableProps> = ({
 
                   return (
                     <td
-                      key={column}
-                      className={`p-3 text-sm font-normal border-r border-gray-300 ${colorClass}`}
+                      key={`${rowIndex}-${column}`}
+                      className={`p-3 text-sm font-normal border-r border-gray-300 ${colorClass} ${
+                        colIndex === 0 && !isFullScreen
+                          ? 'sticky left-0 z-20 bg-inherit'
+                          : ''
+                      }`}
                       style={{
-                        width: `${columnWidths[columns.indexOf(column)]}px`,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        width: colIndex === 0 ? '150px' : `${columnWidths[colIndex]}px`,
                       }}
                     >
                       <div className="flex items-center justify-center gap-2">

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
-import { MdOutlineCampaign } from "react-icons/md";
+import { MdOutlineCampaign } from "react-icons/md"
 import {
   Minimize2,
   Maximize2,
@@ -14,7 +14,8 @@ import {
   Save,
   X,
   Search,
-  MinusCircle
+  MinusCircle,
+  GripHorizontal
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -25,6 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from "@/store"
 import {
   createGroup,
   deleteGroup,
@@ -35,8 +38,8 @@ import {
   toggleGroupExpansion,
   setIsCreatingGroup
 } from "@/store/slices/CampaignGroupSlice"
-import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from "@/store"
+
+import ColumnManagementSheet from "./ColumnManagementSheet"
 
 interface Campaign {
   [key: string]: string | number
@@ -50,13 +53,6 @@ interface MetaReportTableProps {
   height?: string
 }
 
-// interface Group {
-//   id: string
-//   name: string
-//   campaigns: string[]
-//   color: string
-// }
-
 const GROUP_COLORS = [
   "bg-red-100",
   "bg-emerald-100",
@@ -68,7 +64,7 @@ const GROUP_COLORS = [
   "bg-teal-100",
   "bg-fuchsia-100",
   "bg-cyan-100"
-];
+]
 
 const GROUP_DEEP_COLORS: Record<string, string> = {
   "bg-red-100": "bg-red-600",
@@ -81,9 +77,7 @@ const GROUP_DEEP_COLORS: Record<string, string> = {
   "bg-teal-100": "bg-teal-600",
   "bg-fuchsia-100": "bg-fuchsia-600",
   "bg-cyan-100": "bg-cyan-600"
-};
-
-
+}
 
 const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max-h-[600px]" }) => {
   const dispatch = useDispatch()
@@ -104,6 +98,35 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
   const [searchTerm, setSearchTerm] = useState("")
   const tableRef = useRef<HTMLDivElement>(null)
 
+  const headers = data.campaigns.length > 0 ? Object.keys(data.campaigns[0]) : []
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(headers)
+  const [columnOrder, setColumnOrder] = useState<string[]>(headers)
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+  const [dropTargetColumn, setDropTargetColumn] = useState<string | null>(null)
+
+  const handleDragStart = (column: string) => {
+    setDraggedColumn(column)
+  }
+
+  const handleDragOver = (e: React.DragEvent, column: string) => {
+    e.preventDefault()
+    setDropTargetColumn(column)
+  }
+
+  const handleDrop = (targetColumn: string) => {
+    if (!draggedColumn) return
+
+    const newOrder = [...columnOrder]
+    const draggedIdx = newOrder.indexOf(draggedColumn)
+    const targetIdx = newOrder.indexOf(targetColumn)
+
+    newOrder.splice(draggedIdx, 1)
+    newOrder.splice(targetIdx, 0, draggedColumn)
+
+    setColumnOrder(newOrder)
+    setDraggedColumn(null)
+    setDropTargetColumn(null)
+  }
 
   const handleCreateGroup = () => {
     if (newGroupName && selectedCampaigns.length > 0) {
@@ -186,21 +209,18 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
         }, 0)
       }
       if (header === "Status") {
-        metrics["Status"] = "-";
-        return;
+        metrics["Status"] = "-"
       }
     })
 
     return metrics
   }
 
-  const headers = data.campaigns.length > 0 ? Object.keys(data.campaigns[0]) : []
-
   const filteredCampaigns = data.campaigns.filter(campaign =>
     (campaign.Campaign as string).toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const sortedCampaigns = [...data.campaigns].sort((a, b) => {
+  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
     if (sortColumn) {
       const aValue = a[sortColumn]
       const bValue = b[sortColumn]
@@ -240,6 +260,233 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
     (campaign) => !groupedCampaigns.includes(campaign.Campaign as string)
   )
 
+  const renderTableHeader = () => (
+    <thead className="bg-slate-100 sticky top-0 z-30">
+      <tr>
+        {columnOrder
+          .filter(header => visibleColumns.includes(header))
+          .map((header, index) => (
+            <th
+              key={header}
+              className={`px-4 py-2 text-left text-sm font-bold text-slate-700 border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors whitespace-nowrap ${index === 0
+                  ? `sticky left-0 z-40 bg-slate-100 ${stickyColumnClass} border-r`
+                  : "border-r border-slate-200"
+                }`}
+              onClick={() => handleSort(header)}
+              draggable
+              onDragStart={() => handleDragStart(header)}
+              onDragOver={(e) => handleDragOver(e, header)}
+              onDrop={() => handleDrop(header)}
+              style={{
+                minWidth: header === "Campaign" ? "190px" : "110px",
+                position: index === 0 ? "sticky" : "static",
+                left: index === 0 ? 0 : "auto",
+                background: dropTargetColumn === header ? "rgb(226 232 240)" : "",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <GripHorizontal className="w-4 h-4 mr-2 text-slate-400" />
+                  <span>{header}</span>
+                </div>
+                {sortColumn === header && (
+                  sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                )}
+              </div>
+            </th>
+          ))}
+      </tr>
+    </thead>
+  )
+
+  const renderTableBody = () => (
+    <tbody>
+      {groups.map((group) => {
+        const isExpanded = expandedGroups.includes(group.id)
+        const groupMetrics = calculateGroupMetrics(group.campaigns)
+        const deepColor = GROUP_DEEP_COLORS[group.color] || group.color
+
+        return (
+          <React.Fragment key={group.id}>
+            <tr
+              onClick={() => dispatch(toggleGroupExpansion(group.id))}
+              className={`group transition-colors cursor-pointer ${group.color} ${isExpanded ? 'border-2 border-gray-400' : ''}`}
+            >
+              {columnOrder
+                .filter(header => visibleColumns.includes(header))
+                .map((header, index) => (
+                  <td
+                    key={header}
+                    className={`relative py-2 text-xs border-b border-slate-200 ${index === 0 ? `sticky left-0 z-20 bg-inherit ${stickyColumnClass}` : ""
+                      }`}
+                    style={{
+                      position: index === 0 ? "sticky" : "static",
+                      left: index === 0 ? 0 : "auto",
+                    }}
+                  >
+                    {index === 0 ? (
+                      <>
+                        <div
+                          className={`absolute left-0 top-0 bottom-0 w-1 ${deepColor}`}
+                        />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className="flex items-center gap-2 cursor-pointer pl-3"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                dispatch(toggleGroupExpansion(group.id))
+                              }}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown size={16} className="text-slate-500" />
+                              ) : (
+                                <ChevronUp size={16} className="text-slate-500" />
+                              )}
+                              <span className="font-semibold text-sm">{group.name}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="secondary" className="text-xs">
+                              <span className="flex flex-row items-center gap-2">
+                                {group.campaigns.length} <MdOutlineCampaign className="h-4 w-4" />
+                              </span>
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                dispatch(toggleEditingGroup(editingGroupId === group.id ? null : group.id))
+                              }}
+                            >
+                              {editingGroupId === group.id ? <Save size={12} /> : <Edit2 size={12} />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                dispatch(deleteGroup(group.id))
+                              }}
+                            >
+                              <X size={12} />
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-xs font-medium px-4">
+                        {formatCellValue(groupMetrics[header], header)}
+                      </div>
+                    )}
+                  </td>
+                ))}
+            </tr>
+
+            {isExpanded && (
+              <>
+                {editingGroupId === group.id && (
+                  <tr>
+                    <td colSpan={visibleColumns.length} className="px-4 py-2 border-b border-slate-200 bg-slate-50">
+                      <div className="flex items-center gap-2">
+                        <Select
+                          onValueChange={(value) => handleAddToGroup(group.id, value)}
+                        >
+                          <SelectTrigger className="w-[300px]">
+                            <SelectValue placeholder="Add campaign to group" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ungroupedCampaigns
+                              .filter((c) => !group.campaigns.includes(c.Campaign as string))
+                              .map((campaign) => (
+                                <SelectItem
+                                  key={campaign.Campaign as string}
+                                  value={campaign.Campaign as string}
+                                >
+                                  {campaign.Campaign as string}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {group.campaigns.map((campaignName) => {
+                  const campaign = data.campaigns.find((c) => c.Campaign === campaignName)
+                  if (!campaign) return null
+
+                  return (
+                    <tr key={campaignName} className="group bg-zinc-100 transition-colors">
+                      {columnOrder
+                        .filter(header => visibleColumns.includes(header))
+                        .map((header, colIndex) => (
+                          <td
+                            key={`${campaignName}-${header}`}
+                            className={`px-4 py-1 text-xs border-b border-slate-200 whitespace-nowrap ${colIndex === 0
+                                ? `sticky left-0 z-20 bg-zinc-100 font-semibold group-hover:text-blue-600 border-r ${stickyColumnClass}`
+                                : "border-r border-slate-200"
+                              }`}
+                            style={{
+                              position: colIndex === 0 ? "sticky" : "static",
+                              left: colIndex === 0 ? 0 : "auto",
+                            }}
+                          >
+                            {colIndex === 0 ? (
+                              <div className="flex items-center gap-2">
+                                <span>{formatCellValue(campaign[header], header)}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 opacity-0 group-hover:opacity-100"
+                                  onClick={() => handleRemoveFromGroup(group.id, campaignName)}
+                                >
+                                  <MinusCircle size={14} className="text-red-500" />
+                                </Button>
+                              </div>
+                            ) : (
+                              formatCellValue(campaign[header], header)
+                            )}
+                          </td>
+                        ))}
+                    </tr>
+                  )
+                })}
+              </>
+            )}
+          </React.Fragment>
+        )
+      })}
+
+      {/* Ungrouped Campaigns */}
+      {ungroupedCampaigns.map((campaign) => (
+        <tr key={campaign.Campaign as string} className="group hover:bg-slate-50 transition-colors">
+          {columnOrder
+            .filter(header => visibleColumns.includes(header))
+            .map((header, colIndex) => (
+              <td
+                key={`${campaign.Campaign}-${header}`}
+                className={`px-4 py-2 text-xs border-b border-slate-200 whitespace-nowrap ${colIndex === 0
+                    ? `sticky left-0 z-20 bg-white group-hover:bg-slate-50 font-semibold group-hover:text-blue-600 border-r ${stickyColumnClass}`
+                    : "border-r border-slate-200"
+                  }`}
+                style={{
+                  position: colIndex === 0 ? "sticky" : "static",
+                  left: colIndex === 0 ? 0 : "auto",
+                }}
+              >
+                {formatCellValue(campaign[header], header)}
+              </td>
+            ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+
   return (
     <Card className={`overflow-hidden ${isFullScreen ? "fixed inset-0 z-50" : ""}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-slate-200">
@@ -248,6 +495,12 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
           <FacebookLogo width="1.3rem" height="1.3rem" />
         </CardTitle>
         <div className="flex items-center space-x-2">
+          <ColumnManagementSheet
+            visibleColumns={visibleColumns}
+            columnOrder={columnOrder}
+            onVisibilityChange={setVisibleColumns}
+            onOrderChange={setColumnOrder}
+          />
           <Button
             variant="outline"
             size="sm"
@@ -255,9 +508,6 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
           >
             {isCreatingGroup ? "Cancel" : "Create Group"}
           </Button>
-          <Badge variant="secondary" className="text-sm font-medium">
-            {data.campaigns.length} Active Campaigns
-          </Badge>
           <Button
             variant="outline"
             size="sm"
@@ -380,201 +630,8 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
 
         <div ref={tableRef} className={`overflow-auto ${getTableHeight()}`} style={{ position: "relative" }}>
           <table className="w-full border-collapse rounded-lg">
-            <thead className="bg-slate-100 sticky top-0 z-30">
-              <tr>
-                {headers.map((header, index) => (
-                  <th
-                    key={header}
-                    className={`px-4 py-2 text-left text-sm font-bold text-slate-700 border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors whitespace-nowrap ${index === 0
-                      ? `sticky left-0 z-40 bg-slate-100 ${stickyColumnClass} border-r`
-                      : "border-r border-slate-200"
-                      }`}
-                    onClick={() => handleSort(header)}
-                    style={{
-                      minWidth: header === "Campaign" ? "190px" : "110px",
-                      position: index === 0 ? "sticky" : "static",
-                      left: index === 0 ? 0 : "auto",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{header}</span>
-                      {sortColumn === header &&
-                        (sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => {
-                const isExpanded = expandedGroups.includes(group.id)
-                const groupMetrics = calculateGroupMetrics(group.campaigns)
-                const deepColor = GROUP_DEEP_COLORS[group.color] || group.color;
-
-                return (
-                  <React.Fragment key={group.id}>
-                    <tr onClick={() => dispatch(toggleGroupExpansion(group.id))} className={`group transition-colors cursor-pointer ${group.color} ${isExpanded ? 'border-2 border-gray-400' : ''}`}>
-                      {headers.map((header, index) => (
-                        <td
-                          key={header}
-                          className={`relative py-2 text-xs border-b border-slate-200 ${index === 0 ? `sticky left-0 z-20 bg-inherit ${stickyColumnClass}` : ""
-                            }`}
-                          style={{
-                            position: index === 0 ? "sticky" : "static",
-                            left: index === 0 ? 0 : "auto",
-                          }}
-                        >
-                          {index === 0 ? (
-                            <>
-                              <div
-                                className={`absolute left-0 top-0 bottom-0 w-1 ${deepColor}`}
-                              />
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <div
-                                    className="flex items-center gap-2 cursor-pointer pl-3"
-                                    onClick={() => dispatch(toggleGroupExpansion(group.id))}
-                                  >
-                                    {isExpanded ? (
-                                      <ChevronDown size={16} className="text-slate-500" />
-                                    ) : (
-                                      <ChevronUp size={16} className="text-slate-500" />
-                                    )}
-                                    <span className="font-semibold text-sm">{group.name}</span>
-                                  </div>
-
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    <span className="flex flex-row items-center gap-2">{group.campaigns.length} <MdOutlineCampaign className="h-4 w-4" /></span>
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      dispatch(toggleEditingGroup(editingGroupId === group.id ? null : group.id))
-                                    }}
-                                  >
-                                    {editingGroupId === group.id ? <Save size={12} /> : <Edit2 size={12} />}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      dispatch(deleteGroup(group.id))
-                                    }}
-                                  >
-                                    <X size={12} />
-                                  </Button>
-                                </div>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-xs font-medium px-4">
-                              {formatCellValue(groupMetrics[header], header)}
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-
-                    {isExpanded && (
-                      <>
-                        {editingGroupId === group.id && (
-                          <tr>
-                            <td colSpan={headers.length} className="px-4 py-2 border-b border-slate-200 bg-slate-50">
-                              <div className="flex items-center gap-2">
-                                <Select
-                                  onValueChange={(value) => handleAddToGroup(group.id, value)}
-                                >
-                                  <SelectTrigger className="w-[300px]">
-                                    <SelectValue placeholder="Add campaign to group" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ungroupedCampaigns
-                                      .filter((c) => !group.campaigns.includes(c.Campaign as string))
-                                      .map((campaign) => (
-                                        <SelectItem
-                                          key={campaign.Campaign as string}
-                                          value={campaign.Campaign as string}
-                                        >
-                                          {campaign.Campaign as string}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-
-                        {group.campaigns.map((campaignName) => {
-                          const campaign = data.campaigns.find((c) => c.Campaign === campaignName)
-                          return campaign ? (
-                            <tr key={campaignName} className="group bg-zinc-100 transition-colors">
-                              {headers.map((header, colIndex) => (
-                                <td
-                                  key={`${campaignName}-${colIndex}`}
-                                  className={`px-4 py-1 text-xs border-b border-slate-200 whitespace-nowrap ${colIndex === 0
-                                    ? `sticky left-0 z-20 bg-zinc-100 font-semibold group-hover:text-blue-600 border-r ${stickyColumnClass}`
-                                    : "border-r border-slate-200"
-                                    }`}
-                                  style={{
-                                    position: colIndex === 0 ? "sticky" : "static",
-                                    left: colIndex === 0 ? 0 : "auto",
-                                  }}
-                                >
-                                  {colIndex === 0 ? (
-                                    <div className="flex items-center gap-2">
-                                      <span>{formatCellValue(campaign[header], header)}</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 opacity-0 group-hover:opacity-100"
-                                        onClick={() => handleRemoveFromGroup(group.id, campaignName)}
-                                      >
-                                        <MinusCircle size={14} className="text-red-500" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    formatCellValue(campaign[header], header)
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-                          ) : null
-                        })}
-                      </>
-                    )}
-                  </React.Fragment>
-                )
-              })}
-
-              {/* Ungrouped Campaigns */}
-              {ungroupedCampaigns.map((campaign, rowIndex) => (
-                <tr key={rowIndex} className="group hover:bg-slate-50 transition-colors">
-                  {headers.map((header, colIndex) => (
-                    <td
-                      key={`${rowIndex}-${colIndex}`}
-                      className={`px-4 py-2 text-xs border-b border-slate-200 whitespace-nowrap ${colIndex === 0
-                        ? `sticky left-0 z-20 bg-white group-hover:bg-slate-50 font-semibold group-hover:text-blue-600 border-r ${stickyColumnClass}`
-                        : "border-r border-slate-200"
-                        } ${rowIndex === ungroupedCampaigns.length - 1 ? "border-b-0" : ""}`}
-                      style={{
-                        position: colIndex === 0 ? "sticky" : "static",
-                        left: colIndex === 0 ? 0 : "auto",
-                      }}
-                    >
-                      {formatCellValue(campaign[header], header)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+            {renderTableHeader()}
+            {renderTableBody()}
           </table>
         </div>
       </CardContent>

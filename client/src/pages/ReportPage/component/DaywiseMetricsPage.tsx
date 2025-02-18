@@ -1,16 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams } from 'react-router-dom';
 import { format } from "date-fns";
-import {  Columns, RefreshCw, X, Maximize, Minimize } from "lucide-react";
+import {  RefreshCw, X, Maximize, Minimize } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport"
@@ -21,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import NewReportTable from "./NewReportTable";
+import ColumnManagementSheet from "@/pages/META/Campaign/ColumnManagementSheet";
 
 interface DaywiseMetric {
   "Day": string
@@ -85,15 +79,22 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
     setIsFullScreen(!isFullScreen);
   };
 
-  const toggleColumnSelection = (column: string) => {
-    setSelectedColumns((prev) => {
-      if (prev.includes(column)) {
-        return prev.filter((col) => col !== column);
-      } else {
-        return [...prev, column];
-      }
-    });
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(selectedColumns);
+  const [columnOrder, setColumnOrder] = useState<string[]>(selectedColumns);
+
+  const handleVisibilityChange = (columns: string[]) => {
+    setVisibleColumns(columns);
   };
+  
+  const handleOrderChange = (newOrder: string[]) => {
+    setColumnOrder(newOrder);
+    setVisibleColumns(newOrder); // Ensure visibleColumns is also updated
+  };
+  
+  useEffect(() => {
+    setVisibleColumns(selectedColumns);
+    setColumnOrder(selectedColumns);
+  }, [selectedColumns]);
 
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
@@ -143,8 +144,6 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
     fetchMetrics();
   };
 
-  const allColumns = data.length > 0 ? Object.keys(data[0]) : [];
-  const sortedSelectedColumns = allColumns.filter((col) => selectedColumns.includes(col));
 
   const applyFilters = useCallback((filters: FilterItem[]) => {
     let result = [...data];
@@ -195,27 +194,12 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
             <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size={"icon"}>
-                  <Columns className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                {allColumns.map((column) => (
-                  <DropdownMenuItem key={column} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`column-${column}`}
-                      checked={selectedColumns.includes(column)}
-                      onCheckedChange={() => toggleColumnSelection(column)}
-                    />
-                    <label htmlFor={`column-${column}`} className="flex-1 cursor-pointer">
-                      {column}
-                    </label>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ColumnManagementSheet
+                visibleColumns={visibleColumns}
+                columnOrder={columnOrder}
+                onVisibilityChange={handleVisibilityChange}
+                onOrderChange={handleOrderChange}
+              />
             <FilterComponent
               columns={numericColumns}
               onFiltersChange={applyFilters}
@@ -246,7 +230,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
           {isLoading ? (
             <TableSkeleton />
           ) : (
-            <NewReportTable columns={sortedSelectedColumns} data={memoizedFilteredData} isFullScreen={isFullScreen} />
+            <NewReportTable columns={columnOrder} data={memoizedFilteredData} isFullScreen={isFullScreen} />
           )}
         </div>
       </div>

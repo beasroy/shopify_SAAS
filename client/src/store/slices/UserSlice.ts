@@ -5,6 +5,8 @@ interface User {
   username: string;
   email: string;
   brands: string[];
+  isClient: boolean;
+  isAdmin: boolean;
   hasSeenLandingSlides?: boolean;
 }
 

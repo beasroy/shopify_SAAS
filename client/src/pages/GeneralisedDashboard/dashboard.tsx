@@ -1,12 +1,10 @@
 // CombinedDashboard.tsx
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { useUser } from "@/context/UserContext";
 import { Activity, Target, TrendingUp, ArrowUpRight } from "lucide-react";
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BrandSetup from "./components/BrandForm";
-import LandingSlides from "./components/LandingSlides";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/index.ts"
 
@@ -19,7 +17,7 @@ interface Brand {
 }
 
 export default function CombinedDashboard() {
-    const { user, setUser, showLandingPopup, setShowLandingPopup } = useUser();
+    const user = useSelector((state: RootState) => state.user.user);
     const brands = useSelector((state: RootState) => state.brand.brands);
     const [activeTab, setActiveTab] = useState("landing");
     const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
@@ -69,27 +67,7 @@ export default function CombinedDashboard() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6 relative">
-            {/* Landing Slides Popup */}
-            {showLandingPopup && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <div className="w-full max-w-4xl mx-4">
-                        <LandingSlides 
-                            onEnd={() => {
-                                setShowLandingPopup(false);
-                                if (user) {
-                                    setUser({
-                                        ...user,
-                                        hasSeenLandingSlides: true
-                                    });
-                                }
-                                if (brands.length === 0) {
-                                    setActiveTab("setup");
-                                }
-                            }} 
-                        />
-                    </div>
-                </div>
-            )}
+           
 
             {/* Main Dashboard Content */}
             <div className="max-w-7xl mx-auto space-y-8">

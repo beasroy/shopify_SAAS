@@ -47,8 +47,9 @@ export async function fetchSearchTermMetrics(req, res) {
         }
 
         const refreshToken = user.googleRefreshToken;
-        if (!refreshToken) {
-            return res.status(200).json([]);
+        if (!refreshToken || refreshToken.trim() === '') {
+          console.warn(`No refresh token found for User ID: ${userId}`);
+          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
@@ -196,8 +197,9 @@ export async function fetchAgeMetrics(req, res) {
         }
 
         const refreshToken = user.googleRefreshToken;
-        if (!refreshToken) {
-            return res.status(200).json([]);
+        if (!refreshToken || refreshToken.trim() === '') {
+          console.warn(`No refresh token found for User ID: ${userId}`);
+          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
@@ -344,8 +346,9 @@ export async function fetchGenderMetrics(req, res) {
         }
 
         const refreshToken = user.googleRefreshToken;
-        if (!refreshToken) {
-            return res.status(200).json([]);
+        if (!refreshToken || refreshToken.trim() === '') {
+          console.warn(`No refresh token found for User ID: ${userId}`);
+          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);

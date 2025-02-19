@@ -32,6 +32,7 @@ export default function CollapsibleSidebar() {
     const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
     const brands = useSelector((state: RootState) => state.brand.brands);
     const user = useSelector((state: RootState) => state.user.user);
+
     // Fetch brands
     const fetchBrands = useCallback(async () => {
         try {
@@ -82,6 +83,7 @@ export default function CollapsibleSidebar() {
         }
     }, [location.pathname, setSelectedBrandId]);
 
+    // Define base dashboards that all users can see
     const dashboards = [
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
         { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
@@ -117,9 +119,12 @@ export default function CollapsibleSidebar() {
             ]
         },
         { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },  
-        { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
     ];
 
+    // Add Segment Scope only if user is admin
+    const allDashboards = user?.isAdmin 
+        ? [...dashboards, { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> }]
+        : dashboards;
 
     const isItemDisabled = (item: any) => {
         if (!selectedBrandId) return true;
@@ -187,7 +192,7 @@ export default function CollapsibleSidebar() {
                                 ))}
                             </SidebarItem>
 
-                            {dashboards.map((dashboard, index) => (
+                            {allDashboards.map((dashboard, index) => (
                                 <SidebarItem
                                     key={index}
                                     icon={dashboard.icon}

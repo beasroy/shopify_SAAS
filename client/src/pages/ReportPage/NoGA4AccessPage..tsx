@@ -1,14 +1,15 @@
 
 import { AlertCircle, Mail, ArrowRight } from 'lucide-react';
-import { useUser } from '@/context/UserContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import axios from 'axios';
 function NoGA4AcessPage() {
-    const { user } = useUser();
+  const user = useSelector((state: RootState) => state.user.user);
     const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
     const handleGoogleLogin = async () => {
         try {
     
-          const response = await axios.get(`${baseURL}/api/auth/google?context=userLogin`, { withCredentials: true });
+          const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`, { withCredentials: true });
           const { authUrl } = response.data;
     
           window.location.href = authUrl;

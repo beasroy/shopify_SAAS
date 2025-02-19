@@ -16,6 +16,7 @@ export interface MetaCampaign {
 
 export interface AccountData {
     account_name: string;
+    account_id: string;
     campaigns: MetaCampaign[];
 }
 

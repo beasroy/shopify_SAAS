@@ -48,6 +48,7 @@ interface Campaign {
 interface MetaReportTableProps {
   data: {
     account_name: string
+    account_id: string
     campaigns: Campaign[]
   }
   height?: string
@@ -81,13 +82,43 @@ const GROUP_DEEP_COLORS: Record<string, string> = {
 
 const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max-h-[600px]" }) => {
   const dispatch = useDispatch()
+  const campaignGroupState = useSelector((state: RootState) => {
+    if (!state.campaignGroups?.accounts) {
+      return {
+        groups: [],
+        selectedCampaigns: [],
+        editingGroupId: null,
+        expandedGroups: [],
+        isCreatingGroup: false
+      };
+    }
+    return state.campaignGroups.accounts[data.account_id] ?? {
+      groups: [],
+      selectedCampaigns: [],
+      editingGroupId: null,
+      expandedGroups: [],
+      isCreatingGroup: false
+    };
+  });
+
   const {
     groups,
     selectedCampaigns,
     editingGroupId,
     expandedGroups,
     isCreatingGroup
-  } = useSelector((state: RootState) => state.campaignGroups)
+  } = campaignGroupState;
+
+  // Initialize account in Redux if needed
+  useEffect(() => {
+    if (data.account_id) {
+      // Your slice already handles initialization via initializeAccountState
+      dispatch(setSelectedCampaigns({ 
+        accountId: data.account_id, 
+        campaigns: [] 
+      }));
+    }
+  }, [data.account_id, dispatch]);
 
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [sortColumn, setSortColumn] = useState("")
@@ -131,19 +162,24 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
   const handleCreateGroup = () => {
     if (newGroupName && selectedCampaigns.length > 0) {
       const color = GROUP_COLORS[groups.length % GROUP_COLORS.length]
-      dispatch(createGroup({ name: newGroupName, campaigns: selectedCampaigns, color }))
+      dispatch(createGroup({ 
+        accountId: data.account_id,
+        name: newGroupName, 
+        campaigns: selectedCampaigns, 
+        color 
+      }))
       setNewGroupName("")
-      dispatch(setSelectedCampaigns([]))
-      dispatch(setIsCreatingGroup(false))
+      dispatch(setSelectedCampaigns({ accountId: data.account_id, campaigns: [] }))
+      dispatch(setIsCreatingGroup({accountId:data.account_id, isCreating:false}))
     }
   }
 
   const handleAddToGroup = (groupId: string, campaignName: string) => {
-    dispatch(addCampaignToGroup({ groupId, campaignName }))
+    dispatch(addCampaignToGroup({ accountId:data.account_id,groupId, campaignName }))
   }
 
   const handleRemoveFromGroup = (groupId: string, campaignName: string) => {
-    dispatch(removeCampaignFromGroup({ groupId, campaignName }))
+    dispatch(removeCampaignFromGroup({ accountId:data.account_id,groupId, campaignName }))
   }
 
   const toggleFullScreen = () => {
@@ -255,6 +291,10 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
     return height
   }
 
+  useEffect(()=>{
+    console.log(data);
+  },[])
+
   const groupedCampaigns = groups.flatMap((group) => group.campaigns)
   const ungroupedCampaigns = sortedCampaigns.filter(
     (campaign) => !groupedCampaigns.includes(campaign.Campaign as string)
@@ -309,7 +349,7 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
         return (
           <React.Fragment key={group.id}>
             <tr
-              onClick={() => dispatch(toggleGroupExpansion(group.id))}
+              onClick={() => dispatch(toggleGroupExpansion({accountId:data.account_id,groupId:group.id}))}
               className={`group transition-colors cursor-pointer ${group.color} ${isExpanded ? 'border-2 border-gray-400' : ''}`}
             >
               {columnOrder
@@ -335,7 +375,7 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                               className="flex items-center gap-2 cursor-pointer pl-3"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                dispatch(toggleGroupExpansion(group.id))
+                                dispatch(toggleGroupExpansion({accountId:data.account_id,groupId:group.id}))
                               }}
                             >
                               {isExpanded ? (
@@ -358,7 +398,10 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                               className="h-6 px-1"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                dispatch(toggleEditingGroup(editingGroupId === group.id ? null : group.id))
+                                dispatch(toggleEditingGroup({
+                                    accountId: data.account_id,
+                                    groupId: editingGroupId === group.id ? null : group.id
+                                }))
                               }}
                             >
                               {editingGroupId === group.id ? <Save size={12} /> : <Edit2 size={12} />}
@@ -369,7 +412,7 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                               className="h-6 px-1"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                dispatch(deleteGroup(group.id))
+                                dispatch(deleteGroup({accountId:data.account_id,groupId:group.id}))
                               }}
                             >
                               <X size={12} />
@@ -504,7 +547,7 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
           <Button
             variant="outline"
             size="sm"
-            onClick={() => dispatch(setIsCreatingGroup(!isCreatingGroup))}
+            onClick={() => dispatch(setIsCreatingGroup({accountId:data.account_id,isCreating:!isCreatingGroup}))}
           >
             {isCreatingGroup ? "Cancel" : "Create Group"}
           </Button>
@@ -568,7 +611,10 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                             const newSelected = selectedCampaigns.includes(campaignName)
                               ? selectedCampaigns.filter(c => c !== campaignName)
                               : [...selectedCampaigns, campaignName]
-                            dispatch(setSelectedCampaigns(newSelected))
+                            dispatch(setSelectedCampaigns({
+                              accountId: data.account_id,
+                              campaigns: newSelected
+                            }))
                           }}
                         >
                           <Checkbox
@@ -579,7 +625,10 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                               const newSelected = checked
                                 ? [...selectedCampaigns, campaignName]
                                 : selectedCampaigns.filter(c => c !== campaignName)
-                              dispatch(setSelectedCampaigns(newSelected))
+                              dispatch(setSelectedCampaigns({
+                                accountId: data.account_id,
+                                campaigns: newSelected
+                              }))
                             }}
                           />
                           <label
@@ -616,9 +665,10 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
                       {campaign}
                       <X
                         className="h-3 w-3 cursor-pointer hover:text-red-500"
-                        onClick={() => dispatch(setSelectedCampaigns(
-                          selectedCampaigns.filter(c => c !== campaign)
-                        ))}
+                        onClick={() => dispatch(setSelectedCampaigns({
+                          accountId: data.account_id,
+                          campaigns: selectedCampaigns.filter(c => c !== campaign)
+                        }))}
                       />
                     </Badge>
                   ))}

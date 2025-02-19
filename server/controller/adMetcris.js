@@ -473,7 +473,7 @@ export const fetchFBCampaignData = async (req, res) => {
         const batchRequests = adAccountIds.flatMap((accountId) => [
             {
                 method: 'GET',
-                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,spend,reach,purchase_roas,frequency,cpm,account_name,actions,action_values,clicks,impressions,outbound_clicks_ctr,unique_inline_link_clicks,video_p50_watched_actions},status`,
+                relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,account_id,spend,reach,purchase_roas,frequency,cpm,account_name,actions,action_values,clicks,impressions,outbound_clicks_ctr,unique_inline_link_clicks,video_p50_watched_actions},status`,
             },
         ]);
 
@@ -497,6 +497,7 @@ export const fetchFBCampaignData = async (req, res) => {
             const accountResponse = response.data[i];
             let campaignData = {
                 account_name: '',
+                account_id: '',
                 campaigns: [],
             };
             if (accountResponse.code === 200) {
@@ -510,6 +511,7 @@ export const fetchFBCampaignData = async (req, res) => {
                         const status = campaign.status;
                         if (insights) {
                             campaignData.account_name = insights.account_name || '';
+                            campaignData.account_id = insights.account_id || '';
                             const content_view = insights.actions?.find(action => action.action_type === 'view_content')?.value || 0;
                             const purchase = insights.actions?.find(action => action.action_type === 'purchase')?.value || 0;
                             const addToCart = Number(insights.actions?.find(action => action.action_type === 'add_to_cart')?.value) || 0;

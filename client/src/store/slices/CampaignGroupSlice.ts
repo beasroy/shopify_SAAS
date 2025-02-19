@@ -7,37 +7,39 @@ interface CampaignGroup {
   color: string;
 }
 
-interface CampaignGroupsState {
-  groups: CampaignGroup[];
-  selectedCampaigns: string[];
-  editingGroupId: string | null;
-  expandedGroups: string[];
-  isCreatingGroup: boolean;
+interface AccountCampaignGroups {
+  [accountId: string]: {
+    groups: CampaignGroup[];
+    selectedCampaigns: string[];
+    editingGroupId: string | null;
+    expandedGroups: string[];
+    isCreatingGroup: boolean;
+  };
 }
+
+interface CampaignGroupsState {
+  accounts: AccountCampaignGroups;
+}
+
+const defaultAccountState = {
+  groups: [],
+  selectedCampaigns: [],
+  editingGroupId: null,
+  expandedGroups: [],
+  isCreatingGroup: false
+};
 
 // Load initial state from localStorage if available
 const loadState = (): CampaignGroupsState => {
   try {
     const serializedState = localStorage.getItem('campaignGroups');
     if (serializedState === null) {
-      return {
-        groups: [],
-        selectedCampaigns: [],
-        editingGroupId: null,
-        expandedGroups: [],
-        isCreatingGroup: false
-      };
+      return { accounts: {} };
     }
     return JSON.parse(serializedState);
   } catch (err) {
     console.error('Error loading state:', err);
-    return {
-      groups: [],
-      selectedCampaigns: [],
-      editingGroupId: null,
-      expandedGroups: [],
-      isCreatingGroup: false
-    };
+    return { accounts: {} };
   }
 };
 
@@ -51,64 +53,91 @@ const saveState = (state: CampaignGroupsState) => {
   }
 };
 
+// Initialize account state if it doesn't exist
+const initializeAccountState = (state: CampaignGroupsState, accountId: string) => {
+  if (!state.accounts) {
+    state.accounts = {};
+  }
+  if (!state.accounts[accountId]) {
+    state.accounts[accountId] = { ...defaultAccountState };
+  }
+};
+
 const campaignGroupsSlice = createSlice({
   name: 'campaignGroups',
   initialState: loadState(),
   reducers: {
-    createGroup: (state, action: PayloadAction<{ name: string; campaigns: string[]; color: string }>) => {
+    createGroup: (state, action: PayloadAction<{ accountId: string; name: string; campaigns: string[]; color: string }>) => {
+      const { accountId, name, campaigns, color } = action.payload;
+      initializeAccountState(state, accountId);
+      
       const newGroup: CampaignGroup = {
         id: Date.now().toString(),
-        name: action.payload.name,
-        campaigns: action.payload.campaigns,
-        color: action.payload.color
+        name,
+        campaigns,
+        color
       };
-      state.groups.push(newGroup);
-      state.selectedCampaigns = [];
-      state.isCreatingGroup = false;
+      state.accounts[accountId].groups.push(newGroup);
+      state.accounts[accountId].selectedCampaigns = [];
+      state.accounts[accountId].isCreatingGroup = false;
       saveState(state);
     },
-    deleteGroup: (state, action: PayloadAction<string>) => {
-      state.groups = state.groups.filter(group => group.id !== action.payload);
-      if (state.editingGroupId === action.payload) {
-        state.editingGroupId = null;
+    deleteGroup: (state, action: PayloadAction<{ accountId: string; groupId: string }>) => {
+      const { accountId, groupId } = action.payload;
+      initializeAccountState(state, accountId);
+      state.accounts[accountId].groups = state.accounts[accountId].groups.filter(group => group.id !== groupId);
+      if (state.accounts[accountId].editingGroupId === groupId) {
+        state.accounts[accountId].editingGroupId = null;
       }
       saveState(state);
     },
-    addCampaignToGroup: (state, action: PayloadAction<{ groupId: string; campaignName: string }>) => {
-      const group = state.groups.find(g => g.id === action.payload.groupId);
-      if (group && !group.campaigns.includes(action.payload.campaignName)) {
-        group.campaigns.push(action.payload.campaignName);
+    addCampaignToGroup: (state, action: PayloadAction<{ accountId: string; groupId: string; campaignName: string }>) => {
+      const { accountId, groupId, campaignName } = action.payload;
+      initializeAccountState(state, accountId);
+      const group = state.accounts[accountId].groups.find(g => g.id === groupId);
+      if (group && !group.campaigns.includes(campaignName)) {
+        group.campaigns.push(campaignName);
+        saveState(state);
       }
-      saveState(state);
     },
-    removeCampaignFromGroup: (state, action: PayloadAction<{ groupId: string; campaignName: string }>) => {
-      const group = state.groups.find(g => g.id === action.payload.groupId);
+    removeCampaignFromGroup: (state, action: PayloadAction<{ accountId: string; groupId: string; campaignName: string }>) => {
+      const { accountId, groupId, campaignName } = action.payload;
+      initializeAccountState(state, accountId);
+      const group = state.accounts[accountId].groups.find(g => g.id === groupId);
       if (group) {
-        group.campaigns = group.campaigns.filter(c => c !== action.payload.campaignName);
+        group.campaigns = group.campaigns.filter(c => c !== campaignName);
+        saveState(state);
       }
+    },
+    setSelectedCampaigns: (state, action: PayloadAction<{ accountId: string; campaigns: string[] }>) => {
+      const { accountId, campaigns } = action.payload;
+      initializeAccountState(state, accountId);
+      state.accounts[accountId].selectedCampaigns = campaigns;
       saveState(state);
     },
-    setSelectedCampaigns: (state, action: PayloadAction<string[]>) => {
-      state.selectedCampaigns = action.payload;
+    toggleEditingGroup: (state, action: PayloadAction<{ accountId: string; groupId: string | null }>) => {
+      const { accountId, groupId } = action.payload;
+      initializeAccountState(state, accountId);
+      state.accounts[accountId].editingGroupId = groupId;
       saveState(state);
     },
-    toggleEditingGroup: (state, action: PayloadAction<string | null>) => {
-      state.editingGroupId = action.payload;
-      saveState(state);
-    },
-    toggleGroupExpansion: (state, action: PayloadAction<string>) => {
-      const groupId = action.payload;
-      if (state.expandedGroups.includes(groupId)) {
-        state.expandedGroups = state.expandedGroups.filter(id => id !== groupId);
+    toggleGroupExpansion: (state, action: PayloadAction<{ accountId: string; groupId: string }>) => {
+      const { accountId, groupId } = action.payload;
+      initializeAccountState(state, accountId);
+      const expandedGroups = state.accounts[accountId].expandedGroups;
+      if (expandedGroups.includes(groupId)) {
+        state.accounts[accountId].expandedGroups = expandedGroups.filter(id => id !== groupId);
       } else {
-        state.expandedGroups.push(groupId);
+        state.accounts[accountId].expandedGroups.push(groupId);
       }
       saveState(state);
     },
-    setIsCreatingGroup: (state, action: PayloadAction<boolean>) => {
-      state.isCreatingGroup = action.payload;
-      if (!action.payload) {
-        state.selectedCampaigns = [];
+    setIsCreatingGroup: (state, action: PayloadAction<{ accountId: string; isCreating: boolean }>) => {
+      const { accountId, isCreating } = action.payload;
+      initializeAccountState(state, accountId);
+      state.accounts[accountId].isCreatingGroup = isCreating;
+      if (!isCreating) {
+        state.accounts[accountId].selectedCampaigns = [];
       }
       saveState(state);
     }

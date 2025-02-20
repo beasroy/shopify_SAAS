@@ -9,9 +9,6 @@ import moment from 'moment-timezone';
 config();
 
 
-
-
-
 export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
         console.log('Fetching orders...');
@@ -29,19 +26,18 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
         const shopify = new Shopify({
             shopName: brand.shopifyAccount?.shopName,
             accessToken: access_token,
+            apiVersion: '2023-07'
         });
 
-        // Get store timezone from Shopify shop data
         const shopData = await shopify.shop.get();
         const storeTimezone = shopData.iana_timezone || 'UTC';
         console.log('Store timezone:', storeTimezone);
 
-        // Initialize daily sales data structure using store's timezone
+        // Initialize daily sales data structure
         const dailySalesMap = {};
         let currentDay = moment.tz(startDate, storeTimezone).startOf('day');
         const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
 
-        // Initialize data structure for all days in range
         while (currentDay.isSameOrBefore(endMoment)) {
             const dateStr = currentDay.format('YYYY-MM-DD');
             dailySalesMap[dateStr] = {
@@ -53,154 +49,146 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
             currentDay.add(1, 'day');
         }
 
-        // Reset currentDay for order fetching
+        // Reset for fetching
         currentDay = moment.tz(startDate, storeTimezone).startOf('day');
 
-        // Store all orders that have refunds for later analysis
-        let ordersWithRefunds = [];
-
-        while (currentDay.isSameOrBefore(endMoment)) {
-            const startOfDayISO = currentDay.clone().startOf('day').toISOString();
-            const endOfDayISO = currentDay.clone().endOf('day').toISOString();
-
-            console.log('Fetching for date range:', startOfDayISO, endOfDayISO);
-
-            const queryParams = {
-                status: 'any',
-                created_at_min: startOfDayISO,
-                created_at_max: endOfDayISO,
-                limit: 250,
-                fields: 'id,created_at,total_price,refunds' // Specify fields to ensure we get refunds
-            };
-
-            let hasNextPage = true;
-            let pageInfo;
+        const fetchOrdersForTimeRange = async (startTime, endTime) => {
             let orders = [];
+            let pageInfo = null;
+            let retryCount = 0;
+            const MAX_RETRIES = 3;
+            const RETRY_DELAY = 5000;
 
-            while (hasNextPage) {
-                if (pageInfo) {
-                    queryParams.page_info = pageInfo;
-                } else {
-                    delete queryParams.page_info;
-                }
-
+            do {
                 try {
+                    // Add mandatory delay between requests
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    const response = await shopify.order.list(queryParams);
-                    if (!response || response.length === 0) {
+                    const params = {
+                        status: 'any',
+                        created_at_min: startTime,
+                        created_at_max: endTime,
+                        limit: 150, // Reduced limit for better stability
+                        fields: 'id,created_at,total_price,refunds'
+                    };
+
+                    if (pageInfo) {
+                        params.page_info = pageInfo;
+                    }
+
+                    const response = await shopify.order.list(params);
+                    
+                    if (!response || !Array.isArray(response)) {
+                        console.warn('Unexpected response format:', response);
                         break;
                     }
 
-                    // Store orders with refunds for analysis
-                    const ordersWithRefundsFromResponse = response.filter(order => 
-                        order.refunds && order.refunds.length > 0
-                    );
-                    ordersWithRefunds = ordersWithRefunds.concat(ordersWithRefundsFromResponse);
-
                     orders = orders.concat(response);
-                    pageInfo = response.nextPageParameters?.page_info || null;
-                    hasNextPage = !!pageInfo;
+
+                    // Extract pagination info from headers
+                    const linkHeader = response.headers?.link;
+                    if (linkHeader) {
+                        const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
+                        pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
+                    } else {
+                        pageInfo = null;
+                    }
+
+                    console.log(`Fetched ${response.length} orders, total: ${orders.length}`);
+                    retryCount = 0; // Reset retry count on successful request
+
                 } catch (error) {
-                    console.error('Error while fetching orders:', error);
+                    console.error('Error fetching orders:', error);
+
                     if (error.statusCode === 429) {
-                        console.warn('Rate limit reached, retrying in 2 seconds...');
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                         continue;
                     }
-                    throw new Error(`Error fetching orders: ${error.message}`);
-                }
-            }
 
-            // Process orders and their refunds
-            orders.forEach(order => {
-                const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-                const orderAmount = Number(order.total_price || 0);
-
-                // Log orders for January 9th
-                if (orderDate === '2025-02-04') {
-                    console.log('\nFound order for Jan 9th:', {
-                        order_id: order.id,
-                        created_at: order.created_at,
-                        total_price: orderAmount,
-                        has_refunds: order.refunds && order.refunds.length > 0,
-                        refunds_count: order.refunds ? order.refunds.length : 0
-                    });
-                }
-
-                if (dailySalesMap[orderDate]) {
-                    dailySalesMap[orderDate].grossSales += orderAmount;
-                    dailySalesMap[orderDate].orderCount += 1;
-                }
-
-                if (order.refunds && order.refunds.length > 0) {
-                    order.refunds.forEach(refund => {
-                        const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                    if (error.statusCode === 400 && pageInfo) {
+                        console.log('Bad request with page_info, restarting chunk');
+                        pageInfo = null;
+                        retryCount++;
                         
-                        // Log all refund processing attempts
-                        console.log('\nProcessing refund:', {
-                            order_id: order.id,
-                            refund_id: refund.id,
-                            created_at: refund.created_at,
-                            refund_date: refundDate,
-                            line_items: refund.refund_line_items.length,
-                            transactions: refund.transactions ? refund.transactions.length : 0
-                        });
-
-                        // Calculate both line items and transaction amounts
-                        const lineItemAmount = refund.refund_line_items.reduce((sum, item) => {
-                            return sum + Number(item.subtotal_set.shop_money.amount || 0);
-                        }, 0);
-
-                        const transactionAmount = refund.transactions ? refund.transactions.reduce((sum, trans) => {
-                            return sum + Number(trans.amount || 0);
-                        }, 0) : 0;
-
-                        const refundAmount = Math.max(lineItemAmount, transactionAmount);
-
-                        console.log('Refund amounts calculated:', {
-                            line_item_amount: lineItemAmount,
-                            transaction_amount: transactionAmount,
-                            final_refund_amount: refundAmount
-                        });
-
-                        if (dailySalesMap[refundDate]) {
-                            dailySalesMap[refundDate].refundAmount += refundAmount;
-                            console.log(`Updated refund total for ${refundDate}: ${dailySalesMap[refundDate].refundAmount}`);
+                        if (retryCount >= MAX_RETRIES) {
+                            console.error('Max retries reached for time range');
+                            break;
                         }
-                    });
+                        
+                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                        continue;
+                    }
+
+                    throw error;
                 }
-            });
+            } while (pageInfo);
+
+            return orders;
+        };
+
+        while (currentDay.isSameOrBefore(endMoment)) {
+            const dateStr = currentDay.format('YYYY-MM-DD');
+            console.log(`Processing date: ${dateStr}`);
+
+            // Split day into 6-hour chunks for better handling
+            const timeChunks = Array.from({ length: 4 }, (_, i) => ({
+                start: currentDay.clone().add(i * 6, 'hours').toISOString(),
+                end: currentDay.clone().add((i + 1) * 6, 'hours').toISOString()
+            }));
+
+            for (const chunk of timeChunks) {
+                const orders = await fetchOrdersForTimeRange(chunk.start, chunk.end);
+                
+                orders.forEach(order => {
+                    const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+                    const orderAmount = Number(order.total_price || 0);
+                    
+                    if (dailySalesMap[orderDate]) {
+                        dailySalesMap[orderDate].grossSales += orderAmount;
+                        dailySalesMap[orderDate].orderCount += 1;
+                    }
+
+                    // Process refunds
+                    if (order.refunds?.length > 0) {
+                        order.refunds.forEach(refund => {
+                            const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                            const refundAmount = calculateRefundAmount(refund);
+                            
+                            if (dailySalesMap[refundDate]) {
+                                dailySalesMap[refundDate].refundAmount += refundAmount;
+                            }
+                        });
+                    }
+                });
+            }
 
             currentDay.add(1, 'day');
         }
 
-        // Log all orders with refunds found during the entire period
-        console.log('\nAll orders with refunds found:', ordersWithRefunds.map(order => ({
-            order_id: order.id,
-            created_at: order.created_at,
-            refunds: order.refunds.map(refund => ({
-                refund_id: refund.id,
-                created_at: refund.created_at,
-                amount: refund.refund_line_items.reduce((sum, item) => 
-                    sum + Number(item.subtotal_set.shop_money.amount || 0), 0
-                )
-            }))
-        })));
-
-        const dailySales = Object.values(dailySalesMap).map(day => ({
+        return Object.values(dailySalesMap).map(day => ({
             ...day,
             shopifySales: Number((day.grossSales - day.refundAmount).toFixed(2)),
             totalSales: Number(day.grossSales.toFixed(2)),
             refundAmount: Number(day.refundAmount.toFixed(2))
         }));
 
-        return dailySales;
-
     } catch (error) {
         console.error('Error in fetchTotalSales:', error);
         throw new Error(`Failed to fetch total sales: ${error.message}`);
     }
+};
+
+// Helper function to calculate refund amount
+const calculateRefundAmount = (refund) => {
+    const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
+        return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
+    }, 0) || 0;
+
+    const transactionAmount = refund.transactions?.reduce((sum, trans) => {
+        return sum + Number(trans.amount || 0);
+    }, 0) || 0;
+
+    return Math.max(lineItemAmount, transactionAmount);
 };
 
 

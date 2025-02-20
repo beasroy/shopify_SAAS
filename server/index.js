@@ -19,11 +19,11 @@ import userRoutes from "./routes/user.js";
 // import { monthlyAddReportData} from "./Report/MonthlyReport.js"
 
 
-// monthlyAddReportData("67b41539696038602b5aace8","2023-01-01","2025-02-17","674eac6efa51d4ab3d414d02");
+// monthlyAddReportData("67a99418b740339c5286861c","2024-10-02","2025-02-16","674eac6efa51d4ab3d414d02");
 const app = express();
 dotenv.config();
   
-connectDB();
+connectDB(); 
 
 app.use(cors({
   origin: ['http://13.203.31.8', 'http://localhost:5173','https://parallels.messold.com'],  

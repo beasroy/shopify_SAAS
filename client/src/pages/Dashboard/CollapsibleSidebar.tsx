@@ -181,11 +181,11 @@ export default function CollapsibleSidebar() {
                                 {brands.map(brand => (
                                     <SidebarChild
                                         key={brand._id}
-                                        path={`/ad-metrics/${brand._id}}`}
+                                        path={`/dashboard}`}
                                         text={brand.name.replace(/_/g, ' ')}
                                         onClick={() => {
                                             dispatch(setSelectedBrandId(brand._id));
-                                            navigate(`/ad-metrics/${brand._id}`);
+                                            navigate(`/dashboard`);
                                         }}
                                         isSelected={selectedBrandId === brand._id}
                                     />

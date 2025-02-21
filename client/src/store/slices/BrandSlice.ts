@@ -7,6 +7,7 @@ interface Brand {
   fbAdAccounts?: [];
   googleAdAccount?: string;
   ga4Account?: { [key: string]: string };
+  shopifyAccount: {[key: string]: string };
 }
 
 interface BrandState {

@@ -1,4 +1,4 @@
-import { Activity, ArrowDownIcon, ArrowUpIcon, RefreshCw, ShoppingBag, ShoppingCart, Users } from 'lucide-react';
+import { Activity, ArrowDownIcon, ArrowUpIcon, CheckCircle2, RefreshCw, ShoppingBag, ShoppingCart, Users, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useSelector } from 'react-redux';
@@ -7,9 +7,12 @@ import { useCallback, useEffect, useState } from 'react';
 import createAxiosInstance from '../ConversionReportPage/components/axiosInstance';
 import DashboardSkeleton from './components/DashboardSkeleton.tsx';
 import { Button } from '@/components/ui/button.tsx';
+import { FacebookLogo, GoogleLogo } from '../AnalyticsDashboard/AdAccountsMetricsCard.tsx';
+import { Ga4Logo, ShopifyLogo } from './components/OtherPlatformModalContent.tsx';
 
 
 export type Trend = 'up' | 'down';
+export type Period = 'daily' | 'weekly' | 'monthly';
 
 export interface MetricData {
   current: number;
@@ -191,13 +194,74 @@ function TimeSection({ title, data, delay = 0 }: {
   );
 }
 
+function PlatformCard({
+  name,
+  icon: Icon,
+  connected,
+  accounts,
+  accountLabel,
+  bgColor,
+  iconColor,
+  borderColor
+}: {
+  name: string;
+  icon: any;
+  connected: boolean;
+  accounts: string[];
+  accountLabel: string;
+  bgColor: string;
+  iconColor: string;
+  borderColor: string;
+}) {
+  return (
+    <div className={`bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ${borderColor} border`}>
+      <div className={`${bgColor} px-6 py-4 border-b ${borderColor}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Icon className={`h-6 w-6 ${iconColor}`} />
+            <h3 className="font-semibold text-gray-900">{name}</h3>
+          </div>
+          {connected ? (
+            <div className="flex items-center text-green-500 text-sm font-medium">
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              Connected
+            </div>
+          ) : (
+            <div className="flex items-center text-red-500 text-sm font-medium">
+              <XCircle className="h-4 w-4 mr-1" />
+              Not Connected
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="px-6 py-4">
+        <p className="text-sm text-gray-600 font-medium mb-2">
+          {connected ? `${accounts.length} ${accountLabel}${accounts.length !== 1 ? 's' : ''} Connected` : 'No accounts connected'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const brandId = useSelector((state: RootState) => state.brand.selectedBrandId)
+  const brands = useSelector((state: RootState) => state.brand.brands);
+  const selectedBrand = brands.find((brand) => brand._id === brandId);
+
+  const fbAccounts = selectedBrand?.fbAdAccounts ?? [];
+  const googleAccount = selectedBrand?.googleAdAccount ? [selectedBrand.googleAdAccount] : [];
+  const ga4Accounts = selectedBrand?.ga4Account ? Object.values(selectedBrand.ga4Account) : [];
+  // Extract Shopify shop name
+  const shopifyShopName = selectedBrand?.shopifyAccount?.shopName || "";
+  const shopifyAccount = shopifyShopName ? [shopifyShopName] : [];
+
   const userId = user?.id;
   const userName = user?.username;
   const [loading, setLoading] = useState<boolean>(false);
   const [metrics, setMetrics] = useState<AnalyticsSummary>();
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>('daily');
 
   const axiosInstance = createAxiosInstance();
 
@@ -235,7 +299,7 @@ const SummaryDashboard: React.FC = () => {
   if (loading) {
     return <DashboardSkeleton />
   }
- 
+
 
   return (
     <div className="min-h-screen bg-slate-100 text-black">
@@ -262,44 +326,83 @@ const SummaryDashboard: React.FC = () => {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
-
-        <div className="space-y-10">
-          <TimeSection
-            title={metrics?.summaries.daily.title ?? "Default Title"}
-            data={metrics?.summaries.daily ?? {
-              title: "Default Title",
-              sessions: { current: 0, previous: 0, change: 0, trend: "down" },
-              addToCarts: { current: 0, previous: 0, change: 0, trend: "down" },
-              checkouts: { current: 0, previous: 0, change: 0, trend: "down" },
-              purchases: { current: 0, previous: 0, change: 0, trend: "down" }
-            }}
-            delay={200}
+        <div className="mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Connected Platforms
+            </h2>
+          </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <PlatformCard
+            name="Shopify"
+            icon={ShopifyLogo}
+            connected={shopifyAccount.length > 0}
+            accounts={shopifyAccount}
+            accountLabel="Store"
+            bgColor="bg-green-50"
+            iconColor="text-green-600"
+            borderColor="border-green-200"
           />
-
-          <TimeSection
-            title={metrics?.summaries.weekly?.title ?? "Default Title"}
-            data={metrics?.summaries.weekly ?? {
-              title: "Default Title",
-              sessions: { current: 0, previous: 0, change: 0, trend: "down" },
-              addToCarts: { current: 0, previous: 0, change: 0, trend: "down" },
-              checkouts: { current: 0, previous: 0, change: 0, trend: "down" },
-              purchases: { current: 0, previous: 0, change: 0, trend: "down" }
-            }}
-            delay={400}
+          <PlatformCard
+            name="Facebook Ads"
+            icon={FacebookLogo}
+            connected={fbAccounts.length > 0}
+            accounts={fbAccounts}
+            accountLabel="Ad Account"
+            bgColor="bg-blue-50"
+            iconColor="text-blue-600"
+            borderColor="border-blue-200"
           />
-
-          <TimeSection
-            title={metrics?.summaries.monthly?.title ?? "Default Title"}
-            data={metrics?.summaries.monthly ?? {
-              title: "Default Title",
-              sessions: { current: 0, previous: 0, change: 0, trend: "down" },
-              addToCarts: { current: 0, previous: 0, change: 0, trend: "down" },
-              checkouts: { current: 0, previous: 0, change: 0, trend: "down" },
-              purchases: { current: 0, previous: 0, change: 0, trend: "down" }
-            }}
-            delay={600}
+          <PlatformCard
+            name="Google Ads"
+            icon={GoogleLogo}
+            connected={googleAccount.length > 0}
+            accounts={googleAccount}
+            accountLabel="Google Ads Account"
+            bgColor="bg-red-50"
+            iconColor="text-red-600"
+            borderColor="border-red-200"
+          />
+          <PlatformCard
+            name="GA4"
+            icon={Ga4Logo}
+            connected={ga4Accounts.length > 0}
+            accounts={ga4Accounts}
+            accountLabel="GA4 Account"
+            bgColor="bg-yellow-50"
+            iconColor="text-amber-600"
+            borderColor="border-amber-200"
           />
         </div>
+        </div>
+        <div className="flex items-center justify-between mb-4 ">
+          <div className="flex items-center space-x-2">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Performance Analytics
+            </h2>
+          </div>
+          <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+            {(['daily', 'weekly', 'monthly'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`px-4 py-2 text-sm rounded-md transition-colors ${selectedPeriod === period
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+              >
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <TimeSection title={metrics?.summaries[selectedPeriod].title ?? "Default Title"} data={metrics?.summaries[selectedPeriod] ?? {
+          title: "Default Title",
+          sessions: { current: 0, previous: 0, change: 0, trend: "down" },
+          addToCarts: { current: 0, previous: 0, change: 0, trend: "down" },
+          checkouts: { current: 0, previous: 0, change: 0, trend: "down" },
+          purchases: { current: 0, previous: 0, change: 0, trend: "down" }
+        }} />
       </div>
     </div>
   );

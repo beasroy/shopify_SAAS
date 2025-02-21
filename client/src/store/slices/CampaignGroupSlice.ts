@@ -29,30 +29,6 @@ const defaultAccountState = {
   isCreatingGroup: false
 };
 
-// Load initial state from localStorage if available
-const loadState = (): CampaignGroupsState => {
-  try {
-    const serializedState = localStorage.getItem('campaignGroups');
-    if (serializedState === null) {
-      return { accounts: {} };
-    }
-    return JSON.parse(serializedState);
-  } catch (err) {
-    console.error('Error loading state:', err);
-    return { accounts: {} };
-  }
-};
-
-// Save state to localStorage
-const saveState = (state: CampaignGroupsState) => {
-  try {
-    const serializedState = JSON.stringify(state);
-    localStorage.setItem('campaignGroups', serializedState);
-  } catch (err) {
-    console.error('Error saving state:', err);
-  }
-};
-
 // Initialize account state if it doesn't exist
 const initializeAccountState = (state: CampaignGroupsState, accountId: string) => {
   if (!state.accounts) {
@@ -65,7 +41,7 @@ const initializeAccountState = (state: CampaignGroupsState, accountId: string) =
 
 const campaignGroupsSlice = createSlice({
   name: 'campaignGroups',
-  initialState: loadState(),
+  initialState: { accounts: {} } as CampaignGroupsState,
   reducers: {
     createGroup: (state, action: PayloadAction<{ accountId: string; name: string; campaigns: string[]; color: string }>) => {
       const { accountId, name, campaigns, color } = action.payload;
@@ -80,7 +56,6 @@ const campaignGroupsSlice = createSlice({
       state.accounts[accountId].groups.push(newGroup);
       state.accounts[accountId].selectedCampaigns = [];
       state.accounts[accountId].isCreatingGroup = false;
-      saveState(state);
     },
     deleteGroup: (state, action: PayloadAction<{ accountId: string; groupId: string }>) => {
       const { accountId, groupId } = action.payload;
@@ -89,7 +64,6 @@ const campaignGroupsSlice = createSlice({
       if (state.accounts[accountId].editingGroupId === groupId) {
         state.accounts[accountId].editingGroupId = null;
       }
-      saveState(state);
     },
     addCampaignToGroup: (state, action: PayloadAction<{ accountId: string; groupId: string; campaignName: string }>) => {
       const { accountId, groupId, campaignName } = action.payload;
@@ -97,7 +71,6 @@ const campaignGroupsSlice = createSlice({
       const group = state.accounts[accountId].groups.find(g => g.id === groupId);
       if (group && !group.campaigns.includes(campaignName)) {
         group.campaigns.push(campaignName);
-        saveState(state);
       }
     },
     removeCampaignFromGroup: (state, action: PayloadAction<{ accountId: string; groupId: string; campaignName: string }>) => {
@@ -106,20 +79,17 @@ const campaignGroupsSlice = createSlice({
       const group = state.accounts[accountId].groups.find(g => g.id === groupId);
       if (group) {
         group.campaigns = group.campaigns.filter(c => c !== campaignName);
-        saveState(state);
       }
     },
     setSelectedCampaigns: (state, action: PayloadAction<{ accountId: string; campaigns: string[] }>) => {
       const { accountId, campaigns } = action.payload;
       initializeAccountState(state, accountId);
       state.accounts[accountId].selectedCampaigns = campaigns;
-      saveState(state);
     },
     toggleEditingGroup: (state, action: PayloadAction<{ accountId: string; groupId: string | null }>) => {
       const { accountId, groupId } = action.payload;
       initializeAccountState(state, accountId);
       state.accounts[accountId].editingGroupId = groupId;
-      saveState(state);
     },
     toggleGroupExpansion: (state, action: PayloadAction<{ accountId: string; groupId: string }>) => {
       const { accountId, groupId } = action.payload;
@@ -130,7 +100,6 @@ const campaignGroupsSlice = createSlice({
       } else {
         state.accounts[accountId].expandedGroups.push(groupId);
       }
-      saveState(state);
     },
     setIsCreatingGroup: (state, action: PayloadAction<{ accountId: string; isCreating: boolean }>) => {
       const { accountId, isCreating } = action.payload;
@@ -139,7 +108,6 @@ const campaignGroupsSlice = createSlice({
       if (!isCreating) {
         state.accounts[accountId].selectedCampaigns = [];
       }
-      saveState(state);
     }
   }
 });

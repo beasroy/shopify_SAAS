@@ -1,22 +1,26 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Search, Settings2, GripVertical } from "lucide-react";
+import { Search, Settings2, GripVertical, Pin, PinOff } from "lucide-react";
 
 interface ColumnManagementSheetProps {
   visibleColumns: string[];
   columnOrder: string[];
+  frozenColumns?: string[];
   onVisibilityChange: (columns: string[]) => void;
   onOrderChange: (order: string[]) => void;
+  onFrozenChange?: (columns: string[]) => void;
 }
 
 const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({ 
   visibleColumns, 
   columnOrder,
+  frozenColumns = [],
   onVisibilityChange,
-  onOrderChange 
+  onOrderChange,
+  onFrozenChange
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -59,6 +63,15 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
     onVisibilityChange(newVisibleColumns);
   };
 
+  const toggleColumnFreeze = (column: string) => {
+    if (!onFrozenChange || column === 'Campaign') return; // Campaign column is always frozen
+    
+    const newFrozenColumns = frozenColumns.includes(column)
+      ? frozenColumns.filter(col => col !== column)
+      : [...frozenColumns, column];
+    onFrozenChange(newFrozenColumns);
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -71,7 +84,7 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
         <SheetHeader>
           <SheetTitle>Column Management</SheetTitle>
           <SheetDescription>
-            Select columns to display and drag to reorder
+            Select columns to display, drag to reorder, and pin columns to freeze them
           </SheetDescription>
         </SheetHeader>
         
@@ -109,6 +122,21 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
                 >
                   {column}
                 </label>
+                {onFrozenChange && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`px-2 ${column === 'Campaign' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => toggleColumnFreeze(column)}
+                    disabled={column === 'Campaign'}
+                  >
+                    {frozenColumns.includes(column) || column === 'Campaign' ? (
+                      <Pin className="w-4 h-4 text-blue-500" />
+                    ) : (
+                      <PinOff className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
               </div>
             ))}
           </div>

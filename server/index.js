@@ -16,10 +16,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
-// import { monthlyAddReportData} from "./Report/MonthlyReport.js"
 
-
-// monthlyAddReportData("67a99418b740339c5286861c","2024-10-02","2025-02-16","674eac6efa51d4ab3d414d02");
 const app = express();
 dotenv.config();
   

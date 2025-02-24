@@ -1,293 +1,272 @@
-import React, { useRef, useEffect, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
-import { MdOutlineCampaign } from "react-icons/md";
-import {
-  Minimize2,
-  Maximize2,
-  ChevronUp,
-  ChevronDown,
-  Edit2,
-  Save,
-  X,
-  Search,
-  MinusCircle,
-  GripHorizontal,
-  Plus,
-  Trash,
-} from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from 'react-redux';
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { X, ChevronDown, Maximize, Minimize } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RootState } from "@/store";
 import {
-  createGroup,
-  deleteGroup,
-  addCampaignToGroup,
-  removeCampaignFromGroup,
-  setSelectedCampaigns,
-  toggleEditingGroup,
-  toggleGroupExpansion,
-  setIsCreatingGroup
-} from "@/store/slices/CampaignGroupSlice";
-
+  addLabelToCampaign,
+  removeLabelFromCampaign,
+  toggleAddingLabel
+} from "@/store/slices/campaignLabelsSlice";
+import { Badge } from "@/components/ui/badge";
 import ColumnManagementSheet from "./ColumnManagementSheet";
 
+const LABEL_COLORS = [
+  'bg-red-100 text-red-800 hover:bg-red-200',
+  'bg-blue-100 text-blue-800 hover:bg-blue-200',
+  'bg-green-100 text-green-800 hover:bg-green-200',
+  'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+  'bg-purple-100 text-purple-800 hover:bg-purple-200',
+  'bg-pink-100 text-pink-800 hover:bg-pink-200',
+  'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+  'bg-orange-100 text-orange-800 hover:bg-orange-200'
+];
+
+// Using a single fixed width for all columns except Campaign and Labels
+const DEFAULT_COLUMN_WIDTH = "85px";
+
 interface Campaign {
+  Campaign: string;
   [key: string]: string | number;
 }
 
-interface MetaReportTableProps {
+interface MetaCampaignTableProps {
   data: {
     account_name: string;
     account_id: string;
     campaigns: Campaign[];
-  };
-  height?: string;
+  },
+  height: string;
 }
 
-const GROUP_COLORS = [
-  "bg-red-100",
-  "bg-emerald-100",
-  "bg-orange-100",
-  "bg-indigo-100",
-  "bg-lime-100",
-  "bg-pink-100",
-  "bg-purple-100",
-  "bg-teal-100",
-  "bg-fuchsia-100",
-  "bg-cyan-100"
-];
-
-const GROUP_DEEP_COLORS: Record<string, string> = {
-  "bg-red-100": "bg-red-600",
-  "bg-emerald-100": "bg-emerald-600",
-  "bg-orange-100": "bg-orange-600",
-  "bg-indigo-100": "bg-indigo-600",
-  "bg-lime-100": "bg-lime-600",
-  "bg-pink-100": "bg-pink-600",
-  "bg-purple-100": "bg-purple-600",
-  "bg-teal-100": "bg-teal-600",
-  "bg-fuchsia-100": "bg-fuchsia-600",
-  "bg-cyan-100": "bg-cyan-600"
-};
-
-const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max-h-[600px]" }) => {
+const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) => {
   const dispatch = useDispatch();
-  const campaignGroupState = useSelector((state: RootState) => {
-    if (!state.campaignGroups?.accounts) {
-      return {
-        groups: [],
-        selectedCampaigns: [],
-        editingGroupId: null,
-        expandedGroups: [],
-        isCreatingGroup: false
-      };
-    }
-    return state.campaignGroups.accounts[data.account_id] ?? {
-      groups: [],
-      selectedCampaigns: [],
-      editingGroupId: null,
-      expandedGroups: [],
-      isCreatingGroup: false
-    };
-  });
-
-  const {
-    groups,
-    selectedCampaigns,
-    editingGroupId,
-    expandedGroups,
-    isCreatingGroup
-  } = campaignGroupState;
-
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [sortColumn, setSortColumn] = useState("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const tableRef = useRef<HTMLDivElement>(null);
-
-  const headers = data.campaigns.length > 0 ? Object.keys(data.campaigns[0]) : [];
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(headers);
-  const [columnOrder, setColumnOrder] = useState<string[]>(headers);
-  const [frozenColumns, setFrozenColumns] = useState<string[]>(["Campaign"]);
+  const [draggedCampaign, setDraggedCampaign] = useState<string | null>(null);
+  const [dragOverCampaign, setDragOverCampaign] = useState<string | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
-  const [dropTargetColumn, setDropTargetColumn] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [frozenColumns, setFrozenColumns] = useState<string[]>(['Campaign']);
+
+  const tableRef = useRef<HTMLDivElement>(null);
+  const columnRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({});
+
+  const { labels, isAddingLabel } = useSelector((state: RootState) => state.campaignLabels);
+
+  // Get account labels (safely)
+  const accountLabels = labels[data.account_id] || {};
+
+  // Check if any campaign in this account has labels
+  const hasAnyLabels = Object.values(accountLabels).some(
+    labelArray => labelArray && labelArray.length > 0
+  );
+
+  // Initialize column state
   useEffect(() => {
-    if (data.account_id) {
-      dispatch(setSelectedCampaigns({
-        accountId: data.account_id,
-        campaigns: []
-      }));
+    if (data.campaigns.length > 0) {
+      const columns = Object.keys(data.campaigns[0]);
+
+      // Create initial allColumns without Labels
+      const initialColumns = columns.filter(col => col !== 'Labels');
+
+      // Only include Labels in visible columns if there are labels
+      // or if we're currently adding labels
+      const shouldShowLabelsColumn = hasAnyLabels || isAddingLabel;
+      const initialVisibleColumns = shouldShowLabelsColumn
+        ? [...initialColumns, 'Labels']
+        : initialColumns;
+
+      setVisibleColumns(initialVisibleColumns);
+
+      // Create column order with Campaign first, then Labels (if visible), then others
+      const baseColumns = [...initialColumns].filter(col => col !== 'Campaign');
+      const orderedColumns = ['Campaign'];
+
+      if (shouldShowLabelsColumn) {
+        orderedColumns.push('Labels');
+      }
+
+      orderedColumns.push(...baseColumns);
+      setColumnOrder(orderedColumns);
     }
-  }, [data.account_id, dispatch]);
+  }, [data.campaigns, hasAnyLabels, isAddingLabel]);
 
-  const handleDragStart = (column: string) => {
-    setDraggedColumn(column);
-  };
+ 
 
-  const handleDragOver = (e: React.DragEvent, column: string) => {
-    e.preventDefault();
-    setDropTargetColumn(column);
-  };
+  const labelColorMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    let colorIndex = 0;
 
-  const handleDrop = (targetColumn: string) => {
-    if (!draggedColumn) return;
+    // Collect all unique labels for this account
+    const allLabels = new Set<string>();
+    Object.values(accountLabels).forEach(labelArray => {
+      labelArray?.forEach(label => allLabels.add(label));
+    });
 
-    const newOrder = [...columnOrder];
-    const draggedIdx = newOrder.indexOf(draggedColumn);
-    const targetIdx = newOrder.indexOf(targetColumn);
+    // Assign colors to each unique label
+    Array.from(allLabels).forEach(label => {
+      map.set(label, LABEL_COLORS[colorIndex % LABEL_COLORS.length]);
+      colorIndex++;
+    });
 
-    newOrder.splice(draggedIdx, 1);
-    newOrder.splice(targetIdx, 0, draggedColumn);
+    return map;
+  }, [accountLabels]);
 
-    setColumnOrder(newOrder);
-    setDraggedColumn(null);
-    setDropTargetColumn(null);
-  };
-
-  const getColumnLeftPosition = (columnIndex: number): number => {
+  // Calculate left position for frozen columns
+  const getLeftPosition = (columnIndex: number): number => {
     let position = 0;
+
+    // Get only the visible columns in the correct order
+    const visibleOrderedColumns = columnOrder.filter(col => visibleColumns.includes(col));
+
     for (let i = 0; i < columnIndex; i++) {
-      const column = columnOrder[i];
-      if (frozenColumns.includes(column) && visibleColumns.includes(column)) {
-        position += column === "Campaign" ? 210 : 110;
+      const column = visibleOrderedColumns[i];
+      if (frozenColumns.includes(column)) {
+        const columnElement = columnRefs.current[column];
+        if (columnElement) {
+          position += columnElement.offsetWidth;
+        }
       }
     }
+
     return position;
   };
 
-  const handleCreateGroup = () => {
-    if (newGroupName && selectedCampaigns.length > 0) {
-      const color = GROUP_COLORS[groups.length % GROUP_COLORS.length];
-      dispatch(createGroup({
-        accountId: data.account_id,
-        name: newGroupName,
-        campaigns: selectedCampaigns,
-        color
-      }));
-      setNewGroupName("");
-      dispatch(setSelectedCampaigns({ accountId: data.account_id, campaigns: [] }));
-      dispatch(setIsCreatingGroup({ accountId: data.account_id, isCreating: false }));
-    }
-  };
+  const handleAddLabel = () => {
+    if (newLabel && selectedCampaigns.length > 0) {
+      selectedCampaigns.forEach(campaignId => {
+        dispatch(addLabelToCampaign({
+          accountId: data.account_id,
+          campaignId,
+          label: newLabel
+        }));
+      });
+      setNewLabel("");
+      setSelectedCampaigns([]);
+      dispatch(toggleAddingLabel(false));
 
-  const handleAddToGroup = (groupId: string, campaignName: string) => {
-    dispatch(addCampaignToGroup({ accountId: data.account_id, groupId, campaignName }));
-  };
+      // Ensure Labels column is visible after adding a label
+      if (!visibleColumns.includes('Labels')) {
+        setVisibleColumns([...visibleColumns, 'Labels']);
 
-  const handleRemoveFromGroup = (groupId: string, campaignName: string) => {
-    dispatch(removeCampaignFromGroup({ accountId: data.account_id, groupId, campaignName }));
-  };
-
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-  };
-
-  useEffect(() => {
-    const handleScroll = (e: Event) => {
-      const target = e.target as HTMLDivElement;
-      setIsScrolled(target.scrollLeft > 0);
-    };
-
-    const tableContainer = tableRef.current;
-    if (tableContainer) {
-      tableContainer.addEventListener("scroll", handleScroll);
-    }
-
-    return () => {
-      if (tableContainer) {
-        tableContainer.removeEventListener("scroll", handleScroll);
-      }
-    };
-  }, []);
-
-  const formatNumber = (num: number) => {
-    return num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
-
-  const formatCellValue = (value: string | number, header: string) => {
-    if (typeof value === "number") {
-      if (header === "Amount spent" || header.toLowerCase().includes("cost") || header === "CPM") {
-        return `₹${formatNumber(value)}`;
-      } else if (header.includes("Rate") || header === "ROAS") {
-        return `${formatNumber(value)}%`;
-      } else if (header === "Frequency") {
-        return formatNumber(value);
-      } else {
-        return Math.round(value).toLocaleString();
+        // Also add Labels to column order if it's not there
+        if (!columnOrder.includes('Labels')) {
+          const campaignIndex = columnOrder.indexOf('Campaign');
+          const newOrder = [...columnOrder];
+          newOrder.splice(campaignIndex + 1, 0, 'Labels');
+          setColumnOrder(newOrder);
+        }
       }
     }
-    return value;
   };
 
-  const calculateGroupMetrics = (campaigns: string[]) => {
-    const metrics: { [key: string]: string | number } = {};
-    const campaignData = data.campaigns.filter((c) => campaigns.includes(c.Campaign as string));
-
-    headers.forEach((header) => {
-      if (header !== "Campaign") {
-        metrics[header] = campaignData.reduce((sum, campaign) => {
-          const value = campaign[header];
-          if (typeof value === "number") {
-            if (header.includes("Rate") || header === "ROAS" || header === "Frequency") {
-              return sum + value / campaignData.length;
-            } else {
-              return sum + value;
-            }
-          }
-          return sum;
-        }, 0);
-      }
-      if (header === "Status") {
-        metrics["Status"] = "-";
-      }
-    });
-
-    return metrics;
+  const handleRemoveLabel = (campaignId: string, label: string) => {
+    dispatch(removeLabelFromCampaign({
+      accountId: data.account_id,
+      campaignId,
+      label
+    }));
   };
 
   const filteredCampaigns = data.campaigns.filter(campaign =>
-    (campaign.Campaign as string).toLowerCase().includes(searchTerm.toLowerCase())
+    campaign.Campaign.toString().toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
-    if (sortColumn) {
-      const aValue = a[sortColumn];
-      const bValue = b[sortColumn];
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-      } else {
-        return sortDirection === "asc"
-          ? String(aValue).localeCompare(String(bValue))
-          : String(bValue).localeCompare(String(aValue));
-      }
+  // Get column style based on column name
+  const getColumnStyle = (column: string) => {
+    if (column === 'Campaign') {
+      return { width: 'auto', minWidth: '200px' };
     }
-    return 0;
-  });
+    if (column === 'Labels') {
+      return { width: 'auto', minWidth: '100px' };
+    }
 
-  const handleSort = (column: string) => {
-    if (column === sortColumn) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("desc");
+    // All other columns get the fixed width
+    return {
+      width: DEFAULT_COLUMN_WIDTH,
+      minWidth: DEFAULT_COLUMN_WIDTH
+    };
+  };
+
+  // Campaign drag and drop handlers
+  const handleDragStart = (campaignId: string) => {
+    setDraggedCampaign(campaignId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, campaignId: string) => {
+    e.preventDefault();
+    if (campaignId !== draggedCampaign) {
+      setDragOverCampaign(campaignId);
     }
   };
 
-  const stickyColumnClass = isScrolled
-    ? "after:absolute after:top-0 after:right-0 after:bottom-0 after:w-2 after:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.2)] after:-mr-0.5 border-r-2 border-r-slate-300"
-    : "";
+  const handleDrop = (targetCampaignId: string) => {
+    if (!draggedCampaign || draggedCampaign === targetCampaignId) return;
+
+    // Reorder campaigns logic would go here
+    // For now, just reset the state
+    setDraggedCampaign(null);
+    setDragOverCampaign(null);
+
+    // Note: In a real implementation, you would dispatch an action to update the order in your Redux store
+    console.log(`Dragged ${draggedCampaign} and dropped on ${targetCampaignId}`);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCampaign(null);
+    setDragOverCampaign(null);
+  };
+
+  // Column drag and drop handlers
+  const handleColumnDragStart = (columnName: string) => {
+    setDraggedColumn(columnName);
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, columnName: string) => {
+    e.preventDefault();
+    if (columnName !== draggedColumn) {
+      setDragOverColumn(columnName);
+    }
+  };
+
+  const handleColumnDrop = (targetColumnName: string) => {
+    if (!draggedColumn || draggedColumn === targetColumnName) return;
+
+    // Reorder columns
+    const draggedIndex = columnOrder.indexOf(draggedColumn);
+    const targetIndex = columnOrder.indexOf(targetColumnName);
+
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      const newColumnOrder = [...columnOrder];
+      newColumnOrder.splice(draggedIndex, 1);
+      newColumnOrder.splice(targetIndex, 0, draggedColumn);
+      setColumnOrder(newColumnOrder);
+    }
+
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
+
+  const handleColumnDragEnd = () => {
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
+
+  // Toggle full screen mode
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
 
   const getTableHeight = () => {
     if (isFullScreen) {
@@ -296,79 +275,25 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
     return height;
   };
 
-  const groupedCampaigns = groups.flatMap((group) => group.campaigns);
-  const ungroupedCampaigns = sortedCampaigns.filter(
-    (campaign) => !groupedCampaigns.includes(campaign.Campaign as string)
-  );
-
-  const renderTableHeader = () => (
-    <thead className="bg-slate-100 sticky top-0 z-30">
-      <tr>
-        {columnOrder
-          .filter(header => visibleColumns.includes(header))
-          .map((header, _) => {
-            const isFrozen = frozenColumns.includes(header);
-            const leftPosition = isFrozen ? getColumnLeftPosition(columnOrder.indexOf(header)) : 'auto';
-            
-            return (
-              <th
-                key={header}
-                className={`px-4 py-2 text-left text-sm font-bold text-slate-700 border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors sticky z-40 bg-slate-100 ${stickyColumnClass} border-r`}
-                onClick={() => handleSort(header)}
-                draggable
-                onDragStart={() => handleDragStart(header)}
-                onDragOver={(e) => handleDragOver(e, header)}
-                onDrop={() => handleDrop(header)}
-                style={{
-                  minWidth: header === "Campaign" ? "210px" : "110px",
-                  position: isFrozen ? "sticky" : "static",
-                  left: leftPosition,
-                  background: dropTargetColumn === header ? "rgb(226 232 240)" : "",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <GripHorizontal className="w-4 h-4 mr-2 text-slate-400" />
-                    <span>{header}</span>
-                  </div>
-                  {sortColumn === header && (
-                    sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />
-                  )}
-                </div>
-              </th>
-            );
-          })}
-      </tr>
-    </thead>
-  );
-
-  const renderTableCell = (value: any, header: string, isGroupRow: boolean = false) => {
-    const isFrozen = frozenColumns.includes(header);
-    const leftPosition = isFrozen ? getColumnLeftPosition(columnOrder.indexOf(header)) : 'auto';
-    
-    return (
-      <td
-        key={`${value}-${header}`}
-        className={`px-4 py-2 text-xs border-b sticky z-20 border-r border-slate-200 ${isGroupRow ? 'bg-inherit' : 'bg-white group-hover:bg-slate-50'} ${stickyColumnClass}
-        }`}
-        style={{
-          position: isFrozen ? "sticky" : "static",
-          left: leftPosition,
-        }}
-      >
-        {formatCellValue(value, header)}
-      </td>
-    );
-  };
-
   return (
     <Card className={`overflow-hidden ${isFullScreen ? "fixed inset-0 z-50" : ""}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-slate-200">
-        <CardTitle className="flex flex-row gap-3 items-center">
-          <div className="text-xl font-bold text-slate-800">{data.account_name}</div>
-          <FacebookLogo width="1.3rem" height="1.3rem" />
-        </CardTitle>
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between p-3 border-b">
+        <div className="text-lg font-semibold">{data.account_name}</div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => dispatch(toggleAddingLabel(!isAddingLabel))}
+            size="sm"
+          >
+            {isAddingLabel ? "Cancel" : "Add Label"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleFullScreen}
+          >
+            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
           <ColumnManagementSheet
             visibleColumns={visibleColumns}
             columnOrder={columnOrder}
@@ -377,297 +302,204 @@ const MetaCampaignTable: React.FC<MetaReportTableProps> = ({ data, height = "max
             onOrderChange={setColumnOrder}
             onFrozenChange={setFrozenColumns}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch(setIsCreatingGroup({ accountId: data.account_id, isCreating: !isCreatingGroup }))}
-          >
-            {isCreatingGroup ? "Cancel" : "Create Group"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFullScreen}
-            title={isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          >
-            {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </Button>
         </div>
-      </CardHeader>
-      <CardContent className="p-4">
-        {isCreatingGroup && (
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-4 mb-4">
+      </div>
+
+      <div className="p-3">
+        {isAddingLabel && (
+          <div className="mb-4 p-3 bg-slate-50 rounded-lg space-y-3">
+            <div className="flex items-center gap-3">
               <Input
-                type="text"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Enter group name"
-                className="px-3 py-2 border rounded-md"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Enter label name"
+                className="max-w-xs"
               />
               <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                    role="combobox"
-                  >
+                  <Button variant="outline" className="w-[180px] justify-between text-xs" size="sm">
                     {selectedCampaigns.length === 0
                       ? "Select campaigns"
-                      : `${selectedCampaigns.length} campaign${selectedCampaigns.length === 1 ? '' : 's'} selected`
-                    }
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      : `${selectedCampaigns.length} selected`}
+                    <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
-                  <div className="flex items-center space-x-2 p-3 border-b">
-                    <Search className="h-4 w-4 opacity-50" />
+                <PopoverContent className="w-[280px] p-0">
+                  <div className="p-2">
                     <Input
                       placeholder="Search campaigns..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="mb-2 text-xs"
                     />
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {filteredCampaigns.length === 0 ? (
-                      <div className="text-sm text-center py-4 text-slate-500">
-                        No campaigns found
-                      </div>
-                    ) : (
-                      filteredCampaigns.map((campaign) => (
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {filteredCampaigns.map((campaign) => (
                         <div
-                          key={campaign.Campaign as string}
-                          className="flex items-center space-x-2 p-3 hover:bg-slate-100 cursor-pointer"
-                          onClick={() => {
-                            const campaignName = campaign.Campaign as string;
-                            const newSelected = selectedCampaigns.includes(campaignName)
-                              ? selectedCampaigns.filter(c => c !== campaignName)
-                              : [...selectedCampaigns, campaignName];
-                            dispatch(setSelectedCampaigns({
-                              accountId: data.account_id,
-                              campaigns: newSelected
-                            }));
-                          }}
+                          key={campaign.Campaign}
+                          className="flex items-center space-x-2 p-1 hover:bg-slate-100 rounded"
                         >
                           <Checkbox
-                            id={`campaign-${campaign.Campaign}`}
-                            checked={selectedCampaigns.includes(campaign.Campaign as string)}
+                            checked={selectedCampaigns.includes(campaign.Campaign)}
                             onCheckedChange={(checked) => {
-                              const campaignName = campaign.Campaign as string;
-                              const newSelected = checked
-                                ? [...selectedCampaigns, campaignName]
-                                : selectedCampaigns.filter(c => c !== campaignName);
-                              dispatch(setSelectedCampaigns({
-                                accountId: data.account_id,
-                                campaigns: newSelected
-                              }));
+                              setSelectedCampaigns(
+                                checked
+                                  ? [...selectedCampaigns, campaign.Campaign]
+                                  : selectedCampaigns.filter(id => id !== campaign.Campaign)
+                              );
                             }}
                           />
-                          <label
-                            htmlFor={`campaign-${campaign.Campaign}`}
-                            className="flex-1 text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {campaign.Campaign as string}
-                          </label>
+                          <span className="text-xs">{campaign.Campaign}</span>
                         </div>
-                      ))
-                    )}
+                      ))}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
               <Button
-                variant="default"
+                onClick={handleAddLabel}
+                disabled={!newLabel || selectedCampaigns.length === 0}
                 size="sm"
-                onClick={handleCreateGroup}
-                disabled={!newGroupName || selectedCampaigns.length === 0}
               >
-                Create Group
+                Add Label
               </Button>
             </div>
             {selectedCampaigns.length > 0 && (
-              <div className="mt-4">
-                <div className="text-sm text-slate-600 mb-2">Selected campaigns:</div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedCampaigns.map(campaign => (
-                    <Badge
-                      key={campaign}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {campaign}
-                      <X
-                        className="h-3 w-3 cursor-pointer hover:text-red-500"
-                        onClick={() => dispatch(setSelectedCampaigns({
-                          accountId: data.account_id,
-                          campaigns: selectedCampaigns.filter(c => c !== campaign)
-                        }))}
-                      />
-                    </Badge>
-                  ))}
-                </div>
+              <div className="text-xs text-slate-500">
+                {selectedCampaigns.length} campaign(s) selected
               </div>
             )}
           </div>
         )}
 
-        <div ref={tableRef} className={`overflow-auto ${getTableHeight()}`}>
-          <table className="w-full border-collapse rounded-lg">
-            {renderTableHeader()}
+        <div
+          ref={tableRef}
+          className={`overflow-auto ${getTableHeight()} `}
+        >
+          <table className="w-full border-collapse text-xs relative">
+            <thead className="bg-slate-50 sticky top-0 z-20">
+              <tr>
+                {columnOrder
+                  .filter(column => visibleColumns.includes(column))
+                  .map((column, index) => {
+                    const isFrozen = frozenColumns.includes(column);
+                    const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined;
+                    const columnStyle = getColumnStyle(column);
+
+                    return (
+                      <th
+                        key={column}
+                        ref={(el) => columnRefs.current[column] = el}
+                        className={`text-left p-2 font-medium text-slate-700 border-b border-r ${isFrozen ? 'sticky z-20 bg-slate-50' : ''
+                          } ${dragOverColumn === column ? 'bg-blue-50' : ''
+                          }`}
+                        style={{
+                          left: leftPos,
+                          ...columnStyle
+                        }}
+                        draggable
+                        onDragStart={() => handleColumnDragStart(column)}
+                        onDragOver={(e) => handleColumnDragOver(e, column)}
+                        onDrop={() => handleColumnDrop(column)}
+                        onDragEnd={handleColumnDragEnd}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{column}</span>
+                          <span className="opacity-30 cursor-grab">⋮⋮</span>
+                        </div>
+                      </th>
+                    );
+                  })}
+              </tr>
+            </thead>
             <tbody>
-              {groups.map((group) => {
-                const isExpanded = expandedGroups.includes(group.id);
-                const groupMetrics = calculateGroupMetrics(group.campaigns);
-                const deepColor = GROUP_DEEP_COLORS[group.color] || group.color;
-
-                return (
-                  <React.Fragment key={group.id}>
-                    <tr
-                      onClick={() => dispatch(toggleGroupExpansion({ accountId: data.account_id, groupId: group.id }))}
-                      className={`group transition-colors cursor-pointer ${group.color} ${isExpanded ? 'border-2 border-gray-400' : ''}`}
-                    >
-                      {columnOrder
-                        .filter(header => visibleColumns.includes(header))
-                        .map((header) => {
-                          if (header === "Campaign") {
-                            return (
-                              <td
-                                key={header}
-                                className={` px-4 py-2 text-xs border-b border-slate-200 sticky left-0 z-20 bg-inherit ${stickyColumnClass}`}
-                              >
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${deepColor}`} />
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <div
-                                      className="flex items-center gap-2 cursor-pointer pl-3"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        dispatch(toggleGroupExpansion({ accountId: data.account_id, groupId: group.id }));
-                                      }}
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronDown size={16} className="text-slate-500" />
-                                      ) : (
-                                        <ChevronUp size={16} className="text-slate-500" />
-                                      )}
-                                      <span className="font-semibold text-sm">{group.name}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Badge variant="secondary" className="text-xs">
-                                      <span className="flex flex-row items-center gap-2">
-                                        {group.campaigns.length} <MdOutlineCampaign className="h-4 w-4" />
-                                      </span>
-                                    </Badge>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-1"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        dispatch(toggleEditingGroup({
-                                          accountId: data.account_id,
-                                          groupId: editingGroupId === group.id ? null : group.id
-                                        }));
-                                      }}
-                                    >
-                                      {editingGroupId === group.id ? <Save size={12} /> : <Edit2 size={12} />}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-1"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        dispatch(deleteGroup({ accountId: data.account_id, groupId: group.id }));
-                                      }}
-                                    >
-                                      <Trash size={12} />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </td>
-                            );
-                          }
-                          return renderTableCell(groupMetrics[header], header, true);
-                        })}
-                    </tr>
-
-                    {isExpanded && group.campaigns.map((campaignName) => {
-                      const campaign = data.campaigns.find((c) => c.Campaign === campaignName);
-                      if (!campaign) return null;
-
-                      return (
-                        <tr key={campaignName} className="group bg-zinc-100 transition-colors">
-                          {columnOrder
-                            .filter(header => visibleColumns.includes(header))
-                            .map((header) => {
-                              if (header === "Campaign") {
-                                return (
-                                  <td
-                                    key={header}
-                                    className={`px-4 py-2 text-xs border-b border-slate-200 sticky left-0 z-20 bg-zinc-100 group-hover:bg-slate-50 font-semibold ${stickyColumnClass}`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span>{campaign[header]}</span>
-                                      {editingGroupId === group.id && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 px-2"
-                                          onClick={() => handleRemoveFromGroup(group.id, campaignName)}
-                                        >
-                                          <MinusCircle size={14} className="text-red-500" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </td>
-                                );
-                              }
-                              return renderTableCell(campaign[header], header);
-                            })}
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-
-              {ungroupedCampaigns.map((campaign) => (
-                <tr key={campaign.Campaign as string} className="group hover:bg-slate-50 transition-colors">
+              {data.campaigns.map((campaign) => (
+                <tr
+                  key={campaign.Campaign}
+                  className={`border-b hover:bg-slate-50 ${dragOverCampaign === campaign.Campaign ? 'bg-blue-50' : ''
+                    }`}
+                  draggable
+                  onDragStart={() => handleDragStart(campaign.Campaign)}
+                  onDragOver={(e) => handleDragOver(e, campaign.Campaign)}
+                  onDrop={() => handleDrop(campaign.Campaign)}
+                  onDragEnd={handleDragEnd}
+                >
                   {columnOrder
-                    .filter(header => visibleColumns.includes(header))
-                    .map((header) => {
-                      if (header === "Campaign") {
+                    .filter(column => visibleColumns.includes(column))
+                    .map((column, index) => {
+                      const isFrozen = frozenColumns.includes(column);
+                      const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined;
+                      const columnStyle = getColumnStyle(column);
+
+                      if (column === 'Campaign') {
                         return (
                           <td
-                            key={header}
-                            className={`px-4 py-2 text-xs border-b border-slate-200 sticky left-0 z-20 bg-white group-hover:bg-slate-50 font-semibold ${stickyColumnClass}`}
+                            key={column}
+                            className={`p-2 border-r sticky z-10`}
+                            style={{
+                              left: leftPos,
+                              backgroundColor: 'white',
+                              ...columnStyle
+                            }}
                           >
-                            <div className="flex items-center justify-between">
-                              <span>{campaign[header]}</span>
-                              {editingGroupId && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2"
-                                  onClick={() => handleAddToGroup(editingGroupId, campaign.Campaign as string)}
+                            <div>{campaign.Campaign}</div>
+                          </td>
+                        );
+                      }
+
+                      if (column === 'Labels') {
+                        return (
+                          <td
+                            key={column}
+                            className={`p-2 border-r ${isFrozen ? 'sticky z-10' : ''
+                              }`}
+                            style={{
+                              left: leftPos,
+                              backgroundColor: isFrozen ? 'white' : undefined,
+                              ...columnStyle
+                            }}
+                          >
+                            <div className="flex flex-wrap gap-1">
+                              {accountLabels[campaign.Campaign]?.map((label: string) => (
+                                <Badge
+                                  key={label}
+                                  className={`${labelColorMap.get(label)} flex items-center gap-1 cursor-default text-xs py-0 px-1`}
                                 >
-                                  <Plus size={14} className="text-green-500" />
-                                </Button>
+                                  {label}
+                                  <X
+                                    className="h-2 w-2 cursor-pointer hover:opacity-75"
+                                    onClick={() => handleRemoveLabel(campaign.Campaign, label)}
+                                  />
+                                </Badge>
+                              ))}
+                              {!accountLabels[campaign.Campaign]?.length && (
+                                <span className="text-slate-400 text-xs">-</span>
                               )}
                             </div>
                           </td>
                         );
                       }
-                      return renderTableCell(campaign[header], header);
+
+                      return (
+                        <td
+                          key={column}
+                          className={`p-2 border-r ${isFrozen ? 'sticky z-10' : ''
+                            }`}
+                          style={{
+                            left: leftPos,
+                            backgroundColor: isFrozen ? 'white' : undefined,
+                            ...columnStyle
+                          }}
+                        >
+                          <div>{campaign[column]}</div>
+                        </td>
+                      );
                     })}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };

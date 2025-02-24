@@ -11,7 +11,6 @@ const client = new GoogleAdsApi({
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
     developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-    refresh_token: process.env.GOOGLE_AD_REFRESH_TOKEN,
 });
 
 export const fetchFBAdAccountAndCampaignData = async (req, res) => {
@@ -564,7 +563,7 @@ export const fetchFBCampaignData = async (req, res) => {
                                 "CPM (Reach Based)": Number(parseFloat(cpmReachBased).toFixed(2)) || 0.00,
                                 "Link Click": Number(linkClick),
                                 "Outbound CTR":outboundCTR,
-                                "Audience Saturation Score" : outboundCTR > 0 ? Number(parseFloat((frequency / outboundCTR).toFixed(2))) * 100 : 0.00,
+                                "Audience Saturation Score" : outboundCTR > 0 ? Number(parseFloat((frequency / outboundCTR) * 100).toFixed(2)) : 0.00,
                                 "Reach v/s Unique Click" : uniqueLinkClicks > 0 ? Number(parseFloat((reach / uniqueLinkClicks).toFixed(2))) : 0.00,
                                 "High-Intent Click Rate": HighIntentClickRate || 0.00,
                                 "Hook Rate": HookRate || 0.00,

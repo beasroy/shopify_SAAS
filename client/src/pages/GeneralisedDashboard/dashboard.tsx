@@ -8,8 +8,11 @@ import {
   ShoppingCart,
   Users,
   XCircle,
-  Info,
   Tag,
+  Coins,
+  TrendingUpDown,
+  Clock,
+  CalendarDays, History
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -21,13 +24,15 @@ import DashboardSkeleton from "./components/DashboardSkeleton"
 import { Button } from "@/components/ui/button"
 import { FacebookLogo, GoogleLogo } from "../AnalyticsDashboard/AdAccountsMetricsCard"
 import { Ga4Logo, ShopifyLogo } from "./components/OtherPlatformModalContent"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
-import { GiFlatPlatform } from "react-icons/gi";
-
+import { GiFlatPlatform } from "react-icons/gi"
 
 export type Trend = "up" | "down"
-export type Period = "daily" | "weekly" | "monthly"
+export type Period = "Today" | "Last 7 Days" | "Last 30 Days"
+
+export interface DateRange {
+  start: string
+  end: string
+}
 
 export interface MetricData {
   current: number
@@ -36,27 +41,22 @@ export interface MetricData {
   trend: Trend
 }
 
-export interface PeriodSummary {
+export interface PeriodData {
   title: string
+  dateRanges: {
+    current: DateRange
+    previous: DateRange
+  }
   sessions: MetricData
   addToCarts: MetricData
   checkouts: MetricData
   purchases: MetricData
+  spend: MetricData
+  roas: MetricData
 }
 
-export interface Highlight {
-  metric: string
-  period: "daily" | "weekly" | "monthly"
-  message: string
-}
-
-export interface AnalyticsSummary {
-  summaries: {
-    daily: PeriodSummary
-    weekly: PeriodSummary
-    monthly: PeriodSummary
-  }
-  highlights: Highlight[]
+export interface Summary {
+  summaries: Record<Period, PeriodData>
 }
 
 const iconMap = {
@@ -64,85 +64,164 @@ const iconMap = {
   addToCarts: ShoppingCart,
   checkouts: ShoppingBag,
   purchases: Tag,
-}
+  spend: Coins,
+  roas: TrendingUpDown,
+} as const
 
-function MetricComparison({
-  title,
-  metric,
-  current,
-  previous,
-  change,
-  trend,
-  description,
-  periodTitle,
-}: {
+interface MetricRowProps {
   title: string
-  metric: keyof typeof iconMap
+  icon: typeof iconMap[keyof typeof iconMap]
   current: number
   previous: number
   change: number
-  trend: "up" | "down"
-  description: string
-  periodTitle: string
-}) {
-  const Icon = iconMap[metric]
-  const data = [
-    { name: "Previous", value: previous },
-    { name: "Current", value: current },
-  ]
+  trend: Trend
+}
 
+function MetricRow({ title, icon: Icon, current, previous, change, trend }: MetricRowProps) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="bg-slate-50 p-4">
-        <CardTitle className="text-base font-medium text-slate-700 flex items-center justify-between">
-          <span className="flex items-center">
-            <Icon className="h-5 w-4 mr-2 text-slate-500" />
-            <p className="flex flex-row items-center gap-2">{title} <span className="text-xs text-slate-500">({periodTitle})</span></p>
-          </span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                  <Info className="h-4 w-4" />
-                  <span className="sr-only">Info</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{description}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex flex-row items-center gap-5">
-            <div className="text-2xl font-bold">{current.toLocaleString()}</div>
-            <div className="text-sm text-slate-500">vs {previous.toLocaleString()} previous</div>
-          </div>
-          <div
-            className={cn("text-sm font-medium flex items-center", trend === "up" ? "text-green-500" : "text-red-500")}
-          >
-            {trend === "up" ? <ArrowUpIcon className="h-4 w-4 mr-1" /> : <ArrowDownIcon className="h-4 w-4 mr-1" />}
-            {(change)}%
-          </div>
+    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+      <div className="flex items-center space-x-3">
+        <div className="p-2 rounded-lg bg-slate-100">
+          <Icon className="h-4 w-4 text-slate-600" />
         </div>
-        <ResponsiveContainer width="100%" height={40}>
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-            <XAxis type="number" hide />
-            <YAxis type="category" hide />
-            <Bar
-              dataKey="value"
-              fill={trend === "up" ? "#10B981" : "#EF4444"}
-              radius={[0, 4, 4, 0]}
-              barSize={10} // Added this to make bars slimmer
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+        <span className="text-sm font-medium text-slate-700">{title}</span>
+      </div>
+      <div className="flex items-center space-x-4">
+        <div className="text-right">
+          <div className="text-sm font-semibold">{current.toLocaleString()}</div>
+          <div className="text-xs text-slate-500">vs {previous.toLocaleString()}</div>
+        </div>
+        <div
+          className={cn(
+            "px-2 py-1 rounded-full text-xs font-medium flex items-center min-w-[60px] justify-center",
+            trend === "up" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+          )}
+        >
+          {trend === "up" ? <ArrowUpIcon className="h-3 w-3 mr-1" /> : <ArrowDownIcon className="h-3 w-3 mr-1" />}
+          {change}%
+        </div>
+      </div>
+    </div>
   )
 }
+
+interface PeriodCardProps {
+  period: Period
+  data: {
+    analytics?: PeriodData
+    facebook?: PeriodData
+    google?: PeriodData
+  }
+}
+
+function PeriodCard({ period, data }: PeriodCardProps) {
+  const [selectedTab, setSelectedTab] = useState("analytics");
+
+  const gradients = {
+    "Today": "from-blue-50 to-indigo-50",
+    "Last 7 Days": "from-purple-50 to-pink-50",
+    "Last 30 Days": "from-orange-50 to-amber-50"
+  };
+
+  const dateRanges = data.analytics?.dateRanges || data.facebook?.dateRanges || data.google?.dateRanges;
+
+  return (
+    <Card className="overflow-auto">
+      {/* Header Section */}
+      <CardHeader className={`bg-gradient-to-r p-3 flex flex-row justify-between items-center ${gradients[period]}`}>
+        <div className="flex items-center space-x-2">
+          <Clock className="h-5 w-5 text-slate-700" />
+          <CardTitle className="text-sm font-semibold text-slate-800">{period}</CardTitle>
+        </div>
+
+        {/* Date Ranges */}
+        {dateRanges && (
+            <div className="flex flex-col items-end text-xs">
+              <div className="flex items-center gap-2 mb-1.5">
+                <CalendarDays className="h-3.5 w-3.5 text-slate-600" />
+                <span className="font-medium text-slate-700">
+                {new Date(dateRanges.current.start).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: '2-digit',
+                })} - 
+                {new Date(dateRanges.current.end).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: '2-digit',
+                })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-500">
+                <History className="h-3.5 w-3.5" />
+                <span>
+                {new Date(dateRanges.previous.start).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: '2-digit',
+                })} - 
+                {new Date(dateRanges.previous.end).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: '2-digit',
+                })}
+              </span>
+              </div>
+            </div>
+          )}
+      </CardHeader>
+
+      {/* Custom Tabs */}
+      <div className="flex border-b border-gray-300">
+        <button
+          className={`flex-1 py-2 text-center ${selectedTab === "analytics" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
+          onClick={() => setSelectedTab("analytics")}
+        >
+          Analytics
+        </button>
+        <button
+          className={`flex-1 py-2 text-center ${selectedTab === "adMetrics" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
+          onClick={() => setSelectedTab("adMetrics")}
+        >
+          Ad Metrics
+        </button>
+      </div>
+
+      <CardContent className="px-5 py-2">
+        {selectedTab === "analytics" && (
+          <div className="space-y-0.5">
+            {data.analytics && (
+              <>
+                <MetricRow title="Sessions" icon={Users} {...data.analytics.sessions} />
+                <MetricRow title="Cart Additions" icon={ShoppingCart} {...data.analytics.addToCarts} />
+                <MetricRow title="Checkouts" icon={ShoppingBag} {...data.analytics.checkouts} />
+                <MetricRow title="Purchases" icon={Tag} {...data.analytics.purchases} />
+              </>
+            )}
+          </div>
+        )}
+
+        {selectedTab === "adMetrics" && (
+          <div className="space-y-1">
+            {data.facebook && (
+              <>
+                <MetricRow title="Meta Spend" icon={Coins} {...data.facebook.spend} />
+                <MetricRow title="Meta ROAS" icon={TrendingUpDown} {...data.facebook.roas} />
+              </>
+            )}
+            {data.google && (
+              <>
+                <MetricRow title="Google Spend" icon={Coins} {...data.google.spend} />
+                <MetricRow title="Google ROAS" icon={TrendingUpDown} {...data.google.roas} />
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function PlatformCard({
   name,
@@ -202,53 +281,78 @@ const SummaryDashboard: React.FC = () => {
   const fbAccounts = selectedBrand?.fbAdAccounts ?? []
   const googleAccount = selectedBrand?.googleAdAccount ? [selectedBrand.googleAdAccount] : []
   const ga4Accounts = selectedBrand?.ga4Account ? Object.values(selectedBrand.ga4Account) : []
-  // Extract Shopify shop name
   const shopifyShopName = selectedBrand?.shopifyAccount?.shopName || ""
   const shopifyAccount = shopifyShopName ? [shopifyShopName] : []
 
   const userName = user?.username
-  const [loading, setLoading] = useState<boolean>(false)
-  const [metrics, setMetrics] = useState<AnalyticsSummary>()
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>("daily")
+  const [loading, setLoading] = useState(false)
+  const [analytics, setAnalytics] = useState<Summary>()
+  const [facebookad, setFacebookad] = useState<Summary>()
+  const [googlead, setGooglead] = useState<Summary>()
 
   const axiosInstance = createAxiosInstance()
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await axiosInstance.post(
-        `api/analytics/atcsummary/${brandId}`,
-        {
-          userId: user?.id,
-        },
-        { withCredentials: true },
-      )
+    setLoading(true);
+    setAnalytics(undefined);
+    setFacebookad(undefined);
+    setGooglead(undefined);
 
-      const fetchedData = response.data || []
+    const requests = [
+      {
+        key: "analytics",
+        promise: axiosInstance.post(
+          `api/summary/analytics/${brandId}`,
+          { userId: user?.id },
+          { withCredentials: true }
+        ),
+      },
+      {
+        key: "facebookAds",
+        promise: axiosInstance.post(
+          `api/summary/facebook-ads/${brandId}`,
+          { userId: user?.id },
+          { withCredentials: true }
+        ),
+      },
+      {
+        key: "googleAds",
+        promise: axiosInstance.post(
+          `api/summary/google-ads/${brandId}`,
+          { userId: user?.id },
+          { withCredentials: true }
+        ),
+      },
+    ];
 
-      setMetrics(fetchedData)
-    } catch (error) {
-      console.error("Error fetching data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [brandId, user?.id])
+    const results = await Promise.allSettled(requests.map((req) => req.promise));
+
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        if (requests[index].key === "analytics") setAnalytics(result.value.data);
+        if (requests[index].key === "facebookAds") setFacebookad(result.value.data);
+        if (requests[index].key === "googleAds") setGooglead(result.value.data);
+      } else {
+        console.error(`Error fetching ${requests[index].key} data:`, result.reason);
+      }
+    });
+
+    setLoading(false);
+  }, [brandId, user?.id]);
+
 
   useEffect(() => {
-    setMetrics(undefined) // Reset metrics when brandId changes
     fetchData()
+    console.log(facebookad)
     const intervalId = setInterval(fetchData, 15 * 60 * 1000)
     return () => clearInterval(intervalId)
-  }, [fetchData, brandId]) // Added brandId to dependencies
-
-  const handleManualRefresh = () => {
-    fetchData()
-  }
+  }, [fetchData])
 
   if (loading) {
     return <DashboardSkeleton />
   }
 
+  const periods: Period[] = ["Today", "Last 7 Days", "Last 30 Days"]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -263,13 +367,13 @@ const SummaryDashboard: React.FC = () => {
               </div>
             </div>
             <Button
-              onClick={handleManualRefresh}
+              onClick={fetchData}
               disabled={loading}
               size="sm"
               variant="outline"
               className="hover:bg-slate-100"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
               Refresh
             </Button>
           </div>
@@ -325,66 +429,22 @@ const SummaryDashboard: React.FC = () => {
         </div>
 
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex flex-row items-center gap-2">
-              <Activity />
-              <h2 className="text-xl font-semibold text-slate-800">Performance Analytics</h2>
-            </div>
-            <div className="flex bg-white rounded-lg p-1 shadow-sm border border-slate-200">
-              {(["daily", "weekly", "monthly"] as const).map((period) => (
-                <Button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  variant={selectedPeriod === period ? "default" : "ghost"}
-                  size="sm"
-                  className="text-sm"
-                >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
-                </Button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 mb-6">
+            <Activity className="h-6 w-6" />
+            <h2 className="text-xl font-semibold text-slate-800">Performance Overview</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            <MetricComparison
-              title="Active Sessions"
-              metric="sessions"
-              current={metrics?.summaries[selectedPeriod].sessions.current ?? 0}
-              previous={metrics?.summaries[selectedPeriod].sessions.previous ?? 0}
-              change={metrics?.summaries[selectedPeriod].sessions.change ?? 0}
-              trend={metrics?.summaries[selectedPeriod].sessions.trend ?? "down"}
-              description="Number of active user sessions on your website"
-              periodTitle={metrics?.summaries[selectedPeriod].title ?? ""}
-            />
-            <MetricComparison
-              title="Cart Additions"
-              metric="addToCarts"
-              current={metrics?.summaries[selectedPeriod].addToCarts.current ?? 0}
-              previous={metrics?.summaries[selectedPeriod].addToCarts.previous ?? 0}
-              change={metrics?.summaries[selectedPeriod].addToCarts.change ?? 0}
-              trend={metrics?.summaries[selectedPeriod].addToCarts.trend ?? "down"}
-              description="Number of times items were added to shopping carts"
-              periodTitle={metrics?.summaries[selectedPeriod].title ?? ""}
-            />
-            <MetricComparison
-              title="Checkout Initiated"
-              metric="checkouts"
-              current={metrics?.summaries[selectedPeriod].checkouts.current ?? 0}
-              previous={metrics?.summaries[selectedPeriod].checkouts.previous ?? 0}
-              change={metrics?.summaries[selectedPeriod].checkouts.change ?? 0}
-              trend={metrics?.summaries[selectedPeriod].checkouts.trend ?? "down"}
-              description="Number of times users started the checkout process"
-              periodTitle={metrics?.summaries[selectedPeriod].title ?? ""}
-            />
-            <MetricComparison
-              title="Completed Sales"
-              metric="purchases"
-              current={metrics?.summaries[selectedPeriod].purchases.current ?? 0}
-              previous={metrics?.summaries[selectedPeriod].purchases.previous ?? 0}
-              change={metrics?.summaries[selectedPeriod].purchases.change ?? 0}
-              trend={metrics?.summaries[selectedPeriod].purchases.trend ?? "down"}
-              description="Number of completed purchases"
-              periodTitle={metrics?.summaries[selectedPeriod].title ?? ""}
-            />
+          <div className="grid gap-6 lg:grid-cols-3">
+            {periods.map((period) => (
+              <PeriodCard
+                key={period}
+                period={period}
+                data={{
+                  analytics: analytics?.summaries[period],
+                  facebook: facebookad?.summaries[period],
+                  google: googlead?.summaries[period],
+                }}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -393,4 +453,3 @@ const SummaryDashboard: React.FC = () => {
 }
 
 export default SummaryDashboard
-

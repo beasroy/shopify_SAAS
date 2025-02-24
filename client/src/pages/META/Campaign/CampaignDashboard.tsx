@@ -11,7 +11,8 @@ import MetaCampaignTable from './MetaCampaignTable';
 
 
 export interface MetaCampaign {
-    [key: string]: number | string;
+    Campaign: string;
+    [key: string]: string | number;
 }
 
 export interface AccountData {
@@ -109,7 +110,14 @@ export default function CampaignDashboard() {
                         ) : fbCampaignMetrics?.data && fbCampaignMetrics.data.length > 0 ? (
                             fbCampaignMetrics.data.map((account, index) => (
                                 <div key={index} className="mb-6">
-                                    <MetaCampaignTable data={account} height={height} />
+                                    <MetaCampaignTable 
+                                        data={{
+                                            account_name: account.account_name,
+                                            account_id: account.account_id,
+                                            campaigns: account.campaigns
+                                        }}
+                                        height={height}  // Adjust the height according to the number of campaigns
+                                    />
                                 </div>
                             ))
                         ) : (

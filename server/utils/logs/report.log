@@ -898,3 +898,116 @@
 2025-02-21T10:09:40.985Z [info]: Successfully processed brand 671b7d85f99634509a5f2693 with user 6756909d58686c8333029d51
 2025-02-21T10:09:41.274Z [info]: Successfully processed brand 671b68bed3c4f462d681ef45 with user 6756909d58686c8333029d51
 2025-02-21T10:09:41.275Z [info]: Metrics calculation summary:
+2025-02-21T13:44:54.952Z [info]: Found 10 brands for metrics calculation.
+2025-02-21T13:44:54.969Z [info]: 
+=== Processing brand: 671b68bed3c4f462d681ef45 ===
+2025-02-21T13:44:54.971Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.973Z [info]: 
+=== Processing brand: 671b6925d3c4f462d681ef47 ===
+2025-02-21T13:44:54.976Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.978Z [info]: 
+=== Processing brand: 671b7d85f99634509a5f2693 ===
+2025-02-21T13:44:54.979Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.980Z [info]: 
+=== Processing brand: 67386682a32728aa040776c7 ===
+2025-02-21T13:44:54.981Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.983Z [info]: 
+=== Processing brand: 679f90ab284d8d9b3b97d8c9 ===
+2025-02-21T13:44:54.985Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.988Z [info]: 
+=== Processing brand: 67a60c4eb41925417e85ade6 ===
+2025-02-21T13:44:54.988Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.989Z [info]: 
+=== Processing brand: 67a6134fb41925417e85ae54 ===
+2025-02-21T13:44:54.990Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.990Z [info]: 
+=== Processing brand: 67a6165bb41925417e85af95 ===
+2025-02-21T13:44:54.991Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.992Z [info]: 
+=== Processing brand: 67a99418b740339c5286861c ===
+2025-02-21T13:44:54.992Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:54.994Z [info]: 
+=== Processing brand: 67b41539696038602b5aace8 ===
+2025-02-21T13:44:54.996Z [info]: Searching for user with brand ID (string):
+2025-02-21T13:44:55.173Z [info]: Total users in database:
+2025-02-21T13:44:55.179Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.201Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.204Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.218Z [info]: User 6756909d58686c8333029d51: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","671b90c83aee55a69981a0c9","671cc01d00989c5fdf2dcb11","671ccd765d652cf6efc21eda","671cceb19b58dac9e4e23280","671cd209fc16e7d6a19da1fd","67386682a32728aa040776c7","673867cea32728aa040776d1"]
+2025-02-21T13:44:55.221Z [info]: User 67b5a199b13cb15ab81b1fc9: ["671b68bed3c4f462d681ef45"]
+2025-02-21T13:44:55.233Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 671b68bed3c4f462d681ef45
+2025-02-21T13:44:55.251Z [info]: Total users in database:
+2025-02-21T13:44:55.253Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.253Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.255Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.257Z [info]: User 6756909d58686c8333029d51: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","671b90c83aee55a69981a0c9","671cc01d00989c5fdf2dcb11","671ccd765d652cf6efc21eda","671cceb19b58dac9e4e23280","671cd209fc16e7d6a19da1fd","67386682a32728aa040776c7","673867cea32728aa040776d1"]
+2025-02-21T13:44:55.258Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 671b6925d3c4f462d681ef47
+2025-02-21T13:44:55.326Z [info]: Total users in database:
+2025-02-21T13:44:55.330Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.331Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.332Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.335Z [info]: User 6756909d58686c8333029d51: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","671b90c83aee55a69981a0c9","671cc01d00989c5fdf2dcb11","671ccd765d652cf6efc21eda","671cceb19b58dac9e4e23280","671cd209fc16e7d6a19da1fd","67386682a32728aa040776c7","673867cea32728aa040776d1"]
+2025-02-21T13:44:55.338Z [info]: User 67b5c17be06d6967b98d5ad8: ["671b7d85f99634509a5f2693"]
+2025-02-21T13:44:55.338Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 671b7d85f99634509a5f2693
+2025-02-21T13:44:55.375Z [info]: Total users in database:
+2025-02-21T13:44:55.375Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.376Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.376Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.378Z [info]: User 67b5c4f9adb23474952f483d: ["679f90ab284d8d9b3b97d8c9"]
+2025-02-21T13:44:55.379Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 679f90ab284d8d9b3b97d8c9
+2025-02-21T13:44:55.391Z [info]: Total users in database:
+2025-02-21T13:44:55.391Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.392Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.392Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.393Z [info]: User 67b5a55fc9adba2ce6d590c7: ["67a60c4eb41925417e85ade6"]
+2025-02-21T13:44:55.393Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67a60c4eb41925417e85ade6
+2025-02-21T13:44:55.417Z [info]: Total users in database:
+2025-02-21T13:44:55.418Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.418Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.419Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.419Z [info]: User 67b5cfdcb670f6fa37e4f718: ["67a6165bb41925417e85af95"]
+2025-02-21T13:44:55.420Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67a6165bb41925417e85af95
+2025-02-21T13:44:55.433Z [info]: Total users in database:
+2025-02-21T13:44:55.434Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.434Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.434Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.436Z [info]: User 67b5d445290b899ca3f54e8e: ["67a99418b740339c5286861c"]
+2025-02-21T13:44:55.436Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67a99418b740339c5286861c
+2025-02-21T13:44:55.460Z [info]: Total users in database:
+2025-02-21T13:44:55.462Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.462Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.463Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.464Z [info]: User 67b5de17290b899ca3f54f57: ["67b41539696038602b5aace8"]
+2025-02-21T13:44:55.464Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67b41539696038602b5aace8
+2025-02-21T13:44:55.684Z [info]: Total users in database:
+2025-02-21T13:44:55.685Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.685Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.686Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.687Z [info]: User 6756909d58686c8333029d51: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","671b90c83aee55a69981a0c9","671cc01d00989c5fdf2dcb11","671ccd765d652cf6efc21eda","671cceb19b58dac9e4e23280","671cd209fc16e7d6a19da1fd","67386682a32728aa040776c7","673867cea32728aa040776d1"]
+2025-02-21T13:44:55.688Z [info]: User 67b58367ec8198b5913b3c55: ["67386682a32728aa040776c7"]
+2025-02-21T13:44:55.689Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67386682a32728aa040776c7
+2025-02-21T13:44:55.738Z [info]: Total users in database:
+2025-02-21T13:44:55.738Z [info]: Users with matching brand (manual check):
+2025-02-21T13:44:55.739Z [info]: Found matching users brands arrays:
+2025-02-21T13:44:55.739Z [info]: User 674eac6efa51d4ab3d414d02: ["671b68bed3c4f462d681ef45","671b6925d3c4f462d681ef47","671b7d85f99634509a5f2693","67386682a32728aa040776c7","679f90ab284d8d9b3b97d8c9","67a60c4eb41925417e85ade6","67a6134fb41925417e85ae54","67a6165bb41925417e85af95","67a99418b740339c5286861c","67b41539696038602b5aace8"]
+2025-02-21T13:44:55.740Z [info]: User 67b5bd0ec9adba2ce6d5916c: ["67a6134fb41925417e85ae54"]
+2025-02-21T13:44:55.740Z [info]: Attempting with user 674eac6efa51d4ab3d414d02 for brand 67a6134fb41925417e85ae54
+2025-02-21T13:44:59.297Z [info]: Successfully processed brand 679f90ab284d8d9b3b97d8c9 with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:44:59.318Z [info]: Successfully processed brand 67b41539696038602b5aace8 with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:44:59.335Z [info]: Successfully processed brand 67a6134fb41925417e85ae54 with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:44:59.436Z [info]: Successfully processed brand 67a99418b740339c5286861c with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:44:59.564Z [info]: Successfully processed brand 67a6165bb41925417e85af95 with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:44:59.743Z [info]: Successfully processed brand 67a60c4eb41925417e85ade6 with user 674eac6efa51d4ab3d414d02
+2025-02-21T13:45:00.150Z [warn]: Failed with user 674eac6efa51d4ab3d414d02, trying next user if available. Error: An error occurred while calculating and saving metrics.
+2025-02-21T13:45:00.151Z [info]: Attempting with user 6756909d58686c8333029d51 for brand 671b6925d3c4f462d681ef47
+2025-02-21T13:45:00.234Z [warn]: Failed with user 674eac6efa51d4ab3d414d02, trying next user if available. Error: An error occurred while calculating and saving metrics.
+2025-02-21T13:45:00.234Z [info]: Attempting with user 6756909d58686c8333029d51 for brand 671b68bed3c4f462d681ef45
+2025-02-21T13:45:00.287Z [warn]: Failed with user 674eac6efa51d4ab3d414d02, trying next user if available. Error: An error occurred while calculating and saving metrics.
+2025-02-21T13:45:00.288Z [info]: Attempting with user 6756909d58686c8333029d51 for brand 67386682a32728aa040776c7
+2025-02-21T13:45:00.544Z [warn]: Failed with user 674eac6efa51d4ab3d414d02, trying next user if available. Error: An error occurred while calculating and saving metrics.
+2025-02-21T13:45:00.545Z [info]: Attempting with user 6756909d58686c8333029d51 for brand 671b7d85f99634509a5f2693
+2025-02-21T13:45:03.409Z [info]: Successfully processed brand 671b6925d3c4f462d681ef47 with user 6756909d58686c8333029d51
+2025-02-21T13:45:03.466Z [info]: Successfully processed brand 671b68bed3c4f462d681ef45 with user 6756909d58686c8333029d51
+2025-02-21T13:45:03.475Z [info]: Successfully processed brand 671b7d85f99634509a5f2693 with user 6756909d58686c8333029d51
+2025-02-21T13:45:03.507Z [info]: Successfully processed brand 67386682a32728aa040776c7 with user 6756909d58686c8333029d51
+2025-02-21T13:45:03.508Z [info]: Metrics calculation summary:

@@ -7,17 +7,14 @@ interface User {
   brands: string[];
   isClient: boolean;
   isAdmin: boolean;
-  hasSeenLandingSlides?: boolean;
 }
 
 interface UserState {
   user: User | null;
-  showLandingPopup: boolean;
 }
 
 const initialState: UserState = {
   user: null,
-  showLandingPopup: false,
 };
 
 const userSlice = createSlice({
@@ -26,24 +23,13 @@ const userSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<User | null>) => {
       state.user = action.payload;
-      
-      // Determine whether to show the landing popup
-      state.showLandingPopup =
-        !!action.payload &&
-        !action.payload.hasSeenLandingSlides &&
-        (!action.payload.brands || action.payload.brands.length === 0);
-    },
-
-    setShowLandingPopup: (state, action: PayloadAction<boolean>) => {
-      state.showLandingPopup = action.payload;
     },
 
     clearUser: (state) => {
       state.user = null;
-      state.showLandingPopup = false;
     },
   },
 });
 
-export const { setUser, setShowLandingPopup, clearUser } = userSlice.actions;
+export const { setUser, clearUser } = userSlice.actions;
 export default userSlice.reducer;

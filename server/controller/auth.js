@@ -212,7 +212,10 @@ export const userLogin = async (req, res) => {
                     id: user._id,
                     username: user.username,
                     email: user.email,
-                    brands: user.brands
+                    brands: user.brands,
+                    isAdmin: user.isAdmin,
+                    isClient: user.isClient,
+                    method: user.method,
                 }
             });
         }
@@ -255,7 +258,10 @@ export const userLogin = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                brands: user.brands
+                brands: user.brands,
+                isAdmin: user.isAdmin,
+                isClient: user.isClient,
+                method: user.method
             }
         });
 
@@ -476,4 +482,38 @@ export const handleShopifyCallback = async (request, res) => {
     } catch (error) {
       return res.status(500).json({ error: 'Error occurred while fetching the access token', details: error.response?.data || error.message });
     }
+};
+
+export const getZohoAuthURL = (req, res) => {
+    const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +
+    `?client_id=${process.env.ZOHO_CLIENT_ID}` +
+    '&response_type=code' +
+    `&redirect_uri=${process.env.ZOHO_REDIRECT_URI}` +
+    '&scope=Desk.tickets.ALL,Desk.basic.READ,Desk.settings.ALL,Desk.search.READ' +
+    '&access_type=offline';
+    res.json({ success: true,authUrl });
+};
+
+export const handleZohoCallback = async (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.status(400).send('Authorization code is missing');
+  }
+  
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
+      params: {
+        client_id: process.env.ZOHO_CLIENT_ID,
+        client_secret: process.env.ZOHO_CLIENT_SECRET,
+        redirect_uri: process.env.ZOHO_REDIRECT_URI,
+        code: code,
+        grant_type: 'authorization_code',
+      }});
+      const { refresh_token } = tokenResponse.data;
+    }catch (error) {
+    console.error('Token exchange error:', error.response?.data || error.message);
+    res.status(500).send('Authentication failed');
+  }
 };

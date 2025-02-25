@@ -61,6 +61,7 @@ export default function CollapsibleSidebar() {
         fetchBrands();
     }, [fetchBrands]); // Will only run when user.brands changes
 
+
     const toggleSidebar = () => setIsExpanded(prev => !prev);
 
     const handleLogout = async () => {
@@ -329,8 +330,9 @@ function SidebarChild({ path, text, onClick, disabled = false, isSelected = fals
 
 // UserProfile component
 function UserProfile({ isExpanded, user }: { isExpanded: boolean; user: any }) {
+    const navigate = useNavigate();
     const userProfileContent = (
-        <div className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
+        <div onClick={() => navigate("/profile")} className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>
             <span className="text-gray-300 hover:text-white">
                 <User2Icon size={24} />
             </span>

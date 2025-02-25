@@ -76,12 +76,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
   useEffect(() => {
     if (data.campaigns.length > 0) {
       const columns = Object.keys(data.campaigns[0]);
-
-      // Create initial allColumns without Labels
       const initialColumns = columns.filter(col => col !== 'Labels');
 
-      // Only include Labels in visible columns if there are labels
-      // or if we're currently adding labels
       const shouldShowLabelsColumn = hasAnyLabels || isAddingLabel;
       const initialVisibleColumns = shouldShowLabelsColumn
         ? [...initialColumns, 'Labels']
@@ -108,13 +104,11 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
     const map = new Map<string, string>();
     let colorIndex = 0;
 
-    // Collect all unique labels for this account
     const allLabels = new Set<string>();
     Object.values(accountLabels).forEach(labelArray => {
       labelArray?.forEach(label => allLabels.add(label));
     });
 
-    // Assign colors to each unique label
     Array.from(allLabels).forEach(label => {
       map.set(label, LABEL_COLORS[colorIndex % LABEL_COLORS.length]);
       colorIndex++;

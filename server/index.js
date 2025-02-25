@@ -17,11 +17,14 @@ import summaryRoutes from "./routes/summary.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
+// import { monthlyAddReportData } from "./Report/MonthlyReport.js"
 
 const app = express();
 dotenv.config();
   
 connectDB(); 
+
+// monthlyAddReportData("67a6134fb41925417e85ae54","2023-01-01","2025-02-24","674eac6efa51d4ab3d414d02")
 
 app.use(cors({
   origin: ['http://13.203.31.8', 'http://localhost:5173','https://parallels.messold.com'],  

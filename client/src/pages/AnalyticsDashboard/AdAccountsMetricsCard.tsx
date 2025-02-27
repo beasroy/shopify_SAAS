@@ -121,7 +121,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, date, icon, toolt
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-bold text-cyan-950">{value}</p>
+        <p className="text-xl lg:text-2xl 2xl:text-3xl font-bold text-cyan-950">{value}</p>
       </CardContent>
     </Card>
   )
@@ -179,7 +179,7 @@ const AdAccountMetricsCard: React.FC<AdAccountMetricsProps> = ({ title, metrics 
           </>
         )}
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isLoading
           ? Array(metrics.length).fill(0).map((_, index) => <MetricCardSkeleton key={index} />)
           : metrics.map((metric, index) => (

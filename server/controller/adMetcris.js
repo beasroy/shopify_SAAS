@@ -14,18 +14,20 @@ const client = new GoogleAdsApi({
 });
 
 export const fetchFBAdAccountAndCampaignData = async (req, res) => {
-    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-    let { startDate, endDate } = req.body;
+    let { startDate, endDate, userId } = req.body;
     const { brandId } = req.params;
 
     try {
         // Find the brand by ID
-        const brand = await Brand.findById(brandId);
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ])
 
-        if (!brand) {
+        if (!brand || !user) {
             return res.status(404).json({
                 success: false,
-                message: 'Brand not found.',
+                message: !brand ? 'Brand not found.' : 'User not found.',
             });
         }
 
@@ -35,6 +37,14 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        const accessToken = user.fbAccessToken;
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
             });
         }
 

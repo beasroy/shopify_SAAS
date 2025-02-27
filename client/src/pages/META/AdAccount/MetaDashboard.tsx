@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/index.ts';
 import CollapsibleSidebar from '@/pages/Dashboard/CollapsibleSidebar';
 import { FaMeta } from 'react-icons/fa6';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 
 
 
@@ -274,6 +275,7 @@ export default function MetaDashboard() {
                         })}
                     </main>
                 </div>
+                <HelpDeskModal />
             </div>
         </div>
     )

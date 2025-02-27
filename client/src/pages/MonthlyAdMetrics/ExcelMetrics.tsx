@@ -3,7 +3,7 @@ import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
-import { CalendarRange, ChevronDown, Maximize, Minimize } from "lucide-react"
+import { CalendarRange, ChevronDown,Maximize, Minimize } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import type { RootState } from "@/store"
 import Header from "@/components/dashboard_component/Header"
 import { Button } from "@/components/ui/button"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
+import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal"
 
 interface DailyMetric {
     _id: string
@@ -434,6 +435,7 @@ return (
                 </CardContent>
             </Card>
         </div>
+        <HelpDeskModal />
     </div>
 )
 }

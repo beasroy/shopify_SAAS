@@ -17,6 +17,7 @@ import summaryRoutes from "./routes/summary.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
+import zohoRoutes from "./routes/zohoTicket.js";
 // import { monthlyAddReportData } from "./Report/MonthlyReport.js"
 
 const app = express();
@@ -51,6 +52,7 @@ dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
 dataOperationRouter.use("/fbReport",fbReportRoutes);
 dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
+dataOperationRouter.use("/zoho",zohoRoutes);
 
 
 setupCronJobs();

@@ -12,6 +12,8 @@ import AgeFbReport from './component/AgeFbReport';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import Header from '@/components/dashboard_component/Header';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
+
 
 
 
@@ -20,15 +22,15 @@ const FbReportPage: React.FC = () => {
     const dateFrom = useSelector((state: RootState) => state.date.from);
     const dateTo = useSelector((state: RootState) => state.date.to);
     const date = useMemo(() => ({
-      from: dateFrom,
-      to: dateTo
+        from: dateFrom,
+        to: dateTo
     }), [dateFrom, dateTo]);
     const [activeTab, setActiveTab] = useState('age');
 
-    const dateRange={ 
+    const dateRange = {
         from: date.from ? new Date(date.from) : undefined,
-        to: date.to ? new Date(date.to) : undefined 
-      }
+        to: date.to ? new Date(date.to) : undefined
+    }
 
     const tabs = [
         { label: 'Age', value: 'age' },
@@ -51,7 +53,7 @@ const FbReportPage: React.FC = () => {
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex-none">
-                   <Header title='Meta Reports' Icon={FaMeta} showDatePicker={true}/>
+                    <Header title='Meta Reports' Icon={FaMeta} showDatePicker={true} />
 
                     {/* Tabs */}
                     <div className="bg-white px-6 sticky top-0 z-10">
@@ -77,12 +79,12 @@ const FbReportPage: React.FC = () => {
                                 <PlatformFbReport dateRange={dateRange} />
                             </div>
                         )}
-                         {activeTab === 'country' && (
+                        {activeTab === 'country' && (
                             <div id="country">
                                 <CountryFbReport dateRange={dateRange} />
                             </div>
                         )}
-                         {activeTab === 'impressionDevice' && (
+                        {activeTab === 'impressionDevice' && (
                             <div id="impressionDevice">
                                 <DeviceFbReport dateRange={dateRange} />
                             </div>
@@ -92,13 +94,14 @@ const FbReportPage: React.FC = () => {
                                 <GenderFbReport dateRange={dateRange} />
                             </div>
                         )}
-                         {activeTab === 'age' && (
+                        {activeTab === 'age' && (
                             <div id="age">
                                 <AgeFbReport dateRange={dateRange} />
                             </div>
                         )}
                     </div>
                 </div>
+                <HelpDeskModal />
             </div>
         </div>
     );

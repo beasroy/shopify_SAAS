@@ -21,13 +21,20 @@ const GoogleCallback = () => {
                     const googletoken = queryParams.get('token');
                     const fbToken = queryParams.get('fbToken');
                     const googleRefreshToken = queryParams.get('googleRefreshToken');
+                    const zohoRefreshToken = queryParams.get('zohoToken');
         
                     // Helper function for token update
                     const updateToken = async (url: string, token: string, type: string) => {
                         const response = await axios.get(`${baseURL}${url}?${type}=${token}`, { withCredentials: true });
                         if (response.data.success) {
                             console.log(`${type} token updated successfully, redirecting to /dashboard`);
-                            navigate('/dashboard');
+                            if (type === "zohoToken") {
+                                console.log("Zoho token updated, redirecting to /profile");
+                                navigate('/profile');
+                            } else {
+                                console.log(`${type} token updated, redirecting to /dashboard`);
+                                navigate('/dashboard');
+                            }
                             return true;
                         } else {
                             console.error(`Failed to update ${type} token`);
@@ -69,6 +76,10 @@ const GoogleCallback = () => {
         
                     if (googleRefreshToken) {
                         await updateToken('/api/auth/updateTokens/google', googleRefreshToken, 'googleRefreshToken');
+                        return;
+                    }
+                    if (zohoRefreshToken) {
+                        await updateToken('/api/auth/updateTokens/zoho', zohoRefreshToken, 'zohoToken');
                         return;
                     }
         

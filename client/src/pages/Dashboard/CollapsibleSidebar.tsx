@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
@@ -40,15 +40,15 @@ export default function CollapsibleSidebar() {
                 console.warn('No brand IDs found in user context.');
                 return;
             }
-    
+
             const response = await axios.post(
                 `${baseURL}/api/brands/filter`,
                 { brandIds: user.brands },
                 { withCredentials: true }
             );
-    
+
             dispatch(setBrands(response.data));
-    
+
             if (!selectedBrandId && response.data.length > 0) {
                 dispatch(setSelectedBrandId(response.data[0]._id));
             }
@@ -56,7 +56,7 @@ export default function CollapsibleSidebar() {
             console.error('Error fetching brands:', error);
         }
     }, [user?.brands]); // Only depends on user.brands and baseURL
-    
+
     useEffect(() => {
         fetchBrands();
     }, [fetchBrands]); // Will only run when user.brands changes
@@ -86,9 +86,32 @@ export default function CollapsibleSidebar() {
 
     // Define base dashboards that all users can see
     const dashboards = [
+        { name: "Business Overview", path: `/dashboard`, icon: <Blend size={20} /> },
         { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
         { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
-        { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} /> },
+        {
+            name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />,
+            subItems: [{
+                name: "Meta Insights", path: `/#`, icon: <FaMeta size={20} />,
+                subItems: [
+                    {
+                        name: "Adaccount Summary",
+                        path: `/adaccount-summary/${selectedBrandId}`
+                    },
+                    {
+                        name: "Meta Campaigns",
+                        path: `/meta-campaigns/${selectedBrandId}`
+                    },
+                    {
+                        name: "Meta Reports",
+                        path: `/meta-reports/${selectedBrandId}`
+                    }
+                ]
+            },
+            { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },
+
+            ]
+        },
         {
             name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,
             subItems: [
@@ -102,28 +125,12 @@ export default function CollapsibleSidebar() {
                 }
             ]
         },
-        {
-            name: "Meta Insights", path: `/#`, icon: <FaMeta size={20} />,
-            subItems: [
-                {
-                    name: "Adaccount Summary",
-                    path: `/adaccount-summary/${selectedBrandId}`
-                },
-                {
-                    name: "Meta Campaigns",
-                    path: `/meta-campaigns/${selectedBrandId}`
-                },
-                {
-                    name: "Meta Reports",
-                    path: `/meta-reports/${selectedBrandId}`
-                }
-            ]
-        },
-        { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },  
+
+
     ];
 
     // Add Segment Scope only if user is admin
-    const allDashboards = user?.isAdmin 
+    const allDashboards = user?.isAdmin
         ? [...dashboards, { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> }]
         : dashboards;
 
@@ -139,6 +146,62 @@ export default function CollapsibleSidebar() {
         }
         return false;
     };
+
+    // Create a recursive component to handle rendering sidebar items at any level
+    const renderSidebarItems = (items: any[], isTopLevel = true) => {
+        return items.map((item, index) => {
+            const hasValidPath = item.path && item.path !== '/#';
+
+            if (isTopLevel) {
+                // Top level dashboard items
+                return (
+                    <SidebarItem
+                        key={index}
+                        icon={item.icon}
+                        text={item.name}
+                        isExpanded={isExpanded}
+                        isSelected={hasValidPath && location.pathname.startsWith(item.path)}
+                        tooltipContent={`${item.name}${isItemDisabled(item) ? ' (No Analytics data available)' : ''}`}
+                        onClick={() => {
+                            // If it has a valid path, navigate
+                            if (!isItemDisabled(item) && hasValidPath) {
+                                navigate(item.path);
+                            }
+                            // Note: The toggling of subitems is handled internally by SidebarItem
+                        }}
+                        disabled={isItemDisabled(item)}
+                        openIcon={item.subItems ? <ChevronUp /> : undefined}
+                        closeIcon={item.subItems ? <ChevronDown /> : undefined}
+                        // Force the item to be treated as a toggle-only item if it has subitems but no valid path
+                        autoOpenOnSelect={true}
+                    >
+                        {item.subItems && renderSidebarItems(item.subItems, false)}
+                    </SidebarItem>
+                );
+            } else {
+                // Nested items (can themselves have more subitems)
+                return (
+                    <SidebarChild
+                        key={index}
+                        path={item.path}
+                        text={item.name}
+                        onClick={() => {
+                            // Only navigate if it has a valid path
+                            if (hasValidPath) {
+                                navigate(item.path);
+                            }
+                            // The toggle functionality is handled inside SidebarChild
+                        }}
+                        isSelected={hasValidPath && location.pathname === item.path}
+                    >
+                        {item.subItems && renderSidebarItems(item.subItems, false)}
+                    </SidebarChild>
+                );
+            }
+        });
+    };
+
+
 
 
     return (
@@ -177,7 +240,7 @@ export default function CollapsibleSidebar() {
                                 closeIcon={<ChevronDown />}
                                 isSelected={!!selectedBrandId}
                                 tooltipContent="Your Brands"
-                                autoOpenOnSelect= {false}
+                                autoOpenOnSelect={false}
                             >
                                 {brands.map(brand => (
                                     <SidebarChild
@@ -193,35 +256,8 @@ export default function CollapsibleSidebar() {
                                 ))}
                             </SidebarItem>
 
-                            {allDashboards.map((dashboard, index) => (
-                                <SidebarItem
-                                    key={index}
-                                    icon={dashboard.icon}
-                                    text={dashboard.name}
-                                    isExpanded={isExpanded}
-                                    isSelected={location.pathname.startsWith(dashboard.path)}
-                                    tooltipContent={`${dashboard.name}${isItemDisabled(dashboard) ? ' (No Analytics data available)' : ''}`}
-                                    onClick={dashboard.subItems ? undefined : () => {
-                                        if (!isItemDisabled(dashboard)) {
-                                            navigate(dashboard.path);
-                                        }
-                                    }}
-                                    disabled={isItemDisabled(dashboard)}
-                                    openIcon={dashboard.subItems ? <ChevronUp /> : undefined}
-                                    closeIcon={dashboard.subItems ? <ChevronDown /> : undefined}
-                                    
-                                >
-                                    {dashboard.subItems?.map((subItem, subIndex) => (
-                                        <SidebarChild
-                                            key={subIndex}
-                                            path={subItem.path}
-                                            text={subItem.name}
-                                            onClick={() => navigate(subItem.path)}
-                                            isSelected={location.pathname === subItem.path}
-                                        />
-                                    ))}
-                                </SidebarItem>
-                            ))}
+
+                            {renderSidebarItems(allDashboards)}
                         </nav>}
                     </ScrollArea>
                 </div>
@@ -235,100 +271,210 @@ export default function CollapsibleSidebar() {
     );
 }
 
-function SidebarItem({ icon, text, isExpanded, openIcon, closeIcon, children, isSelected, tooltipContent, onClick, disabled, autoOpenOnSelect=true }: {
-    icon?: React.ReactNode; text: string; isExpanded: boolean; openIcon?: React.ReactNode; closeIcon?: React.ReactNode; children?: React.ReactNode; isSelected: boolean; tooltipContent: string; onClick?: () => void; disabled?: boolean ; autoOpenOnSelect?: boolean;
-}) {
-
-    const [isOpen, setIsOpen] = useState(false);
-
-    const handleToggle = () => {
-        setIsOpen(prev => !prev);
-    };
-
-    const isChildSelected = React.Children.toArray(children).some(
-        (child: any) => child?.props?.isSelected
-      );
-    const isActive = isSelected || isChildSelected;
-
-    useEffect(() => {
-        if (autoOpenOnSelect && isActive) {
-          setIsOpen(true);
-        }
-      }, [isActive, autoOpenOnSelect]);
-
-      const content = (
-        <div
-          onClick={disabled ? undefined : onClick || handleToggle}
-          className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${
-            isActive ? 'text-white font-semibold relative' : 'text-gray-100'
-          } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
-        >
-          <span className="mr-2">{icon}</span>
-          {isExpanded && <span className="text-xs">{text}</span>}
-          {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
-        </div>
-      );
-
-    return (
-        <div>
-          {!isExpanded ? (
-            <Tooltip>
-              <TooltipTrigger asChild>{content}</TooltipTrigger>
-              <TooltipContent side="right">
-                <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>
-                  {tooltipContent}
-                </p>
-                {React.Children.map(children, (child) => (
-                  <div className="relative">
-                    <div className="absolute top-0 w-1 h-full bg-gray-500" />
-                    {child}
-                  </div>
-                ))}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            content
-          )}
-          {isOpen && isExpanded && (
-            <div className="relative pl-8">
-              <div className="absolute top-0 w-1 h-full bg-gray-500" />
-              {React.Children.map(children, (child) => (
-                <div>{child}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    };
-
-function SidebarChild({ path, text, onClick, disabled = false, isSelected = false }: {
+function SidebarChild({
+    path,
+    text,
+    onClick,
+    disabled = false,
+    isSelected = false,
+    children,
+}: {
     path: string;
     text: string;
     onClick?: () => void;
     disabled?: boolean;
     isSelected?: boolean;
+    children?: React.ReactNode;
 }): JSX.Element {
-    const baseClasses = `flex items-center text-xs w-full p-2.5 transition-colors duration-200 ${isSelected ? 'text-white font-semibold relative bg-gray-700' : 'text-gray-100'} ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+    const [isOpen, setIsOpen] = useState(false);
+    const hasChildren = React.Children.count(children) > 0;
 
-    return disabled ? (
+    const handleToggle = () => {
+        if (hasChildren) {
+            setIsOpen(prev => !prev);
+        }
+    };
+
+    const isChildSelected = React.Children.toArray(children).some(
+        (child: any) => child?.props?.isSelected
+    );
+    const isActive = isSelected || isChildSelected;
+
+    useEffect(() => {
+        if (isActive) {
+            setIsOpen(true);
+        }
+    }, [isActive]);
+
+    const baseClasses = `flex items-center text-xs w-full p-2.5 transition-colors duration-200 
+      ${isActive ? 'text-white font-semibold relative bg-gray-800' : 'text-gray-100'} 
+      ${disabled ? 'cursor-not-allowed text-gray-400' : 'hover:bg-gray-700'}`;
+
+    const content = (
+        <>
+            <div className="flex items-center justify-between w-full">
+                <span>{text}</span>
+                {hasChildren && (
+                    <span className="ml-2">{isOpen ? <ChevronUp /> : <ChevronDown />}</span>
+                )}
+            </div>
+            {isActive && <div className="absolute left-0 top-0 w-1 h-full bg-white" />}
+        </>
+    );
+
+    const childItem = disabled ? (
         <div className={baseClasses}>
-            {text}
-            {isSelected && <div className="absolute left-0 w-1 h-full bg-white" />}
+            {content}
         </div>
     ) : (
-        <NavLink to={path} className={baseClasses} onClick={(e) => {
-            if (onClick) {
-                e.preventDefault();
-                onClick();
-            }
-        }}>
-            {text}
-            {isSelected && <div className="absolute left-0 top-0 w-1 h-full bg-white" />}
+        <NavLink
+            to={path}
+            className={baseClasses}
+            onClick={(e) => {
+                // Stop default navigation for items that are just containers
+                if (path === '/#' || !path) {
+                    e.preventDefault();
+                }
+
+                // Always toggle if there are children
+                if (hasChildren) {
+                    handleToggle();
+                }
+
+                // External onClick handler
+                if (onClick) {
+                    onClick();
+                }
+            }}
+        >
+            {content}
         </NavLink>
+    );
+
+    return (
+        <div>
+            {childItem}
+            {isOpen && hasChildren && (
+                <div className="relative pl-4">
+                    <div className="absolute top-0 left-4 w-1 h-full bg-gray-500" />
+                    {children}
+                </div>
+            )}
+        </div>
     );
 }
 
-// UserProfile component
+function SidebarItem({
+    icon,
+    text,
+    isExpanded,
+    openIcon,
+    closeIcon,
+    children,
+    isSelected,
+    tooltipContent,
+    onClick,
+    disabled,
+    autoOpenOnSelect = true
+}: {
+    icon?: React.ReactNode;
+    text: string;
+    isExpanded: boolean;
+    openIcon?: React.ReactNode;
+    closeIcon?: React.ReactNode;
+    children?: React.ReactNode;
+    isSelected: boolean;
+    tooltipContent: string;
+    onClick?: () => void;
+    disabled?: boolean;
+    autoOpenOnSelect?: boolean;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const hasChildren = React.Children.count(children) > 0;
+
+    const handleToggle = () => {
+        if (hasChildren) {
+            setIsOpen(prev => !prev);
+        }
+    };
+
+    // Enhanced recursive check for nested selections
+    const isChildSelected = React.Children.toArray(children).some(
+        (child: any) => {
+            if (child?.props?.isSelected) return true;
+            // Check if any of this child's children are selected
+            if (child?.props?.children) {
+                return React.Children.toArray(child.props.children).some(
+                    (grandchild: any) => grandchild?.props?.isSelected
+                );
+            }
+            return false;
+        }
+    );
+
+    const isActive = isSelected || isChildSelected;
+
+    useEffect(() => {
+        if (autoOpenOnSelect && isActive) {
+            setIsOpen(true);
+        }
+    }, [isActive, autoOpenOnSelect]);
+
+    const content = (
+        <div
+            onClick={() => {
+                // Always toggle if it has children
+                if (hasChildren) {
+                    handleToggle();
+                }
+
+                // Then handle navigation via onClick if provided
+                if (!disabled && onClick) {
+                    onClick();
+                }
+            }}
+            className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isActive ? 'text-white font-semibold relative' : 'text-gray-100'
+                } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+        >
+            <span className="mr-2">{icon}</span>
+            {isExpanded && <span className="text-xs">{text}</span>}
+            {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
+        </div>
+    );
+
+    return (
+        <div>
+            {!isExpanded ? (
+                <Tooltip>
+                    <TooltipTrigger asChild>{content}</TooltipTrigger>
+                    <TooltipContent side="right">
+                        <p className={React.Children.count(children) > 0 ? 'mb-4' : ''}>
+                            {tooltipContent}
+                        </p>
+                        {React.Children.map(children, (child) => (
+                            <div className="relative">
+                                <div className="absolute top-0 w-1 h-full bg-gray-500" />
+                                {child}
+                            </div>
+                        ))}
+                    </TooltipContent>
+                </Tooltip>
+            ) : (
+                content
+            )}
+            {isOpen && isExpanded && (
+                <div className="relative pl-8">
+                    <div className="absolute top-0 w-1 h-full bg-gray-500" />
+                    {React.Children.map(children, (child) => (
+                        <div>{child}</div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+
 function UserProfile({ isExpanded, user }: { isExpanded: boolean; user: any }) {
     const navigate = useNavigate();
     const userProfileContent = (
@@ -358,7 +504,7 @@ function UserProfile({ isExpanded, user }: { isExpanded: boolean; user: any }) {
     );
 }
 
-// LogoutButton component
+
 function LogoutButton({ handleLogout, isExpanded }: { handleLogout: () => void; isExpanded: boolean }) {
     const logoutContent = (
         <div onClick={handleLogout} className={'flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer'}>

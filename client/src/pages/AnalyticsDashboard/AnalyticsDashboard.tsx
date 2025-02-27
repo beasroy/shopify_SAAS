@@ -1,13 +1,15 @@
 import React from "react";
 import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar.tsx";
 import Dashboard from "./dashboard.tsx";
+import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal.tsx";
 
 const AnalyticsDashboard: React.FC = () => {
   return (
-    <div className="flex h-screen"> {/* Set a fixed width for the sidebar */}
-        <CollapsibleSidebar />
+    <div className="flex h-screen"> 
+      <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-auto">
         <Dashboard />
+     <HelpDeskModal />
       </div>
     </div>
   );

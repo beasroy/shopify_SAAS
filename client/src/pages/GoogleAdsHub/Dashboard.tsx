@@ -13,6 +13,7 @@ import { useParams } from 'react-router-dom';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 // import Product from './components/Product';
 // import Brand from './components/Brand';
 
@@ -153,6 +154,7 @@ const GoogleAdsDashboard: React.FC = () => {
         </>
         )}
       </div>
+      <HelpDeskModal />
     </div>
   );
 };

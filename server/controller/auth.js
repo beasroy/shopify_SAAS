@@ -358,7 +358,7 @@ export const handleFbCallback = async (req, res) => {
     }
 }
 
-export const updateTokensForGoogleAndFb = async (req, res) => {
+export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
     try {
         const { type } = req.params;
         const token = req.cookies.token;
@@ -416,6 +416,26 @@ export const updateTokensForGoogleAndFb = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'Google refresh token updated successfully.',
+            });
+        }
+
+        if (type === 'zoho') {
+            const { zohoToken } = req.query;
+
+            if (!zohoToken) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Zoho refresh token is required.',
+                });
+            }
+
+            await User.findByIdAndUpdate(userId, {
+                zohoRefreshToken: zohoToken,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Zoho refresh token updated successfully.',
             });
         }
 
@@ -512,6 +532,13 @@ export const handleZohoCallback = async (req, res) => {
         grant_type: 'authorization_code',
       }});
       const { refresh_token } = tokenResponse.data;
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      const clientURL = isProduction
+          ? 'https://parallels.messold.com/callback'
+          : 'http://localhost:5173/callback';
+
+      return res.redirect(clientURL + `?zohoToken=${refresh_token}`);
     }catch (error) {
     console.error('Token exchange error:', error.response?.data || error.message);
     res.status(500).send('Authentication failed');

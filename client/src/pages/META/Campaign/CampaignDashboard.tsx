@@ -8,6 +8,8 @@ import { RootState } from '@/store/index.ts';
 import CollapsibleSidebar from '@/pages/Dashboard/CollapsibleSidebar';
 import { FaMeta } from 'react-icons/fa6';
 import MetaCampaignTable from './MetaCampaignTable';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
+
 
 
 export interface MetaCampaign {
@@ -127,6 +129,7 @@ export default function CampaignDashboard() {
                         )}
                     </main>
                 </div>
+                <HelpDeskModal />
             </div>
         </div>
     )

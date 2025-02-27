@@ -16,6 +16,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from "@/store/index.ts";
 import Header from '@/components/dashboard_component/Header';
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 
 const AudienceConversionReportPage: React.FC = () => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -188,6 +189,7 @@ const AudienceConversionReportPage: React.FC = () => {
             </div>
           </div>
         </div>
+        <HelpDeskModal />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetrics
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { useParams } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import {ShoppingCart } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from './NoGA4AccessPage.';
 import { useSelector } from 'react-redux';
@@ -12,6 +12,7 @@ import ConnectPlatform from './ConnectPlatformPage';
 import Header from '@/components/dashboard_component/Header';
 import DaywiseMetricsPage from './component/DaywiseMetricsPage';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
+import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 
 const ReportsPage: React.FC = () => {
 
@@ -80,6 +81,7 @@ const ReportsPage: React.FC = () => {
           </>
         )}
       </div>
+      <HelpDeskModal />
     </div>
   );
 };

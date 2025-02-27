@@ -78,7 +78,7 @@ export default function Dashboard() {
         try {
           const fbAdResponse = await axios.post(
             `${baseURL}/api/metrics/fbAdAndCampaign/${brandId}`,
-            { startDate, endDate },
+            { startDate, endDate, userId },
             { withCredentials: true }
           );
           fbData = fbAdResponse.data.data;
@@ -156,7 +156,7 @@ export default function Dashboard() {
     }
   
     if (googleData?.adMetrics) {
-      totalSpent += parseFloat(googleData.adMetrics.totalSpent || '0');
+      totalSpent += parseFloat(googleData.adMetrics.totalSpend || '0');
       totalRevenue += parseFloat(googleData.adMetrics.totalConversionsValue || '0');
       totalPurchases += parseFloat(googleData.adMetrics.totalConversions || '0');
       totalClicks += parseFloat(googleData.adMetrics.totalClicks || '0');
@@ -243,7 +243,9 @@ const metrics = [
   const googleMetrics = [
     {
       label: 'Total Cost',
-      value: googleAdMetrics ? `₹ ${new Intl.NumberFormat(locale).format(parseFloat(googleAdMetrics?.adMetrics?.totalSpent))}` : ' 0',
+      value: googleAdMetrics
+        ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalSpend || '0').toLocaleString(locale)}` 
+        : '₹ 0',
     },
     {
       label: 'Conversion Value',

@@ -63,6 +63,28 @@ const campaignLabelsSlice = createSlice({
         state.labels[accountId] = {};
       }
     },
+    deleteLabel: (state, action: PayloadAction<{ accountId: string; label: string }>) => {
+      const { accountId, label } = action.payload;
+      
+      if (state.labels[accountId]) {
+        Object.keys(state.labels[accountId]).forEach((campaignId) => {
+          state.labels[accountId][campaignId] = state.labels[accountId][campaignId].filter(
+            (l) => l !== label
+          );
+          
+          // If the campaign has no more labels after deletion, remove it from the object
+          if (state.labels[accountId][campaignId].length === 0) {
+            delete state.labels[accountId][campaignId];
+          }
+        });
+    
+        // If the account has no more campaigns with labels, remove the account entry
+        if (Object.keys(state.labels[accountId]).length === 0) {
+          delete state.labels[accountId];
+        }
+      }
+    }
+,    
     
     // Optional: Copy labels between campaigns in the same account
     copyLabels: (
@@ -98,7 +120,7 @@ export const {
   removeLabelFromCampaign, 
   toggleAddingLabel,
   clearAccountLabels,
-  copyLabels
+  copyLabels,deleteLabel
 } = campaignLabelsSlice.actions;
 
 export default campaignLabelsSlice.reducer;

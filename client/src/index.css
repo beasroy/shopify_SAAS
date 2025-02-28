@@ -115,3 +115,12 @@
   scrollbar-width: thin;
   scrollbar-color: #d0d1d2 transparent;
 }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

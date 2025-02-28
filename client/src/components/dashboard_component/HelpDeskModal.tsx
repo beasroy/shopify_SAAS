@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { FaHeadset } from "react-icons/fa";
 import TicketForm from './TicketForm'; 
 
 const HelpDeskModal = () => {
@@ -9,10 +9,9 @@ const HelpDeskModal = () => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 z-30 flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 group"
+        className="fixed bottom-8 right-8 z-30 flex items-center gap-2 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 group"
       >
-        <HelpCircle className="w-5 h-5 group-hover:animate-pulse" />
-        <span className="font-medium">Assistance</span>
+        <FaHeadset className="w-5 h-5 group-hover:animate-pulse" />
       </button>
       
       {isModalOpen && (

@@ -87,7 +87,7 @@ export default function CollapsibleSidebar() {
     // Define base dashboards that all users can see
     const dashboards = [
         { name: "Business Overview", path: `/dashboard`, icon: <Blend size={20} /> },
-        { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} />, requiresAdsData: false },
+        { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
         { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
         {
             name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />,
@@ -245,7 +245,7 @@ export default function CollapsibleSidebar() {
                                 {brands.map(brand => (
                                     <SidebarChild
                                         key={brand._id}
-                                        path={`/dashboard}`}
+                                        path={`/dashboard`}
                                         text={brand.name.replace(/_/g, ' ')}
                                         onClick={() => {
                                             dispatch(setSelectedBrandId(brand._id));

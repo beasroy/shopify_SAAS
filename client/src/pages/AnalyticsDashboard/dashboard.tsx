@@ -214,17 +214,18 @@ const metrics = [
     tooltipContent: 'Ads Purchases = Fb Ads Purchase + Google Conversions',
   },
   {
-    label: 'CTR',
-    value: formattedMetrics.totalCTR,
-    tooltipContent:
-      'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100',
-  },
-  {
     label: 'CPC',
     value: formattedMetrics.totalCPC,
     tooltipContent:
       'Average CPC from all advertising platforms = (Blended Ad Spend / Blended Clicks)',
   },
+  {
+    label: 'CTR',
+    value: formattedMetrics.totalCTR,
+    tooltipContent:
+      'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100',
+  },
+ 
   {
     label: 'CPM',
     value: formattedMetrics.totalCPM,

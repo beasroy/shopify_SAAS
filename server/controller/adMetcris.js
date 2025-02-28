@@ -162,7 +162,6 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
         });
     }
 };
-
 export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, userId } = req.body;
@@ -565,9 +564,10 @@ export const fetchFBCampaignData = async (req, res) => {
                             campaignData.campaigns.push({
                                 "Campaign": insights.campaign_name || "",
                                 "Status": status || "",
-                                "Amount spent": spend || 0,
+                                "Amount spend": spend || 0,
                                 "Conversion Rate": parseFloat(conversionRate.toFixed(2)) || 0.00,
                                 "ROAS": roas || 0.00,
+                                "Reach": reach || 0.00,
                                 "Frequency": frequency || 0.00,
                                 "CPM": Number(parseFloat(insights.cpm).toFixed(2)) || 0.00,
                                 "CPM (Reach Based)": Number(parseFloat(cpmReachBased).toFixed(2)) || 0.00,
@@ -589,6 +589,10 @@ export const fetchFBCampaignData = async (req, res) => {
                                 "Purchases": Number(purchase),
                                 "Cost per purchase": parseFloat(cpa.purchase.toFixed(2)),
                                 "CI to Purchase Rate": parseFloat(ciToPurchaseRate.toFixed(2)),
+                                "Unique Link Click": uniqueLinkClicks || 0,
+                                "Landing Page View": landingPageView || 0,
+                                "Three Seconds View": threeSecondsView || 0,
+                                "Impressions": parseFloat(parseFloat(insights.impressions).toFixed(2))
                             });
                         }
                     });

@@ -231,7 +231,7 @@ export default function CollapsibleSidebar() {
 
                 <div className={`flex-1 overflow-y-auto ${isExpanded ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-16px)]'}`}>
                     <ScrollArea className="h-full">
-                        {brands && brands.length > 0 && <nav className="mt-3">
+                 <nav className="mt-3">
                             <SidebarItem
                                 icon={<Store size={24} />}
                                 text={selectedBrandId ? brands.find(b => b._id === selectedBrandId)?.name.replace(/_/g, ' ') || "Unknown Brand" : "Your Brands"}
@@ -258,7 +258,7 @@ export default function CollapsibleSidebar() {
 
 
                             {renderSidebarItems(allDashboards)}
-                        </nav>}
+                        </nav>
                     </ScrollArea>
                 </div>
 

@@ -11,7 +11,8 @@ const brandSchema = new mongoose.Schema({
     type: String, 
   }],
   googleAdAccount: {
-    type: String, 
+    clientId:{type: String}, 
+    managerId:{type: String}
   },
   ga4Account: {
     PropertyID:{

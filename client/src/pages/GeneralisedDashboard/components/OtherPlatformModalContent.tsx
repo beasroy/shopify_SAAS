@@ -3,15 +3,14 @@ import axios, { AxiosError } from 'axios'
 import { Search, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useUser } from '@/context/UserContext'
 import { FacebookLogo, GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store'
 
 interface LogoProps {
   width?: string | number;
   height?: string | number;
 }
-
-
 
 export const Ga4Logo: React.FC<LogoProps> = ({ width = '1.25rem', height = '1.25rem' }) => (
   <svg viewBox="0 0 24 24" style={{ height, width }}>
@@ -30,13 +29,14 @@ export const ShopifyLogo: React.FC<LogoProps> = ({ width = '1.25rem', height = '
 
 interface OtherPlatformModalContentProps {
   platform: string;
-  onConnect: (platform: string, account: string, accountId: string) => void;
+  onConnect: (platform: string, account: string, accountId: string, managerId?: string) => void;
   connectedId: string;
 }
 
 interface GoogleAdsAccount {
   name: string;
   clientId: string;
+  managerId?: string;  // Added managerId
   hidden?: boolean;
 }
 
@@ -63,13 +63,13 @@ export default function OtherPlatformModalContent({
   const [loading, setLoading] = useState(false);
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
 
-  const user = useUser();
+  const user = useSelector((state: RootState) => state.user.user);
 
   useEffect(() => {
     const fetchGoogleAdsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user.user?.id;
+        const userId = user?.id;
         const response = await axios.post(
           `${baseURL}/api/setup/google-accounts`,
           { userId },
@@ -94,7 +94,7 @@ export default function OtherPlatformModalContent({
     const fetchGoogleAnalyticsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user.user?.id;
+        const userId = user?.id;
         const response = await axios.post(
           `${baseURL}/api/setup/ga4-propertyIds`,
           { userId },
@@ -117,7 +117,7 @@ export default function OtherPlatformModalContent({
     const fetchFacebookAdsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user.user?.id;
+        const userId = user?.id;
         const response = await axios.post(
           `${baseURL}/api/setup/fb-ad-accounts`,
           { userId },
@@ -192,10 +192,16 @@ export default function OtherPlatformModalContent({
   const handleConnect = (account: GoogleAdsAccount | GoogleAnalyticsAccount | FacebookAdsAccount) => {
     let accountId: string;
     let displayName: string;
+    let managerId: string | undefined;
 
     if ('clientId' in account) {
       accountId = account.clientId;
-      displayName = `${account.name} (${accountId})`;
+      managerId = account.managerId;
+
+      // Include manager ID in the display name if available
+      displayName = managerId
+        ? `${account.name} (${accountId}/${managerId})`
+        : `${account.name} (${accountId})`;
     } else if ('propertyId' in account) {
       accountId = account.propertyId;
       displayName = `${account.propertyName} (${accountId})`;
@@ -207,12 +213,11 @@ export default function OtherPlatformModalContent({
       displayName = '';
     }
 
-    onConnect(platform, displayName, accountId);
+    onConnect(platform, displayName, accountId, managerId);
   };
 
   const handleGoogleLogin = async () => {
     try {
-
       const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`, { withCredentials: true });
       const { authUrl } = response.data;
 
@@ -289,6 +294,10 @@ export default function OtherPlatformModalContent({
                     ? (account as FacebookAdsAccount).id
                     : (account as GoogleAnalyticsAccount).propertyId;
 
+                const managerId = isGoogleAds
+                  ? (account as GoogleAdsAccount).managerId
+                  : undefined;
+
                 const accountName = isGoogleAds
                   ? (account as GoogleAdsAccount).name
                   : isFacebook
@@ -303,17 +312,22 @@ export default function OtherPlatformModalContent({
                   <Ga4Logo height="1rem" width="1rem" />
                 );
 
+                // Create display text based on account type
+                const displayText = isGoogleAds && managerId
+                  ? `${accountName} (${accountId}/${managerId})`
+                  : isFacebook
+                    ? `${accountName}`
+                    : `${accountName} (${accountId})`;
+
                 return (
                   <div
-                    key={accountId}
+                    key={`${platform}-${accountId}-${managerId || ""}`}
                     className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                   >
                     <span>
                       <div className="flex flex-row items-center gap-3">
                         {platformLogo}
-                        {isFacebook
-                          ? `${accountName}`
-                          : `${accountName} (${accountId})`} 
+                        {displayText}
                       </div>
                     </span>
                     <Button

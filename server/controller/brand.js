@@ -47,35 +47,53 @@ export const getBrandbyId = async(req,res)=>{
     }
 }
 
-export const updateBrands = async(req,res) =>{
+export const updateBrands = async (req, res) => {
     try {
-        const {brandid}=req.params;
+        const { brandid } = req.params;
         const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
 
-        if (!brandid || !name) {
-            return res.status(400).json({ error: 'Brand ID and name are required.' });
-          }
-      
-          const updateData = {
-            name,
-            fbAdAccounts,
-            googleAdAccount,
-            ga4Account,
-            shopifyAccount,
-          };
+        if (!brandid) {
+            return res.status(400).json({ error: 'Brand ID is required.' });
+        }
 
-          const updatedBrand = await Brand.findByIdAndUpdate(brandid, updateData, { new: true, runValidators: true });
+        const updateData = {};
 
-          if (!updatedBrand) {
+        if (name) updateData.name = name;
+        if (fbAdAccounts) updateData.fbAdAccounts = fbAdAccounts;
+        if (ga4Account) updateData.ga4Account = ga4Account;
+        if (shopifyAccount) updateData.shopifyAccount = shopifyAccount;
+
+        // Explicitly update googleAdAccount fields
+      if (googleAdAccount) {
+    // Initialize the googleAdAccount object if it doesn't exist
+    updateData.googleAdAccount = updateData.googleAdAccount || {};
+    
+    if (googleAdAccount.clientId) {
+        updateData.googleAdAccount.clientId = googleAdAccount.clientId;
+    }
+    if (googleAdAccount.managerId) {
+        updateData.googleAdAccount.managerId = googleAdAccount.managerId;
+    }
+}
+
+        const updatedBrand = await Brand.findByIdAndUpdate(
+            brandid,
+            { $set: updateData }, // Using dot notation ensures nested field updates
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedBrand) {
             return res.status(404).json({ error: 'Brand not found.' });
-          }
-          res.status(200).json(updatedBrand);
+        }
 
+        res.status(200).json(updatedBrand);
     } catch (error) {
         console.error('Error updating brand:', error);
         res.status(500).json({ error: 'Failed to update brand. Please try again.' });
     }
-}
+};
+
+
 
 export const filterBrands = async (req, res) => {
     try {

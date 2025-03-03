@@ -25,7 +25,7 @@ export const getGoogleAdAccounts = async (req, res) => {
         }
 
         const cacheKey = `google_ads_accounts_${userId}`;
-
+        
         // Check cache
         const cachedAdAccounts = cache.get(cacheKey);
         if (cachedAdAccounts) {
@@ -40,76 +40,90 @@ export const getGoogleAdAccounts = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        if (user.method !== 'google' && user.googleRefreshToken == null) {
+        if (user.method !== 'google' || !user.googleRefreshToken) {
             return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
         const client = createGoogleAdsClient(user.googleRefreshToken);
 
-        // Create customer instance
-        const customer = client.Customer({
-            customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
-            refresh_token: user.googleRefreshToken,
-        });
+        // Get list of accessible customers
+        const customersResponse = await client.listAccessibleCustomers(user.googleRefreshToken);
+        console.log('Accessible customers:', customersResponse);
 
-        const query = `
-            SELECT
-              customer_client.client_customer,
-              customer_client.level,
-              customer_client.hidden,
-              customer_client.descriptive_name
-            FROM customer_client
-            WHERE customer_client.level = 1
-        `;
-        const response = await customer.query(query);
+        if (!customersResponse?.resource_names?.length) {
+            cache.set(cacheKey, [], 604800); // Cache empty result for 7 days
+            return res.status(200).json({ clientAccounts: [] });
+        }
 
-        const clientAccounts = response.map(row => ({
-            name: row.customer_client.descriptive_name,
-            clientId: row.customer_client.client_customer.split('/')[1],
-            hidden: row.customer_client.hidden,
-        }));
+        const customerIds = customersResponse.resource_names.map(resource => resource.split('/')[1]);
 
-        // Cache the client accounts
-        cache.set(cacheKey, clientAccounts, 604800); // 7 days TTL
+        // Process each customer account
+        const clientAccounts = [];
+
+        for (const customerId of customerIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: customerId,
+                    refresh_token: user.googleRefreshToken,
+                });
+                const query = `
+                    SELECT
+                      customer_client.client_customer,
+                      customer_client.level,
+                      customer_client.hidden,
+                      customer_client.descriptive_name
+                    FROM customer_client
+                    WHERE customer_client.level IN (0,1)
+                `;
+
+                const response = await customer.query(query);
+                console.log(`Customer ${customerId} response:`, response);
+
+                const accounts = response.map(row => ({
+                    name: row.customer_client.descriptive_name,
+                    clientId: row.customer_client.client_customer?.split('/')[1] || null,
+                    hidden: row.customer_client.hidden,
+                    managerId: customerId
+                })).filter(account => account.clientId); 
+
+                clientAccounts.push(...accounts);
+            } catch (error) {
+                console.warn(`Error processing customer ${customerId}:`, error.message);
+            }
+        }
+
+        cache.set(cacheKey, clientAccounts, 604800); 
 
         res.status(200).json({ clientAccounts });
 
     } catch (error) {
         console.error('Error fetching Google accounts:', error);
 
-        // Handle Google Ads API-specific errors
-        if (error.message && error.message.includes('invalid_grant')) {
+        // Check if refresh token is expired
+        if (error.message?.includes('invalid_grant')) {
             console.log('Refresh token expired. Prompting user to reauthenticate.');
-
-            // Invalidate the user's refresh token in the database
             await User.findByIdAndUpdate(req.body.userId, { googleRefreshToken: null });
-
             return res.status(401).json({
-                message: 'Your Google session has expired. Please log in again to continue.',
+                message: 'Your Google session has expired. Please log in again.',
                 code: 'TOKEN_EXPIRED',
             });
         }
 
-        if (error.errors && Array.isArray(error.errors)) {
-            const googleError = error.errors.find(err =>
-                err.message.includes('OAuth access tokens is not associated with any Ads accounts')
-            );
-            if (googleError) {
-                return res.status(400).json({
-                    message: 'The Google account is not associated with any Ads accounts. Please ensure the account is linked to an Ads account.',
-                    error: googleError.message,
-                });
-            }
+        // Check for Google Ads API errors
+        if (error.errors?.some(err => err.message.includes('OAuth access token is not associated with any Ads accounts'))) {
+            return res.status(400).json({
+                message: 'The Google account is not associated with any Ads accounts.',
+                error: error.message,
+            });
         }
 
-        // Generic error handling
         res.status(500).json({
             message: 'Error fetching Google accounts.',
             error: error.message,
         });
     }
 };
+
 
 export const getGa4PropertyIds = async (req, res) => {
     try {

@@ -14,6 +14,7 @@ import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { RootState } from '@/store';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 function ProfilePage() {
     const [activeTab, setActiveTab] = useState('brands');
@@ -38,26 +39,14 @@ function ProfilePage() {
         }
       }
 
+    const navigate = useNavigate();
+
     return (
         <div className="flex h-screen"> {/* Set a fixed width for the sidebar */}
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-auto">
                 <div className="min-h-screen bg-slate-50">
-                    {/* Header */}
-                    <div className="bg-white shadow-sm">
-                        <div className="container mx-auto px-4 py-4">
-                            <div className="flex items-center justify-between">
-                                <h1 className="text-xl font-semibold text-slate-800">User Details</h1>
-                                <div className="flex gap-3">
-                                    <Button className="bg-teal-600 hover:bg-teal-700">
-                                        Edit/Update
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="container mx-auto px-4 py-8">
+                    <div className="container mx-auto px-4 py-4">
                         <div className="bg-white rounded-xl shadow-sm">
                             {/* Profile Header */}
                             <div className="p-6 border-b border-slate-200">
@@ -110,7 +99,7 @@ function ProfilePage() {
                             {activeTab.toLowerCase() === 'brands' &&
                                 <div className="p-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        <Button variant="outline" className="text-slate-700">
+                                        <Button onClick={()=> navigate("/brand-setup")} variant="outline" className="text-slate-700">
                                             <Plus className="h-5 w-5 mr-2" />
                                             Add New Brand
                                         </Button>

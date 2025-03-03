@@ -10,7 +10,9 @@ import OtherPlatformModalContent from './OtherPlatformModalContent';
 import { FacebookLogo, GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
 import { Ga4Logo, ShopifyLogo } from './OtherPlatformModalContent';
 import axios from 'axios';
-import { useUser } from '@/context/UserContext';
+import { setUser } from '@/store/slices/UserSlice';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 
 const platforms = [
@@ -35,7 +37,8 @@ export default function BrandSetup() {
   const [shopifyAccessToken, setShopifyAccessToken] = useState('');
   const { toast } = useToast();
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
-  const {user, setUser} = useUser();
+  const user = useSelector((state: RootState) => state.user.user)
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -107,7 +110,7 @@ export default function BrandSetup() {
     if (!brandName || Object.keys(connectedAccounts).length === 0) {
       return toast({ description: 'Please complete all fields before submitting.', variant: "destructive" });
     }
-  
+
     const payload = {
       name: brandName,
       logoUrl: brandLogo || '',
@@ -116,7 +119,7 @@ export default function BrandSetup() {
       fbAdAccounts: fbAdId.map((accountId) => accountId),
       shopifyAccount: { shopName: shop || '', shopifyAccessToken: shopifyAccessToken || '' }
     };
-  
+
     try {
       // First create the brand
       const brandResponse = await axios.post(
@@ -124,37 +127,37 @@ export default function BrandSetup() {
         payload,
         { withCredentials: true }
       );
-  
+
       const newBrandId = brandResponse.data.brand._id;
-  
+
       // Then add the brand to user
       if (user) {
         await axios.post(
           `${baseURL}/api/users/add-brand`,
           {
-            userId: user.id,
+            userId: user?.id,
             brandId: newBrandId
           },
           { withCredentials: true }
         );
       }
-  
+
       // Update local state
       const updatedUser = user ? {
         ...user,
         brands: [...user.brands, newBrandId]
       } : null;
-      
+
       if (updatedUser) setUser(updatedUser);
-      
+
       toast({ description: 'Brand setup completed successfully!', variant: "default" });
-  
+
     } catch (error) {
       console.error(error);
       toast({ description: 'Error creating brand. Please try again.', variant: "destructive" });
     }
   };
-  
+
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -170,7 +173,7 @@ export default function BrandSetup() {
                 className="w-full"
               />
             </div>
-            
+
             <div className="space-y-4">
               <label className="block text-sm font-medium text-gray-700">Brand Logo</label>
               <div className="flex items-center gap-4">
@@ -265,7 +268,7 @@ export default function BrandSetup() {
                 </div>
               </div>
             </div>
-            
+
             <div className="rounded-lg bg-gray-50 p-6">
               <h3 className="font-medium text-gray-900">Connected Platforms</h3>
               <div className="mt-4 space-y-3">

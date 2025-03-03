@@ -29,20 +29,20 @@ interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
-  const dispatch = useDispatch();
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
-
-
-  const user = useSelector((state: RootState) => state.user.user ,shallowEqual);
+  const dispatch = useDispatch();
+  
+  
+  const user = useSelector((state: RootState)=>state.user.user);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -52,9 +52,8 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
 
   const axiosInstance = createAxiosInstance();
 
-  const componentId = 'google-ads-search-term'; // Add a unique component identifier
+  const componentId = "google-ads-keyword";
 
-  // Get filters from Redux
   const filters = useSelector((state: RootState) => 
     state.conversionFilters[componentId] || {} , shallowEqual
   );
@@ -72,66 +71,61 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
       return acc;
     }, {});
   }, [filters]); // Only re-compute when filters change
-  
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/segment/searchTerm/${brandId}`, {
-        userId: user?.id,
-        startDate,
-        endDate,
-        ...transformedFilters, 
-      });
-  
-      const fetchedData = response.data?.data || [];
-      setApiResponse({
-        reportType: "Search Term",
-        data: fetchedData,
-      });
+
+      const response = await axiosInstance.post(`/api/segment/keyword/${brandId}`, {
+        userId: user?.id, startDate: startDate, endDate: endDate, ...transformedFilters
+      }, { withCredentials: true })
+
+      const fetchedData = response.data || [];
+
+      setApiResponse(fetchedData);
+
     } catch (error) {
       console.error("Error fetching data:", error);
+
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, user?.id, transformedFilters]); // Now filters are tracked properly
-  
+  }, [brandId, startDate, endDate, transformedFilters , user?.id]);
+
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 10 minutes
+    const intervalId = setInterval(fetchData, 15 * 60 * 1000); 
     return () => clearInterval(intervalId);
-}, [fetchData]);
+  }, [fetchData]);
 
-useEffect(() => {
-  if (propDateRange) {
-    dispatch(setDate({
-      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-    }));
-  }
-}, [propDateRange]);
-
-useEffect(() => {
-  if (!isFullScreen) {
+  useEffect(() => {
     if (propDateRange) {
-    dispatch(setDate({
-      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-    }));
-  }
-  }
-}, [isFullScreen, propDateRange]);
-
-
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+      }));
+    }
+  }, [propDateRange]);
+  useEffect(() => {
+    if (!isFullScreen) {
+      if (propDateRange) {
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+      }));
+    }
+    }
+  }, [isFullScreen, propDateRange]);
 
   const handleManualRefresh = () => {
     fetchData();
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Search Term";
-  const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
+  const primaryColumn = "Keyword";
   const monthlyDataKey = "MonthlyData";
-  const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
+  const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
+  const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
 
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
@@ -139,13 +133,13 @@ useEffect(() => {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Search Term Insights</h2>
+            <h2 className="text-lg font-medium">Keyword Insights</h2>
             <GoogleLogo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
           {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                   <DatePickerWithRange
-                   
+                    
                   />
                 </div>}
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
@@ -184,4 +178,4 @@ useEffect(() => {
   );
 };
 
-export default SearchTerm;
+export default Keyword;

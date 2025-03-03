@@ -51,11 +51,20 @@ const GoogleCallback = () => {
                     if (googletoken) {
                         console.log('Token found, proceeding with login');
                         const login = await axios.post(`${baseURL}/api/auth/login/oauth?auth_token=${googletoken}`, { email: null, password: null });
-        
+                    
                         if (login.data.success) {
-                            console.log('Login successful, redirecting to /dashboard');
-                            dispatch(setUser(login.data.user));
-                            navigate('/dashboard');
+                            console.log('Login successful');
+                            const user = login.data.user;
+                    
+                            dispatch(setUser(user));
+                    
+                            if (!user.brands || user.brands.length === 0) {
+                                console.log('No brands found, redirecting to /brand-setup');
+                                navigate('/brand-setup');
+                            } else {
+                                console.log('Brands found, redirecting to /dashboard');
+                                navigate('/dashboard');
+                            }
                             return;
                         } else {
                             console.log('Login failed, redirecting to /');
@@ -68,6 +77,7 @@ const GoogleCallback = () => {
                             return;
                         }
                     }
+                    
         
                     if (fbToken) {
                         await updateToken('/api/auth/updateTokens/facebook', fbToken, 'fbToken');

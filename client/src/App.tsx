@@ -22,6 +22,7 @@ import { store, persistor } from './store';
 import MetaDashboard from './pages/META/AdAccount/MetaDashboard.tsx';
 import CampaignDashboard from './pages/META/Campaign/CampaignDashboard.tsx';
 import ProfilePage from './pages/Profile Page/ProfilePage.tsx';
+import BrandSetupDashboard from './pages/GeneralisedDashboard/BrandSetUpDashboard.tsx';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
                   <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />
                   <Route path="/callback" element={<GoogleCallback />} />
                   <Route path ="/profile" element = {<ProfilePage />} />
+                  <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
                 </Routes>
               </Router>
             </TokenErrorProvider>

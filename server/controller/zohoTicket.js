@@ -95,7 +95,6 @@ export const getAllDepartments = async (req, res) => {
     }
 };
 
-
 export const getAllAgents = async (req, res) => {
     try {
         // Get access token

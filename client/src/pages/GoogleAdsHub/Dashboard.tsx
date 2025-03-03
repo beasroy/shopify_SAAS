@@ -14,6 +14,7 @@ import { useTokenError } from '@/context/TokenErrorContext';
 import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
+import Keyword from './components/Keyword';
 // import Product from './components/Product';
 // import Brand from './components/Brand';
 
@@ -30,14 +31,16 @@ const GoogleAdsDashboard: React.FC = () => {
   const brands = useSelector((state: RootState) => state.brand.brands);
   const { brandId } = useParams<{ brandId: string }>();
   const selectedBrand = brands.find((brand) => brand._id === brandId);
-  const hasGoogleAdAccount = selectedBrand?.googleAdAccount ? selectedBrand.googleAdAccount.length > 0 : false;
+  const hasGoogleAdAccount = selectedBrand?.googleAdAccount?.clientId
+  ? selectedBrand.googleAdAccount.clientId
+  : false;
   const { tokenError } = useTokenError();
 
   const tabs = [
     { label: 'Search Term', value: 'searchterm' },
     { label: 'Age', value: 'age' },
     { label: 'Gender', value: 'gender' },
-    // { label: 'Product', value: 'product'},
+    { label: 'Keyword', value: 'keyword'},
     // { label: 'Brand', value: 'brand'}
   ];
 
@@ -45,7 +48,7 @@ const GoogleAdsDashboard: React.FC = () => {
     searchterm: useRef<HTMLDivElement>(null),
     age: useRef<HTMLDivElement>(null),
     gender: useRef<HTMLDivElement>(null),
-    // product: useRef<HTMLDivElement>(null),
+    keyword: useRef<HTMLDivElement>(null),
     // brand: useRef<HTMLDivElement>(null)
   };
 
@@ -143,12 +146,13 @@ const GoogleAdsDashboard: React.FC = () => {
                 to: date.to ? new Date(date.to) : undefined 
               }} />
             </div>
-            {/* <div id="product" ref={refs.product}>
-              <Product dateRange={date} />
+             <div id="keyword" ref={refs.keyword}>
+              <Keyword dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
             </div>
-            <div id="brand" ref={refs.brand}>
-              <Brand dateRange={date} />
-            </div> */}
+        
           </div>
         </div>
         </>

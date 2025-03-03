@@ -54,10 +54,13 @@ export async function fetchSearchTermMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
+
         const customer = client.Customer({
-            customer_id: brand.googleAdAccount,
+            customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id:managerId
         });
 
         const query = `
@@ -204,10 +207,13 @@ export async function fetchAgeMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
+
         const customer = client.Customer({
-            customer_id: brand.googleAdAccount,
+            customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id:managerId
         });
 
         const query = `
@@ -353,10 +359,13 @@ export async function fetchGenderMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
+
         const customer = client.Customer({
-            customer_id: brand.googleAdAccount,
+            customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id:managerId
         });
 
         const query = `
@@ -467,12 +476,11 @@ export async function fetchGenderMetrics(req, res) {
     }
 }
 
-export async function fetchProductMetrics(req, res) {
+export async function fetchKeywordMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
 
     try {
-        // Fetch brand and user data concurrently
         const [brand, user] = await Promise.all([
             Brand.findById(brandId).lean(),
             User.findById(userId).lean(),
@@ -486,225 +494,122 @@ export async function fetchProductMetrics(req, res) {
         }
 
         const refreshToken = user.googleRefreshToken;
-        if (!refreshToken) {
-            return res.status(200).json([]); // No refresh token means no data to fetch
+        if (!refreshToken || refreshToken.trim() === '') {
+          console.warn(`No refresh token found for User ID: ${userId}`);
+          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        // Generate the list of months between start and end dates
-        const monthsInRange = [];
-        let currentMonth = moment(adjustedStartDate);
-        const endMonth = moment(adjustedEndDate);
-
-        while (currentMonth.isBefore(endMonth) || currentMonth.isSame(endMonth, 'month')) {
-            monthsInRange.push(currentMonth.format('YYYY-MM'));
-            currentMonth.add(1, 'month');
-        }
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
 
         const customer = client.Customer({
-            customer_id: brand.googleAdAccount,
+            customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id:managerId
         });
 
-        // Run all monthly queries in parallel using Promise.all
-        const monthlyResults = await Promise.all(
-            monthsInRange.map(async (month) => {
-                const startOfMonth = `${month}-01`;
-                const endOfMonth = moment(startOfMonth).endOf('month').format('YYYY-MM-DD');
+        const query = `
+           SELECT
+                ad_group_criterion.keyword.text,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.clicks,
+                metrics.conversions_from_interactions_rate,
+                metrics.conversions_value,
+                segments.month    
+            FROM
+                keyword_view
+            WHERE
+                segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+            LIMIT 1000
+        `;
 
-                const query = `
-                    SELECT
-                        shopping_product.title,
-                        metrics.cost_micros,
-                        metrics.conversions,
-                        metrics.clicks,
-                        metrics.conversions_from_interactions_rate
-                    FROM
-                        shopping_product
-                    WHERE
-                        segments.date BETWEEN '${startOfMonth}' AND '${endOfMonth}'
-                    ORDER BY
-                        metrics.cost_micros DESC
-                `;
+        const results = await customer.query(query);
 
-                try {
-                    const results = await customer.query(query);
-                    return { month, results };
-                } catch (error) {
-                    console.error(`Error fetching data for ${month}:`, error);
-                    return { month, results: [] }; // Return empty results for failed months
-                }
-            })
-        );
+        const keywordData = new Map();
 
-        // Process results into product data
-        const productData = new Map();
+        // Process monthly data
+        for (let i = 0; i < results.length; i++) {
+            const row = results[i];
+            const keyword = row.ad_group_criterion.keyword.text || 'UNKNOWN';
 
-        for (const { month, results } of monthlyResults) {
-            results.forEach((row) => {
-                const productTitle = row.shopping_product.title || 'Unknown';
-                const productEntry = productData.get(productTitle) || { MonthlyData: new Map(), TotalCost: 0 };
+            if (!keywordData.has(keyword)) {
+                keywordData.set(keyword, {
+                    MonthlyData: new Map(),
+                    TotalConversionValue: 0,
+                    TotalCost: 0
+                });
+            }
 
-                const monthData = productEntry.MonthlyData.get(month) || {
-                    Month: moment(month, 'YYYY-MM').format('YYYYMM'),
-                    Cost: 0,
-                    Clicks: 0,
-                    Conversions: 0,
-                    "Conversion Rate": 0,
+            const monthData = keywordData.get(keyword).MonthlyData.get(row.segments.month) || {
+                Month: moment(row.segments.month).format('YYYYMM'),
+                Cost: 0,
+                Clicks: 0,
+                Conversions: 0,
+                "Conversion Value": 0,
+                "Conversion Rate": 0,
+                "Conv. Value/ Cost": 0
+            };
+
+            const cost = row.metrics.cost_micros / 1_000_000;
+            const conversionValue = row.metrics.conversions_value;
+
+            // Update monthly metrics
+            monthData.Cost += cost;
+            monthData.Clicks += row.metrics.clicks;
+            monthData.Conversions += row.metrics.conversions;
+            monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate * 100;
+            monthData["Conversion Value"] += conversionValue;
+
+            // Calculate Conv. Value/Cost for the month
+            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                ? monthData["Conversion Value"] / monthData.Cost
+                : 0;
+
+                keywordData.get(keyword).MonthlyData.set(row.segments.month, monthData);
+
+            // Update totals for the gender type
+            keywordData.get(keyword).TotalConversionValue += conversionValue;
+            keywordData.get(keyword).TotalCost += cost;
+        }
+
+        // Format the final data
+        const formattedData = Array.from(keywordData.entries())
+            .map(([keyword, data]) => {
+                const { MonthlyData, TotalConversionValue, TotalCost } = data;
+                const monthlyDataArray = Array.from(MonthlyData.values());
+
+                return {
+                    "Keyword": keyword,
+                    "Total Cost": TotalCost,
+                    "Total Conv. Value": TotalConversionValue,
+                    "Conv. Value / Cost": TotalCost > 0
+                        ? TotalConversionValue / TotalCost
+                        : 0,
+                    MonthlyData: monthlyDataArray,
                 };
-
-                monthData.Cost += row.metrics.cost_micros / 1_000_000; // Convert from micros
-                monthData.Clicks += row.metrics.clicks;
-                monthData.Conversions += row.metrics.conversions;
-                monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate != null
-                    ? row.metrics.conversions_from_interactions_rate
-                    : 0;
-
-                productEntry.MonthlyData.set(month, monthData);
-                productEntry.TotalCost += row.metrics.cost_micros / 1_000_000;
-
-                productData.set(productTitle, productEntry);
-            });
-        }
-
-        // Format the product data
-        const formattedData = Array.from(productData.entries())
-            .map(([product, { MonthlyData, TotalCost }]) => ({
-                Product: product,
-                TotalCost,
-                MonthlyData: Array.from(MonthlyData.values()),
-            }))
-            .sort((a, b) => b.TotalCost - a.TotalCost) // Sort by TotalCost (descending)
-            .slice(0, 500); // Limit to top 500 products
-
-        return res.json({ success: true, data: formattedData });
-    } catch (error) {
-        console.error('Failed to fetch Google Ads product metrics:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error.',
-            error: error.message,
-        });
-    }
-}
-
-export async function fetchBrandMetrics(req, res) {
-    const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
-
-    try {
-        // Fetch brand and user data concurrently
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
-
-        if (!brand || !user) {
-            return res.status(404).json({
-                success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
-            });
-        }
-
-        const refreshToken = user.googleRefreshToken;
-        if (!refreshToken) {
-            return res.status(200).json([]); // No refresh token means no data to fetch
-        }
-
-        const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
-
-        // Generate the list of months between start and end dates
-        const monthsInRange = [];
-        let currentMonth = moment(adjustedStartDate);
-        const endMonth = moment(adjustedEndDate);
-
-        while (currentMonth.isBefore(endMonth) || currentMonth.isSame(endMonth, 'month')) {
-            monthsInRange.push(currentMonth.format('YYYY-MM'));
-            currentMonth.add(1, 'month');
-        }
-
-        const customer = client.Customer({
-            customer_id: brand.googleAdAccount,
-            refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
-        });
-
-        // Run all monthly queries in parallel using Promise.all
-        const monthlyResults = await Promise.all(
-            monthsInRange.map(async (month) => {
-                const startOfMonth = `${month}-01`;
-                const endOfMonth = moment(startOfMonth).endOf('month').format('YYYY-MM-DD');
-
-                const query = `
-                    SELECT
-                        shopping_product.brand,
-                        metrics.cost_micros,
-                        metrics.conversions,
-                        metrics.clicks,
-                        metrics.conversions_from_interactions_rate
-                    FROM
-                        shopping_product
-                    WHERE
-                        segments.date BETWEEN '${startOfMonth}' AND '${endOfMonth}'
-                    ORDER BY
-                        metrics.cost_micros DESC
-                `;
-
-                try {
-                    const results = await customer.query(query);
-                    return { month, results };
-                } catch (error) {
-                    console.error(`Error fetching data for ${month}:`, error);
-                    return { month, results: [] }; // Return empty results for failed months
-                }
             })
-        );
+        let limitedData = formattedData.slice(0, 500);
 
-        // Process results into product data
-        const brandData = new Map();
+        if (costFilter || convValuePerCostFilter) {
+            limitedData = limitedData.filter(item => {
+                const costCondition = costFilter
+                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                    : true;
 
-        for (const { month, results } of monthlyResults) {
-            results.forEach((row) => {
-                const brand = row.shopping_product.brand || 'Unknown';
-                const brandEntry = brandData.get(brand) || { MonthlyData: new Map(), TotalCost: 0 };
+                const convValuePerCostCondition = convValuePerCostFilter
+                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                    : true;
 
-                const monthData = brandEntry.MonthlyData.get(month) || {
-                    Month: moment(month, 'YYYY-MM').format('YYYYMM'),
-                    Cost: 0,
-                    Clicks: 0,
-                    Conversions: 0,
-                    "Conversion Rate": 0,
-                };
-
-                monthData.Cost += row.metrics.cost_micros / 1_000_000; // Convert from micros
-                monthData.Clicks += row.metrics.clicks;
-                monthData.Conversions += row.metrics.conversions;
-                monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate != null
-                    ? row.metrics.conversions_from_interactions_rate * 100
-                    : 0;
-
-                brandEntry.MonthlyData.set(month, monthData);
-                brandEntry.TotalCost += row.metrics.cost_micros / 1_000_000;
-
-                brandData.set(brand, brandEntry);
+                return costCondition && convValuePerCostCondition;
             });
         }
+        return res.json({ success: true, data: limitedData });
 
-        // Format the product data
-        const formattedData = Array.from(brandData.entries())
-            .map(([brand, { MonthlyData, TotalCost }]) => ({
-                Brand: brand,
-                TotalCost,
-                MonthlyData: Array.from(MonthlyData.values()),
-            }))
-            .sort((a, b) => b.TotalCost - a.TotalCost) // Sort by TotalCost (descending)
-            .slice(0, 500); // Limit to top 500 products
-
-        return res.json({ success: true, data: formattedData });
     } catch (error) {
-        console.error('Failed to fetch Google Ads brand metrics:', error);
+        console.error("Failed to fetch Google Ads keyword metrics:", error);
         return res.status(500).json({
             success: false,
             message: 'Internal server error.',

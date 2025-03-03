@@ -70,7 +70,8 @@ export const handleGoogleCallback = async (req, res) => {
                     googleId: id,
                     method: 'google',
                     googleRefreshToken: tokens.refresh_token,
-                    isAdmin: true,
+                    isAdmin: false,
+                    isClient: true
                 });
                 await user.save();
             } else {

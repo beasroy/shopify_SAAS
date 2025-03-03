@@ -5,7 +5,7 @@ interface Brand {
   name: string;
   brandId: string;
   fbAdAccounts?: [];
-  googleAdAccount?: string;
+  googleAdAccount?: {[key: string]: string};
   ga4Account?: { [key: string]: string };
   shopifyAccount: {[key: string]: string };
 }
@@ -32,6 +32,7 @@ const brandSlice = createSlice({
     },
     resetBrand: (state) => {
       state.selectedBrandId = null;
+      state.brands = [];
     },
   },
 });

@@ -184,7 +184,8 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
             return res.status(200).json([]);
         }
 
-        const adAccountId = brand.googleAdAccount;
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
 
         if (!adAccountId || adAccountId.length === 0) {
             return res.json({
@@ -202,7 +203,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
         const customer = client.Customer({
             customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id:managerId
         });
 
         // Fetch both reports in parallel

@@ -473,7 +473,8 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    const adAccountId = brand.googleAdAccount;
+    const adAccountId = brand.googleAdAccount.clientId;
+    const managerId = brand.googleAdAccount.managerId;
 
     if (!adAccountId || adAccountId.length === 0) {
       return res.json({
@@ -504,7 +505,7 @@ export async function getGoogleAdsSummary(req, res) {
     const customer = client.Customer({
       customer_id: adAccountId,
       refresh_token: refreshToken,
-      login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+      login_customer_id:managerId
   });
 
     // Function to fetch Google Ads data for a specific date range

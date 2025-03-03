@@ -236,7 +236,7 @@ function PlatformCard({
   name: string
   icon: any
   connected: boolean
-  accounts: string[]
+  accounts: String[];
   accountLabel: string
   bgColor: string
   iconColor: string
@@ -279,7 +279,7 @@ const SummaryDashboard: React.FC = () => {
   const selectedBrand = brands.find((brand) => brand._id === brandId)
 
   const fbAccounts = selectedBrand?.fbAdAccounts ?? []
-  const googleAccount = selectedBrand?.googleAdAccount ? [selectedBrand.googleAdAccount] : []
+  const googleAccount = selectedBrand?.googleAdAccount ? [selectedBrand.googleAdAccount.clientId] : []
   const ga4Accounts = selectedBrand?.ga4Account ? Object.values(selectedBrand.ga4Account) : []
   const shopifyShopName = selectedBrand?.shopifyAccount?.shopName || ""
   const shopifyAccount = shopifyShopName ? [shopifyShopName] : []

@@ -52,99 +52,123 @@ const cache = new NodeCache({ stdTTL: 86400 });
 export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
-    let { startDate, endDate, userId} = req.body;
+    let { dateRanges, userId } = req.body;
   
-     
-      const  brand = await Brand.findById(brandId).lean();
-  
-      const user = await User.findById(userId).lean();
+    // Ensure dateRanges is an array and has at least one range
+    if (!dateRanges || !Array.isArray(dateRanges) || dateRanges.length === 0) {
+      const now = new Date();
+      const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
       
+      dateRanges = [{ startDate: defaultStartDate, endDate: defaultEndDate }];
+    }
   
-      if (!brand || !user) {
-        return res.status(404).json({ success: false, message: !brand ? 'Brand not found.' : 'User not found' });
-      }
+    const brand = await Brand.findById(brandId).lean();
+    const user = await User.findById(userId).lean();
+    
+    if (!brand || !user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: !brand ? 'Brand not found.' : 'User not found' 
+      });
+    }
 
     const propertyId = brand.ga4Account?.PropertyID;
 
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
-      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+      return res.status(403).json({ 
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' 
+      });
     }
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-    const now = new Date();
-    const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
+    // Process each date range
+    const allRangeData = [];
 
-    const requestBody = {
-      dateRanges: [{ startDate: startDate || defaultStartDate, endDate: endDate || defaultEndDate }],
-      dimensions: [{ name: 'date' }],
-      metrics: [
-        { name: 'sessions' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' },
-      ],
-      orderBys: [
+    for (const range of dateRanges) {
+      const { startDate, endDate } = range;
+
+      const requestBody = {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'date' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'addToCarts' },
+          { name: 'checkouts' },
+          { name: 'ecommercePurchases' },
+        ],
+        orderBys: [
+          {
+            desc: true,
+            dimension: { dimensionName: 'date' },
+          },
+        ],
+      };
+
+      const response = await axios.post(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+        requestBody,
         {
-          desc: true,
-          dimension: { dimensionName: 'date' },
-        },
-      ],
-    };
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-    const response = await axios.post(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-      requestBody,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+      const rows = response?.data?.rows;
+      if (!rows || rows.length === 0) {
+        console.warn(`No data found for date range ${startDate} to ${endDate}`);
+        allRangeData.push({
+          dateRange: { startDate, endDate },
+          data: [],
+        });
+        continue;
       }
-    );
 
-    const rows = response?.data?.rows;
-    if (!rows || rows.length === 0) {
-      console.warn("No data found in the response.");
-      return res.status(200).json({
-        reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range',
-        data: [],
+      const data = rows.map((row) => {
+        const date = `${row.dimensionValues[0]?.value.substring(6, 8)}-${row.dimensionValues[0]?.value.substring(4, 6)}-${row.dimensionValues[0]?.value.substring(0, 4)}`;
+        const sessions = (row.metricValues[0]?.value) || 0;
+        const addToCarts = (row.metricValues[1]?.value) || 0;
+        const checkouts = (row.metricValues[2]?.value) || 0;
+        const purchases = (row.metricValues[3]?.value) || 0;
+
+        return {
+          Date: date,
+          Sessions: sessions,
+          'Add To Cart': addToCarts,
+          'Add To Cart Rate': sessions ? `${((addToCarts / sessions) * 100).toFixed(2)}%` : '0%',
+          Checkouts: checkouts,
+          'Checkout Rate': sessions ? `${((checkouts / sessions) * 100).toFixed(2)}%` : '0%',
+          Purchases: purchases,
+          'Purchase Rate': sessions ? `${((purchases / sessions) * 100).toFixed(2)}%` : '0%',
+        };
+      });
+
+      allRangeData.push({
+        dateRange: { startDate, endDate },
+        data,
       });
     }
 
-    const data = rows.map((row) => {
-      const date = `${row.dimensionValues[0]?.value.substring(6, 8)}-${row.dimensionValues[0]?.value.substring(4, 6)}-${row.dimensionValues[0]?.value.substring(0, 4)}`;
-      const sessions = (row.metricValues[0]?.value) || 0;
-      const addToCarts = (row.metricValues[1]?.value) || 0;
-      const checkouts = (row.metricValues[2]?.value) || 0;
-      const purchases = (row.metricValues[3]?.value) || 0;
-
-      return {
-        Date: date,
-        Sessions: sessions,
-        'Add To Cart': addToCarts,
-        'Add To Cart Rate': sessions ? `${((addToCarts / sessions) * 100).toFixed(2)}%` : '0%',
-        Checkouts: checkouts,
-        'Checkout Rate': sessions ? `${((checkouts / sessions) * 100).toFixed(2)}%` : '0%',
-        Purchases: purchases,
-        'Purchase Rate': sessions ? `${((purchases / sessions) * 100).toFixed(2)}%` : '0%',
-      };
-    });
-
     res.status(200).json({
-      reportType: 'Daily Add to Cart, Checkout, and Session Data for Date Range',
-      data,
+      reportType: 'Daily Add to Cart, Checkout, and Session Data for Multiple Date Ranges',
+      ranges: allRangeData,
     });
   } catch (error) {
     console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
     if (error.response && error.response.status === 403) {
-      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+      return res.status(403).json({ 
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' 
+      });
     }
-    res.status(500).json({ error: 'Failed to fetch daily Add to Cart and Checkout data.' });
+    res.status(500).json({ 
+      error: 'Failed to fetch daily Add to Cart and Checkout data.' 
+    });
   }
 }
 

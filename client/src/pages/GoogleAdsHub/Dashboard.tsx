@@ -15,6 +15,7 @@ import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import Keyword from './components/Keyword';
+import Product from './components/Product';
 // import Product from './components/Product';
 // import Brand from './components/Brand';
 
@@ -41,7 +42,7 @@ const GoogleAdsDashboard: React.FC = () => {
     { label: 'Age', value: 'age' },
     { label: 'Gender', value: 'gender' },
     { label: 'Keyword', value: 'keyword'},
-    // { label: 'Brand', value: 'brand'}
+    { label: 'Product', value: 'product'}
   ];
 
   const refs = {
@@ -49,7 +50,7 @@ const GoogleAdsDashboard: React.FC = () => {
     age: useRef<HTMLDivElement>(null),
     gender: useRef<HTMLDivElement>(null),
     keyword: useRef<HTMLDivElement>(null),
-    // brand: useRef<HTMLDivElement>(null)
+    product: useRef<HTMLDivElement>(null)
   };
 
   // Observer to highlight active tab based on scroll position
@@ -148,6 +149,12 @@ const GoogleAdsDashboard: React.FC = () => {
             </div>
              <div id="keyword" ref={refs.keyword}>
               <Keyword dateRange={{ 
+                from: date.from ? new Date(date.from) : undefined,
+                to: date.to ? new Date(date.to) : undefined 
+              }} />
+            </div>
+            <div id="product" ref={refs.product}>
+              <Product dateRange={{ 
                 from: date.from ? new Date(date.from) : undefined,
                 to: date.to ? new Date(date.to) : undefined 
               }} />

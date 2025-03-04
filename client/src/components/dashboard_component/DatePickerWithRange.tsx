@@ -1,15 +1,17 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { createSelector } from '@reduxjs/toolkit'
+import { useState, useMemo, useCallback } from "react"
+import { createSelector } from "@reduxjs/toolkit"
 import { CalendarIcon } from "lucide-react"
-import { addDays, endOfYear, format, startOfYear, subDays, subMonths, subYears } from "date-fns"
+import { addDays, endOfYear, format, startOfYear, subDays, subMonths, subYears, parse } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch, useSelector } from "react-redux"
 import { setDate, clearDate } from "@/store/slices/DateSlice"
-import { RootState } from '@/store'
+import type { RootState } from "@/store"
 
 type DatePickerWithRangeProps = {
   defaultDate?: DateRange
@@ -22,9 +24,9 @@ const selectDateRange = createSelector(
   (state: RootState) => state.date.to,
   (from, to) => ({
     from,
-    to
-  })
-);
+    to,
+  }),
+)
 
 export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePickerWithRangeProps) {
   const dispatch = useDispatch()
@@ -35,19 +37,30 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     if (dateRange) {
       return {
         from: dateRange.from ? new Date(dateRange.from) : undefined,
-        to: dateRange.to ? new Date(dateRange.to) : undefined
-      };
+        to: dateRange.to ? new Date(dateRange.to) : undefined,
+      }
     }
-    return defaultDate ? {
-      from: defaultDate.from ? new Date(defaultDate.from) : undefined,
-      to: defaultDate.to ? new Date(defaultDate.to) : undefined
-    } : undefined;
-  }, [dateRange, defaultDate]);
+    return defaultDate
+      ? {
+          from: defaultDate.from ? new Date(defaultDate.from) : undefined,
+          to: defaultDate.to ? new Date(defaultDate.to) : undefined,
+        }
+      : undefined
+  }, [dateRange, defaultDate])
+
   const [tempDate, setTempDate] = useState<DateRange | undefined>(initialDate)
+  const [compareDate, setCompareDate] = useState<DateRange | undefined>()
   const [open, setOpen] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
+  const [isCompareEnabled, setIsCompareEnabled] = useState(false)
 
-  // Memoize date calculations
+  // Manual date input states
+  const [manualFromDate, setManualFromDate] = useState("")
+  const [manualToDate, setManualToDate] = useState("")
+  const [manualCompareFromDate, setManualCompareFromDate] = useState("")
+  const [manualCompareToDate, setManualCompareToDate] = useState("")
+
+  // Dates calculation
   const dates = useMemo(() => {
     const today = new Date()
     const daysSinceSunday = today.getDay()
@@ -57,14 +70,14 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
     const startOfLastWeek = subDays(startOfThisWeek, 7)
     const endOfLastWeek = subDays(startOfThisWeek, 1)
-    const quarter = Math.floor(today.getMonth() / 3); // Get current quarter (0-based)
+    const quarter = Math.floor(today.getMonth() / 3)
     const startOfThisQuarter = new Date(today.getFullYear(), quarter * 3, 1)
-    const endOfThisQuarter = new Date(today.getFullYear(),(quarter + 1)* 3, 0)
+    const endOfThisQuarter = new Date(today.getFullYear(), (quarter + 1) * 3, 0)
 
-    const lastQuarter = Math.floor(today.getMonth() / 3) - 1; // Get last quarter
-    const year = lastQuarter < 0 ? today.getFullYear() - 1 : today.getFullYear(); // Adjust year if needed
-    const startOfLastQuarter = new Date(year, ((lastQuarter + 4) % 4) * 3, 1); // Start of last quarter
-    const endOfLastQuarter = new Date(year, ((lastQuarter + 5) % 4) * 3, 0); // End of last quarter
+    const lastQuarter = today.getMonth() < 3 ? 3 : Math.floor((today.getMonth() - 3) / 3)
+    const lastQuarterYear = today.getMonth() < 3 ? today.getFullYear() - 1 : today.getFullYear()
+    const startOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3, 1)
+    const endOfLastQuarter = new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0)
 
     return {
       today,
@@ -77,80 +90,72 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
       startOfThisQuarter,
       endOfThisQuarter,
       startOfLastQuarter,
-      endOfLastQuarter
+      endOfLastQuarter,
     }
   }, [])
 
-  useEffect(() => {
-    if (!dateRange.from && !dateRange.to && defaultDate) {
-      dispatch(setDate({
-        from: defaultDate.from ? defaultDate.from.toISOString() : undefined,
-        to: defaultDate.to ? defaultDate.to.toISOString() : undefined
-      }));
+  // Date parsing utility
+  const parseManualDate = useCallback((dateString: string): Date | undefined => {
+    try {
+      const parsedDate = parse(dateString, "yyyy-MM-dd", new Date())
+      return !isNaN(parsedDate.getTime()) ? parsedDate : undefined
+    } catch {
+      return undefined
     }
-  }, [dateRange, defaultDate, dispatch])
+  }, [])
 
-  const handleUpdate = useCallback(() => {
-    if (tempDate) {
-      dispatch(setDate({
-        from: tempDate.from ? tempDate.from.toISOString() : undefined,
-        to: tempDate.to ? tempDate.to.toISOString() : undefined
-      }));
-    }
-    if (resetToFirstPage) {
-      resetToFirstPage();
-    }
-    setOpen(false)
-  }, [dispatch, resetToFirstPage, tempDate])
+  // Handle manual date input for primary range
+  const handleManualDateInput = useCallback(() => {
+    const fromDate = parseManualDate(manualFromDate)
+    const toDate = parseManualDate(manualToDate)
 
-  const clearDateRange = useCallback(() => {
-    setTempDate(undefined)
-    setSelectedPreset(null)
-    dispatch(clearDate())
-    if (resetToFirstPage) {
-      resetToFirstPage()
+    if (fromDate && toDate) {
+      setTempDate({ from: fromDate, to: toDate })
+      setSelectedPreset(null)
     }
-    setOpen(false)
-  }, [dispatch, resetToFirstPage])
+  }, [manualFromDate, manualToDate, parseManualDate])
 
+  // Handle manual date input for compare range
+  const handleManualCompareDateInput = useCallback(() => {
+    const fromDate = parseManualDate(manualCompareFromDate)
+    const toDate = parseManualDate(manualCompareToDate)
+
+    if (fromDate && toDate) {
+      setCompareDate({ from: fromDate, to: toDate })
+    }
+  }, [manualCompareFromDate, manualCompareToDate, parseManualDate])
+  // Preset range setter
   const setPresetRange = useCallback((from: Date, to: Date) => {
     const newRange = { from, to }
     setTempDate(newRange)
+    setSelectedPreset(null)
   }, [])
 
-  const formatDateRange = useCallback((range: DateRange | undefined) => {
-    if (!range) {
-      return defaultDate && defaultDate.from && defaultDate.to
-        ? `${format(defaultDate.from, "LLL dd, y")} - ${format(defaultDate.to, "LLL dd, y")}`
-        : "Pick a date"
-    }
-    if (range.from) {
-      if (range.to) {
-        return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`
-      }
-      return format(range.from, "LLL dd, y")
-    }
-    return "Pick a date"
-  }, [defaultDate])
+  // Presets
+  const presets = useMemo(
+    () => [
+      { label: "Today", fn: () => setPresetRange(dates.today, dates.today) },
+      { label: "Yesterday", fn: () => setPresetRange(subDays(dates.today, 1), subDays(dates.today, 1)) },
+      { label: "This Week", fn: () => setPresetRange(dates.startOfThisWeek, dates.endOfThisWeek) },
+      { label: "Last 7 Days", fn: () => setPresetRange(subDays(dates.today, 6), dates.today) },
+      { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
+      { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 29), dates.today) },
+      { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.today) },
+      { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
+      { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
+      { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter, dates.endOfThisQuarter) },
+      { label: "Last Quarter", fn: () => setPresetRange(dates.startOfLastQuarter, dates.endOfLastQuarter) },
+      { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), dates.today) },
+      { label: "Last 365 Days", fn: () => setPresetRange(subDays(dates.today, 365), dates.today) },
+      {
+        label: "Last Year",
+        fn: () => setPresetRange(subYears(startOfYear(new Date()), 1), subYears(endOfYear(new Date()), 1)),
+      },
+    ],
+    [dates, setPresetRange],
+  )
 
-  // Memoize presets array
-  const presets = useMemo(() => [
-    { label: "Today", fn: () => setPresetRange(dates.today, dates.today) },
-    { label: "Yesterday", fn: () => setPresetRange(subDays(dates.today, 1), subDays(dates.today, 1)) },
-    { label: "This Week", fn: () => setPresetRange(dates.startOfThisWeek, dates.endOfThisWeek) },
-    { label: "Last 7 Days", fn: () => setPresetRange(subDays(dates.today, 6), dates.today) },
-    { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
-    { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 29), dates.today) },
-    { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.today) },
-    { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
-    { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
-    { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter , dates.endOfThisQuarter)},
-    { label: "Last Quarter", fn: () => setPresetRange(dates.startOfLastQuarter , dates.endOfLastQuarter)},
-    { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), dates.today)}, 
-    { label: "Last 365 Days" , fn: () => setPresetRange(subDays(dates.today, 365), dates.today) },
-    { label: "Last Year", fn: () => setPresetRange(subYears(startOfYear(new Date()), 1), subYears(endOfYear(new Date()), 1)) }
-  ], [dates, setPresetRange])
-
+  // Calendar select handler
   const handleCalendarSelect = useCallback((range: DateRange | undefined) => {
     if (range?.from && !range.to) {
       setTempDate({ from: range.from, to: range.from })
@@ -162,64 +167,208 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     setSelectedPreset(null)
   }, [])
 
+  // Date range formatter
+  const formatDateRange = useCallback(
+    (range: DateRange | undefined) => {
+      if (!range) {
+        return defaultDate && defaultDate.from && defaultDate.to
+          ? `${format(defaultDate.from, "LLL dd, y")} - ${format(defaultDate.to, "LLL dd, y")}`
+          : "Pick a date"
+      }
+      if (range.from) {
+        if (range.to) {
+          return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`
+        }
+        return format(range.from, "LLL dd, y")
+      }
+      return "Pick a date"
+    },
+    [defaultDate],
+  )
+
+  // Clear date range
+  const clearDateRange = useCallback(() => {
+    setTempDate(undefined)
+    setCompareDate(undefined)
+    setSelectedPreset(null)
+    setIsCompareEnabled(false)
+    setManualFromDate("")
+    setManualToDate("")
+    setManualCompareFromDate("")
+    setManualCompareToDate("")
+    dispatch(clearDate())
+    if (resetToFirstPage) {
+      resetToFirstPage()
+    }
+    setOpen(false)
+  }, [dispatch, resetToFirstPage])
+
+  // Update handler
+  const handleUpdate = useCallback(() => {
+    if (tempDate) {
+      dispatch(
+        setDate({
+          from: tempDate.from ? tempDate.from.toISOString() : undefined,
+          to: tempDate.to ? tempDate.to.toISOString() : undefined,
+          compareFrom: isCompareEnabled && compareDate?.from ? compareDate.from.toISOString() : undefined,
+          compareTo: isCompareEnabled && compareDate?.to ? compareDate.to.toISOString() : undefined,
+        }),
+      )
+    }
+    if (resetToFirstPage) {
+      resetToFirstPage()
+    }
+    setOpen(false)
+  }, [dispatch, resetToFirstPage, tempDate, compareDate, isCompareEnabled])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          id="date"
           variant="outline"
           className={cn(
-            "w-[250px] justify-start text-left font-normal text-sm",
+            "w-[250px] justify-start text-left font-normal",
             !tempDate && !defaultDate && "text-muted-foreground",
+            "hover:bg-muted/50 transition-colors rounded-lg border-muted-foreground/20"
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
           {formatDateRange(tempDate)}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex">
-          <div className="border-r p-2 w-[140px] overflow-y-auto" style={{ maxHeight: "240px" }}>
-            <div className="space-y-1">
-              <h1 className="text-xs pb-2 px-2 font-medium border-b">Custom</h1>
-              {presets.map((preset) => (
-                <Button
-                  key={preset.label}
-                  size="sm"
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start text-xs font-normal",
-                    selectedPreset === preset.label && "bg-accent",
-                  )}
-                  onClick={() => {
-                    preset.fn()
-                    setSelectedPreset(preset.label)
-                  }}
-                >
-                  {preset.label}
-                </Button>
-              ))}
+      <PopoverContent className="w-auto p-0 max-w-[650px]" align="start">
+        <div className="flex flex-col md:flex-row">
+          {/* Preset selection column */}
+          <div className="border-r p-3 w-full md:w-[150px] overflow-y-auto bg-gradient-to-b from-muted/50 to-muted/10" style={{ maxHeight: "400px" }}>
+            <div className="space-y-1.5">
+              <h1 className="text-sm pb-2 font-medium border-b border-border/50 text-primary">Presets</h1>
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-1">
+                {presets.map((preset) => (
+                  <Button
+                    key={preset.label}
+                    size="sm"
+                    variant={selectedPreset === preset.label ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start text-xs font-normal h-8 rounded-md",
+                      selectedPreset === preset.label 
+                        ? "bg-primary text-primary-foreground" 
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground",
+                    )}
+                    onClick={() => {
+                      preset.fn()
+                      setSelectedPreset(preset.label)
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="p-2">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={tempDate?.from || defaultDate?.from || dates.today}
-              selected={tempDate}
-              onSelect={handleCalendarSelect}
-              numberOfMonths={2}
-              disabled={(date) =>
-                date > new Date() || date < new Date("2023-01-01")
-              }
-            />
+          
+          {/* Calendar and input section */}
+          <div className="p-3 flex-grow">
+            <div className="flex items-center space-x-2 mb-3">
+              <Checkbox 
+                id="compare-toggle"
+                checked={isCompareEnabled}
+                onCheckedChange={() => setIsCompareEnabled(!isCompareEnabled)}
+                className="text-primary"
+              />
+              <label htmlFor="compare-toggle" className="text-sm font-medium">Compare with another period</label>
+            </div>
+
+            {/* Date Range Inputs */}
+            <div className="grid gap-3 mb-3">
+              <div className="space-y-2">
+                <h2 className="text-xs font-medium text-muted-foreground">Primary Range</h2>
+                <div className="flex space-x-2">
+                  <div className="flex-1 relative">
+                    <Input 
+                      placeholder="YYYY-MM-DD" 
+                      value={manualFromDate}
+                      onChange={(e) => setManualFromDate(e.target.value)}
+                      onBlur={handleManualDateInput}
+                      className="h-8 pl-10 text-xs rounded-md"
+                    />
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
+                  </div>
+                  <div className="flex-1 relative">
+                    <Input 
+                      placeholder="YYYY-MM-DD" 
+                      value={manualToDate}
+                      onChange={(e) => setManualToDate(e.target.value)}
+                      onBlur={handleManualDateInput}
+                      className="h-8 pl-10 text-xs rounded-md"
+                    />
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compare Date Range Inputs */}
+              {isCompareEnabled && (
+                <div className="space-y-2">
+                  <h2 className="text-xs font-medium text-muted-foreground">Comparison Range</h2>
+                  <div className="flex space-x-2">
+                    <div className="flex-1 relative">
+                      <Input 
+                        placeholder="YYYY-MM-DD" 
+                        value={manualCompareFromDate}
+                        onChange={(e) => setManualCompareFromDate(e.target.value)}
+                        onBlur={handleManualCompareDateInput}
+                        className="h-8 pl-10 text-xs rounded-md"
+                      />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
+                    </div>
+                    <div className="flex-1 relative">
+                      <Input 
+                        placeholder="YYYY-MM-DD" 
+                        value={manualCompareToDate}
+                        onChange={(e) => setManualCompareToDate(e.target.value)}
+                        onBlur={handleManualCompareDateInput}
+                        className="h-8 pl-10 text-xs rounded-md"
+                      />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Calendar */}
+            <div className="border rounded-lg p-2 bg-background/80 shadow-sm">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={tempDate?.from || defaultDate?.from || dates.today}
+                selected={tempDate}
+                onSelect={handleCalendarSelect}
+                numberOfMonths={2}
+                disabled={(date) =>
+                  date > new Date() || date < new Date("2023-01-01")
+                }
+                className="rounded-md"
+              />
+            </div>
           </div>
         </div>
-        <div className="border-t p-2 flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={clearDateRange}>
+        
+        {/* Action Buttons */}
+        <div className="border-t p-2 flex justify-end gap-2 bg-muted/10">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={clearDateRange}
+            className="rounded-md h-8 text-xs"
+          >
             Clear
           </Button>
-          <Button size="sm" onClick={handleUpdate}>
+          <Button 
+            size="sm" 
+            onClick={handleUpdate}
+            className="rounded-md h-8 text-xs bg-primary hover:bg-primary/90"
+          >
             Apply
           </Button>
         </div>
@@ -227,3 +376,4 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
     </Popover>
   )
 }
+

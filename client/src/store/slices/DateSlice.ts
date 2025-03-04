@@ -1,11 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface DateRange {
-  from?: string; // Store as ISO string
-  to?: string;
+  from?: string; // Primary date range start
+  to?: string;  // Primary date range end
+  compareFrom?: string; // Optional comparison date range start
+  compareTo?: string;   // Optional comparison date range end
 }
 
-// Define the initial state with ISO strings
+// Define the initial state with default date range (first day of current month to today)
 const initialState: DateRange = {
   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
   to: new Date().toISOString(),
@@ -16,18 +18,26 @@ const dateSlice = createSlice({
   name: "date",
   initialState,
   reducers: {
-    setDate: (state, action: PayloadAction<{ from?: string; to?: string } | undefined>) => {
-      if (action.payload) {
-        state.from = action.payload.from;
-        state.to = action.payload.to;
-      } else {
-        state.from = undefined;
-        state.to = undefined;
-      }
+    setDate: (state, action: PayloadAction<{
+      from?: string; 
+      to?: string; 
+      compareFrom?: string; 
+      compareTo?: string;
+    }>) => {
+      // Update primary date range
+      state.from = action.payload.from;
+      state.to = action.payload.to;
+
+      // Update comparison date range
+      state.compareFrom = action.payload.compareFrom;
+      state.compareTo = action.payload.compareTo;
     },
     clearDate: (state) => {
+      // Reset to initial state
       state.from = undefined;
       state.to = undefined;
+      state.compareFrom = undefined;
+      state.compareTo = undefined;
     },
   },
 });

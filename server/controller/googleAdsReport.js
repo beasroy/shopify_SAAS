@@ -618,6 +618,173 @@ export async function fetchKeywordMetrics(req, res) {
     }
 }
 
+export async function fetchProductMetrics(req, res) {
+    const { brandId } = req.params;
+    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+
+    try {
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean(),
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found.',
+            });
+        }
+
+        const refreshToken = user.googleRefreshToken;
+        if (!refreshToken || refreshToken.trim() === '') {
+          console.warn(`No refresh token found for User ID: ${userId}`);
+          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+        }
+
+        const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
+
+        const customer = client.Customer({
+            customer_id: adAccountId,
+            refresh_token: refreshToken,
+            login_customer_id:managerId
+        });
+
+    
+
+      // First, generate all months between start and end dates
+const months = [];
+let current = moment(adjustedStartDate).startOf('month');
+while (current.isBefore(adjustedEndDate)) {
+    months.push(current.format('YYYYMM'));
+    current.add(1, 'month');
+}
+
+// Then fetch data for each month separately
+const monthlyResults = await Promise.all(months.map(async (month) => {
+    const monthStart = moment(month, 'YYYYMM').startOf('month').format('YYYY-MM-DD');
+    const monthEnd = moment(month, 'YYYYMM').endOf('month').format('YYYY-MM-DD');
+
+    const monthlyQuery = `
+        SELECT
+            shopping_product.title,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.clicks,
+            metrics.conversions_value
+        FROM
+            shopping_product
+        WHERE
+            segments.date BETWEEN '${monthStart}' AND '${monthEnd}'
+    `; 
+
+    try {
+        const results = await customer.query(monthlyQuery);
+        return { month, data: results };
+    } catch (error) {
+        console.error(`Failed to fetch data for ${month}:`, error);
+        return { month, data: [] };
+    }
+}));
+
+// Process results with month context
+const productData = new Map();
+
+monthlyResults.forEach(({ month, data }) => {
+    data.forEach(row => {
+        const product = row.shopping_product.title || 'UNKNOWN';
+        const cost = row.metrics.cost_micros / 1_000_000;
+        const conversionValue = row.metrics.conversions_value;
+
+        if (!productData.has(product)) {
+            productData.set(product, {
+                MonthlyData: new Map(),
+                TotalConversionValue: 0,
+                TotalCost: 0
+            });
+        }
+
+        const monthData = productData.get(product).MonthlyData.get(month) || {
+            Month: month,
+            Cost: 0,
+            Clicks: 0,
+            Conversions: 0,
+            "Conversion Value": 0,
+            "Conversion Rate": 0,
+            "Conv. Value/ Cost": 0
+        };
+
+        // Accumulate metrics
+        monthData.Cost += cost;
+        monthData.Clicks += row.metrics.clicks;
+        monthData.Conversions += row.metrics.conversions;
+        monthData["Conversion Value"] += conversionValue;
+
+        // Update totals
+        productData.get(product).TotalConversionValue += conversionValue;
+        productData.get(product).TotalCost += cost;
+
+        // Store updated month data
+        productData.get(product).MonthlyData.set(month, monthData);
+    });
+});
+
+// Finally calculate rates and ratios
+productData.forEach((productEntry) => {
+    productEntry.MonthlyData.forEach((monthEntry) => {
+        monthEntry["Conversion Rate"] = monthEntry.Clicks > 0 
+            ? (monthEntry.Conversions / monthEntry.Clicks) * 100 
+            : 0;
+            
+        monthEntry["Conv. Value/ Cost"] = monthEntry.Cost > 0
+            ? monthEntry["Conversion Value"] / monthEntry.Cost
+            : 0;
+    });
+});
+        const formattedData = Array.from(productData.entries())
+            .map(([product, data]) => {
+                const { MonthlyData, TotalConversionValue, TotalCost } = data;
+                const monthlyDataArray = Array.from(MonthlyData.values());
+
+                return {
+                    "Product": product,
+                    "Total Cost": TotalCost,
+                    "Total Conv. Value": TotalConversionValue,
+                    "Conv. Value / Cost": TotalCost > 0
+                        ? TotalConversionValue / TotalCost
+                        : 0,
+                    MonthlyData: monthlyDataArray,
+                };
+            })
+        let limitedData = formattedData.slice(0, 500);
+
+        if (costFilter || convValuePerCostFilter) {
+            limitedData = limitedData.filter(item => {
+                const costCondition = costFilter
+                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                    : true;
+
+                const convValuePerCostCondition = convValuePerCostFilter
+                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                    : true;
+
+                return costCondition && convValuePerCostCondition;
+            });
+        }
+        return res.json({ success: true, data: limitedData });
+
+    } catch (error) {
+        console.error("Failed to fetch Google Ads product metrics:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+}
+
 
 
 

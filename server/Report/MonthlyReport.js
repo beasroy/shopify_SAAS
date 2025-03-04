@@ -372,13 +372,14 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
-        const adAccountId = brand.googleAdAccount;
+        const adAccountId = brand.googleAdAccount.clientId;
+        const managerId = brand.googleAdAccount.managerId;
         if (!adAccountId) {
-            return {
-                success: false,
-                message: 'No Google Ads accounts found for this brand.',
-                data: [],
-            };
+          return {
+            success: false,
+            message: 'No Google Ads accounts found for this brand.',
+            data: [],
+          };
         }
 
         const refreshToken = user.googleRefreshToken;
@@ -400,7 +401,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
         const customer = client.Customer({
             customer_id: adAccountId,
             refresh_token: refreshToken,
-            login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+            login_customer_id: managerId,
         });
 
         const metricsByDate = [];

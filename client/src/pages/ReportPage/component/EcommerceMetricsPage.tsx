@@ -97,16 +97,25 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
       const DailyAnalyticsResponse = await axiosInstance.post(
         `/api/analytics/atcreport/${brandId}`,
         {
-          startDate: startDate,
-          endDate: endDate,
+          dateRanges: [
+            { 
+              startDate: startDate, 
+              endDate: endDate 
+            }
+          ],
           userId: user?.id,
         },
         { withCredentials: true }
       );
 
-      const fetchedData = DailyAnalyticsResponse.data.data || [];
-      setData(fetchedData);
-      setFilteredData(fetchedData);
+      const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
+    
+    // If you want to work with a single range's data (most common use case)
+    const fetchedData = fetchedRanges[0]?.data || [];
+    
+    // Set states
+    setData(fetchedData);
+    setFilteredData(fetchedData);
 
       if (fetchedData.length > 0) {
         if (selectedColumns.length === 0) {
@@ -128,11 +137,13 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     }
   }, [startDate, endDate, brandId]);
 
+
   useEffect(() => {
     fetchMetrics();
     const intervalId = setInterval(fetchMetrics, 15 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [fetchMetrics]);
+
 
   const handleManualRefresh = () => {
     fetchMetrics();

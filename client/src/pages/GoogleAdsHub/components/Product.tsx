@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
-import { useUser } from "@/context/UserContext";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 
 type ApiResponse = {
@@ -32,7 +33,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   
   
-  const { user } = useUser();
+  const user = useSelector((state: RootState)=>state.user.user);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -79,7 +80,8 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   // Extract columns dynamically from the API response
   const primaryColumn = "Product";
   const monthlyDataKey = "MonthlyData";
-  const monthlyMetrics = ["Cost","Clicks","Conversions", "Conversion Rate"];
+  const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
+  const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
 
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
@@ -108,10 +110,11 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
+                secondaryColumns={secondaryColumns}
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
-                rows={10}
+                isAdsTable={true}
               />
             </div>
           )}

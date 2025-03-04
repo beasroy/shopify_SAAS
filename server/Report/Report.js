@@ -268,7 +268,8 @@ export const getGoogleAdData = async (brandId, userId) => {
       };
     }
 
-    const adAccountId = brand.googleAdAccount;
+    const adAccountId = brand.googleAdAccount.clientId;
+    const managerId = brand.googleAdAccount.managerId;
     if (!adAccountId) {
       return {
         success: false,
@@ -292,7 +293,7 @@ export const getGoogleAdData = async (brandId, userId) => {
     const customer = client.Customer({
       customer_id: adAccountId,
       refresh_token: refreshToken,
-      login_customer_id: process.env.GOOGLE_AD_MANAGER_ACCOUNT_ID,
+      login_customer_id: managerId,
     });
 
     // Fetch the ad-level report using the ad_group_ad entity

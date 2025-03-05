@@ -53,10 +53,15 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
   const [open, setOpen] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [isCompareEnabled, setIsCompareEnabled] = useState(false)
+  const [calendarMode, setCalendarMode] = useState<'primary' | 'comparison'>('primary')
 
   // Manual date input states
-  const [manualFromDate, setManualFromDate] = useState("")
-  const [manualToDate, setManualToDate] = useState("")
+  const [manualFromDate, setManualFromDate] = useState(
+    tempDate?.from ? format(tempDate.from, "yyyy-MM-dd") : ""
+  )
+  const [manualToDate, setManualToDate] = useState(
+    tempDate?.to ? format(tempDate.to, "yyyy-MM-dd") : ""
+  )
   const [manualCompareFromDate, setManualCompareFromDate] = useState("")
   const [manualCompareToDate, setManualCompareToDate] = useState("")
 
@@ -124,12 +129,28 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
       setCompareDate({ from: fromDate, to: toDate })
     }
   }, [manualCompareFromDate, manualCompareToDate, parseManualDate])
+
+
   // Preset range setter
   const setPresetRange = useCallback((from: Date, to: Date) => {
-    const newRange = { from, to }
-    setTempDate(newRange)
+    if (calendarMode === 'primary') {
+      const newRange = { from, to }
+      setTempDate(newRange)
+      
+      // Update manual date inputs 
+      setManualFromDate(format(from, "yyyy-MM-dd"))
+      setManualToDate(format(to, "yyyy-MM-dd"))
+    } else if (calendarMode === 'comparison') {
+      const newCompareRange = { from, to }
+      setCompareDate(newCompareRange)
+      
+      // Update comparison manual date inputs
+      setManualCompareFromDate(format(from, "yyyy-MM-dd"))
+      setManualCompareToDate(format(to, "yyyy-MM-dd"))
+    }
+    
     setSelectedPreset(null)
-  }, [])
+  }, [calendarMode])
 
   // Presets
   const presets = useMemo(
@@ -157,15 +178,54 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
 
   // Calendar select handler
   const handleCalendarSelect = useCallback((range: DateRange | undefined) => {
-    if (range?.from && !range.to) {
-      setTempDate({ from: range.from, to: range.from })
-    } else if (range?.from && range?.to && range.from > range.to) {
-      setTempDate({ from: range.from, to: range.from })
+    if (calendarMode === 'primary') {
+      if (range?.from && !range.to) {
+        setTempDate({ from: range.from, to: range.from })
+        // Update manual input for single date
+        setManualFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualToDate(format(range.from, "yyyy-MM-dd"))
+      } else if (range?.from && range?.to && range.from > range.to) {
+        setTempDate({ from: range.from, to: range.from })
+        // Update manual input for single date
+        setManualFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualToDate(format(range.from, "yyyy-MM-dd"))
+      } else if (range?.from && range?.to) {
+        setTempDate(range)
+        // Update manual inputs for range
+        setManualFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualToDate(format(range.to, "yyyy-MM-dd"))
+      } else {
+        setTempDate(undefined)
+        // Clear manual inputs
+        setManualFromDate("")
+        setManualToDate("")
+      }
+      setSelectedPreset(null)
     } else {
-      setTempDate(range)
+      // Comparison date range handling
+      if (range?.from && !range.to) {
+        setCompareDate({ from: range.from, to: range.from })
+        // Update manual input for single date
+        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualCompareToDate(format(range.from, "yyyy-MM-dd"))
+      } else if (range?.from && range?.to && range.from > range.to) {
+        setCompareDate({ from: range.from, to: range.from })
+        // Update manual input for single date
+        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualCompareToDate(format(range.from, "yyyy-MM-dd"))
+      } else if (range?.from && range?.to) {
+        setCompareDate(range)
+        // Update manual inputs for range
+        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
+        setManualCompareToDate(format(range.to, "yyyy-MM-dd"))
+      } else {
+        setCompareDate(undefined)
+        // Clear manual inputs
+        setManualCompareFromDate("")
+        setManualCompareToDate("")
+      }
     }
-    setSelectedPreset(null)
-  }, [])
+  }, [calendarMode])
 
   // Date range formatter
   const formatDateRange = useCallback(
@@ -289,6 +349,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                       value={manualFromDate}
                       onChange={(e) => setManualFromDate(e.target.value)}
                       onBlur={handleManualDateInput}
+                      onClick={() => {
+                        setCalendarMode('primary')
+                      }}
                       className="h-8 pl-10 text-xs rounded-md"
                     />
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
@@ -299,6 +362,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                       value={manualToDate}
                       onChange={(e) => setManualToDate(e.target.value)}
                       onBlur={handleManualDateInput}
+                      onClick={() => {
+                        setCalendarMode('primary')
+                      }}
                       className="h-8 pl-10 text-xs rounded-md"
                     />
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
@@ -317,6 +383,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                         value={manualCompareFromDate}
                         onChange={(e) => setManualCompareFromDate(e.target.value)}
                         onBlur={handleManualCompareDateInput}
+                        onClick={() => {
+                          setCalendarMode('comparison')
+                        }}
                         className="h-8 pl-10 text-xs rounded-md"
                       />
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
@@ -327,6 +396,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                         value={manualCompareToDate}
                         onChange={(e) => setManualCompareToDate(e.target.value)}
                         onBlur={handleManualCompareDateInput}
+                        onClick={() => {
+                          setCalendarMode('comparison')
+                        }}
                         className="h-8 pl-10 text-xs rounded-md"
                       />
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
@@ -336,13 +408,18 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
               )}
             </div>
 
+
             {/* Calendar */}
             <div className="border rounded-lg p-2 bg-background/80 shadow-sm">
               <Calendar
                 initialFocus
                 mode="range"
-                defaultMonth={tempDate?.from || defaultDate?.from || dates.today}
-                selected={tempDate}
+                defaultMonth={
+                  calendarMode === 'primary' 
+                    ? (tempDate?.from || defaultDate?.from || dates.today)
+                    : (compareDate?.from || dates.today)
+                }
+                selected={calendarMode === 'primary' ? tempDate : compareDate}
                 onSelect={handleCalendarSelect}
                 numberOfMonths={2}
                 disabled={(date) =>

@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ArrowUp, ArrowDown, ChevronsLeft, ChevronRight, ChevronsRight, ChevronLeft, GripVertical } from 'lucide-react';
-import { PageMetric } from '@/pages/ReportPage/component/LandingPageSession';
 import { Button } from '@/components/ui/button';
 
 interface TableProps {
   columns: string[];
   data: any[];
-  allTimeData?: PageMetric[];
+  additionalData?: any[]; 
   isFullScreen?: boolean;
 }
 
@@ -170,12 +169,7 @@ const NewReportTable: React.FC<TableProps> = ({
   const isNumericColumn = (column: string) => {
     return [
       'Date',
-      'Add To Cart',
-      'Checkouts',
-      'Sessions',
-      'Purchases',
-      'Visitors',
-      ...comparisonColumns,
+
     ].includes(column);
   };
 

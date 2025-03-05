@@ -1,7 +1,6 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
-import NodeCache from 'node-cache';
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 config();
@@ -48,28 +47,27 @@ export async function getGoogleAccessToken(refreshToken) {
   }
 }
 
-const cache = new NodeCache({ stdTTL: 86400 });
 export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
     let { dateRanges, userId } = req.body;
-  
+
     // Ensure dateRanges is an array and has at least one range
     if (!dateRanges || !Array.isArray(dateRanges) || dateRanges.length === 0) {
       const now = new Date();
       const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
-      
+
       dateRanges = [{ startDate: defaultStartDate, endDate: defaultEndDate }];
     }
-  
+
     const brand = await Brand.findById(brandId).lean();
     const user = await User.findById(userId).lean();
-    
+
     if (!brand || !user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: !brand ? 'Brand not found.' : 'User not found' 
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found'
       });
     }
 
@@ -78,8 +76,8 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     const refreshToken = user.googleRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
-      return res.status(403).json({ 
-        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' 
+      return res.status(403).json({
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.'
       });
     }
 
@@ -132,10 +130,10 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
       const data = rows.map((row) => {
         const date = `${row.dimensionValues[0]?.value.substring(6, 8)}-${row.dimensionValues[0]?.value.substring(4, 6)}-${row.dimensionValues[0]?.value.substring(0, 4)}`;
-        const sessions = (row.metricValues[0]?.value) || 0;
-        const addToCarts = (row.metricValues[1]?.value) || 0;
-        const checkouts = (row.metricValues[2]?.value) || 0;
-        const purchases = (row.metricValues[3]?.value) || 0;
+        const sessions = parseInt(row.metricValues[0]?.value) || 0;
+        const addToCarts = parseInt(row.metricValues[1]?.value) || 0;
+        const checkouts = parseInt(row.metricValues[2]?.value) || 0;
+        const purchases = parseInt(row.metricValues[3]?.value) || 0;
 
         return {
           Date: date,
@@ -155,19 +153,62 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
       });
     }
 
-    res.status(200).json({
-      reportType: 'Daily Add to Cart, Checkout, and Session Data for Multiple Date Ranges',
+    // If only one date range, return daily breakout
+    if (dateRanges.length === 1) {
+      return res.status(200).json({
+        reportType: 'Daily Add to Cart, Checkout, and Session Data',
+        ranges: allRangeData,
+      });
+    }
+
+    // If two date ranges, consolidate the data
+    if (dateRanges.length === 2) {
+      const consolidatedData = dateRanges.map((range, index) => {
+        const rangeData = allRangeData[index].data;
+
+        // Calculate totals for the entire date range
+        const totalSessions = rangeData.reduce((sum, item) => sum + item.Sessions, 0);
+        const totalAddToCarts = rangeData.reduce((sum, item) => sum + item['Add To Cart'], 0);
+        const totalCheckouts = rangeData.reduce((sum, item) => sum + item.Checkouts, 0);
+        const totalPurchases = rangeData.reduce((sum, item) => sum + item.Purchases, 0);
+
+        const formattedStartDate = `${range.startDate.substring(8, 10)}-${range.startDate.substring(5, 7)}-${range.startDate.substring(0, 4)}`;
+        const formattedEndDate = `${range.endDate.substring(8, 10)}-${range.endDate.substring(5, 7)}-${range.endDate.substring(0, 4)}`;
+
+        const formattedDateRange = `${formattedStartDate} to ${formattedEndDate}`;
+
+        return {
+          Date: formattedDateRange,
+          Sessions: totalSessions,
+          'Add To Cart': totalAddToCarts,
+          'Add To Cart Rate': totalSessions ? `${((totalAddToCarts / totalSessions) * 100).toFixed(2)}%` : '0%',
+          Checkouts: totalCheckouts,
+          'Checkout Rate': totalSessions ? `${((totalCheckouts / totalSessions) * 100).toFixed(2)}%` : '0%',
+          Purchases: totalPurchases,
+          'Purchase Rate': totalSessions ? `${((totalPurchases / totalSessions) * 100).toFixed(2)}%` : '0%',
+        };
+      });
+
+      return res.status(200).json({
+        reportType: 'Consolidated Add to Cart, Checkout, and Session Data for Two Date Ranges',
+        ranges: consolidatedData,
+      });
+    }
+
+    // If more than two date ranges, return as is
+    return res.status(200).json({
+      reportType: 'Add to Cart, Checkout, and Session Data for Multiple Date Ranges',
       ranges: allRangeData,
     });
   } catch (error) {
     console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
     if (error.response && error.response.status === 403) {
-      return res.status(403).json({ 
-        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' 
+      return res.status(403).json({
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.'
       });
     }
-    res.status(500).json({ 
-      error: 'Failed to fetch daily Add to Cart and Checkout data.' 
+    res.status(500).json({
+      error: 'Failed to fetch daily Add to Cart and Checkout data.'
     });
   }
 }
@@ -177,9 +218,9 @@ export async function getDayWiseAddToCartAndCheckouts(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, userId } = req.body;
 
-    const  brand = await Brand.findById(brandId).lean();
-  
-    const  user = await User.findById(userId).lean();
+    const brand = await Brand.findById(brandId).lean();
+
+    const user = await User.findById(userId).lean();
 
 
     if (!brand || !user) {
@@ -241,11 +282,11 @@ export async function getDayWiseAddToCartAndCheckouts(req, res) {
     const weeklyData = {
       Monday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Tuesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
-      Wednesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
-      Thursday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
-      Friday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
-      Saturday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
-      Sunday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0},
+      Wednesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Thursday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Friday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Saturday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
+      Sunday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
     };
 
     // Process data and accumulate it based on weekday
@@ -943,7 +984,7 @@ export async function getCityWiseConversions(req, res) {
     data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
     let limitedData = data.slice(0, 500);
-    
+
     if (sessionsFilter || convRateFilter) {
       limitedData = limitedData.filter(item => {
         const sessionCondition = sessionsFilter
@@ -1938,7 +1979,7 @@ export async function getInterestWiseConversions(req, res) {
       MonthlyData: Object.values(InterestData.MonthlyData)
     }))
 
-  
+
     data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
 
     let limitedData = data.slice(0, 500);

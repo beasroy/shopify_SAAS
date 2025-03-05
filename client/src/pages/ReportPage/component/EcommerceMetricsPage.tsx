@@ -28,30 +28,36 @@ interface EcommerceMetric {
   "Checkout Rate": string
 }
 
-
 interface EcommerceMetricsProps {
   dateRange: DateRange | undefined;
 }
 
-
 const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: propDateRange }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
-  const date = useMemo(() => ({
-    from: dateFrom,
-    to: dateTo
-  }), [dateFrom, dateTo]);
+  const compareFrom = useSelector((state: RootState) => state.date.compareFrom);
+  const compareTo = useSelector((state: RootState) => state.date.compareTo);
+  
   const [filteredData, setFilteredData] = useState<EcommerceMetric[]>([]);
   const [data, setData] = useState<EcommerceMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
 
+  const date = useMemo(() => ({
+    from: dateFrom,
+    to: dateTo
+  }), [dateFrom, dateTo]);
 
+  const compareDate = useMemo(() => ({
+    from: compareFrom,
+    to: compareTo
+  }), [compareFrom, compareTo]);
 
-
-
-  const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
-  const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+  const startDate = date?.from ? format(new Date(date.from), "yyyy-MM-dd") : "";
+  const endDate = date?.to ? format(new Date(date.to), "yyyy-MM-dd") : "";
+  const compareStartDate = compareDate?.from ? format(new Date(compareDate.from), "yyyy-MM-dd") : "";
+  const compareEndDate = compareDate?.to ? format(new Date(compareDate.to), "yyyy-MM-dd") : "";
+  
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -59,96 +65,103 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
-
+  // Consolidate date range effects
   useEffect(() => {
     if (propDateRange) {
       dispatch(setDate({
-        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined,
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined
       }));
     }
-  }, [propDateRange]);
-
-  useEffect(() => {
-    if (!isFullScreen) {
-      if (propDateRange) {
-        dispatch(setDate({
-          from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-          to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-        }));
-      }
-    }
-  }, [isFullScreen, propDateRange]);
-
-
-
-
+  }, [propDateRange, dispatch]);
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
   };
 
-
-
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
     try {
+      const dateRanges = [];
 
-      const DailyAnalyticsResponse = await axiosInstance.post(
-        `/api/analytics/atcreport/${brandId}`,
-        {
-          dateRanges: [
-            { 
-              startDate: startDate, 
-              endDate: endDate 
+      // Always add primary date range
+      if (startDate && endDate) {
+        dateRanges.push({ 
+          startDate: startDate, 
+          endDate: endDate 
+        });
+      }
+
+      // Add comparison date range if available and compare is enabled
+      if (compareStartDate && compareEndDate) {
+        dateRanges.push({
+          startDate: compareStartDate,
+          endDate: compareEndDate
+        });
+      }
+
+      // Only fetch if we have at least one date range
+      if (dateRanges.length > 0) {
+        const DailyAnalyticsResponse = await axiosInstance.post(
+          `/api/analytics/atcreport/${brandId}`,
+          {
+            dateRanges: dateRanges,
+            userId: user?.id,
+          },
+          { withCredentials: true }
+        );
+
+        const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
+    
+        // More flexible data handling
+        if (fetchedRanges.length > 0) {
+          // Check if the first range contains daily data or consolidated data
+          const isConsolidatedData = fetchedRanges[0].Date 
+          
+          if (isConsolidatedData) {
+            // Consolidated data scenario
+            setData(fetchedRanges);
+            setFilteredData(fetchedRanges);
+          } else {
+            // Daily data scenario
+            setData(fetchedRanges[0]?.data || []);
+            setFilteredData(fetchedRanges[0]?.data || []);
+          }
+
+          // Update columns intelligently
+          const firstRangeData = isConsolidatedData ? fetchedRanges : (fetchedRanges[0]?.data || []);
+          if (firstRangeData.length > 0) {
+            const firstItem = firstRangeData[0];
+            const allColumns = Object.keys(firstItem);
+            
+            if (selectedColumns.length === 0) {
+              setSelectedColumns(allColumns);
+            } else {
+              setSelectedColumns((prevSelected) =>
+                prevSelected.filter((col) => allColumns.includes(col))
+              );
             }
-          ],
-          userId: user?.id,
-        },
-        { withCredentials: true }
-      );
-
-      const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
-    
-    // If you want to work with a single range's data (most common use case)
-    const fetchedData = fetchedRanges[0]?.data || [];
-    
-    // Set states
-    setData(fetchedData);
-    setFilteredData(fetchedData);
-
-      if (fetchedData.length > 0) {
-        if (selectedColumns.length === 0) {
-          const allColumns = Object.keys(fetchedData[0]);
-          setSelectedColumns(allColumns);
-        } else {
-          const newColumns = Object.keys(fetchedData[0]);
-          setSelectedColumns((prevSelected) =>
-            prevSelected.filter((col) => newColumns.includes(col))
-          );
+          }
         }
       }
 
     } catch (error) {
       console.error('Error fetching e-commerce metrics data:', error);
-
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, brandId]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, user?.id]);
 
-
+  // Consolidate to single useEffect for fetching metrics
   useEffect(() => {
     fetchMetrics();
     const intervalId = setInterval(fetchMetrics, 15 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [fetchMetrics]);
 
-
   const handleManualRefresh = () => {
     fetchMetrics();
   };
-
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(selectedColumns);
   const [columnOrder, setColumnOrder] = useState<string[]>(selectedColumns);
@@ -159,7 +172,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   
   const handleOrderChange = (newOrder: string[]) => {
     setColumnOrder(newOrder);
-    setVisibleColumns(newOrder); // Ensure visibleColumns is also updated
+    setVisibleColumns(newOrder);
   };
   
   useEffect(() => {
@@ -187,19 +200,20 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
       });
     });
 
-    setFilteredData(result); // Update filtered data
+    setFilteredData(result);
   }, [data]);
 
   const memoizedFilteredData = useMemo(() => filteredData, [filteredData]);
 
   const numericColumns = ['Add To Cart', 'Checkouts', 'Sessions', 'Purchases', 'Purchase Rate', 'Add To Cart Rate', 'Checkout Rate'];
+  
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index));
   };
 
   return (
     <Card className={`mx-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-      <CardContent >
+      <CardContent>
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
@@ -207,12 +221,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
               <Ga4Logo />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-
-              {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                <DatePickerWithRange
-
-                />
-              </div>}
+              {isFullScreen && <DatePickerWithRange />}
               <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
@@ -231,7 +240,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
               <Button onClick={toggleFullScreen} size="icon" variant="outline">
                 {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               </Button>
-
             </div>
           </div>
 

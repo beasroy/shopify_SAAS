@@ -133,7 +133,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   return (
-    <Card  className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
+    <Card id="age-report" className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
       <CardContent >
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -166,7 +166,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
               monthlyMetrics={monthlyMetrics}
               disabled={loading}
             />
-            <Button onClick={toggleFullScreen} size="icon" variant="outline">
+            <Button id="expand-button" onClick={toggleFullScreen} size="icon" variant="outline">
               {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </Button>
           </div>

@@ -254,11 +254,12 @@ const ExcelDownload: React.FC<ExcelDownloadProps> = ({
 
   return (
     <Button
+    id='download-button'
       onClick={handleDownload}
       size="icon"
       variant="outline"
       className={buttonClassName}
-      disabled={disabled}
+      disabled={disabled} 
     >
       <FileDown className="h-4 w-4" />
     </Button>

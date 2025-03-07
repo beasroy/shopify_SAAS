@@ -492,7 +492,7 @@ export default function ConversionTable({
   };
 
   return (
-    <div className="w-full rounded-lg border flex flex-col">
+    <div id='age-report-table' className="w-full rounded-lg border flex flex-col">
       <div className={`relative overflow-x-auto ${getTableHeight()}`} onScroll={isFullScreen ? handleScroll : undefined}>
         <table className="w-full">
           <thead>

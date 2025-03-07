@@ -10,13 +10,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { format, endOfMonth } from "date-fns"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
-import { useBrand } from '@/context/BrandContext'
 import { cn } from "@/lib/utils"
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store'
 
 export default function BrandPerformanceDashboard() {
-  const { brands } = useBrand()
+  const brands = useSelector((state:RootState)=>state.brand.brands)
   const [selectedBrands, setSelectedBrands] = useState<Array<{
     brandId: string,
     name: string,
@@ -40,7 +41,20 @@ export default function BrandPerformanceDashboard() {
 
   const getAchievedSales = useCallback(async (brandId: string) => {
     try {
-      const response = await axios.get(`${baseURL}/api/shopify/dailysales/${brandId}`, { withCredentials: true });
+      // Get the first day of the current month for the target
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      // Format dates for API call
+      const startDate = format(firstDayOfMonth, 'yyyy-MM-dd');
+      const endDate = format(currentDate, 'yyyy-MM-dd');
+      
+      // Update API endpoint to include date range
+      const response = await axios.get(
+        `${baseURL}/api/shopify/dailysales/${brandId}?startDate=${startDate}&endDate=${endDate}`, 
+        { withCredentials: true }
+      );
+      
       return response.data.totalSales;
     } catch (error) {
       console.error('Error fetching sales data:', error);
@@ -244,7 +258,7 @@ export default function BrandPerformanceDashboard() {
               </div>
               <div>
                 <Label htmlFor="targetAmount">Target Amount</Label>
-                <Input id="targetAmount" name="targetAmount" type="number" value={newBrand.targetAmount} onChange={handleInputChange} placeholder="Enter target amount" />
+                <Input id="targetAmount" name="targetAmount" value={newBrand.targetAmount} onChange={handleInputChange} placeholder="Enter target amount" />
               </div>
               <div>
                 <Label>Target Date</Label>

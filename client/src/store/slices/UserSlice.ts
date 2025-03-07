@@ -7,6 +7,8 @@ interface User {
   brands: string[];
   isClient: boolean;
   isAdmin: boolean;
+  metgod: string;
+  loginCount: number;
 }
 
 interface UserState {

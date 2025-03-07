@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart, Target } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
@@ -131,7 +131,9 @@ export default function CollapsibleSidebar() {
 
     // Add Segment Scope only if user is admin
     const allDashboards = user?.isAdmin
-        ? [...dashboards, { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> }]
+        ? [...dashboards, { name: "Segment Scope", path: `/segment-dashboard/${selectedBrandId}`, icon: <Compass size={20} /> },
+            { name: "Brands Targets", path: `/performance-metrics`, icon: <Target size={20} /> }
+        ]
         : dashboards;
 
     const isItemDisabled = (item: any) => {

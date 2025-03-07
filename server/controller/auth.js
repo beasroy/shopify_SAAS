@@ -206,6 +206,8 @@ export const userLogin = async (req, res) => {
         }
 
         if (type === 'oauth') {
+            user.loginCount += 1;
+            await user.save();
             return res.status(200).json({
                 success: true,
                 message: 'OAuth login successful',
@@ -217,6 +219,7 @@ export const userLogin = async (req, res) => {
                     isAdmin: user.isAdmin,
                     isClient: user.isClient,
                     method: user.method,
+                    loginCount: user.loginCount
                 }
             });
         }
@@ -252,6 +255,9 @@ export const userLogin = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
+        user.loginCount += 1; // Increment login count
+        await user.save(); // Save updated count
+
         return res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -262,7 +268,8 @@ export const userLogin = async (req, res) => {
                 brands: user.brands,
                 isAdmin: user.isAdmin,
                 isClient: user.isClient,
-                method: user.method
+                method: user.method,
+                loginCount: user.loginCount
             }
         });
 
@@ -446,7 +453,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         });
 
     } catch (err) {
-        
+
         console.error(`Error updating ${type} token:`, err);
 
         return res.status(500).json({
@@ -457,18 +464,18 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
     }
 };
 
-export const getShopifyAuthUrl = (req, res)=>{
+export const getShopifyAuthUrl = (req, res) => {
     const { shop } = req.body;
 
     if (!shop) {
-      return res.status(400).json({ error: 'Shop name is required' });
+        return res.status(400).json({ error: 'Shop name is required' });
     }
 
-    const SCOPES ="read_analytics, write_returns, read_returns, write_orders, read_orders, write_products, read_products"
-  
+    const SCOPES = "read_analytics, write_returns, read_returns, write_orders, read_orders, write_products, read_products"
+
     const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
-  
-    res.json({ success: true,authUrl });
+
+    res.json({ success: true, authUrl });
 }
 export const handleShopifyCallback = async (request, res) => {
     const absoluteUrl = `${request.protocol}://${request.get('host')}${request.originalUrl}`;
@@ -480,68 +487,69 @@ export const handleShopifyCallback = async (request, res) => {
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
     if (!code || !shop) {
-      return res.status(400).json({ error: 'Missing required parameters: code or shop' });
+        return res.status(400).json({ error: 'Missing required parameters: code or shop' });
     }
 
     try {
-      const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-      });
+        const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+            client_id: clientId,
+            client_secret: clientSecret,
+            code: code,
+        });
 
-      if (tokenResponse.data && tokenResponse.data.access_token) {
-        const isProduction = process.env.NODE_ENV === 'production';
-        const clientURL = isProduction
-            ? 'https://parallels.messold.com/dashboard'
-            : 'http://localhost:5173/dashboard';
+        if (tokenResponse.data && tokenResponse.data.access_token) {
+            const isProduction = process.env.NODE_ENV === 'production';
+            const clientURL = isProduction
+                ? 'https://parallels.messold.com/dashboard'
+                : 'http://localhost:5173/dashboard';
 
-        return res.redirect(`${clientURL}?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
-      } else {
-        return res.status(500).json({ error: 'Unable to get access token', details: tokenResponse.data });
-      }
+            return res.redirect(`${clientURL}?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
+        } else {
+            return res.status(500).json({ error: 'Unable to get access token', details: tokenResponse.data });
+        }
     } catch (error) {
-      return res.status(500).json({ error: 'Error occurred while fetching the access token', details: error.response?.data || error.message });
+        return res.status(500).json({ error: 'Error occurred while fetching the access token', details: error.response?.data || error.message });
     }
 };
 
 export const getZohoAuthURL = (req, res) => {
     const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +
-    `?client_id=${process.env.ZOHO_CLIENT_ID}` +
-    '&response_type=code' +
-    `&redirect_uri=${process.env.ZOHO_REDIRECT_URI}` +
-    '&scope=Desk.tickets.ALL,Desk.basic.READ,Desk.settings.ALL,Desk.search.READ' +
-    '&access_type=offline';
-    res.json({ success: true,authUrl });
+        `?client_id=${process.env.ZOHO_CLIENT_ID}` +
+        '&response_type=code' +
+        `&redirect_uri=${process.env.ZOHO_REDIRECT_URI}` +
+        '&scope=Desk.tickets.ALL,Desk.basic.READ,Desk.settings.ALL,Desk.search.READ' +
+        '&access_type=offline';
+    res.json({ success: true, authUrl });
 };
 
 export const handleZohoCallback = async (req, res) => {
-  const { code } = req.query;
-  
-  if (!code) {
-    return res.status(400).send('Authorization code is missing');
-  }
-  
-  try {
-    // Exchange code for tokens
-    const tokenResponse = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
-      params: {
-        client_id: process.env.ZOHO_CLIENT_ID,
-        client_secret: process.env.ZOHO_CLIENT_SECRET,
-        redirect_uri: process.env.ZOHO_REDIRECT_URI,
-        code: code,
-        grant_type: 'authorization_code',
-      }});
-      const { refresh_token } = tokenResponse.data;
-      const isProduction = process.env.NODE_ENV === 'production';
+    const { code } = req.query;
 
-      const clientURL = isProduction
-          ? 'https://parallels.messold.com/callback'
-          : 'http://localhost:5173/callback';
+    if (!code) {
+        return res.status(400).send('Authorization code is missing');
+    }
 
-      return res.redirect(clientURL + `?zohoToken=${refresh_token}`);
-    }catch (error) {
-    console.error('Token exchange error:', error.response?.data || error.message);
-    res.status(500).send('Authentication failed');
-  }
+    try {
+        // Exchange code for tokens
+        const tokenResponse = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
+            params: {
+                client_id: process.env.ZOHO_CLIENT_ID,
+                client_secret: process.env.ZOHO_CLIENT_SECRET,
+                redirect_uri: process.env.ZOHO_REDIRECT_URI,
+                code: code,
+                grant_type: 'authorization_code',
+            }
+        });
+        const { refresh_token } = tokenResponse.data;
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        const clientURL = isProduction
+            ? 'https://parallels.messold.com/callback'
+            : 'http://localhost:5173/callback';
+
+        return res.redirect(clientURL + `?zohoToken=${refresh_token}`);
+    } catch (error) {
+        console.error('Token exchange error:', error.response?.data || error.message);
+        res.status(500).send('Authentication failed');
+    }
 };

@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 interface TableProps {
   columns: string[];
   data: any[];
-  additionalData?: any[]; 
   isFullScreen?: boolean;
 }
 

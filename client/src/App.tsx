@@ -23,6 +23,8 @@ import MetaDashboard from './pages/META/AdAccount/MetaDashboard.tsx';
 import CampaignDashboard from './pages/META/Campaign/CampaignDashboard.tsx';
 import ProfilePage from './pages/Profile Page/ProfilePage.tsx';
 import BrandSetupDashboard from './pages/GeneralisedDashboard/BrandSetUpDashboard.tsx';
+import TutorialManager from './components/Tutorial/TutorialManager.tsx';
+import TutorialDriver from './components/Tutorial/TutorialDriver.tsx';
 
 function App() {
   return (
@@ -31,7 +33,10 @@ function App() {
         <UserProvider>
           <BrandProvider>
             <TokenErrorProvider>
+            
               <Router>
+              <TutorialManager>
+                <TutorialDriver />
                 <Toaster />
                 <Routes>
                   <Route path="/" element={<AuthForm />} />
@@ -51,7 +56,9 @@ function App() {
                   <Route path ="/profile" element = {<ProfilePage />} />
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
                 </Routes>
+                </TutorialManager>
               </Router>
+             
             </TokenErrorProvider>
           </BrandProvider>
         </UserProvider>

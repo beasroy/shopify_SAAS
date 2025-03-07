@@ -137,7 +137,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
 
   return (
     <TooltipProvider>
-      <div className="space-y-4 py-2.5">
+      <div id="age-report-performance" className="space-y-4 py-2.5">
         <div className="border border-gray-300 rounded-lg overflow-hidden">
           <div className="flex items-stretch h-9">
             {categories.map((category) => (
@@ -158,7 +158,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
                   <div>
                     
                     {/* Category name and larger color sample */}
-                    <div className="flex items-center gap-3 mb-3">
+                    <div  className="flex items-center gap-3 mb-3">
                       <div className={`w-8 h-8 rounded-lg ${category.bgColor} border border-white/20 flex items-center justify-center`}>
                         <div className={`w-4 h-4 rounded-md ${category.color.replace('text-', 'bg-')}`} />
                       </div>

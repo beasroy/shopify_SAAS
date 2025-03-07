@@ -59,4 +59,29 @@ export default {
     }
   },
   plugins: [tailwindcssAnimate],
+  safelist: [
+    // Background colors
+    'bg-green-500/5',
+    'bg-green-500/10',
+    'bg-blue-500/5',
+    'bg-blue-500/10',
+    'bg-indigo-500/5',
+    'bg-indigo-500/10',
+    'bg-yellow-500/5',
+    'bg-yellow-500/10',
+    // Border colors
+    'border-green-500',
+    'border-blue-500',
+    'border-indigo-500',
+    'border-yellow-500',
+    'border-b-green-500', // Add these
+    'border-b-blue-500',
+    'border-b-indigo-500',
+    'border-b-yellow-500',
+    // Text colors
+    'text-green-500',
+    'text-blue-500',
+    'text-indigo-500',
+    'text-yellow-500',
+  ]
 };

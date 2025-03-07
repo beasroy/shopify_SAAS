@@ -100,7 +100,7 @@ export default function FilterConversions({
               <SelectTrigger>
                 <SelectValue placeholder="Select Column" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent id="metric-dropdown">
                 {availableColumns.map(column => (
                   <SelectItem key={column} value={column}>
                     {column}
@@ -113,7 +113,7 @@ export default function FilterConversions({
               <SelectTrigger>
                 <SelectValue placeholder="Select Operator" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent  id="condition-dropdown">
                 <SelectItem value=">">{'Greater Than ( > )'}</SelectItem>
                 <SelectItem value=">=">{'Greater Than or Equal To ( >= )'}</SelectItem>
                 <SelectItem value="<">{'Less Than ( < )'}</SelectItem>
@@ -123,6 +123,7 @@ export default function FilterConversions({
             </Select>
 
             <Input
+            id="value-input"
               type="number"
               placeholder="Enter Value"
               value={value === undefined ? "" : value}
@@ -130,11 +131,11 @@ export default function FilterConversions({
               className="w-full"
             />
 
-            <div className="flex flex-row gap-2 items-center justify-center w-full">
+            <div id="Apply the Filter" className="flex flex-row gap-2 items-center justify-center w-full">
               <Button onClick={handleAddFilter} className="w-full">
                 Add Filter
               </Button>
-              <Button variant="destructive" className="w-full" onClick={handleClearFilters}>
+              <Button id="clear-button" variant="destructive" className="w-full" onClick={handleClearFilters}>
                 Clear
               </Button>
             </div>

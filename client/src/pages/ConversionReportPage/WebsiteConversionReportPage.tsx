@@ -35,12 +35,6 @@ const WebsiteConversionReportPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channel');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const colorInfo = [
-    { color: 'bg-green-100', condition: 'High Traffic, High Conversion' },
-    { color: 'bg-blue-100', condition: 'High Traffic, Low Conversion' },
-    { color: 'bg-yellow-100', condition: 'Low Traffic, High Conversion' },
-    { color: 'bg-red-50', condition: 'Low Traffic, Low Conversion' },
-  ];
 
   const tabs = [
     { label: 'Channel', value: 'channel' },
@@ -135,8 +129,6 @@ const WebsiteConversionReportPage: React.FC = () => {
             title="Campaign and Website Performance"
             Icon={Radar}
             showDatePicker={true}
-            showColorPalette={true}
-            colorInfo={colorInfo}
            />
 
           {/* Tabs */}

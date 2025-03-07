@@ -19,7 +19,11 @@ const userSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Brand' 
         }
-    ]
+    ],
+    loginCount: { 
+        type: Number, 
+        default: 0 
+    }
 });
 
 export default mongoose.model("User", userSchema);

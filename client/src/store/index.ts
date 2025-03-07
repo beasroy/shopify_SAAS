@@ -7,6 +7,7 @@ import userReducer from "./slices/UserSlice.ts"
 import dateReducer from "./slices/DateSlice.ts"
 import campaignGroupsReducer from './slices/CampaignGroupSlice.ts';
 import campaignLabelsReducer from './slices/campaignLabelsSlice.ts';
+import tutorialsReducer from "./slices/TutorialSlice.ts"
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -16,13 +17,14 @@ const rootReducer = combineReducers({
   date: dateReducer,
   campaignGroups: campaignGroupsReducer,
   campaignLabels: campaignLabelsReducer,
+  tutorials: tutorialsReducer
 });
 
 // Persist config - specify which slices to persist
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels"], // Persist both conversionFilters & brand
+  whitelist: ["conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials"], // Persist both conversionFilters & brand
 };
 
 // Apply persistReducer to the rootReducer

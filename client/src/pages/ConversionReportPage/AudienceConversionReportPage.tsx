@@ -34,12 +34,6 @@ const AudienceConversionReportPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('age');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const colorInfo = [
-    { color: 'bg-green-100', condition: 'High Traffic, High Conversion' },
-    { color: 'bg-blue-100', condition: 'High Traffic, Low Conversion' },
-    { color: 'bg-yellow-100', condition: 'Low Traffic, High Conversion' },
-    { color: 'bg-red-50', condition: 'Low Traffic, Low Conversion' },
-  ];
 
   const tabs = [
     { label: 'Age', value: 'age' },
@@ -132,8 +126,6 @@ const AudienceConversionReportPage: React.FC = () => {
             title="Audience & Traffic sources"
             Icon={Radar}
             showDatePicker={true}
-            showColorPalette={true}
-            colorInfo={colorInfo}
            />
 
           {/* Tabs */}
@@ -145,7 +137,7 @@ const AudienceConversionReportPage: React.FC = () => {
         {/* Scrollable Content */}
         <div ref={containerRef} className="flex-1 overflow-auto">
           <div className="px-6 py-4 space-y-6">
-            <div id="age" ref={refs.age}>
+            <div id="age-conversion-report" ref={refs.age}>
               <AgeConversion dateRange={{ 
                 from: date.from ? new Date(date.from) : undefined,
                 to: date.to ? new Date(date.to) : undefined 

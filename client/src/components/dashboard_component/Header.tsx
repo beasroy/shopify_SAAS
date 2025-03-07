@@ -1,7 +1,8 @@
-import { Settings, RefreshCw, Palette } from "lucide-react";
+import { Settings, RefreshCw} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "./DatePickerWithRange";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import HeaderTutorialButton from "../Tutorial/HeaderTutorialButton";
 
 
 interface HeaderProps {
@@ -10,28 +11,24 @@ interface HeaderProps {
   showDatePicker?: boolean;
   showSettings?: boolean;
   showRefresh?: boolean;
-  showColorPalette?: boolean;
   isLoading?: boolean;
   handleManualRefresh?: () => void;
   locale?: "en-IN" | "en-US";
   setLocale?: (value: "en-IN" | "en-US") => void;
-  colorInfo?: { color: string; condition: string }[];
 }
-
+ 
 export default function Header({
   title,
   Icon,
   showDatePicker = false,
   showSettings = false,
   showRefresh = false,
-  showColorPalette = false,
   isLoading = false,
   handleManualRefresh,
   locale,
   setLocale,
-  colorInfo = [],
 }: HeaderProps) {
- 
+
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300">
@@ -50,7 +47,7 @@ export default function Header({
         <div className="flex flex-row items-center space-x-2">
           {showDatePicker && (
             <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-              <DatePickerWithRange 
+              <DatePickerWithRange
                 defaultDate={{
                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                   to: new Date()
@@ -106,29 +103,7 @@ export default function Header({
               </PopoverContent>
             </Popover>
           )}
-
-          {showColorPalette && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Palette className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="grid gap-4">
-                  <h3 className="font-medium leading-none">Color Information</h3>
-                  <div className="grid gap-2">
-                    {colorInfo.map(({ color, condition }) => (
-                      <div key={color} className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded ${color}`} />
-                        <span className="text-xs">{condition}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+<HeaderTutorialButton />
         </div>
       </div>
     </header>

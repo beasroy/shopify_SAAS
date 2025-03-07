@@ -1,5 +1,4 @@
 import {
-  Activity,
   ArrowDownIcon,
   ArrowUpIcon,
   CheckCircle2,
@@ -12,9 +11,9 @@ import {
   Coins,
   TrendingUpDown,
   Clock,
-  CalendarDays, History
+  CalendarDays
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useSelector } from "react-redux"
 import type { RootState } from "@/store"
@@ -24,7 +23,6 @@ import DashboardSkeleton from "./components/DashboardSkeleton"
 import { Button } from "@/components/ui/button"
 import { FacebookLogo, GoogleLogo } from "../AnalyticsDashboard/AdAccountsMetricsCard"
 import { Ga4Logo, ShopifyLogo } from "./components/OtherPlatformModalContent"
-import { GiFlatPlatform } from "react-icons/gi"
 
 export type Trend = "up" | "down"
 export type Period = "Today" | "Last 7 Days" | "Last 30 Days"
@@ -77,24 +75,29 @@ interface MetricRowProps {
   trend: Trend
 }
 
-function MetricRow({ title, icon: Icon, current, previous, change, trend }: MetricRowProps) {
+export function MetricRow({ title, icon: Icon, current, previous, change, trend }: MetricRowProps) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
       <div className="flex items-center space-x-3">
-        <div className="p-2 rounded-lg bg-slate-100">
-          <Icon className="h-4 w-4 text-slate-600" />
+        <div className="p-2 rounded-md bg-slate-100/80 shadow-sm">
+          <Icon className="h-4 w-4 text-slate-700" />
         </div>
-        <span className="text-sm font-medium text-slate-700">{title}</span>
+        <span className="text-sm font-medium text-slate-800">{title}</span>
       </div>
       <div className="flex items-center space-x-4">
         <div className="text-right">
-          <div className="text-sm font-semibold">{current.toLocaleString()}</div>
-          <div className="text-xs text-slate-500">vs {previous.toLocaleString()}</div>
+          <div className="text-sm font-semibold text-slate-800">{current.toLocaleString()}</div>
+          <div className="text-xs text-slate-500 flex items-center justify-end">
+            <span className="mr-1">vs</span>
+            <span>{previous.toLocaleString()}</span>
+          </div>
         </div>
         <div
           className={cn(
-            "px-2 py-1 rounded-full text-xs font-medium flex items-center min-w-[60px] justify-center",
-            trend === "up" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+            "px-2 py-1 rounded-full text-xs font-medium flex items-center justify-center shadow-sm w-[80px]",
+            trend === "up"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+              : "bg-rose-50 text-rose-700 border border-rose-100",
           )}
         >
           {trend === "up" ? <ArrowUpIcon className="h-3 w-3 mr-1" /> : <ArrowDownIcon className="h-3 w-3 mr-1" />}
@@ -105,6 +108,8 @@ function MetricRow({ title, icon: Icon, current, previous, change, trend }: Metr
   )
 }
 
+
+
 interface PeriodCardProps {
   period: Period
   data: {
@@ -114,162 +119,237 @@ interface PeriodCardProps {
   }
 }
 
-function PeriodCard({ period, data }: PeriodCardProps) {
-  const [selectedTab, setSelectedTab] = useState("analytics");
-
+export function PeriodCard({ period, data }: PeriodCardProps) {
   const gradients = {
-    "Today": "from-blue-50 to-indigo-50",
-    "Last 7 Days": "from-purple-50 to-pink-50",
-    "Last 30 Days": "from-orange-50 to-amber-50"
-  };
+    Today: "from-blue-100/70 to-indigo-100/70",
+    "Last 7 Days": "from-violet-100/70 to-purple-100/70",
+    "Last 30 Days": "from-amber-100/70 to-orange-100/70",
+  }
 
-  const dateRanges = data.analytics?.dateRanges || data.facebook?.dateRanges || data.google?.dateRanges;
+  const dateRanges = data.analytics?.dateRanges || data.facebook?.dateRanges || data.google?.dateRanges
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    })
+  }
 
   return (
-    <Card className="overflow-auto">
-      {/* Header Section */}
-      <CardHeader className={`bg-gradient-to-r p-3 flex flex-row justify-between items-center ${gradients[period]}`}>
-        <div className="flex items-center space-x-2">
-          <Clock className="h-5 w-5 text-slate-700" />
-          <CardTitle className="text-sm font-semibold text-slate-800">{period}</CardTitle>
-        </div>
+    <Card className="overflow-hidden border-slate-200 shadow-md hover:shadow-lg transition-shadow duration-300 h-[390px] flex flex-col">
+      <CardHeader className={`bg-gradient-to-r p-4 ${gradients[period]} border-b border-slate-200 flex-shrink-0`}>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2.5">
+            <div className="bg-white/80 p-2 rounded-full shadow-sm">
+              <Clock className="h-5 w-5 text-slate-700" />
+            </div>
+            <CardTitle className="text-base font-semibold text-slate-800">{period}</CardTitle>
+          </div>
 
-        {/* Date Ranges */}
-        {dateRanges && (
-            <div className="flex flex-col items-end text-xs">
-              <div className="flex items-center gap-2 mb-1.5">
+          {dateRanges && (
+            <div className="bg-white/90 rounded-md px-3 py-1.5 shadow-sm border border-slate-200 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                 <CalendarDays className="h-3.5 w-3.5 text-slate-600" />
-                <span className="font-medium text-slate-700">
-                {new Date(dateRanges.current.start).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: '2-digit',
-                })} - 
-                {new Date(dateRanges.current.end).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: '2-digit',
-                })}
+                <span>
+                  {formatDate(dateRanges.current.start)} - {formatDate(dateRanges.current.end)}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-slate-500">
-                <History className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5 mt-1 text-slate-500 text-[10px]">
+                <span className="text-slate-400">vs</span>
                 <span>
-                {new Date(dateRanges.previous.start).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: '2-digit',
-                })} - 
-                {new Date(dateRanges.previous.end).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: '2-digit',
-                })}
-              </span>
+                  {formatDate(dateRanges.previous.start)} - {formatDate(dateRanges.previous.end)}
+                </span>
               </div>
             </div>
           )}
+        </div>
       </CardHeader>
 
-      {/* Custom Tabs */}
-      <div className="flex border-b border-gray-300">
-        <button
-          className={`flex-1 py-2 text-center ${selectedTab === "analytics" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
-          onClick={() => setSelectedTab("analytics")}
-        >
-          Analytics
-        </button>
-        <button
-          className={`flex-1 py-2 text-center ${selectedTab === "adMetrics" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
-          onClick={() => setSelectedTab("adMetrics")}
-        >
-          Ad Metrics
-        </button>
-      </div>
+      <CardContent className="p-0 overflow-y-auto flex-grow">
+        <div className="px-5 py-3 space-y-4">
+          {/* Analytics Section */}
+          {data.analytics && (
+            <div>
+              <div className="flex items-center mb-3">
+                <div className="h-4 w-1 bg-blue-500 rounded-full mr-2.5"></div>
+                <h3 className="text-sm font-semibold text-slate-800">Analytics</h3>
+              </div>
+              <div className="space-y-0.5">
+                <MetricRow title="Sessions" icon={Users} {...data.analytics.sessions!} />
+                <MetricRow title="Cart Additions" icon={ShoppingCart} {...data.analytics.addToCarts!} />
+                <MetricRow title="Checkouts" icon={ShoppingBag} {...data.analytics.checkouts!} />
+                <MetricRow title="Purchases" icon={Tag} {...data.analytics.purchases!} />
+              </div>
+            </div>
+          )}
 
-      <CardContent className="px-5 py-2">
-        {selectedTab === "analytics" && (
-          <div className="space-y-0.5">
-            {data.analytics && (
-              <>
-                <MetricRow title="Sessions" icon={Users} {...data.analytics.sessions} />
-                <MetricRow title="Cart Additions" icon={ShoppingCart} {...data.analytics.addToCarts} />
-                <MetricRow title="Checkouts" icon={ShoppingBag} {...data.analytics.checkouts} />
-                <MetricRow title="Purchases" icon={Tag} {...data.analytics.purchases} />
-              </>
-            )}
-          </div>
-        )}
+          {/* Facebook Section */}
+          {data.facebook && (
+            <div>
+              <div className="flex items-center mb-3">
+                <div className="h-4 w-1 bg-indigo-500 rounded-full mr-2.5"></div>
+                <h3 className="text-sm font-semibold text-slate-800">Meta</h3>
+              </div>
+              <div className="space-y-0.5">
+                <MetricRow title="Meta Spend" icon={Coins} {...data.facebook.spend!} />
+                <MetricRow title="Meta ROAS" icon={TrendingUpDown} {...data.facebook.roas!} />
+              </div>
+            </div>
+          )}
 
-        {selectedTab === "adMetrics" && (
-          <div className="space-y-1">
-            {data.facebook && (
-              <>
-                <MetricRow title="Meta Spend" icon={Coins} {...data.facebook.spend} />
-                <MetricRow title="Meta ROAS" icon={TrendingUpDown} {...data.facebook.roas} />
-              </>
-            )}
-            {data.google && (
-              <>
-                <MetricRow title="Google Spend" icon={Coins} {...data.google.spend} />
-                <MetricRow title="Google ROAS" icon={TrendingUpDown} {...data.google.roas} />
-              </>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-
-function PlatformCard({
-  name,
-  icon: Icon,
-  connected,
-  accounts,
-  accountLabel,
-  bgColor,
-  iconColor,
-  borderColor,
-}: {
-  name: string
-  icon: any
-  connected: boolean
-  accounts: String[];
-  accountLabel: string
-  bgColor: string
-  iconColor: string
-  borderColor: string
-}) {
-  return (
-    <Card className={cn("overflow-hidden", borderColor)}>
-      <CardHeader className={cn("flex flex-row items-center justify-between space-y-0 pb-2", bgColor)}>
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Icon className={cn("h-4 w-4 mr-2", iconColor)} />
-          {name}
-        </CardTitle>
-        {connected ? (
-          <div className="flex items-center text-green-500 text-xs font-medium">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Connected
-          </div>
-        ) : (
-          <div className="flex items-center text-red-500 text-xs font-medium">
-            <XCircle className="h-3 w-3 mr-1" />
-            Not Connected
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        <CardDescription>
-          {connected
-            ? `${accounts.length} ${accountLabel}${accounts.length !== 1 ? "s" : ""} Connected`
-            : "No accounts connected"}
-        </CardDescription>
+          {/* Google Section */}
+          {data.google && (
+            <div>
+              <div className="flex items-center mb-3">
+                <div className="h-4 w-1 bg-emerald-500 rounded-full mr-2.5"></div>
+                <h3 className="text-sm font-semibold text-slate-800">Google</h3>
+              </div>
+              <div className="space-y-0.5">
+                <MetricRow title="Google Spend" icon={Coins} {...data.google.spend!} />
+                <MetricRow title="Google ROAS" icon={TrendingUpDown} {...data.google.roas!} />
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
+}
+
+interface Platform {
+  id: string;
+  name: string;
+  icon: React.ElementType;
+  connected: boolean;
+  accounts: string[];
+  primaryColor: string;
+}
+
+interface PlatformConnectionsProps {
+  platforms: Platform[];
+}
+
+export function PlatformConnections({ platforms }: PlatformConnectionsProps) {
+  // Function to get correct border color class based on platform and connection status
+  const getBorderColorClass = (platform:Platform) => {
+    if (!platform.connected) return 'border-gray-200';
+    
+    switch (platform.id) {
+      case 'shopify': return 'border-green-500';
+      case 'facebook': return 'border-blue-500';
+      case 'ga4': return 'border-yellow-500';
+      case 'google-ads': return 'border-indigo-500';
+      default: return 'border-gray-200';
+    }
+  };
+  
+  // Function to get correct background color class based on platform and connection status
+  const getBgColorClass = (platform:Platform) => {
+    if (!platform.connected) return 'bg-gray-50 hover:bg-gray-100';
+    
+    switch (platform.id) {
+      case 'shopify': return 'bg-green-500/5 hover:bg-green-500/10';
+      case 'facebook': return 'bg-blue-500/5 hover:bg-blue-500/10';
+      case 'ga4': return 'bg-yellow-500/5 hover:bg-yellow-500/10';
+      case 'google-ads': return 'bg-indigo-500/5 hover:bg-indigo-500/10';
+      default: return 'bg-gray-50 hover:bg-gray-100';
+    }
+  };
+  
+  // Function to get icon background color
+  const getIconBgColorClass = (platform:Platform) => {
+    if (!platform.connected) return 'bg-gray-100';
+    
+    switch (platform.id) {
+      case 'shopify': return 'bg-green-500/10';
+      case 'facebook': return 'bg-blue-500/10';
+      case 'ga4': return 'bg-yellow-500/10';
+      case 'google-ads': return 'bg-indigo-500/10';
+      default: return 'bg-gray-100';
+    }
+  };
+  
+  // Function to get icon text color
+  const getIconTextColorClass = (platform:Platform) => {
+    if (!platform.connected) return 'text-gray-400';
+    
+    switch (platform.id) {
+      case 'shopify': return 'text-green-500';
+      case 'facebook': return 'text-blue-500';
+      case 'ga4': return 'text-yellow-500';
+      case 'google-ads': return 'text-indigo-500';
+      default: return 'text-gray-400';
+    }
+  };
+  
+  // Function to get status text color
+  const getStatusTextColorClass = (platform:Platform) => {
+    if (!platform.connected) return 'text-gray-400';
+    
+    switch (platform.id) {
+      case 'shopify': return 'text-green-500';
+      case 'facebook': return 'text-blue-500';
+      case 'ga4': return 'text-yellow-500';
+      case 'google-ads': return 'text-indigo-500';
+      default: return 'text-gray-400';
+    }
+  };
+
+  return (
+    <div className="w-full bg-white rounded-lg shadow-sm border-t-2 border-r-2 border-l-2">
+      {/* Status Header */}
+      <div className="px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Platform Connections</h3>
+          <span className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded-full">
+            {platforms.filter(p => p.connected).length} of {platforms.length} Connected
+          </span>
+        </div>
+      </div>
+
+      {/* Segmented Bar */}
+      <div className="flex w-full">
+        {platforms.map((platform) => (
+          <div
+            key={platform.id}
+            className={`
+              flex-1 py-3 px-4
+              ${getBgColorClass(platform)}
+              border ${getBorderColorClass(platform)}
+              transition-colors cursor-pointer relative group
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-full ${getIconBgColorClass(platform)}`}>
+                <platform.icon
+                  className={`h-4 w-4 ${getIconTextColorClass(platform)}`}
+                />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className={`text-xs font-medium truncate ${
+                  platform.connected ? 'text-gray-700' : 'text-gray-400'
+                }`}>
+                  {platform.name}
+                </span>
+                <div className="flex items-center gap-1">
+                  {platform.connected ? (
+                    <CheckCircle2 className={`h-3 w-3 ${getStatusTextColorClass(platform)}`} />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-gray-400" />
+                  )}
+                  <span className={`text-[10px] truncate ${getStatusTextColorClass(platform)}`}>
+                    {platform.connected
+                      ? `${platform.accounts.length} ${platform.accounts.length === 1 ? 'account' : 'accounts'}`
+                      : 'Not connected'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const SummaryDashboard: React.FC = () => {
@@ -354,6 +434,41 @@ const SummaryDashboard: React.FC = () => {
 
   const periods: Period[] = ["Today", "Last 7 Days", "Last 30 Days"]
 
+  const platforms = [
+    {
+      id: 'shopify',
+      name: 'Shopify',
+      icon: ShopifyLogo,
+      connected: shopifyAccount.length > 0 ? true : false,
+      accounts: shopifyAccount,
+      primaryColor: 'green-500'
+    },
+    {
+      id: 'facebook',
+      name: 'Facebook Ads',
+      icon: FacebookLogo,
+      connected: fbAccounts.length > 0 ? true : false,
+      accounts: fbAccounts,
+      primaryColor: 'blue-500'
+    },
+    {
+      id: 'ga4',
+      name: 'GA4',
+      icon: Ga4Logo,
+      connected: ga4Accounts.length > 0 ? true : false,
+      accounts: ga4Accounts,
+      primaryColor: 'yellow-500'
+    },
+    {
+      id: 'google-ads',
+      name: 'Google Ads',
+      icon: GoogleLogo,
+      connected: googleAccount.length > 0 ? true : false,
+      accounts: googleAccount,
+      primaryColor: 'indigo-500'
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto p-8">
@@ -362,7 +477,7 @@ const SummaryDashboard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="h-12 w-1 bg-blue-500 rounded-full" />
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Welcome Back, {userName}</h1>
+                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Welcome Back, {userName}</h1>
                 <p className="text-slate-500 mt-1">Here's your business performance overview</p>
               </div>
             </div>
@@ -373,67 +488,16 @@ const SummaryDashboard: React.FC = () => {
               variant="outline"
               className="hover:bg-slate-100"
             >
-              <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-              Refresh
+              <RefreshCw className={cn("h-4 w-4 ", loading && "animate-spin")} />
             </Button>
           </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex flex-row items-center gap-2 mb-4">
-            <GiFlatPlatform className="h-6 w-6" />
-            <h2 className="text-xl font-semibold text-slate-800">Connected Platforms</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <PlatformCard
-              name="Shopify"
-              icon={ShopifyLogo}
-              connected={shopifyAccount.length > 0}
-              accounts={shopifyAccount}
-              accountLabel="Store"
-              bgColor="bg-green-50"
-              iconColor="text-green-600"
-              borderColor="border-green-200"
-            />
-            <PlatformCard
-              name="Facebook Ads"
-              icon={FacebookLogo}
-              connected={fbAccounts.length > 0}
-              accounts={fbAccounts}
-              accountLabel="Ad Account"
-              bgColor="bg-blue-50"
-              iconColor="text-blue-600"
-              borderColor="border-blue-200"
-            />
-            <PlatformCard
-              name="Google Ads"
-              icon={GoogleLogo}
-              connected={googleAccount.length > 0}
-              accounts={googleAccount}
-              accountLabel="Google Ads Account"
-              bgColor="bg-red-50"
-              iconColor="text-red-600"
-              borderColor="border-red-200"
-            />
-            <PlatformCard
-              name="GA4"
-              icon={Ga4Logo}
-              connected={ga4Accounts.length > 0}
-              accounts={ga4Accounts}
-              accountLabel="GA4 Account"
-              bgColor="bg-yellow-50"
-              iconColor="text-amber-600"
-              borderColor="border-amber-200"
-            />
-          </div>
+       <div className = "mb-8">
+        <PlatformConnections platforms={platforms} />
         </div>
-
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-6">
-            <Activity className="h-6 w-6" />
-            <h2 className="text-xl font-semibold text-slate-800">Performance Overview</h2>
-          </div>
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {periods.map((period) => (
               <PeriodCard
                 key={period}

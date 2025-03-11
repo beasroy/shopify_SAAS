@@ -19,7 +19,7 @@ import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 
 export type Trend = "up" | "down";
-export type Period = "Today" | "Last 7 Days" | "Last 30 Days";
+export type Period = "Yesterday" | "Last 7 Days" | "Last 30 Days";
 
 export interface DateRange {
   start: string;
@@ -27,39 +27,35 @@ export interface DateRange {
 }
 
 export interface MetricData {
+  period: Period;
+  dateRange: {
+    current: DateRange;
+    previous: DateRange;
+  };
   current: number;
   previous: number;
   change: number;
   trend: Trend;
 }
 
-export interface PeriodData {
-  title: string;
-  dateRanges: {
-    current: DateRange;
-    previous: DateRange;
-  };
-  sessions: MetricData;
-  addToCarts: MetricData;
-  checkouts: MetricData;
-  purchases: MetricData;
-  spend: MetricData;
-  roas: MetricData;
+export interface MetricsData {
+  [metric: string]: MetricData[] | undefined;
 }
 
 export interface Summary {
-  summaries: Record<Period, PeriodData>;
+  success: boolean;
+  metricsSummary: MetricsData;
 }
 
 // Styling constants for visual consistency
 const PERIOD_COLORS = {
-  "Today": "bg-blue-500",
+  "Yesterday": "bg-blue-500",
   "Last 7 Days": "bg-purple-500",
   "Last 30 Days": "bg-amber-500"
 };
 
 const PERIOD_BG_COLORS = {
-  "Today": "bg-blue-50 border-blue-100",
+  "Yesterday": "bg-blue-50 border-blue-100",
   "Last 7 Days": "bg-purple-50 border-purple-100",
   "Last 30 Days": "bg-amber-50 border-amber-100"
 };
@@ -70,7 +66,7 @@ const formatValue = (value: number, isRoas = false) => {
 };
 
 // Component for individual period metric
-const PeriodMetric = ({ period, value, previousValue, change, trend }: { 
+const PeriodMetric = ({ period, value, previousValue, change, trend, isRoas = false }: { 
   period: Period, 
   value: number, 
   previousValue: number, 
@@ -78,8 +74,6 @@ const PeriodMetric = ({ period, value, previousValue, change, trend }: {
   trend: Trend,
   isRoas?: boolean
 }) => {
-  const isRoas = period.includes("ROAS");
-  
   return (
     <div className={cn("p-3 rounded-md border shadow-sm flex flex-col", PERIOD_BG_COLORS[period])}>
       <div className="flex items-center mb-1">
@@ -109,15 +103,21 @@ const PeriodMetric = ({ period, value, previousValue, change, trend }: {
 const MetricGroupCard = ({ 
   title, 
   icon: Icon, 
-  periodData, 
+  metricsData = [], 
   isRoas = false
 }: { 
   title: string, 
   icon: React.FC<any>, 
-  periodData: { [key in Period]?: MetricData }, 
+  metricsData: MetricData[], 
   isRoas?: boolean 
 }) => {
-  const periods: Period[] = ["Today", "Last 7 Days", "Last 30 Days"];
+  const periods: Period[] = ["Yesterday", "Last 7 Days", "Last 30 Days"];
+  
+  // Convert array to object mapped by period for easier lookup
+  const metricsByPeriod = metricsData.reduce((acc, metric) => {
+    acc[metric.period] = metric;
+    return acc;
+  }, {} as Record<Period, MetricData>);
   
   return (
     <Card className="border-slate-200 shadow-md">
@@ -130,14 +130,14 @@ const MetricGroupCard = ({
       <CardContent className="p-4 pt-3">
         <div className="grid grid-cols-3 gap-3">
           {periods.map(period => 
-            periodData[period] ? (
+            metricsByPeriod[period] ? (
               <PeriodMetric
                 key={period}
                 period={period}
-                value={periodData[period]!.current}
-                previousValue={periodData[period]!.previous}
-                change={periodData[period]!.change}
-                trend={periodData[period]!.trend}
+                value={metricsByPeriod[period].current}
+                previousValue={metricsByPeriod[period].previous}
+                change={metricsByPeriod[period].change}
+                trend={metricsByPeriod[period].trend}
                 isRoas={isRoas}
               />
             ) : (
@@ -160,16 +160,16 @@ const SummaryDashboard: React.FC = () => {
   const userName = user?.username;
   const [loading, setLoading] = useState(false);
   const [analytics, setAnalytics] = useState<Summary>();
-  const [facebookad, setFacebookad] = useState<Summary>();
-  const [googlead, setGooglead] = useState<Summary>();
+  const [facebookAds, setFacebookAds] = useState<Summary>();
+  const [googleAds, setGoogleAds] = useState<Summary>();
 
   const axiosInstance = createAxiosInstance();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setAnalytics(undefined);
-    setFacebookad(undefined);
-    setGooglead(undefined);
+    setFacebookAds(undefined);
+    setGoogleAds(undefined);
 
     const requests = [
       {
@@ -203,8 +203,8 @@ const SummaryDashboard: React.FC = () => {
     results.forEach((result, index) => {
       if (result.status === "fulfilled") {
         if (requests[index].key === "analytics") setAnalytics(result.value.data);
-        if (requests[index].key === "facebookAds") setFacebookad(result.value.data);
-        if (requests[index].key === "googleAds") setGooglead(result.value.data);
+        if (requests[index].key === "facebookAds") setFacebookAds(result.value.data);
+        if (requests[index].key === "googleAds") setGoogleAds(result.value.data);
       } else {
         console.error(`Error fetching ${requests[index].key} data:`, result.reason);
       }
@@ -215,78 +215,11 @@ const SummaryDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000);
-    return () => clearInterval(intervalId);
   }, [fetchData]);
 
   if (loading) {
     return <DashboardSkeleton />;
   }
-
-  const periods: Period[] = ["Today", "Last 7 Days", "Last 30 Days"];
-  
-  // Collect data across periods for each metric
-  const analyticsMetrics = {
-    sessions: periods.reduce((acc, period) => {
-      if (analytics?.summaries[period]?.sessions) {
-        acc[period] = analytics.summaries[period].sessions;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-    
-    addToCarts: periods.reduce((acc, period) => {
-      if (analytics?.summaries[period]?.addToCarts) {
-        acc[period] = analytics.summaries[period].addToCarts;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-    
-    checkouts: periods.reduce((acc, period) => {
-      if (analytics?.summaries[period]?.checkouts) {
-        acc[period] = analytics.summaries[period].checkouts;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-    
-    purchases: periods.reduce((acc, period) => {
-      if (analytics?.summaries[period]?.purchases) {
-        acc[period] = analytics.summaries[period].purchases;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-  };
-  
-  const metaMetrics = {
-    spend: periods.reduce((acc, period) => {
-      if (facebookad?.summaries[period]?.spend) {
-        acc[period] = facebookad.summaries[period].spend;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-    
-    roas: periods.reduce((acc, period) => {
-      if (facebookad?.summaries[period]?.roas) {
-        acc[period] = facebookad.summaries[period].roas;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-  };
-  
-  const googleMetrics = {
-    spend: periods.reduce((acc, period) => {
-      if (googlead?.summaries[period]?.spend) {
-        acc[period] = googlead.summaries[period].spend;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-    
-    roas: periods.reduce((acc, period) => {
-      if (googlead?.summaries[period]?.roas) {
-        acc[period] = googlead.summaries[period].roas;
-      }
-      return acc;
-    }, {} as { [key in Period]?: MetricData }),
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -312,44 +245,75 @@ const SummaryDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {/* Analytics Section */}
-          <div>
-            <div className="flex items-center mb-3">
-              <div className="h-4 w-1 bg-blue-500 rounded-full mr-2.5"></div>
-              <h2 className="text-lg font-semibold text-slate-800">Analytics</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 ">
-              <MetricGroupCard title="Sessions" icon={Users} periodData={analyticsMetrics.sessions} />
-              <MetricGroupCard title="Cart Additions" icon={ShoppingCart} periodData={analyticsMetrics.addToCarts} />
-              <MetricGroupCard title="Checkouts" icon={ShoppingBag} periodData={analyticsMetrics.checkouts} />
-              <MetricGroupCard title="Purchases" icon={Tag} periodData={analyticsMetrics.purchases} />
-            </div>
-          </div>
-          
+            <div>
+              <div className="flex items-center mb-3">
+                <div className="h-4 w-1 bg-amber-500 rounded-full mr-2.5"></div>
+                <h2 className="text-lg font-semibold text-slate-800">Analytics</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 ">
+                  <MetricGroupCard 
+                    title="Sessions" 
+                    icon={Users} 
+                    metricsData={analytics?.metricsSummary.sessions || []} 
+                  />
+                  <MetricGroupCard 
+                    title="Cart Additions" 
+                    icon={ShoppingCart} 
+                    metricsData={analytics?.metricsSummary.addToCarts || []} 
+                  />
+                  <MetricGroupCard 
+                    title="Checkouts" 
+                    icon={ShoppingBag} 
+                    metricsData={analytics?.metricsSummary.checkouts || []} 
+                  />
+                  <MetricGroupCard 
+                    title="Purchases" 
+                    icon={Tag} 
+                    metricsData={analytics?.metricsSummary.purchases || []} 
+                  />
+              </div>
+            </div>         
           {/* Meta Section */}
-          <div>
-            <div className="flex items-center mb-3 mt-6">
-              <div className="h-4 w-1 bg-indigo-500 rounded-full mr-2.5"></div>
-              <h2 className="text-lg font-semibold text-slate-800">Meta</h2>
+            <div>
+              <div className="flex items-center mb-3 mt-6">
+                <div className="h-4 w-1 bg-indigo-500 rounded-full mr-2.5"></div>
+                <h2 className="text-lg font-semibold text-slate-800">Meta</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                  <MetricGroupCard 
+                    title="Meta Spend" 
+                    icon={Coins} 
+                    metricsData={facebookAds?.metricsSummary.spend || []} 
+                  />
+                  <MetricGroupCard 
+                    title="Meta ROAS" 
+                    icon={TrendingUpDown} 
+                    metricsData={facebookAds?.metricsSummary.roas || []} 
+                    isRoas={true} 
+                  />
+              </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <MetricGroupCard title="Meta Spend" icon={Coins} periodData={metaMetrics.spend} />
-              <MetricGroupCard title="Meta ROAS" icon={TrendingUpDown} periodData={metaMetrics.roas} isRoas={true} />
+            <div>
+              <div className="flex items-center mb-3 mt-6">
+                <div className="h-4 w-1 bg-emerald-500 rounded-full mr-2.5"></div>
+                <h2 className="text-lg font-semibold text-slate-800">Google</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                  <MetricGroupCard 
+                    title="Google Spend" 
+                    icon={Coins} 
+                    metricsData={googleAds?.metricsSummary.spend ?? []} 
+                  />
+                  <MetricGroupCard 
+                    title="Google ROAS" 
+                    icon={TrendingUpDown} 
+                    metricsData={googleAds?.metricsSummary.roas ?? []} 
+                    isRoas={true} 
+                  />
+              </div>
             </div>
-          </div>
-          
-          {/* Google Section */}
-          <div>
-            <div className="flex items-center mb-3 mt-6">
-              <div className="h-4 w-1 bg-emerald-500 rounded-full mr-2.5"></div>
-              <h2 className="text-lg font-semibold text-slate-800">Google</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <MetricGroupCard title="Google Spend" icon={Coins} periodData={googleMetrics.spend} />
-              <MetricGroupCard title="Google ROAS" icon={TrendingUpDown} periodData={googleMetrics.roas} isRoas={true} />
-            </div>
-          </div>
         </div>
       </div>
     </div>

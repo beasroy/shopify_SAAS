@@ -8,10 +8,76 @@ import { GoogleAdsApi } from "google-ads-api";
 config();
 
 const client = new GoogleAdsApi({
-    client_id: process.env.GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
 });
+
+// Helper function for percentage change calculation
+function getPercentageChange(current, previous) {
+  if (!previous) return 0;
+  return Number(((current - previous) / previous * 100).toFixed(2));
+}
+// Helper function for date formatting
+const formatDate = date => date.toISOString().split('T')[0];
+function buildMetricObject(period, currentStart, currentEnd, prevStart, prevEnd, currentValue, prevValue) {
+  const isSpend = typeof currentValue === 'number' && currentValue % 1 !== 0;
+  const value = isSpend ? Math.round(currentValue) : Number(currentValue);
+  const prevValueFormatted = isSpend ? Math.round(prevValue) : Number(prevValue);
+
+  return {
+    period,
+    dateRange: {
+      current: {
+        start: formatDate(currentStart),
+        end: formatDate(currentEnd)
+      },
+      previous: {
+        start: formatDate(prevStart),
+        end: formatDate(prevEnd)
+      }
+    },
+    current: value,
+    previous: prevValueFormatted,
+    change: getPercentageChange(value, prevValueFormatted),
+    trend: currentValue >= prevValue ? 'up' : 'down'
+  };
+}
+// Create date ranges more efficiently
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
+
+const dayBeforeYesterday = new Date(today);
+dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+const last7DaysStart = new Date(today);
+last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+const previous7DaysStart = new Date(last7DaysStart);
+previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+
+const previous7DaysEnd = new Date(last7DaysStart);
+previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+const last30DaysStart = new Date(today);
+last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+const previous30DaysStart = new Date(last30DaysStart);
+previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+
+const previous30DaysEnd = new Date(last30DaysStart);
+previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+
+const dateRanges = [
+  { start: yesterday, end: yesterday },
+  { start: dayBeforeYesterday, end: dayBeforeYesterday },
+  { start: last7DaysStart, end: yesterday },
+  { start: previous7DaysStart, end: previous7DaysEnd },
+  { start: last30DaysStart, end: yesterday },
+  { start: previous30DaysStart, end: previous30DaysEnd }
+];
 
 export async function getGoogleAccessToken(refreshToken) {
   const oAuth2Client = new OAuth2Client(
@@ -29,7 +95,6 @@ export async function getGoogleAccessToken(refreshToken) {
     throw new Error('Failed to generate access token.');
   }
 }
-
 export async function getAnalyticsSummary(req, res) {
   try {
     const { brandId } = req.params;
@@ -52,29 +117,13 @@ export async function getAnalyticsSummary(req, res) {
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-    // Calculate date ranges
-    const today = new Date();
-    const yesterday = new Date(today); 
-    yesterday.setDate(yesterday.getDate() - 1);
 
-    // Calculate last 7 days range
-    const last7DaysStart = new Date(today);
-    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
-    const previous7DaysStart = new Date(last7DaysStart);
-    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
-
-    const last30DaysStart = new Date(today);
-    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
-    const previous30DaysStart = new Date(last30DaysStart);
-    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
-    const previous30DaysEnd = new Date(last30DaysStart);
-    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
     // Function to fetch analytics data
     async function fetchAnalyticsData(startDate, endDate) {
       const requestBody = {
         dateRanges: [{
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
+          startDate: formatDate(startDate),
+          endDate: formatDate(endDate)
         }],
         metrics: [
           { name: 'sessions' },
@@ -106,117 +155,120 @@ export async function getAnalyticsSummary(req, res) {
       }), { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 });
     }
 
-    // Fetch all required data
+    const results = await Promise.all(
+      dateRanges.map(range => fetchAnalyticsData(range.start, range.end))
+    );
+
+    // Destructure the results
     const [
-      todayMetrics,
       yesterdayMetrics,
+      dayBeforeYesterdayMetrics,
       last7DaysMetrics,
       previous7DaysMetrics,
-      last30DaysMetrics,
-      previous30DaysMonthMetrics
-    ] = await Promise.all([
-      fetchAnalyticsData(today, today),
-      fetchAnalyticsData(yesterday, yesterday),
-      fetchAnalyticsData(last7DaysStart, today),
-      fetchAnalyticsData(previous7DaysStart, last7DaysStart),
-      fetchAnalyticsData(last30DaysStart, today),
-      fetchAnalyticsData(previous30DaysStart, previous30DaysEnd)
-    ]);
+      last30DayMetrics,
+      previous30DayMetrics
+    ] = results;
 
-    // Calculate percentage changes
-    function getPercentageChange(current, previous) {
-      if (!previous) return 0;
-      const change = ((current - previous) / previous) * 100;
-      return Number(change.toFixed(2));
-    }
-
-    // Generate summaries with trends
-    const summaries = {
-      "Today": {
-        title: "Today vs Yesterday",
-        sessions: {
-          current: todayMetrics.sessions,
-          previous: yesterdayMetrics.sessions,
-          change: getPercentageChange(todayMetrics.sessions, yesterdayMetrics.sessions),
-          trend: todayMetrics.sessions >= yesterdayMetrics.sessions ? 'up' : 'down'
-        },
-        addToCarts: {
-          current: todayMetrics.addToCarts,
-          previous: yesterdayMetrics.addToCarts,
-          change: getPercentageChange(todayMetrics.addToCarts, yesterdayMetrics.addToCarts),
-          trend: todayMetrics.addToCarts >= yesterdayMetrics.addToCarts ? 'up' : 'down'
-        },
-        checkouts: {
-          current: todayMetrics.checkouts,
-          previous: yesterdayMetrics.checkouts,
-          change: getPercentageChange(todayMetrics.checkouts, yesterdayMetrics.checkouts),
-          trend: todayMetrics.checkouts >= yesterdayMetrics.checkouts ? 'up' : 'down'
-        },
-        purchases: {
-          current: todayMetrics.purchases,
-          previous: yesterdayMetrics.purchases,
-          change: getPercentageChange(todayMetrics.purchases, yesterdayMetrics.purchases),
-          trend: todayMetrics.purchases >= yesterdayMetrics.purchases ? 'up' : 'down'
-        }
-      },
-      "Last 7 Days": {
-        title: "Last 7 Days vs Previous 7 Days",
-        sessions: {
-          current: last7DaysMetrics.sessions,
-          previous: previous7DaysMetrics.sessions,
-          change: getPercentageChange(last7DaysMetrics.sessions, previous7DaysMetrics.sessions),
-          trend: last7DaysMetrics.sessions >= previous7DaysMetrics.sessions ? 'up' : 'down'
-        },
-        addToCarts: {
-          current: last7DaysMetrics.addToCarts,
-          previous: previous7DaysMetrics.addToCarts,
-          change: getPercentageChange(last7DaysMetrics.addToCarts, previous7DaysMetrics.addToCarts),
-          trend: last7DaysMetrics.addToCarts >= previous7DaysMetrics.addToCarts ? 'up' : 'down'
-        },
-        checkouts: {
-          current: last7DaysMetrics.checkouts,
-          previous: previous7DaysMetrics.checkouts,
-          change: getPercentageChange(last7DaysMetrics.checkouts, previous7DaysMetrics.checkouts),
-          trend: last7DaysMetrics.checkouts >= previous7DaysMetrics.checkouts ? 'up' : 'down'
-        },
-        purchases: {
-          current: last7DaysMetrics.purchases,
-          previous: previous7DaysMetrics.purchases,
-          change: getPercentageChange(last7DaysMetrics.purchases, previous7DaysMetrics.purchases),
-          trend: last7DaysMetrics.purchases >= previous7DaysMetrics.purchases ? 'up' : 'down'
-        }
-      },
-      "Last 30 Days": {
-        title: "This Month vs Last Month",
-        sessions: {
-          current: last30DaysMetrics.sessions,
-          previous: previous30DaysMonthMetrics.sessions,
-          change: getPercentageChange(last30DaysMetrics.sessions, previous30DaysMonthMetrics.sessions),
-          trend: last30DaysMetrics.sessions >= previous30DaysMonthMetrics.sessions ? 'up' : 'down'
-        },
-        addToCarts: {
-          current: last30DaysMetrics.addToCarts,
-          previous: previous30DaysMonthMetrics.addToCarts,
-          change: getPercentageChange(last30DaysMetrics.addToCarts, previous30DaysMonthMetrics.addToCarts),
-          trend: last30DaysMetrics.addToCarts >= previous30DaysMonthMetrics.addToCarts ? 'up' : 'down'
-        },
-        checkouts: {
-          current: last30DaysMetrics.checkouts,
-          previous: previous30DaysMonthMetrics.checkouts,
-          change: getPercentageChange(last30DaysMetrics.checkouts, previous30DaysMonthMetrics.checkouts),
-          trend: last30DaysMetrics.checkouts >= previous30DaysMonthMetrics.checkouts ? 'up' : 'down'
-        },
-        purchases: {
-          current: last30DaysMetrics.purchases,
-          previous: previous30DaysMonthMetrics.purchases,
-          change: getPercentageChange(last30DaysMetrics.purchases, previous30DaysMonthMetrics.purchases),
-          trend: last30DaysMetrics.purchases >= previous30DaysMonthMetrics.purchases ? 'up' : 'down'
-        }
-      }
+    // Build the response structure
+    const metricsSummary = {
+      sessions: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.sessions,
+          dayBeforeYesterdayMetrics.sessions
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.sessions,
+          previous7DaysMetrics.sessions
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.sessions,
+          previous30DayMetrics.sessions
+        )
+      ],
+      addToCarts: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.addToCarts,
+          dayBeforeYesterdayMetrics.addToCarts
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.addToCarts,
+          previous7DaysMetrics.addToCarts
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.addToCarts,
+          previous30DayMetrics.addToCarts
+        )
+      ],
+      checkouts: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.checkouts,
+          dayBeforeYesterdayMetrics.checkouts
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.checkouts,
+          previous7DaysMetrics.checkouts
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.checkouts,
+          previous30DayMetrics.checkouts
+        )
+      ],
+      purchases: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.purchases,
+          dayBeforeYesterdayMetrics.purchases
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.purchases,
+          previous7DaysMetrics.purchases
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.purchases,
+          previous30DayMetrics.purchases
+        )
+      ]
     };
+  
+
     res.status(200).json({
       success: true,
-      summaries,
+      metricsSummary,
     });
 
   } catch (error) {
@@ -233,8 +285,10 @@ export async function getFacebookAdsSummary(req, res) {
     const { brandId } = req.params;
     const { userId } = req.body;
 
-    const brand = await Brand.findById(brandId).lean();
-    const user = await User.findById(userId).lean();
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean()
+    ]);
 
     if (!brand || !user) {
       return res.status(404).json({
@@ -260,30 +314,12 @@ export async function getFacebookAdsSummary(req, res) {
       });
     }
 
-    // Calculate date ranges
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Calculate last 7 days range
-    const last7DaysStart = new Date(today);
-    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
-    const previous7DaysStart = new Date(last7DaysStart);
-    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
-
-    const last30DaysStart = new Date(today);
-    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
-    const previous30DaysStart = new Date(last30DaysStart);
-    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
-    const previous30DaysEnd = new Date(last30DaysStart);
-    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
-
     // Function to fetch Facebook Ads data
     async function fetchAdsData(startDate, endDate) {
       const batchRequests = adAccountIds.flatMap((accountId) => [
         {
           method: 'GET',
-          relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${startDate.toISOString().split('T')[0]}','until':'${endDate.toISOString().split('T')[0]}'}`,
+          relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
         },
       ]);
 
@@ -323,122 +359,83 @@ export async function getFacebookAdsSummary(req, res) {
       return aggregatedData;
     }
 
-    // Fetch all required data
+    const dateRanges = [
+      { start: yesterday, end: yesterday },
+      { start: dayBeforeYesterday, end: dayBeforeYesterday },
+      { start: last7DaysStart, end: yesterday },
+      { start: previous7DaysStart, end: previous7DaysEnd },
+      { start: last30DaysStart, end: yesterday },
+      { start: previous30DaysStart, end: previous30DaysEnd }
+    ];
+
+    // Run all API calls in parallel
+    const results = await Promise.all(
+      dateRanges.map(range => fetchAdsData(range.start, range.end))
+    );
+
+    // Destructure the results
     const [
-      todayMetrics,
       yesterdayMetrics,
+      dayBeforeYesterdayMetrics,
       last7DaysMetrics,
       previous7DaysMetrics,
       last30DayMetrics,
       previous30DayMetrics
-    ] = await Promise.all([
-      fetchAdsData(today, today),
-      fetchAdsData(yesterday, yesterday),
-      fetchAdsData(last7DaysStart, today),
-      fetchAdsData(previous7DaysStart, last7DaysStart),
-      fetchAdsData(last30DaysStart, today),
-      fetchAdsData(previous30DaysStart, previous30DaysEnd)
-    ]);
+    ] = results;
 
-    // Calculate percentage changes
-    function getPercentageChange(current, previous) {
-      if (!previous) return 0;
-      const change = ((current - previous) / previous) * 100;
-      return Number(change.toFixed(2));
-    }
-
-    const formatDate = (date) => date.toISOString().split('T')[0];
-
-    const dateRanges = {
-      "Today": {
-        current: {
-          start: formatDate(today),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(yesterday),
-          end: formatDate(yesterday)
-        }
-      },
-      "Last 7 Days": {
-        current: {
-          start: formatDate(last7DaysStart),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(previous7DaysStart),
-          end: formatDate(last7DaysStart)
-        }
-      },
-      "Last 30 Days": {
-        current: {
-          start: formatDate(last30DaysStart),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(previous30DaysStart),
-          end: formatDate(previous30DaysEnd)
-        }
-      }
+    // Build the response structure
+    const metricsSummary = {
+      spend: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.spend,
+          dayBeforeYesterdayMetrics.spend
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.spend,
+          previous7DaysMetrics.spend
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.spend,
+          previous30DayMetrics.spend
+        )
+      ],
+      roas: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.roas,
+          dayBeforeYesterdayMetrics.roas
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.roas,
+          previous7DaysMetrics.roas
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.roas,
+          previous30DayMetrics.roas
+        )
+      ]
     };
-
-
-    // Generate summaries with trends
-    const summaries = {
-      "Today": {
-        title: "Today vs Yesterday",
-        dateRanges: dateRanges["Today"],
-        spend: {
-          current: Math.round(todayMetrics.spend),
-          previous: Math.round(yesterdayMetrics.spend),
-          change: getPercentageChange(todayMetrics.spend, yesterdayMetrics.spend),
-          trend: Number(todayMetrics.spend) >= Number(yesterdayMetrics.spend) ? 'up' : 'down'
-        },
-        roas: {
-          current: Number(todayMetrics.roas),
-          previous: Math.round(yesterdayMetrics.roas),
-          change: getPercentageChange(todayMetrics.roas, yesterdayMetrics.roas),
-          trend: Number(todayMetrics.roas) >= Number(yesterdayMetrics.roas) ? 'up' : 'down'
-        }
-      },
-      "Last 7 Days": {
-        title: "Last 7 Days vs Previous 7 Days",
-        dateRanges: dateRanges["Last 7 Days"],
-        spend: {
-          current: Math.round(last7DaysMetrics.spend),
-          previous: Math.round(previous7DaysMetrics.spend),
-          change: getPercentageChange(last7DaysMetrics.spend, previous7DaysMetrics.spend),
-          trend: Number(last7DaysMetrics.spend) >= Number(previous7DaysMetrics.spend) ? 'up' : 'down'
-        },
-        roas: {
-          current: Number(last7DaysMetrics.roas),
-          previous: Math.round(previous7DaysMetrics.roas),
-          change: getPercentageChange(last7DaysMetrics.roas, previous7DaysMetrics.roas),
-          trend: Number(last7DaysMetrics.roas) >= Number(previous7DaysMetrics.roas) ? 'up' : 'down'
-        },
-      },
-      "Last 30 Days": {
-        title: "Last 30 Days vs Previous Last 30 Days",
-        dateRanges: dateRanges["Last 30 Days"],
-        spend: {
-          current: Math.round(last30DayMetrics.spend),
-          previous: Math.round(previous30DayMetrics.spend),
-          change: getPercentageChange(last30DayMetrics.spend, previous30DayMetrics.spend),
-          trend: Number(last30DayMetrics.spend) >= Number(previous30DayMetrics.spend) ? 'up' : 'down'
-        },
-        roas: {
-          current: Number(last30DayMetrics.roas),
-          previous: Math.round(previous30DayMetrics.roas),
-          change: getPercentageChange(last30DayMetrics.roas, previous30DayMetrics.roas),
-          trend: Number(last30DayMetrics.roas) >= Number(previous30DayMetrics.roas) ? 'up' : 'down'
-        },
-      }
-    };
-
 
     res.status(200).json({
       success: true,
-      summaries,
+      metricsSummary,
     });
 
   } catch (error) {
@@ -449,14 +446,16 @@ export async function getFacebookAdsSummary(req, res) {
     res.status(500).json({ error: 'Failed to fetch Facebook Ads summary.' });
   }
 }
-
 export async function getGoogleAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
     const { userId } = req.body;
 
-    const brand = await Brand.findById(brandId).lean();
-    const user = await User.findById(userId).lean();
+    // Run these database queries in parallel
+    const [brand, user] = await Promise.all([
+      Brand.findById(brandId).lean(),
+      User.findById(userId).lean()
+    ]);
 
     if (!brand || !user) {
       return res.status(404).json({
@@ -484,32 +483,21 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
 
-    // Calculate last 7 days range
-    const last7DaysStart = new Date(today);
-    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
-    const previous7DaysStart = new Date(last7DaysStart);
-    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
 
-    const last30DaysStart = new Date(today);
-    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
-    const previous30DaysStart = new Date(last30DaysStart);
-    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
-    const previous30DaysEnd = new Date(last30DaysStart);
-    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
-
+    // Initialize customer once
     const customer = client.Customer({
       customer_id: adAccountId,
       refresh_token: refreshToken,
-      login_customer_id:managerId
-  });
+      login_customer_id: managerId
+    });
 
-    // Function to fetch Google Ads data for a specific date range
+    // Define a more efficient fetching function
     async function fetchAdsData(startDate, endDate) {
+      // Format dates once outside the function call
+      const formattedStartDate = startDate.toISOString().split('T')[0];
+      const formattedEndDate = endDate.toISOString().split('T')[0];
+
       const report = await customer.report({
         entity: "customer",
         attributes: ["customer.descriptive_name"],
@@ -517,140 +505,96 @@ export async function getGoogleAdsSummary(req, res) {
           "metrics.cost_micros",
           "metrics.conversions_value",
         ],
-        from_date: startDate.toISOString().split('T')[0],
-        to_date: endDate.toISOString().split('T')[0],
+        from_date: formattedStartDate,
+        to_date: formattedEndDate,
       });
 
-      let totalSpend = 0;
-      let totalConversionsValue = 0;
-
-      for (const row of report) {
+      // Use reduce for better performance when aggregating
+      const totals = report.reduce((acc, row) => {
         const costMicros = row.metrics.cost_micros || 0;
         const spend = costMicros / 1_000_000;
-        totalSpend += spend;
-        totalConversionsValue += row.metrics.conversions_value || 0;
-      }
+        acc.totalSpend += spend;
+        acc.totalConversionsValue += row.metrics.conversions_value || 0;
+        return acc;
+      }, { totalSpend: 0, totalConversionsValue: 0 });
 
       return {
-        spend: Number(totalSpend.toFixed(2)),
-        roas: totalSpend > 0 ? Number((totalConversionsValue / totalSpend).toFixed(2)) : 0
+        spend: Number(totals.totalSpend.toFixed(2)),
+        roas: totals.totalSpend > 0 ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2)) : 0
       };
     }
 
-    // Fetch all required data
+    // Create an array of fetch operations to run in parallel
+   
+
+    // Run all API calls in parallel
+    const results = await Promise.all(
+      dateRanges.map(range => fetchAdsData(range.start, range.end))
+    );
+
+    // Destructure the results
     const [
-      todayMetrics,
       yesterdayMetrics,
+      dayBeforeYesterdayMetrics,
       last7DaysMetrics,
       previous7DaysMetrics,
-      last30DaysMetrics,
-      previous30DaysMetrics
-    ] = await Promise.all([
-      fetchAdsData(today, today),
-      fetchAdsData(yesterday, yesterday),
-      fetchAdsData(last7DaysStart, today),
-      fetchAdsData(previous7DaysStart, last7DaysStart),
-      fetchAdsData(last30DaysStart, today),
-      fetchAdsData(previous30DaysStart, previous30DaysEnd)
-    ]);
+      last30DayMetrics,
+      previous30DayMetrics
+    ] = results;
 
-    // Calculate percentage changes
-    function getPercentageChange(current, previous) {
-      if (!previous) return 0;
-      const change = ((current - previous) / previous) * 100;
-      return Number(change.toFixed(2));
-    }
-
-    const formatDate = (date) => date.toISOString().split('T')[0];
-
-    const dateRanges = {
-      "Today": {
-        current: {
-          start: formatDate(today),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(yesterday),
-          end: formatDate(yesterday)
-        }
-      },
-      "Last 7 Days": {
-        current: {
-          start: formatDate(last7DaysStart),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(previous7DaysStart),
-          end: formatDate(last7DaysStart)
-        }
-      },
-      "Last 30 Days": {
-        current: {
-          start: formatDate(last30DaysStart),
-          end: formatDate(today)
-        },
-        previous: {
-          start: formatDate(previous30DaysStart),
-          end: formatDate(previous30DaysEnd)
-        }
-      }
-    };
-
-    // Generate summaries with trends
-    const summaries = {
-      "Today": {
-        title: "Today vs Yesterday",
-        dateRanges: dateRanges["Today"],
-        spend: {
-          current: todayMetrics.spend,
-          previous: yesterdayMetrics.spend,
-          change: getPercentageChange(todayMetrics.spend, yesterdayMetrics.spend),
-          trend: todayMetrics.spend >= yesterdayMetrics.spend ? 'up' : 'down'
-        },
-        roas: {
-          current: todayMetrics.roas,
-          previous: yesterdayMetrics.roas,
-          change: getPercentageChange(todayMetrics.roas, yesterdayMetrics.roas),
-          trend: todayMetrics.roas >= yesterdayMetrics.roas ? 'up' : 'down'
-        }
-      },
-      "Last 7 Days": {
-        title: "Last 7 Days vs Previous 7 Days",
-        dateRanges: dateRanges["Last 7 Days"],
-        spend: {
-          current: last7DaysMetrics.spend,
-          previous: previous7DaysMetrics.spend,
-          change: getPercentageChange(last7DaysMetrics.spend, previous7DaysMetrics.spend),
-          trend: last7DaysMetrics.spend >= previous7DaysMetrics.spend ? 'up' : 'down'
-        },
-        roas: {
-          current: last7DaysMetrics.roas,
-          previous: previous7DaysMetrics.roas,
-          change: getPercentageChange(last7DaysMetrics.roas, previous7DaysMetrics.roas),
-          trend: last7DaysMetrics.roas >= previous7DaysMetrics.roas ? 'up' : 'down'
-        }
-      },
-      "Last 30 Days": {
-        title: "Last 30 Days vs Previous 30 Days",
-        dateRanges: dateRanges["Last 30 Days"],
-        spend: {
-          current: last30DaysMetrics.spend,
-          previous: previous30DaysMetrics.spend,
-          change: getPercentageChange(last30DaysMetrics.spend, previous30DaysMetrics.spend),
-          trend: last30DaysMetrics.spend >= previous30DaysMetrics.spend ? 'up' : 'down'
-        },
-        roas: {
-          current: last30DaysMetrics.roas,
-          previous: previous30DaysMetrics.roas,
-          change: getPercentageChange(last30DaysMetrics.roas, previous30DaysMetrics.roas),
-          trend: last30DaysMetrics.roas >= previous30DaysMetrics.roas ? 'up' : 'down'
-        }
-      }
+    // Build the response structure
+    const metricsSummary = {
+      spend: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.spend,
+          dayBeforeYesterdayMetrics.spend
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.spend,
+          previous7DaysMetrics.spend
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.spend,
+          previous30DayMetrics.spend
+        )
+      ],
+      roas: [
+        buildMetricObject(
+          "Yesterday",
+          yesterday, yesterday,
+          dayBeforeYesterday, dayBeforeYesterday,
+          yesterdayMetrics.roas,
+          dayBeforeYesterdayMetrics.roas
+        ),
+        buildMetricObject(
+          "Last 7 Days",
+          last7DaysStart, yesterday,
+          previous7DaysStart, previous7DaysEnd,
+          last7DaysMetrics.roas,
+          previous7DaysMetrics.roas
+        ),
+        buildMetricObject(
+          "Last 30 Days",
+          last30DaysStart, yesterday,
+          previous30DaysStart, previous30DaysEnd,
+          last30DayMetrics.roas,
+          previous30DayMetrics.roas
+        )
+      ]
     };
 
     return res.status(200).json({
       success: true,
-      summaries
+      metricsSummary
     });
 
   } catch (error) {

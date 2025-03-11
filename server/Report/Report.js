@@ -347,10 +347,10 @@ export const getGoogleAdData = async (brandId, userId) => {
 export const addReportData = async (brandId, userId) => {
   try {
     const fbDataResult = await fetchFBAdReport(brandId, userId);
-    const fbData = fbDataResult.data;
+    const fbData = fbDataResult.data ? fbDataResult.data  : [];
 
     const googleDataResult = await getGoogleAdData(brandId, userId);
-    const googleData = googleDataResult.data;
+    const googleData = googleDataResult.data? googleDataResult.data : [];
 
     // Initialize totals
     let totalMetaSpend = 0;

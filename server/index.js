@@ -8,7 +8,7 @@ import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
-import excelReportRoutes from "./routes/report.js"
+import excelReportRoutes from "./routes/report.js" 
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import fbReportRoutes from "./routes/fbReport.js"
@@ -18,6 +18,7 @@ import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
+ 
 
 
 const app = express();

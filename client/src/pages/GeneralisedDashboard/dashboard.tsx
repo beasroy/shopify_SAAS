@@ -17,6 +17,7 @@ import createAxiosInstance from "../ConversionReportPage/components/axiosInstanc
 import DashboardSkeleton from "./components/DashboardSkeleton";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
+import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
 
 export type Trend = "up" | "down";
 export type Period = "Yesterday" | "Last 7 Days" | "Last 30 Days";
@@ -233,6 +234,7 @@ const SummaryDashboard: React.FC = () => {
                 <p className="text-slate-500 mt-1">Here's your business performance overview</p>
               </div>
             </div>
+            <div className="flex flex-row items-center gap-3"><HeaderTutorialButton />
             <Button
               onClick={fetchData}
               disabled={loading}
@@ -242,22 +244,25 @@ const SummaryDashboard: React.FC = () => {
             >
               <RefreshCw className={cn("h-4 w-4 ", loading && "animate-spin")} />
             </Button>
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
           {/* Analytics Section */}
-            <div>
+            <div id="analytics-section">
               <div className="flex items-center mb-3">
                 <div className="h-4 w-1 bg-amber-500 rounded-full mr-2.5"></div>
                 <h2 className="text-lg font-semibold text-slate-800">Analytics</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-2 ">
-                  <MetricGroupCard 
+                <div id="sessions-metric">
+                <MetricGroupCard 
                     title="Sessions" 
                     icon={Users} 
                     metricsData={analytics?.metricsSummary.sessions || []} 
                   />
+                </div>
                   <MetricGroupCard 
                     title="Cart Additions" 
                     icon={ShoppingCart} 

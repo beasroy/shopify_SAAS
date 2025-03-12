@@ -129,7 +129,7 @@ const AudienceConversionReportPage: React.FC = () => {
            />
 
           {/* Tabs */}
-          <div className="bg-white px-6 sticky top-0 z-10">
+          <div id="report-tab" className="bg-white px-6 sticky top-0 z-10">
             <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
         </div>

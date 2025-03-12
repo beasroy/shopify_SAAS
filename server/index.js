@@ -18,6 +18,10 @@ import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
+// import { sendAllBrandMetricsReports } from "./controller/summaryEmail.js";
+
+// sendAllBrandMetricsReports();  // This will send an email with all brand metrics every day.
+
  
 
 
@@ -56,7 +60,6 @@ dataOperationRouter.use("/zoho",zohoRoutes);
 
 setupCronJobs();
  
-
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

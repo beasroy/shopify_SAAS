@@ -3,8 +3,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { driver as driverJS, Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { RootState } from '@/store';
-import { nextTutorial, stopTutorial, setTutorialStep } from '@/store/slices/TutorialSlice';
-import {  getTutorialSteps, getRelatedTutorials } from './TutorialConfig';
+import { nextTutorial,  setTutorialStep, queueTutorials } from '@/store/slices/TutorialSlice';
+import { getTutorialSteps, getRelatedTutorials } from './TutorialConfig';
 
 const TutorialDriver: React.FC = () => {
   const dispatch = useDispatch();
@@ -13,17 +13,20 @@ const TutorialDriver: React.FC = () => {
   const activeTutorial = useSelector((state: RootState) => state.tutorials.activeTutorial);
   const isTutorialActive = useSelector((state: RootState) => state.tutorials.isTutorialActive);
   const activeTutorialStep = useSelector((state: RootState) => state.tutorials.activeTutorialStep);
+  const tutorialQueue = useSelector((state: RootState) => state.tutorials.tutorialQueue);
   
   // Create a new driver instance when tutorial changes
   useEffect(() => {
     if (activeTutorial && isTutorialActive) {
+      console.log(`Starting tutorial: ${activeTutorial}, Queue: [${tutorialQueue.join(', ')}]`);
+      
       const steps = getTutorialSteps(activeTutorial);
       
       if (steps && steps.length > 0) {
-        
         // Clean up any existing driver instance
         if (driverInstanceRef.current) {
           driverInstanceRef.current.destroy();
+          driverInstanceRef.current = null;
         }
         
         // Start the driver with the steps for this tutorial
@@ -56,25 +59,23 @@ const TutorialDriver: React.FC = () => {
               const currentStepIndex = steps.findIndex(step => step.element === element?.id);
               dispatch(setTutorialStep(currentStepIndex >= 0 ? currentStepIndex : 0));
             },
-            onDestroyStarted: () => {
-              // Handle when user tries to close the tutorial
-              if (window.confirm('Are you sure you want to exit the tutorial?')) {
-                dispatch(stopTutorial());
-                return true;
-              }
-              return false;
-            },
+          
             onDestroyed: () => {
+              // Clear the reference
+              driverInstanceRef.current = null;
+              
               // Check if there are related tutorials to queue
               const relatedTutorials = getRelatedTutorials(activeTutorial);
               
               if (relatedTutorials.length > 0) {
-                // Add related tutorials to the queue
-                dispatch(nextTutorial());
-              } else {
-                // No related tutorials, just move to the next in queue
-                dispatch(nextTutorial());
+                console.log(`Queueing related tutorials: ${relatedTutorials.join(', ')}`);
+                // Queue any related tutorials before moving to next
+                dispatch(queueTutorials(relatedTutorials));
               }
+              
+              // Move to the next tutorial in queue
+              console.log('Moving to next tutorial');
+              dispatch(nextTutorial());
             }
           });
           
@@ -103,7 +104,7 @@ const TutorialDriver: React.FC = () => {
         driverInstanceRef.current = null;
       }
     };
-  }, [activeTutorial, isTutorialActive, activeTutorialStep, dispatch]);
+  }, [activeTutorial, isTutorialActive, dispatch]);
   
   // This component doesn't render anything visible
   return null;

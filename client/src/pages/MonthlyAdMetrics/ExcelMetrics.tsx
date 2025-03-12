@@ -215,7 +215,7 @@ return (
         <div className="flex-1 h-screen overflow-hidden bg-gray-100">
             <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
 
-            <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : 'm-6'}`}>
+            <Card id="metrics-table"  className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : 'm-6'}`}>
                 <CardContent>
                     <div className="flex flex-row items-center justify-between mb-3">
                         <div className="flex flex-row items-center gap-4">
@@ -303,7 +303,7 @@ return (
                                             const isExpanded = expandedMonths.includes(monthYear)
                                             return (
                                                 <React.Fragment key={monthYear}>
-                                                    <tr
+                                                    <tr 
                                                         className={`
                                                         ${isExpanded ? 'bg-blue-100/30 '
                                                                 : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent'} 
@@ -312,7 +312,7 @@ return (
                                                     `}
                                                         onClick={() => toggleMonth(monthYear)}
                                                     >
-                                                        <td className="w-3 px-4 py-2">
+                                                        <td id="expand-month"  className="w-3 px-4 py-2">
                                                             <div className={`
                           w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center
                           transition-all duration-300 transform

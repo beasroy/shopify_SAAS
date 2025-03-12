@@ -7,7 +7,7 @@ import { GoogleAdsApi } from "google-ads-api";
 
 config();
 
-const client = new GoogleAdsApi({
+export const client = new GoogleAdsApi({
   client_id: process.env.GOOGLE_CLIENT_ID,
   client_secret: process.env.GOOGLE_CLIENT_SECRET,
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
@@ -20,7 +20,7 @@ function getPercentageChange(current, previous) {
 }
 // Helper function for date formatting
 const formatDate = date => date.toISOString().split('T')[0];
-function buildMetricObject(period, currentStart, currentEnd, prevStart, prevEnd, currentValue, prevValue) {
+export function buildMetricObject(period, currentStart, currentEnd, prevStart, prevEnd, currentValue, prevValue) {
   const isSpend = typeof currentValue === 'number' && currentValue % 1 !== 0;
   const value = isSpend ? Math.round(currentValue) : Number(currentValue);
   const prevValueFormatted = isSpend ? Math.round(prevValue) : Number(prevValue);
@@ -70,7 +70,7 @@ const previous30DaysEnd = new Date(last30DaysStart);
 previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
 
 
-const dateRanges = [
+export const dateRanges = [
   { start: yesterday, end: yesterday },
   { start: dayBeforeYesterday, end: dayBeforeYesterday },
   { start: last7DaysStart, end: yesterday },
@@ -79,6 +79,119 @@ const dateRanges = [
   { start: previous30DaysStart, end: previous30DaysEnd }
 ];
 
+
+
+// Function to fetch analytics data
+export async function fetchAnalyticsData(startDate, endDate,propertyId,accessToken) {
+  const requestBody = {
+    dateRanges: [{
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate)
+    }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'addToCarts' },
+      { name: 'checkouts' },
+      { name: 'ecommercePurchases' },
+    ]
+  };
+
+  const response = await axios.post(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    requestBody,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  // Sum up all rows for the date range
+  const rows = response?.data?.rows || [];
+  return rows.reduce((acc, row) => ({
+    sessions: acc.sessions + Number(row.metricValues[0]?.value || 0),
+    addToCarts: acc.addToCarts + Number(row.metricValues[1]?.value || 0),
+    checkouts: acc.checkouts + Number(row.metricValues[2]?.value || 0),
+    purchases: acc.purchases + Number(row.metricValues[3]?.value || 0)
+  }), { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 });
+}
+// Function to fetch Facebook Ads data
+export async function fetchMetaAdsData(startDate, endDate,accessToken,adAccountIds) {
+  const batchRequests = adAccountIds.flatMap((accountId) => [
+    {
+      method: 'GET',
+      relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+    },
+  ]);
+
+  const response = await axios.post(
+    `https://graph.facebook.com/v21.0/`,
+    { batch: batchRequests },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      params: { access_token: accessToken },
+    }
+  );
+
+  // Initialize aggregated metrics
+  let aggregatedData = {
+    spend: 0,
+    revenue: 0,
+    roas: 0,
+  };
+
+  // Process and aggregate data from all ad accounts
+  for (let i = 0; i < adAccountIds.length; i++) {
+    const accountResponse = response.data[i];
+
+    if (accountResponse.code === 200) {
+      const accountBody = JSON.parse(accountResponse.body);
+      if (accountBody.data && accountBody.data.length > 0) {
+        const insight = accountBody.data[0];
+        const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || 0;
+
+        aggregatedData.spend += Number(insight.spend || 0);
+        aggregatedData.revenue += Number(revenue);
+      }
+    }
+  }
+  aggregatedData.roas = aggregatedData.spend > 0 ? (aggregatedData.revenue / aggregatedData.spend).toFixed(2) : 0;
+
+  return aggregatedData;
+}
+
+export async function fetchGoogleAdsData(startDate, endDate,customer) {
+  // Format dates once outside the function call
+  const formattedStartDate = startDate.toISOString().split('T')[0];
+  const formattedEndDate = endDate.toISOString().split('T')[0];
+
+  const report = await customer.report({
+    entity: "customer",
+    attributes: ["customer.descriptive_name"],
+    metrics: [
+      "metrics.cost_micros",
+      "metrics.conversions_value",
+    ],
+    from_date: formattedStartDate,
+    to_date: formattedEndDate,
+  });
+
+  // Use reduce for better performance when aggregating
+  const totals = report.reduce((acc, row) => {
+    const costMicros = row.metrics.cost_micros || 0;
+    const spend = costMicros / 1_000_000;
+    acc.totalSpend += spend;
+    acc.totalConversionsValue += row.metrics.conversions_value || 0;
+    return acc;
+  }, { totalSpend: 0, totalConversionsValue: 0 });
+
+  return {
+    spend: Number(totals.totalSpend.toFixed(2)),
+    roas: totals.totalSpend > 0 ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2)) : 0
+  };
+}
 export async function getGoogleAccessToken(refreshToken) {
   const oAuth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -117,46 +230,8 @@ export async function getAnalyticsSummary(req, res) {
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-
-    // Function to fetch analytics data
-    async function fetchAnalyticsData(startDate, endDate) {
-      const requestBody = {
-        dateRanges: [{
-          startDate: formatDate(startDate),
-          endDate: formatDate(endDate)
-        }],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'addToCarts' },
-          { name: 'checkouts' },
-          { name: 'ecommercePurchases' },
-        ]
-      };
-
-      const response = await axios.post(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      // Sum up all rows for the date range
-      const rows = response?.data?.rows || [];
-      return rows.reduce((acc, row) => ({
-        sessions: acc.sessions + Number(row.metricValues[0]?.value || 0),
-        addToCarts: acc.addToCarts + Number(row.metricValues[1]?.value || 0),
-        checkouts: acc.checkouts + Number(row.metricValues[2]?.value || 0),
-        purchases: acc.purchases + Number(row.metricValues[3]?.value || 0)
-      }), { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 });
-    }
-
     const results = await Promise.all(
-      dateRanges.map(range => fetchAnalyticsData(range.start, range.end))
+      dateRanges.map(range => fetchAnalyticsData(range.start, range.end,propertyId,accessToken))
     );
 
     // Destructure the results
@@ -264,7 +339,7 @@ export async function getAnalyticsSummary(req, res) {
         )
       ]
     };
-  
+
 
     res.status(200).json({
       success: true,
@@ -279,7 +354,6 @@ export async function getAnalyticsSummary(req, res) {
     res.status(500).json({ error: 'Failed to fetch analytics summary.' });
   }
 }
-
 export async function getFacebookAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
@@ -314,51 +388,6 @@ export async function getFacebookAdsSummary(req, res) {
       });
     }
 
-    // Function to fetch Facebook Ads data
-    async function fetchAdsData(startDate, endDate) {
-      const batchRequests = adAccountIds.flatMap((accountId) => [
-        {
-          method: 'GET',
-          relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
-        },
-      ]);
-
-      const response = await axios.post(
-        `https://graph.facebook.com/v21.0/`,
-        { batch: batchRequests },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          params: { access_token: accessToken },
-        }
-      );
-
-      // Initialize aggregated metrics
-      let aggregatedData = {
-        spend: 0,
-        revenue: 0,
-        roas: 0,
-      };
-
-      // Process and aggregate data from all ad accounts
-      for (let i = 0; i < adAccountIds.length; i++) {
-        const accountResponse = response.data[i];
-
-        if (accountResponse.code === 200) {
-          const accountBody = JSON.parse(accountResponse.body);
-          if (accountBody.data && accountBody.data.length > 0) {
-            const insight = accountBody.data[0];
-            const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || 0;
-
-            aggregatedData.spend += Number(insight.spend || 0);
-            aggregatedData.revenue += Number(revenue);
-          }
-        }
-      }
-      aggregatedData.roas = aggregatedData.spend > 0 ? (aggregatedData.revenue / aggregatedData.spend).toFixed(2) : 0;
-
-      return aggregatedData;
-    }
-
     const dateRanges = [
       { start: yesterday, end: yesterday },
       { start: dayBeforeYesterday, end: dayBeforeYesterday },
@@ -370,7 +399,7 @@ export async function getFacebookAdsSummary(req, res) {
 
     // Run all API calls in parallel
     const results = await Promise.all(
-      dateRanges.map(range => fetchAdsData(range.start, range.end))
+      dateRanges.map(range => fetchMetaAdsData(range.start, range.end,accessToken,adAccountIds))
     );
 
     // Destructure the results
@@ -492,44 +521,9 @@ export async function getGoogleAdsSummary(req, res) {
       login_customer_id: managerId
     });
 
-    // Define a more efficient fetching function
-    async function fetchAdsData(startDate, endDate) {
-      // Format dates once outside the function call
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
-
-      const report = await customer.report({
-        entity: "customer",
-        attributes: ["customer.descriptive_name"],
-        metrics: [
-          "metrics.cost_micros",
-          "metrics.conversions_value",
-        ],
-        from_date: formattedStartDate,
-        to_date: formattedEndDate,
-      });
-
-      // Use reduce for better performance when aggregating
-      const totals = report.reduce((acc, row) => {
-        const costMicros = row.metrics.cost_micros || 0;
-        const spend = costMicros / 1_000_000;
-        acc.totalSpend += spend;
-        acc.totalConversionsValue += row.metrics.conversions_value || 0;
-        return acc;
-      }, { totalSpend: 0, totalConversionsValue: 0 });
-
-      return {
-        spend: Number(totals.totalSpend.toFixed(2)),
-        roas: totals.totalSpend > 0 ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2)) : 0
-      };
-    }
-
-    // Create an array of fetch operations to run in parallel
-   
-
     // Run all API calls in parallel
     const results = await Promise.all(
-      dateRanges.map(range => fetchAdsData(range.start, range.end))
+      dateRanges.map(range => fetchGoogleAdsData(range.start, range.end,customer))
     );
 
     // Destructure the results

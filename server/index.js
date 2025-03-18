@@ -18,11 +18,6 @@ import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
-// import { sendAllBrandMetricsReports } from "./controller/summaryEmail.js";
-
-// sendAllBrandMetricsReports();  // This will send an email with all brand metrics every day.
-
- 
 
 
 const app = express();
@@ -58,7 +53,12 @@ dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
 
-setupCronJobs();
+if (process.env.NODE_ENV === 'production') {
+  setupCronJobs();
+  console.log('Cron jobs initialized in production environment');
+} else {
+  console.log('Running in development mode - cron jobs not initialized');
+}
  
 const PORT = process.env.PORT || 5000;
 

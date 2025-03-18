@@ -260,21 +260,12 @@ export const getGoogleAdData = async (brandId, userId) => {
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
       User.findById(userId).lean()
-    ])
+    ]);
+
     if (!brand || !user) {
       return {
         success: false,
         message: !brand ? 'Brand not found.' : 'User not found.',
-      };
-    }
-
-    const adAccountId = brand.googleAdAccount.clientId;
-    const managerId = brand.googleAdAccount.managerId;
-    if (!adAccountId) {
-      return {
-        success: false,
-        message: 'No Google Ads accounts found for this brand.',
-        data: [],
       };
     }
 
@@ -287,47 +278,101 @@ export const getGoogleAdData = async (brandId, userId) => {
       };
     }
 
+    // Check if brand has Google Ad accounts
+    if (!brand.googleAdAccount || !brand.googleAdAccount.clientId || brand.googleAdAccount.clientId.length === 0) {
+      return {
+        success: false,
+        message: 'No Google Ads accounts found for this brand.',
+        data: [],
+      };
+    }
+
+    const clientIds = brand.googleAdAccount.clientId;
+    const managerId = brand.googleAdAccount.managerId;
+    
     const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
     const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
 
-    const customer = client.Customer({
-      customer_id: adAccountId,
-      refresh_token: refreshToken,
-      login_customer_id: managerId,
-    });
+    let totalSpendAll = 0;
+    let totalConversionsValueAll = 0;
+    let accountResults = [];
 
-    // Fetch the ad-level report using the ad_group_ad entity
-    const adsReport = await customer.report({
-      entity: "customer",
-      attributes: ["customer.descriptive_name"],
-      metrics: [
-        "metrics.cost_micros",
-        "metrics.conversions_value",
-      ],
-      from_date: startDate,
-      to_date: endDate,
-    });
+    // Process each client ID
+    for (const clientId of clientIds) {
+      try {
+        const customer = client.Customer({
+          customer_id: clientId,
+          refresh_token: refreshToken,
+          login_customer_id: managerId,
+        });
 
-    let totalSpend = 0;
-    let totalConversionsValue = 0;
+        // Fetch the report for this account
+        const adsReport = await customer.report({
+          entity: "customer",
+          attributes: ["customer.descriptive_name"],
+          metrics: [
+            "metrics.cost_micros",
+            "metrics.conversions_value",
+          ],
+          from_date: startDate,
+          to_date: endDate,
+        });
 
-    // Process each row of the report
-    for (const row of adsReport) {
-      const costMicros = row.metrics.cost_micros || 0;
-      const spend = costMicros / 1_000_000;
-      totalSpend += spend;
-      totalConversionsValue += row.metrics.conversions_value || 0;
+        let accountSpend = 0;
+        let accountConversionsValue = 0;
+        let accountName = "";
+
+        // Process each row of the report
+        for (const row of adsReport) {
+          accountName = row.customer?.descriptive_name || `Account ${clientId}`;
+          const costMicros = row.metrics.cost_micros || 0;
+          const spend = costMicros / 1_000_000;
+          accountSpend += spend;
+          accountConversionsValue += row.metrics.conversions_value || 0;
+        }
+
+        // Calculate metrics for this account
+        const accountRoas = accountSpend > 0 ? (accountConversionsValueAll / accountSpend).toFixed(2) : "0";
+        const accountSales = parseFloat(accountRoas) * accountSpend || 0;
+
+        // Add this account's data to the total
+        totalSpendAll += accountSpend;
+        totalConversionsValueAll += accountConversionsValue;
+
+        // Store individual account data
+        accountResults.push({
+          accountId: clientId,
+          accountName,
+          googleSpend: accountSpend.toFixed(2),
+          googleRoas: accountRoas,
+          googleSales: accountSales.toFixed(2),
+        });
+      } catch (error) {
+        console.error(`Error fetching data for account ${clientId}:`, error);
+        accountResults.push({
+          accountId: clientId,
+          error: error.message || 'Failed to fetch data',
+        });
+      }
     }
 
-    // Calculate aggregated metrics
-    const googleRoas = totalSpend > 0 ? (totalConversionsValue / totalSpend).toFixed(2) : 0;
-    const totalSales = googleRoas * totalSpend || 0;
+    // Calculate aggregated metrics across all accounts
+    const consolidatedRoas = totalSpendAll > 0 ? (totalConversionsValueAll / totalSpendAll).toFixed(2) : "0";
+    const consolidatedSales = parseFloat(consolidatedRoas) * totalSpendAll || 0;
 
     const result = {
-      googleSpend: totalSpend.toFixed(2),
-      googleRoas,
-      googleSales: totalSales.toFixed(2),
-    }
+      // Consolidated results
+      googleSpend: totalSpendAll.toFixed(2),
+      googleRoas: consolidatedRoas,
+      googleSales: consolidatedSales.toFixed(2),
+      // Individual account results
+      accounts: accountResults,
+      // Date range for reference
+      dateRange: {
+        startDate,
+        endDate
+      }
+    };
 
     console.log('Google Ad Data:', result, startDate, endDate);
     return {

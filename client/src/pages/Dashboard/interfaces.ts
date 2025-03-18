@@ -31,58 +31,62 @@ export interface DailyCartCheckoutReport {
   data: DailyCartCheckoutData[]; // This structure is correct
 }
 
-export interface CombinedData {
-  totalOrders: number;
-  totalSales: number;
-  conversionRate: number;
-  averageOrderValue: number;
-  topSellingProducts: { name: string; count: number }[];
-  MonthlyCustomerReturnRate: { [month: string]: number };
-  referringChannelsData: { [channel: string]: number };
-  analyticsReports: AnalyticsReport[]; // Assuming this is correctly defined elsewhere
-  dailyCartCheckoutReports: DailyCartCheckoutReport[]; // This expects an array of DailyCartCheckoutReport
-}
-
-
-
-export interface PurchaseRoas {
-  action_type: string;
-  value: string;
-}
-
-export interface Purchases {
-  action_type: string;
-  value: string;
-}
-
-
 export interface ActionValue {
   action_type: string;
-  value: string;
+  value: string | number;
 }
 
 export interface Campaign {
-  campaign_name: string;
-  spend: string;
-  purchase_roas?: ActionValue[];
+  Campaign: string;
+  Status: string;
+  "Amount spend": number;
+  "Conversion Rate": number;
+  "ROAS": number;
+  "Reach": number;
+  "Frequency": number;
+  "CPM": number;
+  "CPM (Reach Based)": number;
+  "Link Click": number;
+  "Outbound CTR": number;
+  "Audience Saturation Score": number;
+  "Reach v/s Unique Click": number;
+  "High-Intent Click Rate": number;
+  "Hook Rate": number;
+  "Hold Rate": number;
+  "Content View (CV)": number;
+  "Cost per CV": number;
+  "Add To Cart (ATC)": number;
+  "Cost per ATC": number;
+  "CV to ATC Rate": number;
+  "Checkout Initiate (CI)": number;
+  "Cost per CI": number;
+  "ATC to CI Rate": number;
+  "Purchases": number;
+  "Cost per purchase": number;
+  "CI to Purchase Rate": number;
+  "Unique Link Click": number;
+  "Landing Page View": number;
+  "Three Seconds View": number;
+  "Impressions": number;
+  [key: string]: string | number; // Add index signature
 }
 
 export interface AdAccountData {
   adAccountId: string;
-  spend?: string;
+  account_name: string;
+  spend: number | string;
   purchase_roas?: ActionValue[];
-  purchases?: ActionValue;
-  Revenue?: ActionValue;
-  cpm?: string;
-  ctr?: string;
-  cpc?: string;
-  cpp?: string;
-  account_name?: string;
-  clicks?: string;
-  impressions?: string;
-  date_start: string;
-  date_stop: string;
-  campaigns?: Campaign[];
+  Revenue?: ActionValue | null;
+  purchases?: ActionValue | null;
+  cpm: string;
+  ctr: string;
+  cpc: string;
+  cpp: string;
+  clicks: string;
+  impressions: string;
+  date_start?: string;
+  date_stop?: string;
+  campaigns: Campaign[];
   message?: string;
 }
 

@@ -227,9 +227,10 @@ export const CampaignGrid = ({ campaigns, isLoading, icon }: { campaigns: (Campa
           </thead>
           <tbody>
             {campaigns.map((campaign: Campaign | GoogleCampaign, index) => {
-              const spendValue = parseFloat(campaign.spend);
-              const roas = typeof campaign.purchase_roas === 'string' ? campaign.purchase_roas : campaign.purchase_roas?.[0]?.value;
-              const roasValue = roas ? parseFloat(roas) : null;
+              const spendValue = parseFloat(String(campaign.spend));
+              const roas = typeof campaign.purchase_roas === 'string' ? campaign.purchase_roas : 
+                          Array.isArray(campaign.purchase_roas) ? campaign.purchase_roas[0]?.value : null;
+              const roasValue = roas ? parseFloat(String(roas)) : null;
 
               return (
                 <tr
@@ -237,7 +238,7 @@ export const CampaignGrid = ({ campaigns, isLoading, icon }: { campaigns: (Campa
                   className={`border-t text-sm ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                     }`}
                 >
-                  <td className="px-6 py-3 line-clamp-2" title={campaign.campaign_name}>
+                  <td className="px-6 py-3 line-clamp-2" title={String(campaign.campaign_name)}>
                     {campaign.campaign_name}
                   </td>
                   <td className="px-6 py-3 text-center text-gray-700 font-semibold">

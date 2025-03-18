@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from "date-fns"
-import { Blend, LineChart} from "lucide-react"
+import { Blend, LineChart } from "lucide-react"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import AdAccountMetricsCard, { CampaignGrid } from "./AdAccountsMetricsCard.tsx"
@@ -10,6 +10,7 @@ import { CustomTabs } from '../ConversionReportPage/components/CustomTabs.tsx';
 import Header from '@/components/dashboard_component/Header.tsx';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/index.ts';
+import MetaCampaignTable from '../META/Campaign/MetaCampaignTable.tsx';
 
 
 
@@ -18,9 +19,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
-  const [activeTab, setActiveTab] = useState<string>('all'); 
+  const [activeTab, setActiveTab] = useState<string>('all');
   const [dataSource, setDataSource] = useState<DataSource>('all');
-  const [locale, setLocale] = useState<"en-IN" | "en-US">("en-IN"); 
+  const [locale, setLocale] = useState<"en-IN" | "en-US">("en-IN");
   const [rawMetrics, setRawMetrics] = useState({
     totalSpent: 0,
     totalRevenue: 0,
@@ -50,12 +51,12 @@ export default function Dashboard() {
   const handleDataSourceChange = (newValue: string) => {
     const selectedTab = tabs.find((tab) => tab.value === newValue);
     if (selectedTab && selectedTab.value !== dataSource) {
-      setActiveTab(selectedTab.value); 
-      setDataSource(selectedTab.value); 
+      setActiveTab(selectedTab.value);
+      setDataSource(selectedTab.value);
     }
   };
 
-  const user = useSelector((state : RootState) => state.user.user);
+  const user = useSelector((state: RootState) => state.user.user);
 
   const userId = user?.id;
 
@@ -108,7 +109,7 @@ export default function Dashboard() {
         dataSource === 'google' ? [] : fbData,
         dataSource === 'facebook' ? undefined : googleData
       );
-   
+
     } catch (error) {
       console.error('Error fetching ad data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -137,24 +138,31 @@ export default function Dashboard() {
     return () => clearInterval(intervalId);
   }, [fetchAdData]);
 
-  
+  let height = '';
+  if (fbAdAccountsMetrics && fbAdAccountsMetrics.length > 1) {
+      height = 'max-h-[calc(100vh-400px)]';
+  } else {
+      height = 'max-h-[calc(100vh-210px)]'
+  }
+
+
   const calculateAggregatedMetrics = useCallback((fbData: AdAccountData[], googleData: GoogleAdAccountData | undefined) => {
     let totalSpent = 0;
     let totalRevenue = 0;
     let totalPurchases = 0;
     let totalClicks = 0;
     let totalImpressions = 0;
-  
+
     if (fbData?.length) {
       fbData.forEach(account => {
-        totalSpent += parseFloat(account.spend || '0');
-        totalRevenue += parseFloat(account.Revenue?.value || '0');
-        totalPurchases += parseFloat(account.purchases?.value || '0');
-        totalClicks += parseFloat(account.clicks || '0');
-        totalImpressions += parseFloat(account.impressions || '0');
+        totalSpent += parseFloat(String(account.spend || '0'));
+        totalRevenue += parseFloat(String(account.Revenue?.value || '0'));
+        totalPurchases += parseFloat(String(account.purchases?.value || '0'));
+        totalClicks += parseFloat(String(account.clicks || '0'));
+        totalImpressions += parseFloat(String(account.impressions || '0'));
       });
     }
-  
+
     if (googleData?.adMetrics) {
       totalSpent += parseFloat(googleData.adMetrics.totalSpend || '0');
       totalRevenue += parseFloat(googleData.adMetrics.totalConversionsValue || '0');
@@ -162,8 +170,8 @@ export default function Dashboard() {
       totalClicks += parseFloat(googleData.adMetrics.totalClicks || '0');
       totalImpressions += parseFloat(googleData.adMetrics.totalImpressions || '0');
     }
-    
-  
+
+
     setRawMetrics({
       totalSpent,
       totalRevenue,
@@ -172,7 +180,7 @@ export default function Dashboard() {
       totalCTR: (totalClicks / totalImpressions) * 100 || 0,
       totalCPC: totalSpent / totalClicks || 0,
       totalCPM: (totalSpent * 1000) / totalImpressions || 0,
-      totalCPP: totalPurchases > 0 ? (totalSpent / totalPurchases) : 0 ,
+      totalCPP: totalPurchases > 0 ? (totalSpent / totalPurchases) : 0,
     });
   }, []);
 
@@ -189,63 +197,63 @@ export default function Dashboard() {
       totalCPP: Number((rawMetrics.totalCPP).toFixed(2)).toLocaleString(locale),
     };
   }, [rawMetrics, locale]);
-    
 
-// Use formattedMetrics for rendering
-const metrics = [
-  {
-    label: 'Amount Spent',
-    value: formattedMetrics.totalSpent,
-    tooltipContent: 'The sum of ad spends for all advertising platforms',
-  },
-  {
-    label: 'Revenue',
-    value: formattedMetrics.totalRevenue,
-    tooltipContent: 'Revenue from Ads Purchases',
-  },
-  {
-    label: 'ROAS (Ads only)',
-    value: formattedMetrics.totalROAS,
-    tooltipContent: 'Blended ROAS = Ads Purchases value / Blended Ad Spend',
-  },
-  {
-    label: 'Ads Purchases',
-    value: formattedMetrics.totalPurchases,
-    tooltipContent: 'Ads Purchases = Fb Ads Purchase + Google Conversions',
-  },
-  {
-    label: 'CPC',
-    value: formattedMetrics.totalCPC,
-    tooltipContent:
-      'Average CPC from all advertising platforms = (Blended Ad Spend / Blended Clicks)',
-  },
-  {
-    label: 'CTR',
-    value: formattedMetrics.totalCTR,
-    tooltipContent:
-      'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100',
-  },
- 
-  {
-    label: 'CPM',
-    value: formattedMetrics.totalCPM,
-    tooltipContent:
-      'Average CPM from all advertising platforms = (Blended Ad Spend * 1000 / Blended Impressions)',
-  },
-  {
-    label: 'CPP',
-    value: formattedMetrics.totalCPP,
-    tooltipContent:
-      'Average CPP from all advertising platforms = (Blended Ad Spend / Blended Purchases)',
-  },
-];
+
+  // Use formattedMetrics for rendering
+  const metrics = [
+    {
+      label: 'Amount Spent',
+      value: formattedMetrics.totalSpent,
+      tooltipContent: 'The sum of ad spends for all advertising platforms',
+    },
+    {
+      label: 'Revenue',
+      value: formattedMetrics.totalRevenue,
+      tooltipContent: 'Revenue from Ads Purchases',
+    },
+    {
+      label: 'ROAS (Ads only)',
+      value: formattedMetrics.totalROAS,
+      tooltipContent: 'Blended ROAS = Ads Purchases value / Blended Ad Spend',
+    },
+    {
+      label: 'Ads Purchases',
+      value: formattedMetrics.totalPurchases,
+      tooltipContent: 'Ads Purchases = Fb Ads Purchase + Google Conversions',
+    },
+    {
+      label: 'CPC',
+      value: formattedMetrics.totalCPC,
+      tooltipContent:
+        'Average CPC from all advertising platforms = (Blended Ad Spend / Blended Clicks)',
+    },
+    {
+      label: 'CTR',
+      value: formattedMetrics.totalCTR,
+      tooltipContent:
+        'Average CTR from all advertising platforms = (Blended Clicks / Blended Impressions)*100',
+    },
+
+    {
+      label: 'CPM',
+      value: formattedMetrics.totalCPM,
+      tooltipContent:
+        'Average CPM from all advertising platforms = (Blended Ad Spend * 1000 / Blended Impressions)',
+    },
+    {
+      label: 'CPP',
+      value: formattedMetrics.totalCPP,
+      tooltipContent:
+        'Average CPP from all advertising platforms = (Blended Ad Spend / Blended Purchases)',
+    },
+  ];
 
 
   const googleMetrics = [
     {
       label: 'Total Cost',
       value: googleAdMetrics
-        ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalSpend || '0').toLocaleString(locale)}` 
+        ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalSpend || '0').toLocaleString(locale)}`
         : '₹ 0',
     },
     {
@@ -281,18 +289,18 @@ const metrics = [
 
   return (
     <div className="min-h-screen bg-gray-100">
-        <Header
-      title="AdMetrics Dashboard"
-      Icon={LineChart}
-      showDatePicker={true}
-      showSettings={true}
-      showRefresh={true}
-      isLoading={false}
-      handleManualRefresh={() => {
-        fetchAdData();
-      }} 
-      locale={locale}
-      setLocale={setLocale}/>
+      <Header
+        title="AdMetrics Dashboard"
+        Icon={LineChart}
+        showDatePicker={true}
+        showSettings={true}
+        showRefresh={true}
+        isLoading={false}
+        handleManualRefresh={() => {
+          fetchAdData();
+        }}
+        locale={locale}
+        setLocale={setLocale} />
 
       <div className="bg-white px-6 sticky top-0 z-10">
         <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleDataSourceChange} />
@@ -319,18 +327,18 @@ const metrics = [
                   </svg>
                 )}
               </div>
-              
-          
+
+
 
             </h2>
-            <AdAccountMetricsCard 
-              metrics={metrics} 
-              date={{ 
+            <AdAccountMetricsCard
+              metrics={metrics}
+              date={{
                 from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined 
-              }} 
-              isLoading={isLoading} 
-              icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'} 
+                to: date.to ? new Date(date.to) : undefined
+              }}
+              isLoading={isLoading}
+              icon={dataSource === 'all' ? '' : dataSource === 'facebook' ? 'Facebook' : 'Google'}
             />
           </section>
         </div>
@@ -338,15 +346,15 @@ const metrics = [
 
         {(dataSource === 'all' || dataSource === 'facebook') && fbAdAccountsMetrics?.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
           const fbmetrics = [
-            { label: 'Amount Spent', value: `₹ ${parseFloat(accountMetrics.spend || '0').toLocaleString(locale)}` },
+            { label: 'Amount Spent', value: `₹ ${parseFloat(String(accountMetrics.spend || '0')).toLocaleString(locale)}` },
             {
               label: 'Revenue',
-              value: `₹ ${parseFloat(accountMetrics.Revenue?.value || '0').toLocaleString(locale)}`
+              value: `₹ ${parseFloat(String(accountMetrics.Revenue?.value || '0')).toLocaleString(locale)}`
             },
             {
               label: 'ROAS (Ads only)',
               value: accountMetrics.purchase_roas && accountMetrics.purchase_roas.length > 0
-                ? parseFloat(accountMetrics.purchase_roas[0].value).toFixed(2)
+                ? parseFloat(String(accountMetrics.purchase_roas[0].value)).toFixed(2)
                 : '0'
             },
             { label: 'Ads Purchases', value: accountMetrics.purchases?.value || '0' },
@@ -363,18 +371,23 @@ const metrics = [
                 icon="Facebook"
                 title={`Facebook - ${accountMetrics.account_name}`}
                 metrics={fbmetrics}  // Pass fbmetrics for the current account
-                date={{ 
+                date={{
                   from: date.from ? new Date(date.from) : undefined,
-                  to: date.to ? new Date(date.to) : undefined 
+                  to: date.to ? new Date(date.to) : undefined
                 }}
                 isLoading={isLoading}
                 errorMessage={accountMetrics.message}
               />
-              <CampaignGrid 
-                campaigns={accountMetrics.campaigns || []} 
-                isLoading={isLoading} 
-                icon="Facebook" 
+<div className='mt-6'>
+              <MetaCampaignTable
+                data={{
+                  account_name: accountMetrics.account_name,
+                  account_id: accountMetrics.adAccountId,
+                  campaigns: accountMetrics.campaigns
+                }}
+                height={height}  // Adjust the height according to the number of campaigns
               />
+</div>
             </>
           );
         })}
@@ -387,9 +400,9 @@ const metrics = [
                   icon="Google"
                   title={`Google Ads - ${googleAdMetrics?.adAccountName}`}
                   metrics={googleMetrics}
-                  date={{ 
+                  date={{
                     from: date.from ? new Date(date.from) : undefined,
-                    to: date.to ? new Date(date.to) : undefined 
+                    to: date.to ? new Date(date.to) : undefined
                   }}
                   isLoading={isLoading}
                 />

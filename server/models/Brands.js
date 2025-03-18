@@ -10,10 +10,9 @@ const brandSchema = new mongoose.Schema({
   fbAdAccounts: [{
     type: String, 
   }],
-  googleAdAccount: {
-    clientId:{type: String}, 
-    managerId:{type: String}
-  },
+  googleAdAccount: [
+    {clientId: { type: String }, managerId: { type: String }}
+  ],
   ga4Account: {
     PropertyID:{
       type: String,

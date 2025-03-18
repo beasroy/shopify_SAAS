@@ -48,117 +48,158 @@ export async function fetchSearchTermMetrics(req, res) {
 
         const refreshToken = user.googleRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-          console.warn(`No refresh token found for User ID: ${userId}`);
-          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+            console.warn(`No refresh token found for User ID: ${userId}`);
+            return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountId = brand.googleAdAccount.clientId;
+        const adAccountIds = brand.googleAdAccount.clientId || [];
         const managerId = brand.googleAdAccount.managerId;
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id:managerId
-        });
-
-        const query = `
-    SELECT
-        search_term_view.search_term,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.conversions_value_per_cost,
-        metrics.clicks,
-        metrics.conversions_from_interactions_rate,
-        segments.month
-    FROM
-        search_term_view
-    WHERE
-        segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
-    ORDER BY
-        metrics.cost_micros DESC
-    LIMIT 1000
-`;
-
-        const results = await customer.query(query);
-
-        const searchTermData = new Map();
-
-        for (const result of results) {
-            const {
-                search_term_view: { search_term },
-                metrics,
-                segments: { month }
-            } = result;
-
-
-            if (!searchTermData.has(search_term)) {
-                searchTermData.set(search_term, { MonthlyData: new Map() });
-            }
-
-            const monthlyData = searchTermData.get(search_term).MonthlyData;
-
-            // Initialize month if it doesn't exist in the MonthlyData Map
-            if (!monthlyData.has(month)) {
-                monthlyData.set(month, {
-                    Month: moment(month).format('YYYYMM'), // Format month as "YYYY-MM"
-                    Cost: 0,
-                    Clicks: 0,
-                    Conversions: 0,
-                    "Conversion Value": 0,
-                    "Conv. Value/ Cost": 0,
-                    "Conversion Rate": 0,
-                });
-            }
-
-            const monthData = monthlyData.get(month);
-
-            // Update the monthly data values
-            monthData.Cost += (metrics.cost_micros / 1_000_000);
-            monthData.Clicks += metrics.clicks;
-            monthData.Conversions += metrics.conversions;
-            monthData["Conversion Value"] += metrics.conversions_value
-            monthData["Conv. Value/ Cost"] += metrics.conversions_value_per_cost;
-            monthData["Conversion Rate"] += metrics.conversions_from_interactions_rate * 100;
-        }
-
-        const formattedData = Array.from(searchTermData.entries())
-            .map(([searchTerm, { MonthlyData }]) => {
-                const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
-                const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
-
-                // Calculate the Total Conv. Value / Cost
-                const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0; // Avoid division by zero
-                const monthlyDataArray = Array.from(MonthlyData.values())
-                    .sort((a, b) => a.Month.localeCompare(b.Month));
-                return {
-                    "Search Term": searchTerm,
-                    "Total Cost": totalCost,
-                    "Conv. Value / Cost": totalConvValueCostRatio,
-                    "Total Conv. Value": totalConvValue,
-                    MonthlyData: monthlyDataArray,
-                };
-            })
-
-        let limitedData = formattedData.slice(0, 500);
-
-        if (costFilter || convValuePerCostFilter) {
-            limitedData = limitedData.filter(item => {
-                const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-
-                const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-
-                return costCondition && convValuePerCostCondition;
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
             });
         }
 
-        return res.json({ success: true, data: limitedData });
+        // Array to store results from all accounts
+        let allAccountsData = [];
+
+        // Process each ad account
+        for (const adAccountId of adAccountIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: adAccountId,
+                    refresh_token: refreshToken,
+                    login_customer_id: managerId
+                });
+
+                // Now get search term data
+                const searchTermQuery = `
+                    SELECT
+                        customer.descriptive_name,
+                        search_term_view.search_term,
+                        metrics.cost_micros,
+                        metrics.conversions,
+                        metrics.conversions_value,
+                        metrics.conversions_value_per_cost,
+                        metrics.clicks,
+                        metrics.conversions_from_interactions_rate,
+                        segments.month
+                    FROM
+                        search_term_view
+                    WHERE
+                        segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+                    ORDER BY
+                        metrics.cost_micros DESC
+                    LIMIT 1000
+                `;
+
+                const results = await customer.query(searchTermQuery);
+                const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
+                    ? results[0].customer.descriptive_name
+                    : `Account ${adAccountId}`;
+
+                const searchTermData = new Map();
+
+                for (const result of results) {
+                    const {
+                        search_term_view: { search_term },
+                        metrics,
+                        segments: { month }
+                    } = result;
+
+                    if (!searchTermData.has(search_term)) {
+                        searchTermData.set(search_term, { MonthlyData: new Map() });
+                    }
+
+                    const monthlyData = searchTermData.get(search_term).MonthlyData;
+
+                    // Initialize month if it doesn't exist in the MonthlyData Map
+                    if (!monthlyData.has(month)) {
+                        monthlyData.set(month, {
+                            Month: moment(month).format('YYYYMM'),
+                            Cost: 0,
+                            Clicks: 0,
+                            Conversions: 0,
+                            "Conversion Value": 0,
+                            "Conv. Value/ Cost": 0,
+                            "Conversion Rate": 0,
+                        });
+                    }
+
+                    const monthData = monthlyData.get(month);
+
+                    // Update the monthly data values
+                    monthData.Cost += (metrics.cost_micros / 1_000_000);
+                    monthData.Clicks += metrics.clicks;
+                    monthData.Conversions += metrics.conversions;
+                    monthData["Conversion Value"] += metrics.conversions_value;
+                    monthData["Conv. Value/ Cost"] += metrics.conversions_value_per_cost;
+                    monthData["Conversion Rate"] += metrics.conversions_from_interactions_rate * 100;
+                }
+
+                const formattedData = Array.from(searchTermData.entries())
+                    .map(([searchTerm, { MonthlyData }]) => {
+                        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+                        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+
+                        // Calculate the Total Conv. Value / Cost
+                        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+                        const monthlyDataArray = Array.from(MonthlyData.values())
+                            .sort((a, b) => a.Month.localeCompare(b.Month));
+
+                        return {
+                            "Search Term": searchTerm,
+                            "Total Cost": totalCost,
+                            "Conv. Value / Cost": totalConvValueCostRatio,
+                            "Total Conv. Value": totalConvValue,
+                            MonthlyData: monthlyDataArray,
+                        };
+                    });
+
+                let limitedData = formattedData.slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter
+                            ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                            : true;
+
+                        const convValuePerCostCondition = convValuePerCostFilter
+                            ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                            : true;
+
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                // Add the account data to our collection
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: accountName,
+                    searchTerms: limitedData
+                });
+
+            } catch (accountError) {
+                console.error(`Error processing ad account ${adAccountId} for search terms:`, accountError);
+                // Add empty data for this account to show it was processed but had an error
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: `Account ${adAccountId}`,
+                    searchTerms: [],
+                    error: accountError.message
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: allAccountsData
+        });
     } catch (error) {
         console.error("Failed to fetch Google Ads search term metrics:", error);
         return res.status(500).json({
@@ -167,7 +208,6 @@ export async function fetchSearchTermMetrics(req, res) {
             error: error.message,
         });
     }
-
 }
 
 export async function fetchAgeMetrics(req, res) {
@@ -201,121 +241,156 @@ export async function fetchAgeMetrics(req, res) {
 
         const refreshToken = user.googleRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-          console.warn(`No refresh token found for User ID: ${userId}`);
-          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+            console.warn(`No refresh token found for User ID: ${userId}`);
+            return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountId = brand.googleAdAccount.clientId;
+        const adAccountIds = brand.googleAdAccount.clientId || [];
         const managerId = brand.googleAdAccount.managerId;
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id:managerId
-        });
-
-        const query = `
-           SELECT
-                ad_group_criterion.age_range.type,
-                metrics.cost_micros,
-                metrics.conversions,
-                metrics.clicks,
-                metrics.conversions_from_interactions_rate,
-                metrics.conversions_value,
-                segments.month    
-            FROM
-                age_range_view
-            WHERE
-                segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
-            LIMIT 1000
-        `;
-
-        const results = await customer.query(query);
-
-        const ageRangeData = new Map();
-
-        // Process monthly data
-        for (let i = 0; i < results.length; i++) {
-            const row = results[i];
-            const ageRangeType = ageRanges[row.ad_group_criterion.age_range.type] || 'UNKNOWN';
-
-            if (!ageRangeData.has(ageRangeType)) {
-                ageRangeData.set(ageRangeType, {
-                    MonthlyData: new Map(),
-                    TotalConversionValue: 0,
-                    TotalCost: 0
-                });
-            }
-
-            const monthData = ageRangeData.get(ageRangeType).MonthlyData.get(row.segments.month) || {
-                Month: moment(row.segments.month).format('YYYYMM'),
-                Cost: 0,
-                Clicks: 0,
-                Conversions: 0,
-                "Conversion Value": 0,
-                "Conversion Rate": 0,
-                "Conv. Value/ Cost": 0
-            };
-
-            const cost = row.metrics.cost_micros / 1_000_000;
-            const conversionValue = row.metrics.conversions_value;
-
-            // Update monthly metrics
-            monthData.Cost += cost;
-            monthData.Clicks += row.metrics.clicks;
-            monthData.Conversions += row.metrics.conversions;
-            monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate * 100;
-            monthData["Conversion Value"] += conversionValue;
-
-            // Calculate Conv. Value/Cost for the month
-            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
-                ? monthData["Conversion Value"] / monthData.Cost
-                : 0;
-
-            ageRangeData.get(ageRangeType).MonthlyData.set(row.segments.month, monthData);
-
-            // Update totals for the age range
-            ageRangeData.get(ageRangeType).TotalConversionValue += conversionValue;
-            ageRangeData.get(ageRangeType).TotalCost += cost;
-        }
-
-        // Format the final data
-        const formattedData = Array.from(ageRangeData.entries())
-            .map(([ageRange, data]) => {
-                const { MonthlyData, TotalConversionValue, TotalCost } = data;
-                const monthlyDataArray = Array.from(MonthlyData.values());
-
-                return {
-                    "Age Range": ageRange,
-                    "Total Cost": TotalCost,
-                    "Total Conv. Value": TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0
-                        ? TotalConversionValue / TotalCost
-                        : 0,
-                    MonthlyData: monthlyDataArray,
-                };
-            })
-
-
-        let limitedData = formattedData.slice(0, 500);
-
-        if (costFilter || convValuePerCostFilter) {
-            limitedData = limitedData.filter(item => {
-                const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-
-                const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-
-                return costCondition && convValuePerCostCondition;
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
             });
         }
 
-        return res.json({ success: true, data: limitedData });
+        // Array to store results from all accounts
+        let allAccountsData = [];
+
+        // Process each ad account
+        for (const adAccountId of adAccountIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: adAccountId,
+                    refresh_token: refreshToken,
+                    login_customer_id: managerId
+                });
+
+                const ageQuery = `
+                    SELECT
+                        customer.descriptive_name,
+                        ad_group_criterion.age_range.type,
+                        metrics.cost_micros,
+                        metrics.conversions,
+                        metrics.clicks,
+                        metrics.conversions_from_interactions_rate,
+                        metrics.conversions_value,
+                        segments.month    
+                    FROM
+                        age_range_view
+                    WHERE
+                        segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+                    LIMIT 1000
+                `;
+
+                const results = await customer.query(ageQuery);
+                const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
+                    ? results[0].customer.descriptive_name
+                    : `Account ${adAccountId}`;
+
+                const ageRangeData = new Map();
+
+                // Process monthly data
+                for (const result of results) {
+                    const ageRangeType = ageRanges[result.ad_group_criterion.age_range.type] || 'UNKNOWN';
+                    const month = result.segments.month;
+
+                    if (!ageRangeData.has(ageRangeType)) {
+                        ageRangeData.set(ageRangeType, { MonthlyData: new Map() });
+                    }
+
+                    if (!ageRangeData.get(ageRangeType).MonthlyData.has(month)) {
+                        ageRangeData.get(ageRangeType).MonthlyData.set(month, {
+                            Month: moment(month).format('YYYYMM'),
+                            Cost: 0,
+                            Clicks: 0,
+                            Conversions: 0,
+                            "Conversion Value": 0,
+                            "Conversion Rate": 0,
+                            "Conv. Value/ Cost": 0
+                        });
+                    }
+
+                    const monthData = ageRangeData.get(ageRangeType).MonthlyData.get(month);
+                    const cost = result.metrics.cost_micros / 1_000_000;
+                    const conversionValue = result.metrics.conversions_value;
+
+                    // Update monthly metrics
+                    monthData.Cost += cost;
+                    monthData.Clicks += result.metrics.clicks;
+                    monthData.Conversions += result.metrics.conversions;
+                    monthData["Conversion Rate"] += result.metrics.conversions_from_interactions_rate * 100;
+                    monthData["Conversion Value"] += conversionValue;
+
+                    // Calculate Conv. Value/Cost for the month
+                    monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                        ? monthData["Conversion Value"] / monthData.Cost
+                        : 0;
+                }
+
+                // Format the final data
+                const formattedData = Array.from(ageRangeData.entries())
+                    .map(([ageRange, { MonthlyData }]) => {
+                        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+                        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+
+                        // Calculate the Total Conv. Value / Cost
+                        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+                        const monthlyDataArray = Array.from(MonthlyData.values())
+                            .sort((a, b) => a.Month.localeCompare(b.Month));
+
+                        return {
+                            "Age Range": ageRange,
+                            "Total Cost": totalCost,
+                            "Total Conv. Value": totalConvValue,
+                            "Conv. Value / Cost": totalConvValueCostRatio,
+                            MonthlyData: monthlyDataArray,
+                        };
+                    });
+
+                let limitedData = formattedData.slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter
+                            ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                            : true;
+
+                        const convValuePerCostCondition = convValuePerCostFilter
+                            ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                            : true;
+
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                // Add the account data to our collection
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: accountName,
+                    ageRanges: limitedData
+                });
+
+            } catch (accountError) {
+                console.error(`Error processing ad account ${adAccountId} for age metrics:`, accountError);
+                // Add empty data for this account to show it was processed but had an error
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: `Account ${adAccountId}`,
+                    ageRanges: [],
+                    error: accountError.message
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: allAccountsData
+        });
     } catch (error) {
         console.error("Failed to fetch Google Ads age range metrics:", error);
         return res.status(500).json({
@@ -325,7 +400,6 @@ export async function fetchAgeMetrics(req, res) {
         });
     }
 }
-
 export async function fetchGenderMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
@@ -336,7 +410,7 @@ export async function fetchGenderMetrics(req, res) {
         10: "MALE",
         11: "FEMALE",
         20: "UNDETERMINED"
-    }
+    };
 
     try {
         const [brand, user] = await Promise.all([
@@ -353,119 +427,156 @@ export async function fetchGenderMetrics(req, res) {
 
         const refreshToken = user.googleRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-          console.warn(`No refresh token found for User ID: ${userId}`);
-          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+            console.warn(`No refresh token found for User ID: ${userId}`);
+            return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountId = brand.googleAdAccount.clientId;
+        const adAccountIds = brand.googleAdAccount.clientId || [];
         const managerId = brand.googleAdAccount.managerId;
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id:managerId
-        });
-
-        const query = `
-           SELECT
-                ad_group_criterion.gender.type,
-                metrics.cost_micros,
-                metrics.conversions,
-                metrics.clicks,
-                metrics.conversions_from_interactions_rate,
-                metrics.conversions_value,
-                segments.month    
-            FROM
-                gender_view
-            WHERE
-                segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
-            LIMIT 1000
-        `;
-
-        const results = await customer.query(query);
-
-        const genderData = new Map();
-
-        // Process monthly data
-        for (let i = 0; i < results.length; i++) {
-            const row = results[i];
-            const genderType = genderTypes[row.ad_group_criterion.gender.type] || 'UNKNOWN';
-
-            if (!genderData.has(genderType)) {
-                genderData.set(genderType, {
-                    MonthlyData: new Map(),
-                    TotalConversionValue: 0,
-                    TotalCost: 0
-                });
-            }
-
-            const monthData = genderData.get(genderType).MonthlyData.get(row.segments.month) || {
-                Month: moment(row.segments.month).format('YYYYMM'),
-                Cost: 0,
-                Clicks: 0,
-                Conversions: 0,
-                "Conversion Value": 0,
-                "Conversion Rate": 0,
-                "Conv. Value/ Cost": 0
-            };
-
-            const cost = row.metrics.cost_micros / 1_000_000;
-            const conversionValue = row.metrics.conversions_value;
-
-            // Update monthly metrics
-            monthData.Cost += cost;
-            monthData.Clicks += row.metrics.clicks;
-            monthData.Conversions += row.metrics.conversions;
-            monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate * 100;
-            monthData["Conversion Value"] += conversionValue;
-
-            // Calculate Conv. Value/Cost for the month
-            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
-                ? monthData["Conversion Value"] / monthData.Cost
-                : 0;
-
-            genderData.get(genderType).MonthlyData.set(row.segments.month, monthData);
-
-            // Update totals for the gender type
-            genderData.get(genderType).TotalConversionValue += conversionValue;
-            genderData.get(genderType).TotalCost += cost;
-        }
-
-        // Format the final data
-        const formattedData = Array.from(genderData.entries())
-            .map(([gender, data]) => {
-                const { MonthlyData, TotalConversionValue, TotalCost } = data;
-                const monthlyDataArray = Array.from(MonthlyData.values());
-
-                return {
-                    "Gender": gender,
-                    "Total Cost": TotalCost,
-                    "Total Conv. Value": TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0
-                        ? TotalConversionValue / TotalCost
-                        : 0,
-                    MonthlyData: monthlyDataArray,
-                };
-            })
-        let limitedData = formattedData.slice(0, 500);
-
-        if (costFilter || convValuePerCostFilter) {
-            limitedData = limitedData.filter(item => {
-                const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-
-                const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-
-                return costCondition && convValuePerCostCondition;
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
             });
         }
-        return res.json({ success: true, data: limitedData });
 
+        // Array to store results from all accounts
+        let allAccountsData = [];
+
+        // Process each ad account
+        for (const adAccountId of adAccountIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: adAccountId,
+                    refresh_token: refreshToken,
+                    login_customer_id: managerId
+                });
+
+                const genderQuery = `
+                   SELECT
+                        customer.descriptive_name,
+                        ad_group_criterion.gender.type,
+                        metrics.cost_micros,
+                        metrics.conversions,
+                        metrics.clicks,
+                        metrics.conversions_from_interactions_rate,
+                        metrics.conversions_value,
+                        segments.month    
+                    FROM
+                        gender_view
+                    WHERE
+                        segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+                    LIMIT 1000
+                `;
+
+                const results = await customer.query(genderQuery);
+                const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
+                    ? results[0].customer.descriptive_name
+                    : `Account ${adAccountId}`;
+
+                const genderData = new Map();
+
+                // Process monthly data
+                for (const result of results) {
+                    const genderType = genderTypes[result.ad_group_criterion.gender.type] || 'UNKNOWN';
+                    const month = result.segments.month;
+
+                    if (!genderData.has(genderType)) {
+                        genderData.set(genderType, { MonthlyData: new Map() });
+                    }
+
+                    if (!genderData.get(genderType).MonthlyData.has(month)) {
+                        genderData.get(genderType).MonthlyData.set(month, {
+                            Month: moment(month).format('YYYYMM'),
+                            Cost: 0,
+                            Clicks: 0,
+                            Conversions: 0,
+                            "Conversion Value": 0,
+                            "Conversion Rate": 0,
+                            "Conv. Value/ Cost": 0
+                        });
+                    }
+
+                    const monthData = genderData.get(genderType).MonthlyData.get(month);
+                    const cost = result.metrics.cost_micros / 1_000_000;
+                    const conversionValue = result.metrics.conversions_value;
+
+                    // Update monthly metrics
+                    monthData.Cost += cost;
+                    monthData.Clicks += result.metrics.clicks;
+                    monthData.Conversions += result.metrics.conversions;
+                    monthData["Conversion Rate"] += result.metrics.conversions_from_interactions_rate * 100;
+                    monthData["Conversion Value"] += conversionValue;
+
+                    // Calculate Conv. Value/Cost for the month
+                    monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                        ? monthData["Conversion Value"] / monthData.Cost
+                        : 0;
+                }
+
+                // Format the final data
+                const formattedData = Array.from(genderData.entries())
+                    .map(([gender, { MonthlyData }]) => {
+                        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+                        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+                        
+                        // Calculate the Total Conv. Value / Cost
+                        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+                        const monthlyDataArray = Array.from(MonthlyData.values())
+                            .sort((a, b) => a.Month.localeCompare(b.Month));
+
+                        return {
+                            "Gender": gender,
+                            "Total Cost": totalCost,
+                            "Total Conv. Value": totalConvValue,
+                            "Conv. Value / Cost": totalConvValueCostRatio,
+                            MonthlyData: monthlyDataArray,
+                        };
+                    });
+
+                let limitedData = formattedData.slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter
+                            ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                            : true;
+
+                        const convValuePerCostCondition = convValuePerCostFilter
+                            ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                            : true;
+
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                // Add the account data to our collection
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: accountName,
+                    genders: limitedData
+                });
+
+            } catch (accountError) {
+                console.error(`Error processing ad account ${adAccountId} for gender metrics:`, accountError);
+                // Add empty data for this account to show it was processed but had an error
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: `Account ${adAccountId}`,
+                    genders: [],
+                    error: accountError.message
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: allAccountsData
+        });
     } catch (error) {
         console.error("Failed to fetch Google Ads gender metrics:", error);
         return res.status(500).json({
@@ -495,119 +606,156 @@ export async function fetchKeywordMetrics(req, res) {
 
         const refreshToken = user.googleRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-          console.warn(`No refresh token found for User ID: ${userId}`);
-          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+            console.warn(`No refresh token found for User ID: ${userId}`);
+            return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountId = brand.googleAdAccount.clientId;
+        const adAccountIds = brand.googleAdAccount.clientId || [];
         const managerId = brand.googleAdAccount.managerId;
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id:managerId
-        });
-
-        const query = `
-           SELECT
-                ad_group_criterion.keyword.text,
-                metrics.cost_micros,
-                metrics.conversions,
-                metrics.clicks,
-                metrics.conversions_from_interactions_rate,
-                metrics.conversions_value,
-                segments.month    
-            FROM
-                keyword_view
-            WHERE
-                segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
-            LIMIT 1000
-        `;
-
-        const results = await customer.query(query);
-
-        const keywordData = new Map();
-
-        // Process monthly data
-        for (let i = 0; i < results.length; i++) {
-            const row = results[i];
-            const keyword = row.ad_group_criterion.keyword.text || 'UNKNOWN';
-
-            if (!keywordData.has(keyword)) {
-                keywordData.set(keyword, {
-                    MonthlyData: new Map(),
-                    TotalConversionValue: 0,
-                    TotalCost: 0
-                });
-            }
-
-            const monthData = keywordData.get(keyword).MonthlyData.get(row.segments.month) || {
-                Month: moment(row.segments.month).format('YYYYMM'),
-                Cost: 0,
-                Clicks: 0,
-                Conversions: 0,
-                "Conversion Value": 0,
-                "Conversion Rate": 0,
-                "Conv. Value/ Cost": 0
-            };
-
-            const cost = row.metrics.cost_micros / 1_000_000;
-            const conversionValue = row.metrics.conversions_value;
-
-            // Update monthly metrics
-            monthData.Cost += cost;
-            monthData.Clicks += row.metrics.clicks;
-            monthData.Conversions += row.metrics.conversions;
-            monthData["Conversion Rate"] += row.metrics.conversions_from_interactions_rate * 100;
-            monthData["Conversion Value"] += conversionValue;
-
-            // Calculate Conv. Value/Cost for the month
-            monthData["Conv. Value/ Cost"] = monthData.Cost > 0
-                ? monthData["Conversion Value"] / monthData.Cost
-                : 0;
-
-                keywordData.get(keyword).MonthlyData.set(row.segments.month, monthData);
-
-            // Update totals for the gender type
-            keywordData.get(keyword).TotalConversionValue += conversionValue;
-            keywordData.get(keyword).TotalCost += cost;
-        }
-
-        // Format the final data
-        const formattedData = Array.from(keywordData.entries())
-            .map(([keyword, data]) => {
-                const { MonthlyData, TotalConversionValue, TotalCost } = data;
-                const monthlyDataArray = Array.from(MonthlyData.values());
-
-                return {
-                    "Keyword": keyword,
-                    "Total Cost": TotalCost,
-                    "Total Conv. Value": TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0
-                        ? TotalConversionValue / TotalCost
-                        : 0,
-                    MonthlyData: monthlyDataArray,
-                };
-            })
-        let limitedData = formattedData.slice(0, 500);
-
-        if (costFilter || convValuePerCostFilter) {
-            limitedData = limitedData.filter(item => {
-                const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-
-                const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-
-                return costCondition && convValuePerCostCondition;
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
             });
         }
-        return res.json({ success: true, data: limitedData });
 
+        // Array to store results from all accounts
+        let allAccountsData = [];
+
+        // Process each ad account
+        for (const adAccountId of adAccountIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: adAccountId,
+                    refresh_token: refreshToken,
+                    login_customer_id: managerId
+                });
+
+                const keywordQuery = `
+                   SELECT
+                        customer.descriptive_name,
+                        ad_group_criterion.keyword.text,
+                        metrics.cost_micros,
+                        metrics.conversions,
+                        metrics.clicks,
+                        metrics.conversions_from_interactions_rate,
+                        metrics.conversions_value,
+                        segments.month    
+                    FROM
+                        keyword_view
+                    WHERE
+                        segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+                    LIMIT 1000
+                `;
+
+                const results = await customer.query(keywordQuery);
+                const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
+                    ? results[0].customer.descriptive_name
+                    : `Account ${adAccountId}`;
+
+                const keywordData = new Map();
+
+                // Process monthly data
+                for (const result of results) {
+                    const keyword = result.ad_group_criterion.keyword.text || 'UNKNOWN';
+                    const month = result.segments.month;
+
+                    if (!keywordData.has(keyword)) {
+                        keywordData.set(keyword, { MonthlyData: new Map() });
+                    }
+
+                    if (!keywordData.get(keyword).MonthlyData.has(month)) {
+                        keywordData.get(keyword).MonthlyData.set(month, {
+                            Month: moment(month).format('YYYYMM'),
+                            Cost: 0,
+                            Clicks: 0,
+                            Conversions: 0,
+                            "Conversion Value": 0,
+                            "Conversion Rate": 0,
+                            "Conv. Value/ Cost": 0
+                        });
+                    }
+
+                    const monthData = keywordData.get(keyword).MonthlyData.get(month);
+                    const cost = result.metrics.cost_micros / 1_000_000;
+                    const conversionValue = result.metrics.conversions_value;
+
+                    // Update monthly metrics
+                    monthData.Cost += cost;
+                    monthData.Clicks += result.metrics.clicks;
+                    monthData.Conversions += result.metrics.conversions;
+                    monthData["Conversion Rate"] += result.metrics.conversions_from_interactions_rate * 100;
+                    monthData["Conversion Value"] += conversionValue;
+
+                    // Calculate Conv. Value/Cost for the month
+                    monthData["Conv. Value/ Cost"] = monthData.Cost > 0
+                        ? monthData["Conversion Value"] / monthData.Cost
+                        : 0;
+                }
+
+                // Format the final data
+                const formattedData = Array.from(keywordData.entries())
+                    .map(([keyword, { MonthlyData }]) => {
+                        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+                        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+                        
+                        // Calculate the Total Conv. Value / Cost
+                        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+                        const monthlyDataArray = Array.from(MonthlyData.values())
+                            .sort((a, b) => a.Month.localeCompare(b.Month));
+
+                        return {
+                            "Keyword": keyword,
+                            "Total Cost": totalCost,
+                            "Total Conv. Value": totalConvValue,
+                            "Conv. Value / Cost": totalConvValueCostRatio,
+                            MonthlyData: monthlyDataArray,
+                        };
+                    });
+
+                let limitedData = formattedData.slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter
+                            ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                            : true;
+
+                        const convValuePerCostCondition = convValuePerCostFilter
+                            ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                            : true;
+
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                // Add the account data to our collection
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: accountName,
+                    keywords: limitedData
+                });
+
+            } catch (accountError) {
+                console.error(`Error processing ad account ${adAccountId} for keyword metrics:`, accountError);
+                // Add empty data for this account to show it was processed but had an error
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: `Account ${adAccountId}`,
+                    keywords: [],
+                    error: accountError.message
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: allAccountsData
+        });
     } catch (error) {
         console.error("Failed to fetch Google Ads keyword metrics:", error);
         return res.status(500).json({
@@ -637,144 +785,193 @@ export async function fetchProductMetrics(req, res) {
 
         const refreshToken = user.googleRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-          console.warn(`No refresh token found for User ID: ${userId}`);
-          return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
+            console.warn(`No refresh token found for User ID: ${userId}`);
+            return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountId = brand.googleAdAccount.clientId;
+        const adAccountIds = brand.googleAdAccount.clientId || [];
         const managerId = brand.googleAdAccount.managerId;
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id:managerId
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
+            });
+        }
+
+        // Array to store results from all accounts
+        let allAccountsData = [];
+
+        // Generate all months between start and end dates
+        const months = [];
+        let current = moment(adjustedStartDate).startOf('month');
+        while (current.isBefore(adjustedEndDate)) {
+            months.push(current.format('YYYYMM'));
+            current.add(1, 'month');
+        }
+
+        // Process each ad account
+        for (const adAccountId of adAccountIds) {
+            try {
+                const customer = client.Customer({
+                    customer_id: adAccountId,
+                    refresh_token: refreshToken,
+                    login_customer_id: managerId
+                });
+
+                // Fetch account name
+                let accountName = `Account ${adAccountId}`;
+                try {
+                    const accountInfoQuery = `
+                        SELECT customer.descriptive_name 
+                        FROM customer 
+                        WHERE customer.id = ${adAccountId}
+                        LIMIT 1
+                    `;
+                    const accountInfo = await customer.query(accountInfoQuery);
+                    if (accountInfo.length > 0 && accountInfo[0].customer && accountInfo[0].customer.descriptive_name) {
+                        accountName = accountInfo[0].customer.descriptive_name;
+                    }
+                } catch (accountInfoError) {
+                    console.warn(`Could not fetch account name for ${adAccountId}:`, accountInfoError.message);
+                }
+
+                // Then fetch data for each month separately
+                const monthlyResults = await Promise.all(months.map(async (month) => {
+                    const monthStart = moment(month, 'YYYYMM').startOf('month').format('YYYY-MM-DD');
+                    const monthEnd = moment(month, 'YYYYMM').endOf('month').format('YYYY-MM-DD');
+
+                    const monthlyQuery = `
+                        SELECT
+                            shopping_product.title,
+                            metrics.cost_micros,
+                            metrics.conversions,
+                            metrics.clicks,
+                            metrics.conversions_value
+                        FROM
+                            shopping_product
+                        WHERE
+                            segments.date BETWEEN '${monthStart}' AND '${monthEnd}'
+                    `;
+
+                    try {
+                        const results = await customer.query(monthlyQuery);
+                        return { month, data: results };
+                    } catch (error) {
+                        console.error(`Failed to fetch data for ${month}:`, error);
+                        return { month, data: [] };
+                    }
+                }));
+
+                // Process results with month context
+                const productData = new Map();
+
+                monthlyResults.forEach(({ month, data }) => {
+                    data.forEach(row => {
+                        const product = row.shopping_product.title || 'UNKNOWN';
+                        
+                        if (!productData.has(product)) {
+                            productData.set(product, { MonthlyData: new Map() });
+                        }
+
+                        if (!productData.get(product).MonthlyData.has(month)) {
+                            productData.get(product).MonthlyData.set(month, {
+                                Month: month,
+                                Cost: 0,
+                                Clicks: 0,
+                                Conversions: 0,
+                                "Conversion Value": 0,
+                                "Conversion Rate": 0,
+                                "Conv. Value/ Cost": 0
+                            });
+                        }
+                        
+                        const monthData = productData.get(product).MonthlyData.get(month);
+                        const cost = row.metrics.cost_micros / 1_000_000;
+                        const conversionValue = row.metrics.conversions_value;
+
+                        // Accumulate metrics
+                        monthData.Cost += cost;
+                        monthData.Clicks += row.metrics.clicks;
+                        monthData.Conversions += row.metrics.conversions;
+                        monthData["Conversion Value"] += conversionValue;
+                    });
+                });
+
+                // Finally calculate rates and ratios
+                productData.forEach((productEntry) => {
+                    productEntry.MonthlyData.forEach((monthEntry) => {
+                        monthEntry["Conversion Rate"] = monthEntry.Clicks > 0
+                            ? (monthEntry.Conversions / monthEntry.Clicks) * 100
+                            : 0;
+
+                        monthEntry["Conv. Value/ Cost"] = monthEntry.Cost > 0
+                            ? monthEntry["Conversion Value"] / monthEntry.Cost
+                            : 0;
+                    });
+                });
+
+                const formattedData = Array.from(productData.entries())
+                    .map(([product, { MonthlyData }]) => {
+                        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+                        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+                        
+                        // Calculate the Total Conv. Value / Cost
+                        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+                        const monthlyDataArray = Array.from(MonthlyData.values())
+                            .sort((a, b) => a.Month.localeCompare(b.Month));
+
+                        return {
+                            "Product": product,
+                            "Total Cost": totalCost,
+                            "Total Conv. Value": totalConvValue,
+                            "Conv. Value / Cost": totalConvValueCostRatio,
+                            MonthlyData: monthlyDataArray,
+                        };
+                    });
+
+                let limitedData = formattedData.slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter
+                            ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
+                            : true;
+
+                        const convValuePerCostCondition = convValuePerCostFilter
+                            ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
+                            : true;
+
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                // Add the account data to our collection
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: accountName,
+                    products: limitedData
+                });
+
+            } catch (accountError) {
+                console.error(`Error processing ad account ${adAccountId} for product metrics:`, accountError);
+                // Add empty data for this account to show it was processed but had an error
+                allAccountsData.push({
+                    accountId: adAccountId,
+                    accountName: `Account ${adAccountId}`,
+                    products: [],
+                    error: accountError.message
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: allAccountsData
         });
-
-    
-
-      // First, generate all months between start and end dates
-const months = [];
-let current = moment(adjustedStartDate).startOf('month');
-while (current.isBefore(adjustedEndDate)) {
-    months.push(current.format('YYYYMM'));
-    current.add(1, 'month');
-}
-
-// Then fetch data for each month separately
-const monthlyResults = await Promise.all(months.map(async (month) => {
-    const monthStart = moment(month, 'YYYYMM').startOf('month').format('YYYY-MM-DD');
-    const monthEnd = moment(month, 'YYYYMM').endOf('month').format('YYYY-MM-DD');
-
-    const monthlyQuery = `
-        SELECT
-            shopping_product.title,
-            metrics.cost_micros,
-            metrics.conversions,
-            metrics.clicks,
-            metrics.conversions_value
-        FROM
-            shopping_product
-        WHERE
-            segments.date BETWEEN '${monthStart}' AND '${monthEnd}'
-    `; 
-
-    try {
-        const results = await customer.query(monthlyQuery);
-        return { month, data: results };
-    } catch (error) {
-        console.error(`Failed to fetch data for ${month}:`, error);
-        return { month, data: [] };
-    }
-}));
-
-// Process results with month context
-const productData = new Map();
-
-monthlyResults.forEach(({ month, data }) => {
-    data.forEach(row => {
-        const product = row.shopping_product.title || 'UNKNOWN';
-        const cost = row.metrics.cost_micros / 1_000_000;
-        const conversionValue = row.metrics.conversions_value;
-
-        if (!productData.has(product)) {
-            productData.set(product, {
-                MonthlyData: new Map(),
-                TotalConversionValue: 0,
-                TotalCost: 0
-            });
-        }
-
-        const monthData = productData.get(product).MonthlyData.get(month) || {
-            Month: month,
-            Cost: 0,
-            Clicks: 0,
-            Conversions: 0,
-            "Conversion Value": 0,
-            "Conversion Rate": 0,
-            "Conv. Value/ Cost": 0
-        };
-
-        // Accumulate metrics
-        monthData.Cost += cost;
-        monthData.Clicks += row.metrics.clicks;
-        monthData.Conversions += row.metrics.conversions;
-        monthData["Conversion Value"] += conversionValue;
-
-        // Update totals
-        productData.get(product).TotalConversionValue += conversionValue;
-        productData.get(product).TotalCost += cost;
-
-        // Store updated month data
-        productData.get(product).MonthlyData.set(month, monthData);
-    });
-});
-
-// Finally calculate rates and ratios
-productData.forEach((productEntry) => {
-    productEntry.MonthlyData.forEach((monthEntry) => {
-        monthEntry["Conversion Rate"] = monthEntry.Clicks > 0 
-            ? (monthEntry.Conversions / monthEntry.Clicks) * 100 
-            : 0;
-            
-        monthEntry["Conv. Value/ Cost"] = monthEntry.Cost > 0
-            ? monthEntry["Conversion Value"] / monthEntry.Cost
-            : 0;
-    });
-});
-        const formattedData = Array.from(productData.entries())
-            .map(([product, data]) => {
-                const { MonthlyData, TotalConversionValue, TotalCost } = data;
-                const monthlyDataArray = Array.from(MonthlyData.values());
-
-                return {
-                    "Product": product,
-                    "Total Cost": TotalCost,
-                    "Total Conv. Value": TotalConversionValue,
-                    "Conv. Value / Cost": TotalCost > 0
-                        ? TotalConversionValue / TotalCost
-                        : 0,
-                    MonthlyData: monthlyDataArray,
-                };
-            })
-        let limitedData = formattedData.slice(0, 500);
-
-        if (costFilter || convValuePerCostFilter) {
-            limitedData = limitedData.filter(item => {
-                const costCondition = costFilter
-                    ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator)
-                    : true;
-
-                const convValuePerCostCondition = convValuePerCostFilter
-                    ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator)
-                    : true;
-
-                return costCondition && convValuePerCostCondition;
-            });
-        }
-        return res.json({ success: true, data: limitedData });
-
     } catch (error) {
         console.error("Failed to fetch Google Ads product metrics:", error);
         return res.status(500).json({

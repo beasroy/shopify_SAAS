@@ -122,7 +122,7 @@ export async function fetchMetaAdsData(startDate, endDate,accessToken,adAccountI
   const batchRequests = adAccountIds.flatMap((accountId) => [
     {
       method: 'GET',
-      relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+      relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
     },
   ]);
 
@@ -501,10 +501,8 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    const adAccountId = brand.googleAdAccount.clientId;
-    const managerId = brand.googleAdAccount.managerId;
-
-    if (!adAccountId || adAccountId.length === 0) {
+    // Check if googleAdAccount is available and has at least one account
+    if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
       return res.json({
         success: true,
         summaries: {},
@@ -512,53 +510,97 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
+    // Create empty objects to store aggregated metrics
+    const aggregatedResults = {
+      yesterdayMetrics: { spend: 0, roas: 0, totalConversionValue: 0 },
+      dayBeforeYesterdayMetrics: { spend: 0, roas: 0, totalConversionValue: 0 },
+      last7DaysMetrics: { spend: 0, roas: 0, totalConversionValue: 0 },
+      previous7DaysMetrics: { spend: 0, roas: 0, totalConversionValue: 0 },
+      last30DayMetrics: { spend: 0, roas: 0, totalConversionValue: 0 },
+      previous30DayMetrics: { spend: 0, roas: 0, totalConversionValue: 0 }
+    };
 
+    // Process each Google Ad Account
+    for (const adAccount of brand.googleAdAccount) {
+      const adAccountId = adAccount.clientId;
+      const managerId = adAccount.managerId;
 
-    // Initialize customer once
-    const customer = client.Customer({
-      customer_id: adAccountId,
-      refresh_token: refreshToken,
-      login_customer_id: managerId
-    });
+      if (!adAccountId || adAccountId.length === 0) {
+        continue; // Skip invalid accounts
+      }
 
-    // Run all API calls in parallel
-    const results = await Promise.all(
-      dateRanges.map(range => fetchGoogleAdsData(range.start, range.end,customer))
-    );
+      // Initialize customer
+      const customer = client.Customer({
+        customer_id: adAccountId,
+        refresh_token: refreshToken,
+        login_customer_id: managerId
+      });
 
-    // Destructure the results
-    const [
-      yesterdayMetrics,
-      dayBeforeYesterdayMetrics,
-      last7DaysMetrics,
-      previous7DaysMetrics,
-      last30DayMetrics,
-      previous30DayMetrics
-    ] = results;
+      // Run all API calls in parallel for this account
+      const results = await Promise.all(
+        dateRanges.map(range => fetchGoogleAdsData(range.start, range.end, customer))
+      );
 
-    // Build the response structure
+      // Add results to aggregated metrics
+      const [
+        yesterdayMetrics,
+        dayBeforeYesterdayMetrics,
+        last7DaysMetrics,
+        previous7DaysMetrics,
+        last30DayMetrics,
+        previous30DayMetrics
+      ] = results;
+
+      // Aggregate metrics
+      aggregatedResults.yesterdayMetrics.spend += yesterdayMetrics.spend;
+      aggregatedResults.yesterdayMetrics.totalConversionValue += yesterdayMetrics.spend * yesterdayMetrics.roas;
+      
+      aggregatedResults.dayBeforeYesterdayMetrics.spend += dayBeforeYesterdayMetrics.spend;
+      aggregatedResults.dayBeforeYesterdayMetrics.totalConversionValue += dayBeforeYesterdayMetrics.spend * dayBeforeYesterdayMetrics.roas;
+      
+      aggregatedResults.last7DaysMetrics.spend += last7DaysMetrics.spend;
+      aggregatedResults.last7DaysMetrics.totalConversionValue += last7DaysMetrics.spend * last7DaysMetrics.roas;
+      
+      aggregatedResults.previous7DaysMetrics.spend += previous7DaysMetrics.spend;
+      aggregatedResults.previous7DaysMetrics.totalConversionValue += previous7DaysMetrics.spend * previous7DaysMetrics.roas;
+      
+      aggregatedResults.last30DayMetrics.spend += last30DayMetrics.spend;
+      aggregatedResults.last30DayMetrics.totalConversionValue += last30DayMetrics.spend * last30DayMetrics.roas;
+      
+      aggregatedResults.previous30DayMetrics.spend += previous30DayMetrics.spend;
+      aggregatedResults.previous30DayMetrics.totalConversionValue += previous30DayMetrics.spend * previous30DayMetrics.roas;
+    }
+
+    // Calculate final ROAS values
+    for (const period in aggregatedResults) {
+      const metrics = aggregatedResults[period];
+      metrics.roas = metrics.spend > 0 ? Number((metrics.totalConversionValue / metrics.spend).toFixed(2)) : 0;
+      metrics.spend = Number(metrics.spend.toFixed(2));
+    }
+
+    // Build the response structure with aggregated metrics
     const metricsSummary = {
       spend: [
         buildMetricObject(
           "Yesterday",
           yesterday, yesterday,
           dayBeforeYesterday, dayBeforeYesterday,
-          yesterdayMetrics.spend,
-          dayBeforeYesterdayMetrics.spend
+          aggregatedResults.yesterdayMetrics.spend,
+          aggregatedResults.dayBeforeYesterdayMetrics.spend
         ),
         buildMetricObject(
           "Last 7 Days",
           last7DaysStart, yesterday,
           previous7DaysStart, previous7DaysEnd,
-          last7DaysMetrics.spend,
-          previous7DaysMetrics.spend
+          aggregatedResults.last7DaysMetrics.spend,
+          aggregatedResults.previous7DaysMetrics.spend
         ),
         buildMetricObject(
           "Last 30 Days",
           last30DaysStart, yesterday,
           previous30DaysStart, previous30DaysEnd,
-          last30DayMetrics.spend,
-          previous30DayMetrics.spend
+          aggregatedResults.last30DayMetrics.spend,
+          aggregatedResults.previous30DayMetrics.spend
         )
       ],
       roas: [
@@ -566,22 +608,22 @@ export async function getGoogleAdsSummary(req, res) {
           "Yesterday",
           yesterday, yesterday,
           dayBeforeYesterday, dayBeforeYesterday,
-          yesterdayMetrics.roas,
-          dayBeforeYesterdayMetrics.roas
+          aggregatedResults.yesterdayMetrics.roas,
+          aggregatedResults.dayBeforeYesterdayMetrics.roas
         ),
         buildMetricObject(
           "Last 7 Days",
           last7DaysStart, yesterday,
           previous7DaysStart, previous7DaysEnd,
-          last7DaysMetrics.roas,
-          previous7DaysMetrics.roas
+          aggregatedResults.last7DaysMetrics.roas,
+          aggregatedResults.previous7DaysMetrics.roas
         ),
         buildMetricObject(
           "Last 30 Days",
           last30DaysStart, yesterday,
           previous30DaysStart, previous30DaysEnd,
-          last30DayMetrics.roas,
-          previous30DayMetrics.roas
+          aggregatedResults.last30DayMetrics.roas,
+          aggregatedResults.previous30DayMetrics.roas
         )
       ]
     };
@@ -598,4 +640,4 @@ export async function getGoogleAdsSummary(req, res) {
     }
     res.status(500).json({ error: 'Failed to fetch Google Ads summary.' });
   }
-}
+} 

@@ -63,22 +63,17 @@ export const updateBrands = async (req, res) => {
         if (ga4Account) updateData.ga4Account = ga4Account;
         if (shopifyAccount) updateData.shopifyAccount = shopifyAccount;
 
-        // Explicitly update googleAdAccount fields
-      if (googleAdAccount) {
-    // Initialize the googleAdAccount object if it doesn't exist
-    updateData.googleAdAccount = updateData.googleAdAccount || {};
-    
-    if (googleAdAccount.clientId) {
-        updateData.googleAdAccount.clientId = googleAdAccount.clientId;
-    }
-    if (googleAdAccount.managerId) {
-        updateData.googleAdAccount.managerId = googleAdAccount.managerId;
-    }
-}
+        // Properly handle googleAdAccount as an array of objects
+        if (googleAdAccount) {
+            // Make sure googleAdAccount is treated as an array of objects
+            updateData.googleAdAccount = Array.isArray(googleAdAccount) 
+                ? googleAdAccount 
+                : [googleAdAccount]; // Convert single object to array if needed
+        }
 
         const updatedBrand = await Brand.findByIdAndUpdate(
             brandid,
-            { $set: updateData }, // Using dot notation ensures nested field updates
+            { $set: updateData },
             { new: true, runValidators: true }
         );
 

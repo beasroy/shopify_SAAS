@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
 import {
   X,
   ChevronDown,
@@ -18,7 +19,6 @@ import {
   Info,
   LayoutGrid,
   SlidersHorizontal,
-  FileText,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { RootState } from "@/store"
@@ -443,8 +443,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
       <Card className={`overflow-hidden ${isFullScreen ? "fixed inset-0 z-50" : ""} border-slate-200 shadow-md`}>
         <div className="flex items-center justify-between p-3 border-b bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-slate-500" />
-            <div className="text-lg font-semibold text-slate-800">{data.account_name}</div>
+            <FacebookLogo height={"1rem"} width={"1rem"} />
+            <div className="text-base font-semibold text-slate-800">Campaign Performance <span>({data.account_name})</span></div>
           </div>
           <div className="flex items-center gap-2">
             <Tooltip>

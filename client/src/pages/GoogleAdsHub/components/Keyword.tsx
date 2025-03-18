@@ -15,14 +15,23 @@ import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
 import { setDate } from "@/store/slices/DateSlice";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
-
-type ApiResponse = {
-  reportType: string;
-  data: Array<{
-    DeviceType: string;
-    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
+type AdAccountData = {
+  accountId: string;
+  accountName: string;
+  keywords: Array<{
+    "Keyword": string;
+    "Total Cost": number;
+    "Conv. Value / Cost": number;
+    "Total Conv. Value": number;
+    MonthlyData?: Array<{ Month: string; [key: string]: any }>;
     [key: string]: any;
   }>;
+  error?: string;
+};
+
+export type ApiResponse = {
+  reportType: string;
+  data: AdAccountData[];
 };
 
 interface CityBasedReportsProps {
@@ -128,20 +137,27 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
 
   return (
-    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-      <CardContent>
+    <>
+    {loading ? (
+      <TableSkeleton />
+    ) : (
+      apiResponse?.data && apiResponse.data.map((account, _) => (
+        <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
+        <Card key={account.accountId} className="mb-4">
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Keyword Insights</h2>
-            <GoogleLogo />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                  <DatePickerWithRange
-                    
-                  />
-                </div>}
+          <CardContent>
+               
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
+              <span className="mr-2"><GoogleLogo /></span> 
+              <span className="">{account.accountName}</span>
+            </h3>
+            <div className="flex flex-wrap items-center gap-3">
+            {isFullScreen && 
+              <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                <DatePickerWithRange />
+              </div>
+            }
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -153,28 +169,38 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
               {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </Button>
           </div>
+          </div>
+            
+            {account.error ? (
+              <p className="text-red-500">Error: {account.error}</p>
+            ) : account.keywords.length === 0 ? (
+              <p className="text-gray-500">No keyword data available for this account</p>
+            ) : (
+              <div className="rounded-md overflow-hidden">
+                <ConversionTable
+                  data={account.keywords}
+                  primaryColumn={primaryColumn}
+                  secondaryColumns={secondaryColumns}
+                  monthlyDataKey={monthlyDataKey}
+                  monthlyMetrics={monthlyMetrics}
+                  isFullScreen={isFullScreen}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
         </div>
+      ))
+    )}
 
-        <div className="rounded-md overflow-hidden">
-          {loading ? (
-            <TableSkeleton />
-          ) : (
-            <div>
-              <ConversionTable
-                data={apiResponse?.data || []}
-                primaryColumn={primaryColumn}
-                secondaryColumns={secondaryColumns}
-                monthlyDataKey={monthlyDataKey}
-                monthlyMetrics={monthlyMetrics}
-                isFullScreen={isFullScreen}
-                isAdsTable={true}
-              />
-            </div>
-          )}
-        </div>
-
-      </CardContent>
-    </Card>
+    {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
+      <Card>
+        <CardContent>
+          <p className="text-gray-500 text-center py-4">No keyword data available</p>
+        </CardContent>
+      </Card>
+    )}
+  </>
   );
 };
 

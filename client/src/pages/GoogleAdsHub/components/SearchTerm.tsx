@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
@@ -15,21 +15,30 @@ import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
 import { setDate } from "@/store/slices/DateSlice";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 
-
-type ApiResponse = {
-  reportType: string;
-  data: Array<{
-    DeviceType: string;
-    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
+type AdAccountData = {
+  accountId: string;
+  accountName: string;
+  searchTerms: Array<{
+    "Search Term": string;
+    "Total Cost": number;
+    "Conv. Value / Cost": number;
+    "Total Conv. Value": number;
+    MonthlyData?: Array<{ Month: string; [key: string]: any }>;
     [key: string]: any;
   }>;
+  error?: string;
 };
 
-interface CityBasedReportsProps {
+export type ApiResponse = {
+  reportType: string;
+  data: AdAccountData[];
+};
+
+interface SearchtermBasedReportsProps {
   dateRange: DateRange | undefined;
 }
 
-const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -41,8 +50,7 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
-
-  const user = useSelector((state: RootState) => state.user.user ,shallowEqual);
+  const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -56,7 +64,7 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
 
   // Get filters from Redux
   const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {} , shallowEqual
+    state.conversionFilters[componentId] || {}, shallowEqual
   );
 
   const transformedFilters = useMemo(() => {
@@ -83,45 +91,40 @@ const SearchTerm: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange 
         ...transformedFilters, 
       });
   
-      const fetchedData = response.data?.data || [];
       setApiResponse({
         reportType: "Search Term",
-        data: fetchedData,
+        data: response.data?.data || [],
       });
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, user?.id, transformedFilters]); // Now filters are tracked properly
+  }, [brandId, startDate, endDate, user?.id, transformedFilters]);
   
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 10 minutes
+    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 15 minutes
     return () => clearInterval(intervalId);
-}, [fetchData]);
+  }, [fetchData]);
 
-useEffect(() => {
-  if (propDateRange) {
-    dispatch(setDate({
-      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-    }));
-  }
-}, [propDateRange]);
-
-useEffect(() => {
-  if (!isFullScreen) {
+  useEffect(() => {
     if (propDateRange) {
-    dispatch(setDate({
-      from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-      to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-    }));
-  }
-  }
-}, [isFullScreen, propDateRange]);
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined,
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined
+      }));
+    }
+  }, [propDateRange, dispatch]);
 
-
+  useEffect(() => {
+    if (!isFullScreen && propDateRange) {
+      dispatch(setDate({
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined,
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined
+      }));
+    }
+  }, [isFullScreen, propDateRange, dispatch]);
 
   const handleManualRefresh = () => {
     fetchData();
@@ -134,53 +137,70 @@ useEffect(() => {
   const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
 
   return (
-    <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-      <CardContent>
+<>
+      {loading ? (
+        <TableSkeleton />
+      ) : (
+        apiResponse?.data && apiResponse.data.map((account, _) => (
+          <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
+          <Card key={account.accountId} className="mb-4">
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Search Term Insights</h2>
-            <GoogleLogo />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                  <DatePickerWithRange
-                   
-                  />
-                </div>}
-            <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <FilterConversions 
-              componentId={componentId}
-              availableColumns={["Total Cost", "Conv. Value / Cost"]}
-            />
-            <Button onClick={toggleFullScreen} size="icon" variant="outline">
-              {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-md overflow-hidden">
-          {loading ? (
-            <TableSkeleton />
-          ) : (
-            <div>
-              <ConversionTable
-                data={apiResponse?.data || []}
-                primaryColumn={primaryColumn}
-                secondaryColumns={secondaryColumns}
-                monthlyDataKey={monthlyDataKey}
-                monthlyMetrics={monthlyMetrics}
-                isFullScreen={isFullScreen}
-                isAdsTable={true}
+            <CardContent>
+                 
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
+                <span className="mr-2"><GoogleLogo /></span> 
+                <span className="">{account.accountName}</span>
+              </h3>
+              <div className="flex flex-wrap items-center gap-3">
+              {isFullScreen && 
+                <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange />
+                </div>
+              }
+              <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              <FilterConversions 
+                componentId={componentId}
+                availableColumns={["Total Cost", "Conv. Value / Cost"]}
               />
+              <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
             </div>
-          )}
-        </div>
+            </div>
+              
+              {account.error ? (
+                <p className="text-red-500">Error: {account.error}</p>
+              ) : account.searchTerms.length === 0 ? (
+                <p className="text-gray-500">No search term data available for this account</p>
+              ) : (
+                <div className="rounded-md overflow-hidden">
+                  <ConversionTable
+                    data={account.searchTerms}
+                    primaryColumn={primaryColumn}
+                    secondaryColumns={secondaryColumns}
+                    monthlyDataKey={monthlyDataKey}
+                    monthlyMetrics={monthlyMetrics}
+                    isFullScreen={isFullScreen}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </div>
+        ))
+      )}
 
-      </CardContent>
-    </Card>
+      {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
+        <Card>
+          <CardContent>
+            <p className="text-gray-500 text-center py-4">No search term data available</p>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 };
 

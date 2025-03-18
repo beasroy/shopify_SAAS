@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { SquareChartGantt } from 'lucide-react';
 import SearchTerm from './components/SearchTerm';

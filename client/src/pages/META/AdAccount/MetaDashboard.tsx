@@ -100,11 +100,11 @@ export default function MetaDashboard() {
 
         if (fbData?.length) {
             fbData.forEach(account => {
-                totalSpent += parseFloat(account.spend || '0');
-                totalRevenue += parseFloat(account.Revenue?.value || '0');
-                totalPurchases += parseFloat(account.purchases?.value || '0');
-                totalClicks += parseFloat(account.clicks || '0');
-                totalImpressions += parseFloat(account.impressions || '0');
+                totalSpent += parseFloat(String(account.spend || '0'));
+                totalRevenue += parseFloat(String(account.Revenue?.value || '0'));
+                totalPurchases += parseFloat(String(account.purchases?.value || '0'));
+                totalClicks += parseFloat(String(account.clicks || '0'));
+                totalImpressions += parseFloat(String(account.impressions || '0'));
             });
         }
 
@@ -238,15 +238,15 @@ export default function MetaDashboard() {
 
                         {fbAdAccountsMetrics?.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
                             const fbmetrics = [
-                                { label: 'Amount Spent', value: `₹ ${parseFloat(accountMetrics.spend || '0').toLocaleString(locale)}` },
+                                { label: 'Amount Spent', value: `₹ ${parseFloat(String(accountMetrics.spend || '0')).toLocaleString(locale)}` },
                                 {
                                     label: 'Revenue',
-                                    value: `₹ ${parseFloat(accountMetrics.Revenue?.value || '0').toLocaleString(locale)}`
+                                    value: `₹ ${parseFloat(String(accountMetrics.Revenue?.value || '0')).toLocaleString(locale)}`
                                 },
                                 {
                                     label: 'ROAS (Ads only)',
                                     value: accountMetrics.purchase_roas && accountMetrics.purchase_roas.length > 0
-                                        ? parseFloat(accountMetrics.purchase_roas[0].value).toFixed(2)
+                                        ? parseFloat(String(accountMetrics.purchase_roas[0].value)).toFixed(2)
                                         : '0'
                                 },
                                 { label: 'Ads Purchases', value: accountMetrics.purchases?.value || '0' },

@@ -124,3 +124,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+.gradient-bg {
+  background: linear-gradient(135deg, #334155 0%, #64748b 50%, #94a3b8 100%);
+}
+
+
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(to right, #334155, #94a3b8);
+}
+
+.feature-card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1);
+}
+
+.dark-slate-bg {
+  background-color: #1e293b;
+}
+

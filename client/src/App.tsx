@@ -25,6 +25,8 @@ import ProfilePage from './pages/Profile Page/ProfilePage.tsx';
 import BrandSetupDashboard from './pages/GeneralisedDashboard/BrandSetUpDashboard.tsx';
 import TutorialManager from './components/Tutorial/TutorialManager.tsx';
 import TutorialDriver from './components/Tutorial/TutorialDriver.tsx';
+import LandingPage from './pages/LandingPage/page.tsx';
+import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
 
 function App() {
   return (
@@ -39,7 +41,8 @@ function App() {
                 <TutorialDriver />
                 <Toaster />
                 <Routes>
-                  <Route path="/" element={<AuthForm />} />
+                  <Route path='/' element={<LandingPage />} />
+                  <Route path="/login" element={<AuthForm />} />
                   <Route path="/dashboard" element={<GeneralDashboard />} />
                   <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard />} />
                   <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />
@@ -55,6 +58,7 @@ function App() {
                   <Route path="/callback" element={<GoogleCallback />} />
                   <Route path ="/profile" element = {<ProfilePage />} />
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
+                  <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
                 </Routes>
                 </TutorialManager>
               </Router>

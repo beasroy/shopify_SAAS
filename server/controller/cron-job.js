@@ -16,7 +16,7 @@ export const setupCronJobs = () => {
     }, { timezone: 'UTC' });
     
     // cron job for sending email reports at 6 AM UTC
-    cron.schedule('00 6 * * *', async () => { 
+    cron.schedule('40 10 * * *', async () => { 
         console.log('Email reports cron job started at:', new Date().toISOString()); 
         try { 
           console.log('Email reports cron job is running at:', new Date().toISOString()); 

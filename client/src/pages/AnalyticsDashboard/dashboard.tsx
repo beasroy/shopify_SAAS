@@ -11,6 +11,7 @@ import Header from '@/components/dashboard_component/Header.tsx';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/index.ts';
 import MetaCampaignTable from '../META/Campaign/MetaCampaignTable.tsx';
+import InterestTable from './Components/InterestTable.tsx';
 
 
 
@@ -384,6 +385,16 @@ export default function Dashboard() {
                   account_name: accountMetrics.account_name,
                   account_id: accountMetrics.adAccountId,
                   campaigns: accountMetrics.campaigns
+                }}
+                height={height}  // Adjust the height according to the number of campaigns
+              />
+</div>
+<div className='mt-6'>
+              <InterestTable
+                data={{
+                  account_name: accountMetrics.account_name,
+                  account_id: accountMetrics.adAccountId,
+                  interest: accountMetrics.interestMetrics
                 }}
                 height={height}  // Adjust the height according to the number of campaigns
               />

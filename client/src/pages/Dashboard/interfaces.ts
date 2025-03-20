@@ -71,6 +71,10 @@ export interface Campaign {
   [key: string]: string | number; // Add index signature
 }
 
+interface Interest {
+  [key: string]: string | number
+}
+
 export interface AdAccountData {
   adAccountId: string;
   account_name: string;
@@ -87,6 +91,7 @@ export interface AdAccountData {
   date_start?: string;
   date_stop?: string;
   campaigns: Campaign[];
+  interestMetrics: Interest[];
   message?: string;
 }
 

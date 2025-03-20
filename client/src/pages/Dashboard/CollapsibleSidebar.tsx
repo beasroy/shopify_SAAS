@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart, Target } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart, Target, FileSpreadsheet } from 'lucide-react';
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
@@ -7,8 +7,6 @@ import axios from 'axios';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/assets/messold-icon.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FaMeta } from "react-icons/fa6";
-import { SiGoogleads } from "react-icons/si";
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from "../../store/index.ts";
 import { clearUser } from '@/store/slices/UserSlice.ts';
@@ -91,27 +89,19 @@ export default function CollapsibleSidebar() {
         { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
         {
             name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} />,
-            subItems: [{
-                name: "Meta Insights", path: `/#`, icon: <FaMeta size={20} />,
-                subItems: [
-                    {
-                        name: "Adaccount Summary",
-                        path: `/adaccount-summary/${selectedBrandId}`
-                    },
-                    {
-                        name: "Meta Campaigns",
-                        path: `/meta-campaigns/${selectedBrandId}`
-                    },
-                    {
-                        name: "Meta Reports",
-                        path: `/meta-reports/${selectedBrandId}`
-                    }
-                ]
-            },
-            { name: "Google Ads Reports", path: `/google-ads-hub/${selectedBrandId}`, icon: <SiGoogleads size={18} /> },
-
-            ]
         },
+        { name: "Ad Reports", path: `#`, icon:<FileSpreadsheet size={20} /> ,
+        subItems: [
+            {
+                name: "Meta Reports",
+                path: `/meta-reports/${selectedBrandId}`,
+            },
+            {
+                name: "Google Reports",
+                path: `/google-reports/${selectedBrandId}`,
+            }
+        ]
+    },
         {
             name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,
             subItems: [

@@ -52,7 +52,7 @@ function App() {
                   <Route path='/adaccount-summary/:brandId' element={<MetaDashboard />} />
                   <Route path='/meta-campaigns/:brandId' element={<CampaignDashboard />} />
                   <Route path='/meta-reports/:brandId' element={<FbReportPage />} />
-                  <Route path='/google-ads-hub/:brandId' element={<GoogleAdsDashboard />} />
+                  <Route path='/google-reports/:brandId' element={<GoogleAdsDashboard />} />
                   <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />
                   <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />
                   <Route path="/callback" element={<GoogleCallback />} />

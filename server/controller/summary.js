@@ -505,7 +505,7 @@ export async function getGoogleAdsSummary(req, res) {
     if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
       return res.json({
         success: true,
-        summaries: {},
+        metricsSummary: {},
         message: "No Google ads account found for this brand"
       });
     }

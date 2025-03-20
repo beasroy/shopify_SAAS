@@ -100,14 +100,21 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
 
         // Create batch requests for each ad account
         const batchRequests = adAccountIds.flatMap((accountId) => [
+            // Account insights request
             {
                 method: 'GET',
                 relative_url: `${accountId}/insights?fields=spend,purchase_roas,actions,clicks,impressions,cpm,ctr,account_name,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`,
             },
+            // Campaigns request
             {
                 method: 'GET',
                 relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,account_id,spend,reach,purchase_roas,frequency,cpm,account_name,actions,action_values,clicks,impressions,outbound_clicks_ctr,unique_inline_link_clicks,video_p50_watched_actions},status`,
             },
+            // Ad sets request (for interest targeting data)
+            {
+                method: 'GET',
+                relative_url: `${accountId}/adsets?fields=id,name,targeting&time_range={'since':'${startDate}','until':'${endDate}'}`,
+            }
         ]);
 
         // Send batch request to Facebook Graph API
@@ -128,9 +135,10 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
         const results = [];
         for (let i = 0; i < adAccountIds.length; i++) {
             const accountId = adAccountIds[i];
+            const baseIndex = i * 3; // Each account now has 3 requests
 
             // Ad Account Insights Response
-            const accountResponse = response.data[i * 2];
+            const accountResponse = response.data[baseIndex];
             let accountData = {
                 adAccountId: accountId,
                 account_name: '',
@@ -145,6 +153,7 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
                 clicks: 0,
                 impressions: 0,
                 campaigns: [],
+                interestMetrics: {} // Add interest metrics to the account data
             };
 
             if (accountResponse.code === 200) {
@@ -173,12 +182,12 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
                 }
             }
 
-            // Campaign Data Response - Updated to match fetchFBCampaignData format
-            const campaignResponse = response.data[i * 2 + 1];
+            // Campaign Data Response
+            const campaignResponse = response.data[baseIndex + 1];
             if (campaignResponse.code === 200) {
                 const campaignBody = JSON.parse(campaignResponse.body);
                 if (Array.isArray(campaignBody.data)) {
-                    // Process campaigns like in fetchFBCampaignData
+                    // Process campaigns
                     campaignBody.data.forEach(campaign => {
                         const insights = campaign.insights?.data?.[0];
                         const status = campaign.status;
@@ -265,17 +274,148 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
                 }
             }
 
+            // Ad Sets Response (for interest targeting)
+            const adSetsResponse = response.data[baseIndex + 2];
+            if (adSetsResponse.code === 200) {
+                const adSetsBody = JSON.parse(adSetsResponse.body);
+                
+                if (adSetsBody.data && adSetsBody.data.length > 0) {
+                    // Process ad sets for interest data
+                    const adSets = adSetsBody.data;
+                    
+                    // First, extract interests from each ad set
+                    const adSetInterests = adSets.map(adSet => {
+                        const interests = adSet.targeting && 
+                                        adSet.targeting.flexible_spec && 
+                                        adSet.targeting.flexible_spec[0] &&
+                                        adSet.targeting.flexible_spec[0].interests
+                                        ? adSet.targeting.flexible_spec[0].interests
+                                        : [];
+                                        
+                        return {
+                            adSetId: adSet.id,
+                            adSetName: adSet.name,
+                            interests: interests
+                        };
+                    });
+                    
+                    // For each ad set with interests, get performance metrics
+                    const metricsPromises = adSetInterests.map(async (adSetData) => {
+                        try {
+                            const metricsResponse = await axios.get(
+                                `https://graph.facebook.com/v21.0/${adSetData.adSetId}/insights`,
+                                {
+                                    params: {
+                                        fields: 'spend,action_values',
+                                        time_range: JSON.stringify({ since: startDate, until: endDate }),
+                                        access_token: accessToken
+                                    }
+                                }
+                            );
+                            
+                            const metrics = metricsResponse.data.data[0] || { spend: 0 };
+                            
+                            const purchaseValue = metrics.action_values ? 
+                                metrics.action_values.find(action => action.action_type === 'purchase') : 
+                                { value: 0 };
+                            
+                            const spend = parseFloat(metrics.spend || 0);
+                            const revenue = parseFloat(purchaseValue?.value || 0);
+                            const roas = spend > 0 ? revenue / spend : 0;
+                            
+                            return {
+                                ...adSetData,
+                                metrics: {
+                                    spend,
+                                    revenue,
+                                    roas,
+                                }
+                            };
+                        } catch (error) {
+                            console.error(`Error fetching metrics for ad set ${adSetData.adSetId}:`, error);
+                            return {
+                                ...adSetData,
+                                metrics: {
+                                    spend: 0,
+                                    revenue: 0,
+                                    roas: 0,
+                                },
+                                error: error.message
+                            };
+                        }
+                    });
+                    
+                    // Wait for all metrics to be fetched
+                    const adSetResults = await Promise.all(metricsPromises);
+                    
+                    // Group by interest and calculate metrics
+                    const interestMetrics = {};
+                    
+                    adSetResults.forEach(result => {
+                        result.interests.forEach(interest => {
+                            const interestName = interest.name;
+                            
+                            if (!interestMetrics[interestName]) {
+                                interestMetrics[interestName] = {
+                                    totalSpend: 0,
+                                    totalRevenue: 0,
+                                };
+                            }
+                            
+                            interestMetrics[interestName].totalSpend += result.metrics.spend;
+                            interestMetrics[interestName].totalRevenue += result.metrics.revenue;
+                        });
+                    });
+                    
+                    // Calculate ROAS for each interest
+                    Object.keys(interestMetrics).forEach(interestName => {
+                        const interest = interestMetrics[interestName];
+                        
+                        interest.roas = interest.totalSpend > 0 ? 
+                            interest.totalRevenue / interest.totalSpend : 0;
+                    });
+                    
+                    // Add to account data
+                    accountData.interestMetrics = interestMetrics;
+                }
+            }
+
             results.push(accountData);
         }
 
         // Calculate aggregated metrics
         const aggregatedMetrics = getAggregatedFbMetrics(results);
 
+        // Also aggregate interest metrics across all accounts
+        const aggregatedInterestMetrics = {};
+        
+        results.forEach(account => {
+            Object.entries(account.interestMetrics).forEach(([interestName, metrics]) => {
+                if (!aggregatedInterestMetrics[interestName]) {
+                    aggregatedInterestMetrics[interestName] = {
+                        totalSpend: 0,
+                        totalRevenue: 0,
+                    };
+                }
+                
+                aggregatedInterestMetrics[interestName].totalSpend += metrics.totalSpend;
+                aggregatedInterestMetrics[interestName].totalRevenue += metrics.totalRevenue;
+            });
+        });
+        
+        // Calculate overall ROAS for each interest
+        Object.keys(aggregatedInterestMetrics).forEach(interestName => {
+            const interest = aggregatedInterestMetrics[interestName];
+            interest.roas = interest.totalSpend > 0 ? 
+                interest.totalRevenue / interest.totalSpend : 0;
+        });
+
         // Return the combined results with aggregated metrics
         return res.status(200).json({
             success: true,
             data: results,
             aggregatedMetrics,
+            aggregatedInterestMetrics
         });
     } catch (error) {
         console.error('Error fetching Facebook Ad Account and Campaign Data:', error);

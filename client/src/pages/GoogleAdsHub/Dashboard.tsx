@@ -16,8 +16,6 @@ import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import Keyword from './components/Keyword';
 import Product from './components/Product';
-// import Product from './components/Product';
-// import Brand from './components/Brand';
 
 
 const GoogleAdsDashboard: React.FC = () => {
@@ -32,8 +30,8 @@ const GoogleAdsDashboard: React.FC = () => {
   const brands = useSelector((state: RootState) => state.brand.brands);
   const { brandId } = useParams<{ brandId: string }>();
   const selectedBrand = brands.find((brand) => brand._id === brandId);
-  const hasGoogleAdAccount = selectedBrand?.googleAdAccount?.clientId
-    ? selectedBrand.googleAdAccount.clientId
+  const hasGoogleAdAccount = selectedBrand?.googleAdAccount && selectedBrand?.googleAdAccount.length > 0 
+    ? true
     : false;
   const { tokenError } = useTokenError();
 

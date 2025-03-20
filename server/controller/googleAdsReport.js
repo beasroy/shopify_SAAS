@@ -54,10 +54,7 @@ export async function fetchSearchTermMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountIds = brand.googleAdAccount.clientId || [];
-        const managerId = brand.googleAdAccount.managerId;
-
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
             return res.json({
                 success: true,
                 data: [],
@@ -69,10 +66,17 @@ export async function fetchSearchTermMetrics(req, res) {
         let allAccountsData = [];
 
         // Process each ad account
-        for (const adAccountId of adAccountIds) {
+        for (const adAccount of brand.googleAdAccount) {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) {
+                continue; // Skip accounts without clientId
+            }
+
             try {
                 const customer = client.Customer({
-                    customer_id: adAccountId,
+                    customer_id: clientId,
                     refresh_token: refreshToken,
                     login_customer_id: managerId
                 });
@@ -101,7 +105,7 @@ export async function fetchSearchTermMetrics(req, res) {
                 const results = await customer.query(searchTermQuery);
                 const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
                     ? results[0].customer.descriptive_name
-                    : `Account ${adAccountId}`;
+                    : `Account ${clientId}`;
 
                 const searchTermData = new Map();
 
@@ -179,17 +183,17 @@ export async function fetchSearchTermMetrics(req, res) {
 
                 // Add the account data to our collection
                 allAccountsData.push({
-                    accountId: adAccountId,
+                    accountId: clientId,
                     accountName: accountName,
                     searchTerms: limitedData
                 });
 
             } catch (accountError) {
-                console.error(`Error processing ad account ${adAccountId} for search terms:`, accountError);
+                console.error(`Error processing ad account ${clientId} for search terms:`, accountError);
                 // Add empty data for this account to show it was processed but had an error
                 allAccountsData.push({
-                    accountId: adAccountId,
-                    accountName: `Account ${adAccountId}`,
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
                     searchTerms: [],
                     error: accountError.message
                 });
@@ -209,7 +213,6 @@ export async function fetchSearchTermMetrics(req, res) {
         });
     }
 }
-
 export async function fetchAgeMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
@@ -247,10 +250,7 @@ export async function fetchAgeMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountIds = brand.googleAdAccount.clientId || [];
-        const managerId = brand.googleAdAccount.managerId;
-
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
             return res.json({
                 success: true,
                 data: [],
@@ -262,10 +262,17 @@ export async function fetchAgeMetrics(req, res) {
         let allAccountsData = [];
 
         // Process each ad account
-        for (const adAccountId of adAccountIds) {
+        for (const adAccount of brand.googleAdAccount) {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) {
+                continue; // Skip accounts without clientId
+            }
+
             try {
                 const customer = client.Customer({
-                    customer_id: adAccountId,
+                    customer_id: clientId,
                     refresh_token: refreshToken,
                     login_customer_id: managerId
                 });
@@ -290,7 +297,7 @@ export async function fetchAgeMetrics(req, res) {
                 const results = await customer.query(ageQuery);
                 const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
                     ? results[0].customer.descriptive_name
-                    : `Account ${adAccountId}`;
+                    : `Account ${clientId}`;
 
                 const ageRangeData = new Map();
 
@@ -370,17 +377,17 @@ export async function fetchAgeMetrics(req, res) {
 
                 // Add the account data to our collection
                 allAccountsData.push({
-                    accountId: adAccountId,
+                    accountId: clientId,
                     accountName: accountName,
                     ageRanges: limitedData
                 });
 
             } catch (accountError) {
-                console.error(`Error processing ad account ${adAccountId} for age metrics:`, accountError);
+                console.error(`Error processing ad account ${clientId} for age metrics:`, accountError);
                 // Add empty data for this account to show it was processed but had an error
                 allAccountsData.push({
-                    accountId: adAccountId,
-                    accountName: `Account ${adAccountId}`,
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
                     ageRanges: [],
                     error: accountError.message
                 });
@@ -433,10 +440,7 @@ export async function fetchGenderMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountIds = brand.googleAdAccount.clientId || [];
-        const managerId = brand.googleAdAccount.managerId;
-
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
             return res.json({
                 success: true,
                 data: [],
@@ -448,10 +452,17 @@ export async function fetchGenderMetrics(req, res) {
         let allAccountsData = [];
 
         // Process each ad account
-        for (const adAccountId of adAccountIds) {
+        for (const adAccount of brand.googleAdAccount) {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) {
+                continue; // Skip accounts without clientId
+            }
+
             try {
                 const customer = client.Customer({
-                    customer_id: adAccountId,
+                    customer_id: clientId,
                     refresh_token: refreshToken,
                     login_customer_id: managerId
                 });
@@ -476,7 +487,7 @@ export async function fetchGenderMetrics(req, res) {
                 const results = await customer.query(genderQuery);
                 const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
                     ? results[0].customer.descriptive_name
-                    : `Account ${adAccountId}`;
+                    : `Account ${clientId}`;
 
                 const genderData = new Map();
 
@@ -556,17 +567,17 @@ export async function fetchGenderMetrics(req, res) {
 
                 // Add the account data to our collection
                 allAccountsData.push({
-                    accountId: adAccountId,
+                    accountId: clientId,
                     accountName: accountName,
                     genders: limitedData
                 });
 
             } catch (accountError) {
-                console.error(`Error processing ad account ${adAccountId} for gender metrics:`, accountError);
+                console.error(`Error processing ad account ${clientId} for gender metrics:`, accountError);
                 // Add empty data for this account to show it was processed but had an error
                 allAccountsData.push({
-                    accountId: adAccountId,
-                    accountName: `Account ${adAccountId}`,
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
                     genders: [],
                     error: accountError.message
                 });
@@ -612,10 +623,7 @@ export async function fetchKeywordMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountIds = brand.googleAdAccount.clientId || [];
-        const managerId = brand.googleAdAccount.managerId;
-
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
             return res.json({
                 success: true,
                 data: [],
@@ -627,10 +635,17 @@ export async function fetchKeywordMetrics(req, res) {
         let allAccountsData = [];
 
         // Process each ad account
-        for (const adAccountId of adAccountIds) {
+        for (const adAccount of brand.googleAdAccount) {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) {
+                continue; // Skip accounts without clientId
+            }
             try {
+
                 const customer = client.Customer({
-                    customer_id: adAccountId,
+                    customer_id: clientId,
                     refresh_token: refreshToken,
                     login_customer_id: managerId
                 });
@@ -655,7 +670,7 @@ export async function fetchKeywordMetrics(req, res) {
                 const results = await customer.query(keywordQuery);
                 const accountName = results.length > 0 && results[0].customer && results[0].customer.descriptive_name
                     ? results[0].customer.descriptive_name
-                    : `Account ${adAccountId}`;
+                    : `Account ${clientId}`;
 
                 const keywordData = new Map();
 
@@ -735,17 +750,17 @@ export async function fetchKeywordMetrics(req, res) {
 
                 // Add the account data to our collection
                 allAccountsData.push({
-                    accountId: adAccountId,
+                    accountId: clientId,
                     accountName: accountName,
                     keywords: limitedData
                 });
 
             } catch (accountError) {
-                console.error(`Error processing ad account ${adAccountId} for keyword metrics:`, accountError);
+                console.error(`Error processing ad account ${clientId} for keyword metrics:`, accountError);
                 // Add empty data for this account to show it was processed but had an error
                 allAccountsData.push({
-                    accountId: adAccountId,
-                    accountName: `Account ${adAccountId}`,
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
                     keywords: [],
                     error: accountError.message
                 });
@@ -791,17 +806,13 @@ export async function fetchProductMetrics(req, res) {
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-        const adAccountIds = brand.googleAdAccount.clientId || [];
-        const managerId = brand.googleAdAccount.managerId;
-
-        if (!adAccountIds || adAccountIds.length === 0) {
+        if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
             return res.json({
                 success: true,
                 data: [],
                 message: "No Google ads accounts found for this brand"
             });
         }
-
         // Array to store results from all accounts
         let allAccountsData = [];
 
@@ -814,21 +825,28 @@ export async function fetchProductMetrics(req, res) {
         }
 
         // Process each ad account
-        for (const adAccountId of adAccountIds) {
+        for (const adAccount of brand.googleAdAccount) {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) {
+                continue; // Skip accounts without clientId
+            }
             try {
+                
                 const customer = client.Customer({
-                    customer_id: adAccountId,
+                    customer_id: clientId,
                     refresh_token: refreshToken,
                     login_customer_id: managerId
                 });
 
                 // Fetch account name
-                let accountName = `Account ${adAccountId}`;
+                let accountName = `Account ${clientId}`;
                 try {
                     const accountInfoQuery = `
                         SELECT customer.descriptive_name 
                         FROM customer 
-                        WHERE customer.id = ${adAccountId}
+                        WHERE customer.id = ${clientId}
                         LIMIT 1
                     `;
                     const accountInfo = await customer.query(accountInfoQuery);
@@ -836,7 +854,7 @@ export async function fetchProductMetrics(req, res) {
                         accountName = accountInfo[0].customer.descriptive_name;
                     }
                 } catch (accountInfoError) {
-                    console.warn(`Could not fetch account name for ${adAccountId}:`, accountInfoError.message);
+                    console.warn(`Could not fetch account name for ${clientId}:`, accountInfoError.message);
                 }
 
                 // Then fetch data for each month separately
@@ -951,17 +969,17 @@ export async function fetchProductMetrics(req, res) {
 
                 // Add the account data to our collection
                 allAccountsData.push({
-                    accountId: adAccountId,
+                    accountId: clientId,
                     accountName: accountName,
                     products: limitedData
                 });
 
             } catch (accountError) {
-                console.error(`Error processing ad account ${adAccountId} for product metrics:`, accountError);
+                console.error(`Error processing ad account ${clientId} for product metrics:`, accountError);
                 // Add empty data for this account to show it was processed but had an error
                 allAccountsData.push({
-                    accountId: adAccountId,
-                    accountName: `Account ${adAccountId}`,
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
                     products: [],
                     error: accountError.message
                 });

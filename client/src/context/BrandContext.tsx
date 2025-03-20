@@ -5,7 +5,10 @@ interface Brand {
   name: string;
   brandId: string;
   fbAdAccounts?: [];
-  googleAdAccount?: string;
+  googleAdAccount?: { 
+    clientId: string;
+    managerId: string;
+  }[];
   ga4Account?: {string : string};
 }
 

@@ -13,7 +13,7 @@ import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 
 
 export interface MetaCampaign {
-    Campaign: string;
+    campaignName: string;
     [key: string]: string | number;
 }
 

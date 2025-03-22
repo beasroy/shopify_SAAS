@@ -43,7 +43,7 @@ const LABEL_COLORS = [
 const DEFAULT_COLUMN_WIDTH = "85px"
 
 interface Campaign {
-  Campaign: string
+  campaignName: string
   [key: string]: string | number
 }
 
@@ -249,7 +249,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
   }
 
   const filteredCampaigns = data.campaigns.filter((campaign) =>
-    campaign.Campaign.toString().toLowerCase().includes(searchTerm.toLowerCase()),
+    campaign.campaignName.toString().toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   // Get column style based on column name
@@ -558,12 +558,12 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                             className="flex items-center space-x-2 p-1.5 hover:bg-slate-100 rounded"
                           >
                             <Checkbox
-                              checked={selectedCampaigns.includes(campaign.Campaign)}
+                              checked={selectedCampaigns.includes(campaign.campaignName)}
                               onCheckedChange={(checked) => {
                                 setSelectedCampaigns(
                                   checked
-                                    ? [...selectedCampaigns, campaign.Campaign]
-                                    : selectedCampaigns.filter((id) => id !== campaign.Campaign),
+                                    ? [...selectedCampaigns, campaign.campaignName]
+                                    : selectedCampaigns.filter((id) => id !== campaign.campaignName),
                                 )
                               }}
                             />
@@ -723,14 +723,14 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                       {group.isExpanded &&
                         group.campaigns.map((campaign) => (
                           <tr
-                            key={`${group.label}-${campaign.Campaign}`}
+                            key={`${group.label}-${campaign.campaignName}`}
                             className={`border-b hover:bg-slate-50 transition-colors ${
-                              dragOverCampaign === campaign.Campaign ? "bg-blue-50" : ""
+                              dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                             }`}
                             draggable
-                            onDragStart={() => handleDragStart(campaign.Campaign)}
-                            onDragOver={(e) => handleDragOver(e, campaign.Campaign)}
-                            onDrop={() => handleDrop(campaign.Campaign)}
+                            onDragStart={() => handleDragStart(campaign.campaignName)}
+                            onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
+                            onDrop={() => handleDrop(campaign.campaignName)}
                             onDragEnd={handleDragEnd}
                           >
                             {columnOrder
@@ -775,7 +775,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                                             {label}
                                             <X
                                               className="h-2.5 w-2.5 cursor-pointer hover:opacity-75"
-                                              onClick={() => handleRemoveLabel(campaign.Campaign, label)}
+                                              onClick={() => handleRemoveLabel(campaign.campaignName, label)}
                                             />
                                           </Badge>
                                         ))}
@@ -804,55 +804,33 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
 
                 {/* Ungrouped campaigns section */}
                 {isGroupingEnabled && ungroupedCampaigns.length > 0 && (
-                  <>
-                    <tr className="bg-gradient-to-r from-gray-100 to-gray-50 font-medium hover:bg-gray-100 transition-colors">
-                      {columnOrder
-                        .filter((column) => visibleColumns.includes(column))
-                        .map((column, index) => {
-                          const isFrozen = frozenColumns.includes(column)
-                          const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                          const columnStyle = getColumnStyle(column)
+                  <tr className="bg-gradient-to-r from-gray-100 to-gray-50 font-medium hover:bg-gray-100 transition-colors">
+                    {columnOrder
+                      .filter((column) => visibleColumns.includes(column))
+                      .map((column, index) => {
+                        const isFrozen = frozenColumns.includes(column)
+                        const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                        const columnStyle = getColumnStyle(column)
 
-                          if (column === "Campaign") {
-                            return (
-                              <td
-                                key={column}
-                                className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50`}
-                                style={{
-                                  left: leftPos,
-                                  ...columnStyle,
-                                }}
-                              >
-                                <div className="font-medium text-slate-700 flex items-center">
-                                  <Filter className="h-4 w-4 mr-2 text-slate-500" />
-                                  Unlabeled: {ungroupedCampaigns.length} campaigns
-                                </div>
-                              </td>
-                            )
-                          }
+                        if (column === "Campaign") {
+                          return (
+                            <td
+                              key={column}
+                              className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50`}
+                              style={{
+                                left: leftPos,
+                                ...columnStyle,
+                              }}
+                            >
+                              <div className="font-medium text-slate-700 flex items-center">
+                                <Filter className="h-4 w-4 mr-2 text-slate-500" />
+                                Unlabeled: {ungroupedCampaigns.length} campaigns
+                              </div>
+                            </td>
+                          )
+                        }
 
-                          if (column === "Labels") {
-                            return (
-                              <td
-                                key={column}
-                                className={`p-2 border-r ${
-                                  isFrozen
-                                    ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
-                                    : "bg-gradient-to-r from-gray-100 to-gray-50"
-                                }`}
-                                style={{
-                                  left: leftPos,
-                                  ...columnStyle,
-                                }}
-                              >
-                                <span className="text-slate-400 italic">-</span>
-                              </td>
-                            )
-                          }
-
-                          // Calculate summary for ungrouped campaigns
-                          const summary = calculateGroupSummary(ungroupedCampaigns)
-
+                        if (column === "Labels") {
                           return (
                             <td
                               key={column}
@@ -860,18 +838,38 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                                 isFrozen
                                   ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
                                   : "bg-gradient-to-r from-gray-100 to-gray-50"
-                              } font-semibold`}
+                              }`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
                               }}
                             >
-                              <div>{summary[column]}</div>
+                              <span className="text-slate-400 italic">-</span>
                             </td>
                           )
-                        })}
-                    </tr>
-                  </>
+                        }
+
+                        // Calculate summary for ungrouped campaigns
+                        const summary = calculateGroupSummary(ungroupedCampaigns)
+
+                        return (
+                          <td
+                            key={column}
+                            className={`p-2 border-r ${
+                              isFrozen
+                                ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
+                                : "bg-gradient-to-r from-gray-100 to-gray-50"
+                            } font-semibold`}
+                            style={{
+                              left: leftPos,
+                              ...columnStyle,
+                            }}
+                          >
+                            <div>{summary[column]}</div>
+                          </td>
+                        )
+                      })}
+                  </tr>
                 )}
 
                 {/* Render ungrouped campaigns or all campaigns when grouping is disabled */}
@@ -879,12 +877,12 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                   <tr
                     key={campaign.Campaign}
                     className={`border-b hover:bg-slate-50 transition-colors ${
-                      dragOverCampaign === campaign.Campaign ? "bg-blue-50" : ""
+                      dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                     }`}
                     draggable
-                    onDragStart={() => handleDragStart(campaign.Campaign)}
-                    onDragOver={(e) => handleDragOver(e, campaign.Campaign)}
-                    onDrop={() => handleDrop(campaign.Campaign)}
+                    onDragStart={() => handleDragStart(campaign.campaignName)}
+                    onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
+                    onDrop={() => handleDrop(campaign.campaignName)}
                     onDragEnd={handleDragEnd}
                   >
                     {columnOrder
@@ -930,7 +928,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                                     {label}
                                     <X
                                       className="h-2.5 w-2.5 cursor-pointer hover:opacity-75"
-                                      onClick={() => handleRemoveLabel(campaign.Campaign, label)}
+                                      onClick={() => handleRemoveLabel(campaign.campaignName, label)}
                                     />
                                   </Badge>
                                 ))}

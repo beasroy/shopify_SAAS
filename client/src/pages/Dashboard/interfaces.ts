@@ -37,7 +37,7 @@ export interface ActionValue {
 }
 
 export interface Campaign {
-  Campaign: string;
+  campaignName: string;
   Status: string;
   "Amount spend": number;
   "Conversion Rate": number;

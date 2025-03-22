@@ -133,11 +133,10 @@ export default function Dashboard() {
   useEffect(() => {
     fetchAdData();
 
-    const intervalId = setInterval(fetchAdData, 5 * 60 * 1000);
-
+    const intervalId = setInterval(fetchAdData, 3 * 60 * 60 * 1000); // 3 hours
 
     return () => clearInterval(intervalId);
-  }, [fetchAdData]);
+}, [fetchAdData]);
 
   let height = '';
   if (fbAdAccountsMetrics && fbAdAccountsMetrics.length > 1) {

@@ -228,8 +228,12 @@ export const CampaignGrid = ({ campaigns, isLoading, icon }: { campaigns: (Campa
           <tbody>
             {campaigns.map((campaign: Campaign | GoogleCampaign, index) => {
               const spendValue = parseFloat(String(campaign.spend));
-              const roas = typeof campaign.purchase_roas === 'string' ? campaign.purchase_roas : 
-                          Array.isArray(campaign.purchase_roas) ? campaign.purchase_roas[0]?.value : null;
+              let roas = null;
+              if (typeof campaign.purchase_roas === 'string') {
+                roas = campaign.purchase_roas;
+              } else if (Array.isArray(campaign.purchase_roas)) {
+                roas = campaign.purchase_roas[0]?.value;
+              }
               const roasValue = roas ? parseFloat(String(roas)) : null;
 
               return (

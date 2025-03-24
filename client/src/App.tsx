@@ -19,8 +19,6 @@ import FbReportPage from './pages/FbReports/FbReportPage.tsx';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
-import MetaDashboard from './pages/META/AdAccount/MetaDashboard.tsx';
-import CampaignDashboard from './pages/META/Campaign/CampaignDashboard.tsx';
 import ProfilePage from './pages/Profile Page/ProfilePage.tsx';
 import BrandSetupDashboard from './pages/GeneralisedDashboard/BrandSetUpDashboard.tsx';
 import TutorialManager from './components/Tutorial/TutorialManager.tsx';
@@ -49,8 +47,6 @@ function App() {
                   <Route path="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
                   <Route path='/performance-metrics' element={<PerformanceDashboard />} />
                   <Route path='/segment-dashboard/:brandId' element={<SegmentDashboard />} />
-                  <Route path='/adaccount-summary/:brandId' element={<MetaDashboard />} />
-                  <Route path='/meta-campaigns/:brandId' element={<CampaignDashboard />} />
                   <Route path='/meta-reports/:brandId' element={<FbReportPage />} />
                   <Route path='/google-reports/:brandId' element={<GoogleAdsDashboard />} />
                   <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />

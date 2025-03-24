@@ -8,23 +8,13 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import ColumnManagementSheet from "@/pages/META/Campaign/ColumnManagementSheet"
+import ColumnManagementSheet from "./ColumnManagementSheet"
+import { Interest , InterestTableProps } from "@/interfaces"
 
-// Using a single fixed width for all columns except Campaign and Labels
+
 const DEFAULT_COLUMN_WIDTH = "85px"
 
-interface Interest {
-  [key: string]: string | number
-}
 
-interface InterestTableProps {
-  data: {
-    account_name: string
-    account_id: string
-    interest: Interest[]
-  }
-  height: string
-}
 
 
 const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {

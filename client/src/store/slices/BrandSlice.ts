@@ -1,24 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { IBrand, IBrandState } from '@/interfaces';
 
-interface Brand {
-  _id: string;
-  name: string;
-  brandId: string;
-  fbAdAccounts?: [];
-  googleAdAccount?: { 
-    clientId: string;
-    managerId: string;
-  }[];
-  ga4Account?: { [key: string]: string };
-  shopifyAccount: {[key: string]: string };
-}
-
-interface BrandState {
-  selectedBrandId: string | null;
-  brands: Brand[];
-}
-
-const initialState: BrandState = {
+const initialState: IBrandState = {
   selectedBrandId: null,
   brands: [],
 };
@@ -30,7 +13,7 @@ const brandSlice = createSlice({
     setSelectedBrandId: (state, action: PayloadAction<string | null>) => {
       state.selectedBrandId = action.payload;
     },
-    setBrands: (state, action: PayloadAction<Brand[]>) => {
+    setBrands: (state, action: PayloadAction<IBrand[]>) => {
       state.brands = action.payload;
     },
     resetBrand: (state) => {

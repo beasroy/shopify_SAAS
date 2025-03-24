@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React , { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Compass, Blend, LogOut, User2Icon, Radar, Store, ShoppingCart, CalendarRange, LineChart, Target, FileSpreadsheet } from 'lucide-react';
-import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts";
 import axios from 'axios';
@@ -10,21 +9,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from "../../store/index.ts";
 import { clearUser } from '@/store/slices/UserSlice.ts';
+import { baseURL } from '@/data/constant.ts';
 
 
-export interface Brand {
-    _id: string;
-    name: string;
-    fbAdAccounts?: string[];
-    googleAdAccount?: string;
-    ga4Account?: { string: string };
-}
 export default function CollapsibleSidebar() {
     const [isExpanded, setIsExpanded] = useState(true);
     const location = useLocation();
     const navigate = useNavigate();
     const sidebarRef = useRef<HTMLDivElement>(null);
-    const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
     const dispatch = useDispatch();
     const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);

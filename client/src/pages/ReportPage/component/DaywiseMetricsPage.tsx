@@ -14,7 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import NewReportTable from "./NewReportTable";
-import ColumnManagementSheet from "@/pages/META/Campaign/ColumnManagementSheet";
+import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet";
 
 interface DaywiseMetric {
   "Day": string

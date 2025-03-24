@@ -10,7 +10,7 @@ import { CustomTabs } from '../ConversionReportPage/components/CustomTabs.tsx';
 import Header from '@/components/dashboard_component/Header.tsx';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/index.ts';
-import MetaCampaignTable from '../META/Campaign/MetaCampaignTable.tsx';
+import MetaCampaignTable from './Components/MetaCampaignTable.tsx';
 import InterestTable from './Components/InterestTable.tsx';
 
 

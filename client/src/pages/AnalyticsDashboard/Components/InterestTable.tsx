@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import ColumnManagementSheet from "./ColumnManagementSheet"
-import { Interest , InterestTableProps } from "@/interfaces"
+import { InterestTableProps } from "@/interfaces"
 
 
 const DEFAULT_COLUMN_WIDTH = "85px"

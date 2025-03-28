@@ -11,6 +11,7 @@ import DashboardSkeleton from "./components/DashboardSkeleton";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
+import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period = "yesterday" | "last7Days" | "last30Days";
@@ -84,6 +85,7 @@ interface MetricCardProps {
   value: number;
   change: number;
   trend: Trend;
+  source: Source;
   prevValue: number;
 }
 
@@ -93,15 +95,28 @@ function MetricCard({
   value, 
   change, 
   trend,
-  prevValue
+  prevValue,
+  source
 }: MetricCardProps) {
 
   
   return (
     <div className={cn("p-3 rounded-md border shadow-sm flex flex-col", METRIC_BG_COLORS[metric])}>
-      <div className="flex items-center mb-1">
-        <div className={cn("h-2 w-2 rounded-full mr-1.5", METRIC_COLORS[metric])}></div>
-        <span className="text-xs font-medium text-slate-700">{label}</span>
+      <div className="flex flex-row items-center justify-between">
+        <div className="flex items-center mb-1">
+          <div className={cn("h-2 w-2 rounded-full mr-1.5", METRIC_COLORS[metric])}></div>
+          <span className="text-xs font-medium text-slate-700">{label}</span>
+        </div>
+        {(() => {
+          switch (source) {
+            case "analytics":
+              return <Ga4Logo width={"1rem"} height={"1rem"} />;
+            case "meta":
+              return <FacebookLogo width={"1rem"} height={"1rem"} />;
+            default:
+              return <GoogleLogo width={"1rem"} height={"1rem"} />;
+          }
+        })()}
       </div>
       <div className="text-lg font-bold text-slate-800">
          {formatValue(Number(value))}
@@ -192,6 +207,7 @@ function PerformanceCard({
               change={metricData.change}
               trend={metricData.trend}
               prevValue={metricData.previous}
+              source={source as Source}
             />
           ))
         )}

@@ -7,8 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import ShopifyModalContent from './ShopifyModalContent';
 import OtherPlatformModalContent from './OtherPlatformModalContent';
-import { FacebookLogo, GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
-import { Ga4Logo, ShopifyLogo } from './OtherPlatformModalContent';
+import { FacebookLogo,  GoogleLogo, Ga4Logo, ShopifyLogo } from '@/data/logo';
 import axios from 'axios';
 import { setUser } from '@/store/slices/UserSlice';
 import { useSelector } from 'react-redux';

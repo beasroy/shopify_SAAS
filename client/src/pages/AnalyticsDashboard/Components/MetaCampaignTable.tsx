@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
+import { FacebookLogo } from "@/data/logo"
 import {
   X,
   ChevronDown,

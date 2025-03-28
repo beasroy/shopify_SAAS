@@ -8,12 +8,13 @@ import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
-import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { FacebookLogo } from "@/data/logo";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
-import PerformanceSummary, { metricConfigs } from "@/pages/ConversionReportPage/components/PerformanceSummary";
+import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
+import { metricConfigs } from "@/data";
 
 
 type ApiResponse = {

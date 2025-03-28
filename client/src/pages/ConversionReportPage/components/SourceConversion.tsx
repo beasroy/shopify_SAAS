@@ -3,20 +3,20 @@ import { format } from "date-fns";
 import ConversionTable from "./Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
+import { Ga4Logo } from "@/data/logo";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
-import PerformanceSummary, { metricConfigs } from "./PerformanceSummary";
+import PerformanceSummary from "./PerformanceSummary";
 import ExcelDownload from "./ExcelDownload";
 import FilterConversions from "./Filter";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-
+import { metricConfigs } from "@/data";
 type ApiResponse = {
     reportType: string;
     data: Array<{

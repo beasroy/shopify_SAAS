@@ -1,10 +1,18 @@
-import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject, dateRanges } from "./summary.js";
-import { getGoogleAccessToken } from "./summary.js";
+import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject, dateRanges,getGoogleAccessToken, client } from "./summary.js";
 import nodemailer from "nodemailer"
 import User from "../models/User.js";
 import Brands from "../models/Brands.js";
-import { client } from "./summary.js";
 
+const slackChannelMapping = {
+  "Udd Studio": "uddstudio-aaaaglc336lhdjxxxckkhmuvya@messold-india.slack.com",
+  "Theme My Party": "thememyparty-aaaagkvp77vveitk5ojzxwjaya@messold-india.slack.com",
+  "House of Nitya": "house-of-nitya-aaaaock7yx7bitu43at4dawqaq@messold-india.slack.com",
+  "The Oakery": "theoakery-aaaapegzoi3fhaahviptegy7pi@messold-india.slack.com",
+  "The weaving cult": "theweavingcult-aaaapgs6j4yybz4oz4iqq2miau@messold-india.slack.com",
+  "Kraftsmiths": "kraftsmiths-aaaagqabimb4faacblc3w6nghe@messold-india.slack.com",
+  "Litlmeu": "litlemeu-aaaaofzywanliwgxizzhhupcpa@messold-india.slack.com",
+  "Ethnic Trends By Shaheen": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
+};
 
 
 const smtpConfig = {
@@ -202,23 +210,60 @@ export async function getPlatformSummaryWithPartialData(
     };
   }
 }
+
+async function processBrand(user, brandId, transporter, results) {
+  try {
+    const brand = await Brands.findById(brandId);
+    if (!brand) {
+      console.warn(`Brand with ID ${brandId} not found, skipping`);
+      return;
+    }
+
+    results.totalBrands++;
+    const propertyId = brand.ga4Account.PropertyID;
+    const adAccountIds = brand.fbAdAccounts || [];
+    const googleAdAccounts = brand.googleAdAccount || [];
+
+    if (!propertyId || !user.googleRefreshToken) {
+      console.warn(`Missing required GA4 tokens for brand ${brand.name}, skipping`);
+      return;
+    }
+
+    const metricsData = await getPlatformSummaryWithPartialData(
+      propertyId,
+      user.fbAccessToken,
+      adAccountIds,
+      googleAdAccounts,
+      user.googleRefreshToken
+    );
+
+    if (!metricsData.success) {
+      throw new Error(metricsData.error);
+    }
+
+    await sendBrandMetricsEmail(transporter, user.email, brand.name, metricsData);
+    results.totalEmailsSent++;
+    console.log(`Sent email for brand ${brand.name} to ${user.email}`);
+
+    const slackChannelEmail = slackChannelMapping[brand.name];
+    if (slackChannelEmail) {
+      await sendBrandMetricsEmail(transporter, slackChannelEmail, brand.name, metricsData);
+      results.totalEmailsSent++;
+      console.log(`Sent email for brand ${brand.name} to Slack channel: ${slackChannelEmail}`);
+    }
+  } catch (error) {
+    console.error(`Error processing brand ID ${brandId}:`, error);
+    results.failedEmails.push({
+      user: user.email,
+      brandId: brandId,
+      error: error.message
+    });
+  }
+}
+
 export async function sendAllBrandMetricsReports() {
   try {
-    // Create transporter with SMTP configuration
     const transporter = nodemailer.createTransport(smtpConfig);
-
-    const slackChannelMapping = {
-      "Udd Studio": "uddstudio-aaaaglc336lhdjxxxckkhmuvya@messold-india.slack.com",
-      "Theme My Party": "thememyparty-aaaagkvp77vveitk5ojzxwjaya@messold-india.slack.com",
-      "House of Nitya": "house-of-nitya-aaaaock7yx7bitu43at4dawqaq@messold-india.slack.com",
-      "The Oakery": "theoakery-aaaapegzoi3fhaahviptegy7pi@messold-india.slack.com",
-      "The weaving cult": "theweavingcult-aaaapgs6j4yybz4oz4iqq2miau@messold-india.slack.com",
-      "Kraftsmiths": "kraftsmiths-aaaagqabimb4faacblc3w6nghe@messold-india.slack.com",
-      "Litlmeu": "litlemeu-aaaaofzywanliwgxizzhhupcpa@messold-india.slack.com",
-      "Ethnic Trends By Shaheen": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
-    };
-
-    // Fetch all users with their brands populated
     const users = await User.find().populate('brands');
     console.log(`Found ${users.length} users to process`);
 
@@ -229,118 +274,24 @@ export async function sendAllBrandMetricsReports() {
       failedEmails: []
     };
 
-    // Process each user
     for (const user of users) {
-      if (!user.email) {
-        console.warn(`User ${user.username || user._id} has no email address, skipping`);
+      if (!user.email || !user.brands?.length) {
+        console.warn(`User ${user.username || user._id} has no email or brands, skipping`);
         continue;
       }
 
-      if (!user.brands || user.brands.length === 0) {
-        console.log(`User ${user.username} has no brands, skipping`);
-        continue;
-      }
-
-      // Get the tokens from user
-      const googleRefreshToken = user.googleRefreshToken;
-      const metaAccessToken = user.fbAccessToken;
-
-      // Fetch full brand details for each brand ID
       for (const brandId of user.brands) {
-        try {
-          // Fetch the brand details from the database
-          const brand = await Brands.findById(brandId);
-
-          if (!brand) {
-            console.warn(`Brand with ID ${brandId} not found, skipping`);
-            continue;
-          }
-
-          results.totalBrands++;
-
-          // Extract necessary information from the brand
-          const propertyId = brand.ga4Account.PropertyID;
-          const adAccountIds = brand.fbAdAccounts || [];
-          const googleAdAccounts = brand.googleAdAccount || [];
-
-          // Skip if essential GA4 data is missing
-          if (!propertyId || !googleRefreshToken) {
-            console.warn(`Missing required GA4 tokens for brand ${brand.name}, skipping`);
-            continue;
-          }
-
-          // Modified to handle Google Ads accounts array
-          const metricsData = await getPlatformSummaryWithPartialData(
-            propertyId,
-            metaAccessToken,
-            adAccountIds,
-            googleAdAccounts,
-            googleRefreshToken
-          );
-
-          if (!metricsData.success) {
-            console.error(`Failed to fetch metrics for brand ${brand.name}: ${metricsData.error}`);
-            results.failedEmails.push({
-              user: user.email,
-              brand: brand.name,
-              error: metricsData.error
-            });
-            continue;
-          }
-
-          // Determine the recipient email based on user and brand
-          let recipientEmail = user.email;
-
-           if (user.email === 'team@messold.com') {
-           //Check if there's a Slack channel mapping for this brand
-            const slackChannelEmail = slackChannelMapping[brand.name];
-             if (slackChannelEmail) {
-              recipientEmail = slackChannelEmail;
-               console.log(`Routing ${brand.name} email to Slack channel: ${slackChannelEmail}`);
-             }
-          }
-
-          // Send email for this brand
-          const emailResult = await sendBrandMetricsEmail(
-            transporter,
-            recipientEmail,
-            brand.name,
-            metricsData
-          );
-
-          if (emailResult.success) {
-            results.totalEmailsSent++;
-            console.log(`Sent email for brand ${brand.name} to ${recipientEmail}`);
-          } else {
-            results.failedEmails.push({
-              user: recipientEmail,
-              brand: brand.name,
-              error: emailResult.error
-            });
-          }
-        } catch (brandError) {
-          console.error(`Error processing brand ID ${brandId}:`, brandError);
-          results.failedEmails.push({
-            user: user.email,
-            brandId: brandId,
-            error: brandError.message
-          });
-        }
+        await processBrand(user, brandId, transporter, results);
       }
     }
 
-    return {
-      success: true,
-      results
-    };
+    return { success: true, results };
   } catch (error) {
     console.error('Error in sendAllBrandMetricsReports:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
+
 export async function sendBrandMetricsEmail(transporter, userEmail, brandName, metricsData) {
   try {
     // Format numbers and percentages for display
@@ -738,19 +689,19 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
     </html>
     `;
 
-  // Send the email
-  const info = await transporter.sendMail({
-    from: '"Brand Analytics" <team@messold.com>',
-    to: userEmail,
-    subject: `${brandName} Performance Metrics - ${formattedDate}`,
-    html: emailHTML,
-  });
+    // Send the email
+    const info = await transporter.sendMail({
+      from: '"Brand Analytics" <team@messold.com>',
+      to: userEmail,
+      subject: `${brandName} Performance Metrics - ${formattedDate}`,
+      html: emailHTML,
+    });
 
-  console.log('Email sent successfully:', info.messageId);
-  return { success: true, messageId: info.messageId };
-} catch (error) {
-  console.error('Error sending brand metrics email:', error);
-  return { success: false, error: error.message };
-}
+    console.log('Email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending brand metrics email:', error);
+    return { success: false, error: error.message };
+  }
 }
 

@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/index.ts';
 import MetaCampaignTable from './Components/MetaCampaignTable.tsx';
 import InterestTable from './Components/InterestTable.tsx';
+import Loader from '@/components/dashboard_component/loader.tsx';
 
 
 
@@ -286,6 +287,9 @@ export default function Dashboard() {
     },
   ]
 
+  if(isLoading){
+    return <Loader />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">

@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FacebookLogo, GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
-import { Ga4Logo } from '@/pages/GeneralisedDashboard/components/OtherPlatformModalContent';
+import {FacebookLogo, GoogleLogo, Ga4Logo} from "@/data/logo";
 
 
 interface PlatformModalProps {

@@ -8,7 +8,7 @@ import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
-import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { GoogleLogo } from "@/data/logo";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";

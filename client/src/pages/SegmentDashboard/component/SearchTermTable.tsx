@@ -1,4 +1,4 @@
-import { GoogleLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard";
+import { GoogleLogo } from '@/data/logo';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import { useParams } from "react-router-dom";

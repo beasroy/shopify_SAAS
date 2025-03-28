@@ -14,7 +14,7 @@ import {
 import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import ReportTable from "@/pages/ReportPage/component/ReportTable";
 import { FilterComponent, FilterItem } from "@/components/dashboard_component/FilterReport";
-import { Ga4Logo } from "@/pages/GeneralisedDashboard/components/OtherPlatformModalContent";
+import { Ga4Logo } from "@/data/logo";
 import { useUser } from "@/context/UserContext";
 import { Card, CardContent} from "@/components/ui/card";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";

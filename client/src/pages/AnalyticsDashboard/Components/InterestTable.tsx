@@ -1,7 +1,7 @@
 import React, { useState, useRef} from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FacebookLogo } from "@/pages/AnalyticsDashboard/AdAccountsMetricsCard"
+import { FacebookLogo } from "@/data/logo"
 import {
   Maximize,
   Minimize,

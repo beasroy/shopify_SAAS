@@ -96,3 +96,26 @@ export const privacyPolicySections = [
       ]
     }
   ];
+
+export const metricConfigs = {
+    sessionsAndConversion: {
+      primary: {
+        key: 'Total Sessions',
+        name: 'Sessions'
+      },
+      secondary: {
+        key: 'Avg Conv. Rate',
+        name: 'Conversion'
+      }
+    },
+    spendAndRoas: {
+      primary: {
+        key: 'Total Spend',
+        name: 'Spend'
+      },
+      secondary: {
+        key: 'Total Purchase ROAS',
+        name: 'Purchase ROAS'
+      }
+    }
+  };

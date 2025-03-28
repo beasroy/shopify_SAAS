@@ -16,6 +16,7 @@ import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Pricing from '../Pricing/Pricing';
+import { baseURL } from '@/data/constant';
 
 function ProfilePage() {
     const [activeTab, setActiveTab] = useState('brands');
@@ -30,7 +31,6 @@ function ProfilePage() {
 
     const handleZohoLogin = async () => {
         try {
-          const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
           const response = await axios.get(`${baseURL}/api/auth/zoho`);
           const { authUrl } = response.data;
     

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { SquareChartGantt } from 'lucide-react';
 import SearchTerm from './components/SearchTerm';
@@ -6,7 +6,6 @@ import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import Age from './components/Age';
 import Gender from './components/Gender';
 import { useSelector } from 'react-redux';
-import { useMemo } from 'react';
 import { RootState } from '@/store';
 import Header from '@/components/dashboard_component/Header';
 import { useParams } from 'react-router-dom';

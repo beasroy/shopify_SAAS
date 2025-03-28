@@ -1,4 +1,3 @@
-// PerformanceSummary.tsx
 
 import React, { useMemo, useState } from 'react';
 import {
@@ -7,36 +6,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PerformanceSummaryProps, CategoryData } from '@/interfaces';
 
-interface RowData {
-  [key: string]: any;
-}
 
-interface MetricConfig {
-  primary: {
-    key: string;
-    name: string;
-  };
-  secondary: {
-    key: string;
-    name: string;
-  };
-}
-
-interface CategoryData {
-  name: string;
-  color: string;
-  bgColor: string;
-  count: number;
-  items: (string | number)[];
-  description: string;
-}
-
-interface PerformanceSummaryProps {
-  data: RowData[];
-  primaryColumn: string;
-  metricConfig: MetricConfig;
-}
 
 const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
   data,
@@ -195,29 +167,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
   );
 };
 
-// Example metric configurations
-export const metricConfigs = {
-  sessionsAndConversion: {
-    primary: {
-      key: 'Total Sessions',
-      name: 'Sessions'
-    },
-    secondary: {
-      key: 'Avg Conv. Rate',
-      name: 'Conversion'
-    }
-  },
-  spendAndRoas: {
-    primary: {
-      key: 'Total Spend',
-      name: 'Spend'
-    },
-    secondary: {
-      key: 'Total Purchase ROAS',
-      name: 'Purchase ROAS'
-    }
-  }
-};
+
 
 
 export default PerformanceSummary;

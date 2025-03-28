@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { format } from "date-fns";
-import { GoogleLogo } from '@/pages/AnalyticsDashboard/AdAccountsMetricsCard';
+import {GoogleLogo} from "@/data/logo.tsx"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSelector } from 'react-redux';

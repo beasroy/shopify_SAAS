@@ -80,3 +80,38 @@ export interface InterestTableProps {
     }
     height: string
 }
+
+export interface ILogoProps {
+    width?: string | number;
+    height?: string | number;
+}
+
+export interface RowData {
+    [key: string]: any;
+}
+
+export interface MetricConfig {
+    primary: {
+        key: string;
+        name: string;
+    };
+    secondary: {
+        key: string;
+        name: string;
+    };
+}
+
+export interface CategoryData {
+    name: string;
+    color: string;
+    bgColor: string;
+    count: number;
+    items: (string | number)[];
+    description: string;
+}
+
+export interface PerformanceSummaryProps {
+    data: RowData[];
+    primaryColumn: string;
+    metricConfig: MetricConfig;
+}

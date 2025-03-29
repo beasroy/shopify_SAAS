@@ -129,7 +129,7 @@ export async function getPlatformSummaryWithPartialData(
       }
 
       // Default empty data for missing platforms
-      const emptyMetaData = { spend: 0, roas: 0 };
+      const emptyMetaData = { metaspend: 0, metaroas: 0 };
 
       // Check if Meta data is available
       const hasMetaData = !!(adAccountIds && adAccountIds.length > 0 && metaAdsAccessToken && currentMetaAdsData);
@@ -160,17 +160,17 @@ export async function getPlatformSummaryWithPartialData(
           )
         },
         metaAds: {
-          spend: buildMetricObject(
+          metaspend: buildMetricObject(
             periodLabel,
             currentStart, currentEnd, prevStart, prevEnd,
-            hasMetaData ? currentMetaAdsData.spend : emptyMetaData.spend,
-            hasMetaData ? prevMetaAdsData.spend : emptyMetaData.spend
+            hasMetaData ? currentMetaAdsData.metaspend : emptyMetaData.metaspend,
+            hasMetaData ? prevMetaAdsData.metaspend : emptyMetaData.metaspend
           ),
-          roas: buildMetricObject(
+          metaroas: buildMetricObject(
             periodLabel,
             currentStart, currentEnd, prevStart, prevEnd,
-            hasMetaData ? currentMetaAdsData.roas : emptyMetaData.roas,
-            hasMetaData ? prevMetaAdsData.roas : emptyMetaData.roas
+            hasMetaData ? currentMetaAdsData.metaroas : emptyMetaData.metaroas,
+            hasMetaData ? prevMetaAdsData.metaroas : emptyMetaData.metaroas
           ),
           dataAvailable: hasMetaData
         },
@@ -351,15 +351,15 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
         attentionItems.push(`Purchases decreased by ${formatPercentage(analytics.purchases.change)}`);
 
       // Check and add Meta ads metrics
-      if (metaAds && metaAds.spend && metaAds.spend.trend === 'up')
-        improvements.push(`Meta Ads Spend improved by ${formatPercentage(metaAds.spend.change)}`);
-      else if (metaAds && metaAds.spend && metaAds.spend.trend === 'down')
-        attentionItems.push(`Meta Ads Spend decreased by ${formatPercentage(metaAds.spend.change)}`);
+      if (metaAds && metaAds.metaspend && metaAds.metaspend.trend === 'up')
+        improvements.push(`Meta Ads Spend improved by ${formatPercentage(metaAds.metaspend.change)}`);
+      else if (metaAds && metaAds.metaspend && metaAds.metaspend.trend === 'down')
+        attentionItems.push(`Meta Ads Spend decreased by ${formatPercentage(metaAds.metaspend.change)}`);
 
-      if (metaAds && metaAds.roas && metaAds.roas.trend === 'up')
-        improvements.push(`Meta Ads ROAS improved by ${formatPercentage(metaAds.roas.change)}`);
-      else if (metaAds && metaAds.roas && metaAds.roas.trend === 'down')
-        attentionItems.push(`Meta Ads ROAS decreased by ${formatPercentage(metaAds.roas.change)}`);
+      if (metaAds && metaAds.metaroas && metaAds.metaroas.trend === 'up')
+        improvements.push(`Meta Ads ROAS improved by ${formatPercentage(metaAds.metaroas.change)}`);
+      else if (metaAds && metaAds.metaroas && metaAds.metaroas.trend === 'down')
+        attentionItems.push(`Meta Ads ROAS decreased by ${formatPercentage(metaAds.metaroas.change)}`);
 
       if (googleAds && googleAds.dataAvailable && googleAds.spend && googleAds.spend.trend === 'up')
         improvements.push(`Google Ads Spend improved by ${formatPercentage(googleAds.spend.change)}`);
@@ -456,13 +456,13 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
               <ul class="metrics-list">
                 <li>
                   <span class="metric-label">Meta:</span> 
-                  <span class="current-value">${formatCurrency(metaAds.spend.current)}</span> spend
-                  <span class="previous-value">(prev: ${formatCurrency(metaAds.spend.previous)})</span>
-                  ${getChangeIndicator(metaAds.spend.trend, metaAds.spend.change)}
+                  <span class="current-value">${formatCurrency(metaAds.metaspend.current)}</span> spend
+                  <span class="previous-value">(prev: ${formatCurrency(metaAds.metaspend.previous)})</span>
+                  ${getChangeIndicator(metaAds.metaspend.trend, metaAds.metaspend.change)}
                   with 
-                  <span class="current-value">${formatNumber(metaAds.roas.current)}x</span> ROAS
-                  <span class="previous-value">(prev: ${formatNumber(metaAds.roas.previous)}x)</span>
-                  ${getChangeIndicator(metaAds.roas.trend, metaAds.roas.change)}
+                  <span class="current-value">${formatNumber(metaAds.metaroas.current)}x</span> ROAS
+                  <span class="previous-value">(prev: ${formatNumber(metaAds.metaroas.previous)}x)</span>
+                  ${getChangeIndicator(metaAds.metaroas.trend, metaAds.metaroas.change)}
                 </li>
                 ${googleAdsHTML}
               </ul>

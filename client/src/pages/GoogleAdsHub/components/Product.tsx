@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/data/logo";
@@ -13,6 +12,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
+import Loader from "@/components/dashboard_component/loader";
 
 
 type AdAccountData = {
@@ -100,7 +100,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   return (
     <>
     {loading ? (
-      <TableSkeleton />
+      <Loader />
     ) : (
       apiResponse?.data && apiResponse.data.map((account, _) => (
         <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>

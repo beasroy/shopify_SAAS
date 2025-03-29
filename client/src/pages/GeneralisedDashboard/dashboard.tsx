@@ -7,7 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import createAxiosInstance from "../ConversionReportPage/components/axiosInstance";
-import DashboardSkeleton from "./components/DashboardSkeleton";
+import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
@@ -98,7 +98,6 @@ function MetricCard({
   prevValue,
   source
 }: MetricCardProps) {
-
   
   return (
     <div className={cn("p-3 rounded-md border shadow-sm flex flex-col", METRIC_BG_COLORS[metric])}>
@@ -139,7 +138,8 @@ function MetricCard({
 
 function PerformanceCard({ 
   period,
-  performanceData
+  performanceData,
+  apiStatus
 }: { 
   period: Period;
   performanceData: {
@@ -147,18 +147,23 @@ function PerformanceCard({
     google?: PerformanceSummary['periodData'];
     analytics?: PerformanceSummary['periodData'];
   };
+  apiStatus: {
+    meta: boolean;
+    google: boolean;
+    analytics: boolean;
+  };
 }) {
   // Combine metrics from all sources for the specified period
   const combineMetrics = () => {
     const allMetrics: { [source: string]: MetricsData } = {};
     
-    if (performanceData.meta?.[period]) {
+    if (performanceData.meta?.[period] && apiStatus.meta) {
       allMetrics.meta = performanceData.meta[period];
     }
-    if (performanceData.google?.[period]) {
+    if (performanceData.google?.[period] && apiStatus.google) {
       allMetrics.google = performanceData.google[period];
     }
-    if (performanceData.analytics?.[period]) {
+    if (performanceData.analytics?.[period] && apiStatus.analytics) {
       allMetrics.analytics = performanceData.analytics[period];
     }
     
@@ -166,7 +171,6 @@ function PerformanceCard({
   };
 
   const combinedMetrics = combineMetrics();
-
 
   const periodLabels = {
     "yesterday": "Yesterday",
@@ -182,6 +186,67 @@ function PerformanceCard({
     );
   }
 
+  // Create cards for each data source, showing "No Data Found" for failed ones
+  const renderSourceCards = () => {
+    const cards = [];
+
+    // Check if we need to display "No Data Found" for Meta
+    if (!apiStatus.meta) {
+      cards.push(
+        <div key="meta-no-data" className="col-span-1 p-3 rounded-md border shadow-sm flex flex-col justify-center items-center bg-gray-50 h-24">
+          <FacebookLogo width={"1.5rem"} height={"1.5rem"}/>
+          <span className="text-sm text-slate-500">No data found</span>
+        </div>
+      );
+    }
+
+    // Check if we need to display "No Data Found" for Google
+    if (!apiStatus.google) {
+      cards.push(
+        <div key="google-no-data" className="col-span-1 p-3 rounded-md border shadow-sm flex flex-col justify-center items-center bg-gray-50 h-24">
+          <GoogleLogo width={"1.5rem"} height={"1.5rem"} />
+          <span className="text-sm text-slate-500">No data found</span>
+        </div>
+      );
+    }
+
+    // Check if we need to display "No Data Found" for Analytics
+    if (!apiStatus.analytics) {
+      cards.push(
+        <div key="analytics-no-data" className="col-span-1 p-3 rounded-md border shadow-sm flex flex-col justify-center items-center bg-gray-50 h-24">
+          <Ga4Logo width={"1.5rem"} height={"1.5rem"}  />
+          <span className="text-sm text-slate-500">No data found</span>
+        </div>
+      );
+    }
+
+    // Add actual metric cards for successful API calls
+    Object.entries(combinedMetrics).forEach(([source, sourceMetrics]) => 
+      Object.entries(sourceMetrics).forEach(([key, metricData]) => {
+        cards.push(
+          <MetricCard
+            key={`${source}-${key}`}
+            metric={key as keyof typeof METRIC_COLORS}
+            label={
+              key === 'metaspend' ? 'Meta Spend' : 
+              key === 'metaroas' ? 'Meta ROAS' : 
+              key === 'spend' ? 'Google Spend' :
+              key === 'roas' ? 'Google ROAS' :
+              key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+            }
+            value={metricData.current}
+            change={metricData.change}
+            trend={metricData.trend}
+            prevValue={metricData.previous}
+            source={source as Source}
+          />
+        );
+      })
+    );
+
+    return cards;
+  };
+
   return (
     <div className="bg-white border rounded-lg shadow-md p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -191,26 +256,7 @@ function PerformanceCard({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Object.entries(combinedMetrics).flatMap(([source, sourceMetrics]) => 
-          Object.entries(sourceMetrics).map(([key, metricData]) => (
-            <MetricCard
-              key={`${source}-${key}`}
-              metric={key as keyof typeof METRIC_COLORS}
-              label={
-                key === 'metaspend' ? 'Meta Spend' : 
-                key === 'metaroas' ? 'Meta ROAS' : 
-                key === 'spend' ? 'Google Spend' :
-                key === 'roas' ? 'Google ROAS' :
-                key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
-              }
-              value={metricData.current}
-              change={metricData.change}
-              trend={metricData.trend}
-              prevValue={metricData.previous}
-              source={source as Source}
-            />
-          ))
-        )}
+        {renderSourceCards()}
       </div>
     </div>
   );
@@ -228,31 +274,62 @@ const SummaryDashboard: React.FC = () => {
     google?: PerformanceSummary['periodData'];
     analytics?: PerformanceSummary['periodData'];
   }>({});
+  
+  // Track API call success/failure status
+  const [apiStatus, setApiStatus] = useState({
+    meta: true,
+    google: true,
+    analytics: true
+  });
 
   const axiosInstance = createAxiosInstance();
 
   const fetchPerformanceData = useCallback(async () => {
     setLoading(true);
     setPerformanceData({});
+    // Reset API status for new fetch
+    setApiStatus({
+      meta: true,
+      google: true,
+      analytics: true
+    });
 
     try {
-      // Parallel API calls for different performance sources
+      // Make individual API calls to track each success/failure separately
+      const metaPromise = axiosInstance.post(
+        `api/summary/facebook-ads/${brandId}`,
+        { userId: user?.id },
+        { withCredentials: true }
+      ).catch(error => {
+        console.error('Error fetching Meta data:', error);
+        setApiStatus(prev => ({ ...prev, meta: false }));
+        return { data: { success: false } };
+      });
+
+      const googlePromise = axiosInstance.post(
+        `api/summary/google-ads/${brandId}`,
+        { userId: user?.id },
+        { withCredentials: true }
+      ).catch(error => {
+        console.error('Error fetching Google data:', error);
+        setApiStatus(prev => ({ ...prev, google: false }));
+        return { data: { success: false } };
+      });
+
+      const analyticsPromise = axiosInstance.post(
+        `api/summary/analytics/${brandId}`,
+        { userId: user?.id },
+        { withCredentials: true }
+      ).catch(error => {
+        console.error('Error fetching Analytics data:', error);
+        setApiStatus(prev => ({ ...prev, analytics: false }));
+        return { data: { success: false } };
+      });
+      
       const [metaResponse, googleResponse, analyticsResponse] = await Promise.all([
-        axiosInstance.post(
-          `api/summary/facebook-ads/${brandId}`,
-          { userId: user?.id },
-          { withCredentials: true }
-        ),
-        axiosInstance.post(
-          `api/summary/google-ads/${brandId}`,
-          { userId: user?.id },
-          { withCredentials: true }
-        ),
-        axiosInstance.post(
-          `api/summary/analytics/${brandId}`,
-          { userId: user?.id },
-          { withCredentials: true }
-        )
+        metaPromise,
+        googlePromise,
+        analyticsPromise
       ]);
 
       setPerformanceData({
@@ -260,8 +337,21 @@ const SummaryDashboard: React.FC = () => {
         google: googleResponse.data.success ? googleResponse.data.periodData : undefined,
         analytics: analyticsResponse.data.success ? analyticsResponse.data.periodData : undefined
       });
+      
+      // Update API status based on response success property
+      setApiStatus({
+        meta: metaResponse.data.success,
+        google: googleResponse.data.success,
+        analytics: analyticsResponse.data.success
+      });
     } catch (error) {
-      console.error('Error fetching performance data:', error);
+      console.error('Error in fetchPerformanceData:', error);
+      // If we had an overall error, mark all APIs as failed
+      setApiStatus({
+        meta: false,
+        google: false,
+        analytics: false
+      });
     } finally {
       setLoading(false);
     }
@@ -271,8 +361,9 @@ const SummaryDashboard: React.FC = () => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
 
+
   if (loading) {
-    return <DashboardSkeleton />;
+    return <Loader />;
   }
 
   return (
@@ -309,6 +400,7 @@ const SummaryDashboard: React.FC = () => {
               key={period}
               period={period}
               performanceData={performanceData}
+              apiStatus={apiStatus}
             />
           ))}
         </div>

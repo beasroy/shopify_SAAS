@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import axios, { AxiosError } from 'axios'
-import { Search, Check } from 'lucide-react'
+import axios from 'axios'
+import { Search, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Ga4Logo, FacebookLogo, GoogleLogo } from '@/data/logo'
@@ -12,14 +12,20 @@ import { RootState } from '@/store'
 
 interface OtherPlatformModalContentProps {
   platform: string;
-  onConnect: (platform: string, account: string, accountId: string, managerId?: string) => void;
+  onConnect: (
+    platform: string,
+    account: string,
+    accountId: string,
+    managerId?: string,
+  ) => void;
+  onRemove?: (platform: string, accountId: string, managerId?: string) => void;
   connectedId: string;
 }
 
 interface GoogleAdsAccount {
   name: string;
   clientId: string;
-  managerId?: string;  // Added managerId
+  managerId?: string;
   hidden?: boolean;
 }
 
@@ -37,6 +43,7 @@ export default function OtherPlatformModalContent({
   platform,
   onConnect,
   connectedId,
+  onRemove
 }: OtherPlatformModalContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
@@ -68,7 +75,7 @@ export default function OtherPlatformModalContent({
           console.log('Unexpected status code:', response.status);
         }
       } catch (error) {
-        handleError(error, setShowLoginButton);
+        handleError(error);
       } finally {
         setLoading(false); // End loading
       }
@@ -91,7 +98,7 @@ export default function OtherPlatformModalContent({
           console.log('Unexpected status code:', response.status);
         }
       } catch (error) {
-        handleError(error, setShowLoginButton);
+        handleError(error);
       } finally {
         setLoading(false); // End loading
       }
@@ -109,7 +116,7 @@ export default function OtherPlatformModalContent({
 
         setFacebookAdsAccounts(response.data.adAccounts || []);
       } catch (error) {
-        handleError(error, setShowLoginButton);
+        handleError(error);
       } finally {
         setLoading(false); // End loading
       }
@@ -120,27 +127,86 @@ export default function OtherPlatformModalContent({
     if (platform.toLowerCase() === 'facebook') fetchFacebookAdsAccounts();
   }, [platform, user]);
 
-  const handleError = (error: unknown, setShowLoginButton: (value: boolean) => void) => {
-    const axiosError = error as AxiosError;
+  const handleError = (error: any) => {
+    // Axios error handling
+    if (axios.isAxiosError(error)) {
+      const axiosError = error;
+      const { response, request } = axiosError;
 
-    if (axiosError.response) {
-      const { status, data } = axiosError.response;
-      const code = axiosError.code;
-      if (status === 400) {
+      // If response received from server
+      if (response) {
+        const { status, data, config } = response;
+        const code = data?.error?.code || data?.code;
+
+        // Common authentication and authorization errors
+        const authErrors = [
+          401,  // Unauthorized
+          403,  // Forbidden
+          'UNAUTHENTICATED',
+          'TOKEN_EXPIRED',
+          'INVALID_CREDENTIALS'
+        ];
+
+        // Check if the error is related to authentication
+        const isAuthError = authErrors.some(
+          authCode => status === authCode || code === authCode
+        );
+
+        if (isAuthError) {
+          console.error('Authentication Error:', { status, code, message: data?.message });
+          setShowLoginButton(true);
+          return;
+        }
+
+        // Specific Google Ads API error handling
+        if (data?.errors && data.errors.length > 0) {
+          const googleAdsError = data.errors[0];
+          const googleAdsErrorMessage = googleAdsError.message || 'Google Ads API Error';
+
+          console.error('Google Ads API Error:', googleAdsErrorMessage);
+
+          // Common Google Ads authentication scenarios
+          const googleAuthErrors = [
+            'not associated with any Ads accounts',
+            'missing required authentication credential',
+            'OAuth access token invalid'
+          ];
+
+          const isGoogleAuthError = googleAdsErrorMessage &&
+            googleAuthErrors.some(errText =>
+              googleAdsErrorMessage.toLowerCase().includes(errText.toLowerCase())
+            );
+
+          if (isGoogleAuthError) {
+            setShowLoginButton(true);
+            return;
+          }
+        }
+
+        // General server error handling
+        console.error('Server Error:', {
+          status,
+          url: config?.url,
+          method: config?.method
+        });
         setShowLoginButton(true);
-      } else if (status === 403) {
-        setShowLoginButton(true);
-      } else if (status === 401 || code === 'TOKEN_EXPIRED') {
-        alert('Your Google session has expired. Please log in again.');
-        setShowLoginButton(true);
-      } else {
-        console.error('Unhandled Error Status:', status);
-        console.error('Error Message:', data);
+
       }
-    } else if (axiosError.request) {
-      console.error('No response received:', axiosError.request);
-    } else {
-      console.error('Unexpected Error:', axiosError.message);
+      // No response received
+      else if (request) {
+        console.error('No response received:', request);
+        setShowLoginButton(true);
+      }
+      // Network or other axios error
+      else {
+        console.error('Request Setup Error:', axiosError.message);
+        setShowLoginButton(true);
+      }
+    }
+    // Non-axios error handling
+    else {
+      console.error('Unexpected Error:', error);
+      setShowLoginButton(true);
     }
   };
 
@@ -313,15 +379,31 @@ export default function OtherPlatformModalContent({
                         {displayText}
                       </div>
                     </span>
-                    <Button
-                      size="sm"
-                      onClick={() => handleConnect(account)}
-                      disabled={connectedId.includes(accountId)}
-                      className="bg-blue-600"
-                    >
-                      {connectedId.includes(accountId) && <Check className="h-4 w-4 mr-2" />}
-                      {connectedId.includes(accountId) ? 'Connected' : 'Connect'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {connectedId && onRemove && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => onRemove(
+                            platform,
+                            accountId,
+                            platform.toLowerCase() === 'google ads' ? managerId : undefined
+                          )}
+                          className="flex items-center"
+                        >
+                          <X className="h-4 w-4 mr-1" /> Remove
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => handleConnect(account)}
+                        disabled={connectedId.includes(accountId)}
+                        className={connectedId.includes(accountId) ? "bg-green-600" : "bg-blue-600"}
+                      >
+                        {connectedId.includes(accountId) && <Check className="h-4 w-4 mr-2" />}
+                        {connectedId.includes(accountId) ? 'Connected' : 'Connect'}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

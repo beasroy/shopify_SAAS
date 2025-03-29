@@ -15,6 +15,7 @@ import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import NewReportTable from "./NewReportTable";
 import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet";
+import Loader from "@/components/dashboard_component/loader";
 
 interface DaywiseMetric {
   "Day": string
@@ -174,7 +175,9 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
   const removeFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index));
   };
-
+  if(isLoading){
+    return <Loader />
+  }
   return (
     <Card className={`mx-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
     <CardContent >

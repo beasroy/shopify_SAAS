@@ -10,8 +10,11 @@ import OtherPlatformModalContent from './OtherPlatformModalContent';
 import { FacebookLogo,  GoogleLogo, Ga4Logo, ShopifyLogo } from '@/data/logo';
 import axios from 'axios';
 import { setUser } from '@/store/slices/UserSlice';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
+import { useNavigate } from 'react-router-dom';
+import { Label } from '@radix-ui/react-label';
+
 
 
 const platforms = [
@@ -29,7 +32,10 @@ export default function BrandSetup() {
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>({});
   const [brandName, setBrandName] = useState('');
   const [brandLogo, setBrandLogo] = useState<File | null>(null);
-  const [googleAdId, setGoogleAdId] = useState<string>('');
+  const [googleAdsConnections, setGoogleAdsConnections] = useState<{
+    clientId: string;
+    managerId?: string;
+  }[]>([]);
   const [ga4Id, setGa4Id] = useState<string>('');
   const [fbAdId, setFBAdId] = useState<string[]>([]);
   const [shop, setShop] = useState<string>('');
@@ -37,7 +43,8 @@ export default function BrandSetup() {
   const { toast } = useToast();
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
   const user = useSelector((state: RootState) => state.user.user)
-
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,20 +61,37 @@ export default function BrandSetup() {
     }
   }, []);
 
-  const handleConnect = (platform: string, account: string, accountId: string) => {
+  const handleConnect = (
+    platform: string, 
+    account: string, 
+    accountId: string, 
+    managerId?: string, 
+  ) => {
+    // Update connected accounts
     setConnectedAccounts(prev => ({
       ...prev,
       [platform]: [...(prev[platform] || []), account]
     }));
+
+    // Handle platform-specific connection logic
     if (platform.toLowerCase() === 'google ads') {
-      setGoogleAdId(accountId);
+      // Store comprehensive Google Ads connection details
+      setGoogleAdsConnections(prev => [
+        ...prev, 
+        {
+          clientId:  accountId,
+          managerId:  managerId,
+        }
+      ]);
     } else if (platform.toLowerCase() === 'google analytics') {
       setGa4Id(accountId);
-    } else {
+    } else if (platform.toLowerCase() === 'facebook') {
       setFBAdId(prev => [...prev, accountId]);
     }
+
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" });
   };
+
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -84,7 +108,7 @@ export default function BrandSetup() {
   const getConnectedId = (platformName: string): string => {
     switch (platformName.toLowerCase()) {
       case 'google ads':
-        return googleAdId;
+        return googleAdsConnections.map(conn => conn.clientId).join(',');
       case 'google analytics':
         return ga4Id;
       case 'facebook':
@@ -113,7 +137,10 @@ export default function BrandSetup() {
     const payload = {
       name: brandName,
       logoUrl: brandLogo || '',
-      googleAdAccount: googleAdId || '',
+      googleAdAccount: googleAdsConnections.map(connection => ({
+        clientId: connection.clientId,
+        managerId: connection.managerId || ''
+      })),
       ga4Account: { PropertyID: ga4Id || '' },
       fbAdAccounts: fbAdId.map((accountId) => accountId),
       shopifyAccount: { shopName: shop || '', shopifyAccessToken: shopifyAccessToken || '' }
@@ -147,7 +174,12 @@ export default function BrandSetup() {
         brands: [...user.brands, newBrandId]
       } : null;
 
-      if (updatedUser) setUser(updatedUser);
+      if (updatedUser) {
+        console.log(updatedUser);
+        dispatch(setUser(updatedUser));
+        console.log("after updating the state",user);
+        navigate('/dashboard');
+      }
 
       toast({ description: 'Brand setup completed successfully!', variant: "default" });
 
@@ -164,7 +196,7 @@ export default function BrandSetup() {
         return (
           <div className="space-y-6">
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">Brand Name</label>
+              <Label className="block text-sm font-medium text-gray-700">Brand Name</Label>
               <Input
                 placeholder="Enter your brand name"
                 value={brandName}
@@ -174,7 +206,7 @@ export default function BrandSetup() {
             </div>
 
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">Brand Logo</label>
+              <Label className="block text-sm font-medium text-gray-700">Brand Logo</Label>
               <div className="flex items-center gap-4">
                 <Input
                   id="brandLogo"

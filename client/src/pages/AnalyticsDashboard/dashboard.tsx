@@ -13,6 +13,7 @@ import { RootState } from '@/store/index.ts';
 import MetaCampaignTable from './Components/MetaCampaignTable.tsx';
 import InterestTable from './Components/InterestTable.tsx';
 import Loader from '@/components/dashboard_component/loader.tsx';
+import createAxiosInstance from '../ConversionReportPage/components/axiosInstance.ts';
 
 
 
@@ -48,6 +49,7 @@ export default function Dashboard() {
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
+  const axiosInstance = createAxiosInstance();
 
 
   const handleDataSourceChange = (newValue: string) => {
@@ -66,11 +68,6 @@ export default function Dashboard() {
   const fetchAdData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const baseURL =
-        import.meta.env.PROD
-          ? import.meta.env.VITE_API_URL
-          : import.meta.env.VITE_LOCAL_API_URL;
-
       const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
       const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
@@ -79,8 +76,8 @@ export default function Dashboard() {
 
       if (dataSource === 'all' || dataSource === 'facebook') {
         try {
-          const fbAdResponse = await axios.post(
-            `${baseURL}/api/metrics/fbAdAndCampaign/${brandId}`,
+          const fbAdResponse = await axiosInstance.post(
+            `/api/metrics/fbAdAndCampaign/${brandId}`,
             { startDate, endDate, userId },
             { withCredentials: true }
           );
@@ -94,8 +91,8 @@ export default function Dashboard() {
 
       if (dataSource === 'all' || dataSource === 'google') {
         try {
-          const googleAdResponse = await axios.post(
-            `${baseURL}/api/metrics/googleAdAndCampaign/${brandId}`,
+          const googleAdResponse = await axiosInstance.post(
+            `/api/metrics/googleAdAndCampaign/${brandId}`,
             { startDate, endDate, userId },
             { withCredentials: true }
           );
@@ -129,13 +126,9 @@ export default function Dashboard() {
     fetchAdData();
   }, [fetchAdData]);
 
-
-
   useEffect(() => {
     fetchAdData();
-
     const intervalId = setInterval(fetchAdData, 3 * 60 * 60 * 1000); // 3 hours
-
     return () => clearInterval(intervalId);
 }, [fetchAdData]);
 

@@ -70,14 +70,7 @@ const previous30DaysEnd = new Date(last30DaysStart);
 previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
 
 
-export const dateRanges = [
-  { start: yesterday, end: yesterday },
-  { start: dayBeforeYesterday, end: dayBeforeYesterday },
-  { start: last7DaysStart, end: yesterday },
-  { start: previous7DaysStart, end: previous7DaysEnd },
-  { start: last30DaysStart, end: yesterday },
-  { start: previous30DaysStart, end: previous30DaysEnd }
-];
+
 
 
 
@@ -136,7 +129,7 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
     }, { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 });
 
     // Calculate rates
-    const calculateRate = (numerator, denominator) => 
+    const calculateRate = (numerator, denominator) =>
       denominator > 0 ? Number(((numerator / denominator) * 100).toFixed(2)) : 0;
 
     const result = {
@@ -162,7 +155,7 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
   }
 }
 // Function to fetch Facebook Ads data
-export async function fetchMetaAdsData(startDate, endDate,accessToken,adAccountIds) {
+export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccountIds) {
   const batchRequests = adAccountIds.flatMap((accountId) => [
     {
       method: 'GET',
@@ -206,7 +199,7 @@ export async function fetchMetaAdsData(startDate, endDate,accessToken,adAccountI
   return aggregatedData;
 }
 
-export async function fetchGoogleAdsData(startDate, endDate,customer) {
+export async function fetchGoogleAdsData(startDate, endDate, customer) {
   // Format dates once outside the function call
   const formattedStartDate = startDate.toISOString().split('T')[0];
   const formattedEndDate = endDate.toISOString().split('T')[0];
@@ -285,57 +278,57 @@ export async function getAnalyticsSummary(req, res) {
 
     // Validate Google Analytics access
     if (!propertyId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'GA4 Property ID is missing for this brand.' 
+      return res.status(400).json({
+        success: false,
+        message: 'GA4 Property ID is missing for this brand.'
       });
     }
 
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        error: 'Access to Google Analytics API is forbidden.' 
+        error: 'Access to Google Analytics API is forbidden.'
       });
     }
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
     const dateRanges = [
-      { 
-        start: yesterday, 
-        end: yesterday, 
+      {
+        start: yesterday,
+        end: yesterday,
         period: 'yesterday',
         type: 'current'
       },
-      { 
-        start: dayBeforeYesterday, 
-        end: dayBeforeYesterday,  
+      {
+        start: dayBeforeYesterday,
+        end: dayBeforeYesterday,
         period: 'yesterday',
         type: 'previous'
       },
-      { 
-        start: last7DaysStart, 
-        end: yesterday, 
+      {
+        start: last7DaysStart,
+        end: yesterday,
         period: 'last7Days',
         type: 'current'
       },
-      { 
-        start: previous7DaysStart, 
+      {
+        start: previous7DaysStart,
         end: previous7DaysEnd,
-        period: 'last7Days', 
+        period: 'last7Days',
         type: 'previous'
       },
-      { 
-        start: last30DaysStart, 
-        end: yesterday,  
+      {
+        start: last30DaysStart,
+        end: yesterday,
         period: 'last30Days',
         type: 'current'
       },
-      { 
-        start: previous30DaysStart, 
+      {
+        start: previous30DaysStart,
         end: previous30DaysEnd,
-        period: 'last30Days', 
+        period: 'last30Days',
         type: 'previous'
       }
     ];
@@ -372,7 +365,7 @@ export async function getAnalyticsSummary(req, res) {
     };
 
     const results = await Promise.all(
-      dateRanges.map(range => 
+      dateRanges.map(range =>
         fetchAnalyticsData(range.start, range.end, propertyId, accessToken)
           .then(metrics => ({
             ...metrics,
@@ -407,7 +400,7 @@ export async function getAnalyticsSummary(req, res) {
       Object.keys(metricMap).forEach(metricKey => {
         // Debug logging
         console.log(`Updating ${metricKey} for ${metrics.period} - ${metrics.type}:`, metricMap[metricKey]);
-        
+
         periodData[metrics.period][metricKey][metrics.type] = Number(metricMap[metricKey]);
       });
     });
@@ -416,11 +409,11 @@ export async function getAnalyticsSummary(req, res) {
 
       const numCurrent = Number(current);
       const numPrevious = Number(previous);
-  
+
       const roundedCurrent = Number(numCurrent.toFixed(2));
       const roundedPrevious = Number(numPrevious.toFixed(2));
-  
-      const change = roundedPrevious > 0 
+
+      const change = roundedPrevious > 0
         ? Number(((roundedCurrent - roundedPrevious) / roundedPrevious * 100).toFixed(2))
         : 0;
 
@@ -439,9 +432,9 @@ export async function getAnalyticsSummary(req, res) {
 
     // Define metrics explicitly
     const metrics = [
-      'sessions', 
-      'addToCarts', 
-      'checkouts', 
+      'sessions',
+      'addToCarts',
+      'checkouts',
       'purchases',
       'addToCartRate',
       'checkoutRate',
@@ -452,11 +445,15 @@ export async function getAnalyticsSummary(req, res) {
     periods.forEach(period => {
       metrics.forEach(metric => {
         periodData[period][metric] = calculateMetrics(
-          periodData[period][metric].current, 
+          periodData[period][metric].current,
           periodData[period][metric].previous
         );
       });
     });
+
+    console.log('System current time:', new Date().toString());
+    console.log('Calculated yesterday:', yesterday.toString());
+    // Log all other date variables
 
     res.status(200).json({
       success: true,
@@ -468,24 +465,24 @@ export async function getAnalyticsSummary(req, res) {
 
     if (error.response) {
       if (error.response.status === 403) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: 'Access to Google Analytics API is forbidden.' 
+          error: 'Access to Google Analytics API is forbidden.'
         });
       }
-      return res.status(error.response.status).json({ 
+      return res.status(error.response.status).json({
         success: false,
-        error: error.response.data 
+        error: error.response.data
       });
     } else if (error.request) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: 'No response received from Google Analytics API.' 
+        error: 'No response received from Google Analytics API.'
       });
     } else {
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: 'Failed to fetch analytics summary.' 
+        error: 'Failed to fetch analytics summary.'
       });
     }
   }
@@ -527,69 +524,69 @@ export async function getFacebookAdsSummary(req, res) {
     // Initialize period data structure
     const periodData = {
       yesterday: {
-        metaspend: { 
-          current: 0, 
-          previous: 0, 
+        metaspend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        metaroas: { 
-          current: 0, 
-          previous: 0, 
+        metaroas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
       },
       last7Days: {
-        metaspend: { 
-          current: 0, 
-          previous: 0, 
+        metaspend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        metaroas: { 
-          current: 0, 
-          previous: 0, 
+        metaroas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
       },
       last30Days: {
-        metaspend: { 
-          current: 0, 
-          previous: 0, 
+        metaspend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        metaroas: { 
-          current: 0, 
-          previous: 0, 
+        metaroas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
       }
     };
 
-      const dateRanges = [
-        { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaspend' },
-        { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaspend' },
-        { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaroas' },
-        { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaroas' },
-        
-        { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaspend' },
-        { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaspend' },
-        { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaroas' },
-        { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaroas' },
-        
-        { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaspend' },
-        { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaspend' },
-        { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaroas' },
-        { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaroas' }
-      ];
+    const dateRanges = [
+      { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaspend' },
+      { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaspend' },
+      { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaroas' },
+      { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaroas' },
+
+      { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaspend' },
+      { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaspend' },
+      { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaroas' },
+      { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaroas' },
+
+      { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaspend' },
+      { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaspend' },
+      { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaroas' },
+      { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaroas' }
+    ];
 
     // Fetch all metrics
     const results = await Promise.all(
-      dateRanges.map(range => 
+      dateRanges.map(range =>
         fetchMetaAdsData(range.start, range.end, accessToken, adAccountIds)
       )
     );
@@ -602,15 +599,15 @@ export async function getFacebookAdsSummary(req, res) {
       periodData[range.period][range.metric][range.type] += value;
     });
 
- 
+
     const calculateMetrics = (current, previous) => {
       const numCurrent = Number(current);
       const numPrevious = Number(previous);
-      
+
       const roundedCurrent = Number(numCurrent.toFixed(2));
       const roundedPrevious = Number(numPrevious.toFixed(2));
-      
-      const change = roundedPrevious > 0 
+
+      const change = roundedPrevious > 0
         ? Number(((roundedCurrent - roundedPrevious) / roundedPrevious * 100).toFixed(2))
         : 0;
 
@@ -628,29 +625,29 @@ export async function getFacebookAdsSummary(req, res) {
 
     // Apply calculations to each period
     periodData.yesterday.metaspend = calculateMetrics(
-      periodData.yesterday.metaspend.current, 
+      periodData.yesterday.metaspend.current,
       periodData.yesterday.metaspend.previous
     );
     periodData.yesterday.metaroas = calculateMetrics(
-      periodData.yesterday.metaroas.current, 
+      periodData.yesterday.metaroas.current,
       periodData.yesterday.metaroas.previous
     );
 
     periodData.last7Days.metaspend = calculateMetrics(
-      periodData.last7Days.metaspend.current, 
+      periodData.last7Days.metaspend.current,
       periodData.last7Days.metaspend.previous
     );
     periodData.last7Days.metaroas = calculateMetrics(
-      periodData.last7Days.metaroas.current, 
+      periodData.last7Days.metaroas.current,
       periodData.last7Days.metaroas.previous
     );
 
     periodData.last30Days.metaspend = calculateMetrics(
-      periodData.last30Days.metaspend.current, 
+      periodData.last30Days.metaspend.current,
       periodData.last30Days.metaspend.previous
     );
     periodData.last30Days.metaroas = calculateMetrics(
-      periodData.last30Days.metaroas.current, 
+      periodData.last30Days.metaroas.current,
       periodData.last30Days.metaroas.previous
     );
 
@@ -705,43 +702,43 @@ export async function getGoogleAdsSummary(req, res) {
     // Create empty objects to store period-wise data
     const periodData = {
       yesterday: {
-        spend: { 
-          current: 0, 
-          previous: 0, 
+        spend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        roas: { 
-          current: 0, 
-          previous: 0, 
+        roas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
       },
       last7Days: {
-        spend: { 
-          current: 0, 
-          previous: 0, 
+        spend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        roas: { 
-          current: 0, 
-          previous: 0, 
+        roas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
       },
       last30Days: {
-        spend: { 
-          current: 0, 
-          previous: 0, 
+        spend: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         },
-        roas: { 
-          current: 0, 
-          previous: 0, 
+        roas: {
+          current: 0,
+          previous: 0,
           change: 0,
           trend: 'neutral'
         }
@@ -767,10 +764,10 @@ export async function getGoogleAdsSummary(req, res) {
       // Fetch data for each period
       const yesterdayMetrics = await fetchGoogleAdsData(yesterday, yesterday, customer);
       const dayBeforeYesterdayMetrics = await fetchGoogleAdsData(dayBeforeYesterday, dayBeforeYesterday, customer);
-      
+
       const last7DaysMetrics = await fetchGoogleAdsData(last7DaysStart, yesterday, customer);
       const previous7DaysMetrics = await fetchGoogleAdsData(previous7DaysStart, previous7DaysEnd, customer);
-      
+
       const last30DaysMetrics = await fetchGoogleAdsData(last30DaysStart, yesterday, customer);
       const previous30DaysMetrics = await fetchGoogleAdsData(previous30DaysStart, previous30DaysEnd, customer);
 
@@ -798,9 +795,9 @@ export async function getGoogleAdsSummary(req, res) {
       // Round to 2 decimal places
       const roundedCurrent = Number(current.toFixed(2));
       const roundedPrevious = Number(previous.toFixed(2));
-      
+
       // Calculate change percentage
-      const change = roundedPrevious > 0 
+      const change = roundedPrevious > 0
         ? Number(((roundedCurrent - roundedPrevious) / roundedPrevious * 100).toFixed(2))
         : 0;
 
@@ -819,29 +816,29 @@ export async function getGoogleAdsSummary(req, res) {
 
     // Apply calculations to each period
     periodData.yesterday.spend = calculateMetrics(
-      periodData.yesterday.spend.current, 
+      periodData.yesterday.spend.current,
       periodData.yesterday.spend.previous
     );
     periodData.yesterday.roas = calculateMetrics(
-      periodData.yesterday.roas.current, 
+      periodData.yesterday.roas.current,
       periodData.yesterday.roas.previous
     );
 
     periodData.last7Days.spend = calculateMetrics(
-      periodData.last7Days.spend.current, 
+      periodData.last7Days.spend.current,
       periodData.last7Days.spend.previous
     );
     periodData.last7Days.roas = calculateMetrics(
-      periodData.last7Days.roas.current, 
+      periodData.last7Days.roas.current,
       periodData.last7Days.roas.previous
     );
 
     periodData.last30Days.spend = calculateMetrics(
-      periodData.last30Days.spend.current, 
+      periodData.last30Days.spend.current,
       periodData.last30Days.spend.previous
     );
     periodData.last30Days.roas = calculateMetrics(
-      periodData.last30Days.roas.current, 
+      periodData.last30Days.roas.current,
       periodData.last30Days.roas.previous
     );
 

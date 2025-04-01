@@ -295,7 +295,6 @@ const SummaryDashboard: React.FC = () => {
     });
 
     try {
-      // Make individual API calls to track each success/failure separately
       const metaPromise = axiosInstance.post(
         `api/summary/facebook-ads/${brandId}`,
         { userId: user?.id },

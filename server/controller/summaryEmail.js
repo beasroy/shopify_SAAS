@@ -1,4 +1,4 @@
-import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject, dateRanges,getGoogleAccessToken, client } from "./summary.js";
+import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject,getGoogleAccessToken, client } from "./summary.js";
 import nodemailer from "nodemailer"
 import User from "../models/User.js";
 import Brands from "../models/Brands.js";
@@ -13,7 +13,40 @@ const slackChannelMapping = {
   "Litlmeu": "litlemeu-aaaaofzywanliwgxizzhhupcpa@messold-india.slack.com",
   "Ethnic Trends By Shaheen": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
 };
+// Create date ranges more efficiently
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
 
+const dayBeforeYesterday = new Date(today);
+dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+const last7DaysStart = new Date(today);
+last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+const previous7DaysStart = new Date(last7DaysStart);
+previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+
+const previous7DaysEnd = new Date(last7DaysStart);
+previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+const last30DaysStart = new Date(today);
+last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+const previous30DaysStart = new Date(last30DaysStart);
+previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+
+const previous30DaysEnd = new Date(last30DaysStart);
+previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+ const dateRanges = [
+  { start: yesterday, end: yesterday },
+  { start: dayBeforeYesterday, end: dayBeforeYesterday },
+  { start: last7DaysStart, end: yesterday },
+  { start: previous7DaysStart, end: previous7DaysEnd },
+  { start: last30DaysStart, end: yesterday },
+  { start: previous30DaysStart, end: previous30DaysEnd }
+];
 
 const smtpConfig = {
   host: 'smtp.gmail.com',

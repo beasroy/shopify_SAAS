@@ -12,6 +12,7 @@ import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
 import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
+import { useNavigate } from "react-router-dom";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period = "yesterday" | "last7Days" | "last30Days";
@@ -274,6 +275,8 @@ const SummaryDashboard: React.FC = () => {
     google?: PerformanceSummary['periodData'];
     analytics?: PerformanceSummary['periodData'];
   }>({});
+
+  const navigate = useNavigate();
   
   // Track API call success/failure status
   const [apiStatus, setApiStatus] = useState({
@@ -360,6 +363,11 @@ const SummaryDashboard: React.FC = () => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
 
+  useEffect(()=>{
+    if(!user?.brands || user.brands.length === 0){
+      navigate("/brand-setup")
+    }
+  },[])
 
   if (loading) {
     return <Loader />;

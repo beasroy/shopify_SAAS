@@ -16,6 +16,15 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        inter: ["Inter", "sans-serif"],
+        "ibm-plex-mono": ['"IBM Plex Mono"', "monospace"],
+        "dm-sans": ['"DM Sans"', "sans-serif"],
+        roboto: ['"Roboto"', "sans-serif"],
+        "ibm-plex-sans": ['"IBM Plex Sans"', "sans-serif"],
+        nunito: ['"Nunito"', "sans-serif"],
+        "source-sans": ['"Source Sans 3"', "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

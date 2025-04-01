@@ -44,35 +44,6 @@ export function buildMetricObject(period, currentStart, currentEnd, prevStart, p
   };
 }
 // Create date ranges more efficiently
-const today = new Date();
-const yesterday = new Date(today);
-yesterday.setDate(yesterday.getDate() - 1);
-
-const dayBeforeYesterday = new Date(today);
-dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
-
-const last7DaysStart = new Date(today);
-last7DaysStart.setDate(last7DaysStart.getDate() - 7);
-
-const previous7DaysStart = new Date(last7DaysStart);
-previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
-
-const previous7DaysEnd = new Date(last7DaysStart);
-previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
-
-const last30DaysStart = new Date(today);
-last30DaysStart.setDate(last30DaysStart.getDate() - 30);
-
-const previous30DaysStart = new Date(last30DaysStart);
-previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
-
-const previous30DaysEnd = new Date(last30DaysStart);
-previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
-
-
-
-
-
 
 // Function to fetch analytics data
 export async function fetchAnalyticsData(startDate, endDate, propertyId, accessToken) {
@@ -293,47 +264,74 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     const accessToken = await getGoogleAccessToken(refreshToken);
+    const calculateDateRanges = () => {
+      const today = new Date();
 
-    const dateRanges = [
-      {
-        start: yesterday,
-        end: yesterday,
-        period: 'yesterday',
-        type: 'current'
-      },
-      {
-        start: dayBeforeYesterday,
-        end: dayBeforeYesterday,
-        period: 'yesterday',
-        type: 'previous'
-      },
-      {
-        start: last7DaysStart,
-        end: yesterday,
-        period: 'last7Days',
-        type: 'current'
-      },
-      {
-        start: previous7DaysStart,
-        end: previous7DaysEnd,
-        period: 'last7Days',
-        type: 'previous'
-      },
-      {
-        start: last30DaysStart,
-        end: yesterday,
-        period: 'last30Days',
-        type: 'current'
-      },
-      {
-        start: previous30DaysStart,
-        end: previous30DaysEnd,
-        period: 'last30Days',
-        type: 'previous'
-      }
-    ];
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
-    // Initialize period data structure
+      const dayBeforeYesterday = new Date(today);
+      dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+      const last7DaysStart = new Date(today);
+      last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+      const previous7DaysStart = new Date(last7DaysStart);
+      previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+      const previous7DaysEnd = new Date(last7DaysStart);
+      previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+
+      const last30DaysStart = new Date(today);
+      last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+      const previous30DaysStart = new Date(last30DaysStart);
+      previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+      const previous30DaysEnd = new Date(last30DaysStart);
+      previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+      return [
+        {
+          start: yesterday,
+          end: yesterday,
+          period: 'yesterday',
+          type: 'current'
+        },
+        {
+          start: dayBeforeYesterday,
+          end: dayBeforeYesterday,
+          period: 'yesterday',
+          type: 'previous'
+        },
+        {
+          start: last7DaysStart,
+          end: yesterday,
+          period: 'last7Days',
+          type: 'current'
+        },
+        {
+          start: previous7DaysStart,
+          end: previous7DaysEnd,
+          period: 'last7Days',
+          type: 'previous'
+        },
+        {
+          start: last30DaysStart,
+          end: yesterday,
+          period: 'last30Days',
+          type: 'current'
+        },
+        {
+          start: previous30DaysStart,
+          end: previous30DaysEnd,
+          period: 'last30Days',
+          type: 'previous'
+        }
+      ];
+    };
+
+    const dateRanges = calculateDateRanges();
+
     const periodData = {
       yesterday: {
         sessions: { current: 0, previous: 0, change: 0, trend: 'neutral' },
@@ -365,8 +363,14 @@ export async function getAnalyticsSummary(req, res) {
     };
 
     const results = await Promise.all(
-      dateRanges.map(range =>
-        fetchAnalyticsData(range.start, range.end, propertyId, accessToken)
+      dateRanges.map(range => {
+        console.log(`Fetching analytics data:
+          Start: ${range.start.toString()},
+          End: ${range.end.toString()},
+          PropertyId: ${propertyId}
+        `);
+
+        return fetchAnalyticsData(range.start, range.end, propertyId, accessToken)
           .then(metrics => ({
             ...metrics,
             period: range.period,
@@ -375,8 +379,8 @@ export async function getAnalyticsSummary(req, res) {
           .catch(error => {
             console.error(`Failed to fetch data for range:`, range, error);
             return null;
-          })
-      )
+          });
+      })
     );
 
     results.forEach(metrics => {
@@ -406,7 +410,6 @@ export async function getAnalyticsSummary(req, res) {
     });
 
     const calculateMetrics = (current, previous) => {
-
       const numCurrent = Number(current);
       const numPrevious = Number(previous);
 
@@ -450,10 +453,6 @@ export async function getAnalyticsSummary(req, res) {
         );
       });
     });
-
-    console.log('System current time:', new Date().toString());
-    console.log('Calculated yesterday:', yesterday.toString());
-    // Log all other date variables
 
     res.status(200).json({
       success: true,
@@ -521,6 +520,123 @@ export async function getFacebookAdsSummary(req, res) {
       });
     }
 
+    const calculateDateRanges = () => {
+      const today = new Date();
+
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const dayBeforeYesterday = new Date(today);
+      dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+      const last7DaysStart = new Date(today);
+      last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+      const previous7DaysStart = new Date(last7DaysStart);
+      previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+      const previous7DaysEnd = new Date(last7DaysStart);
+      previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+
+      const last30DaysStart = new Date(today);
+      last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+      const previous30DaysStart = new Date(last30DaysStart);
+      previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+      const previous30DaysEnd = new Date(last30DaysStart);
+      previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+
+      return [
+        {
+          start: yesterday,
+          end: yesterday,
+          period: 'yesterday',
+          type: 'current',
+          metric: 'metaspend'
+        },
+        {
+          start: dayBeforeYesterday,
+          end: dayBeforeYesterday,
+          period: 'yesterday',
+          type: 'previous',
+          metric: 'metaspend'
+        },
+        {
+          start: yesterday,
+          end: yesterday,
+          period: 'yesterday',
+          type: 'current',
+          metric: 'metaroas'
+        },
+        {
+          start: dayBeforeYesterday,
+          end: dayBeforeYesterday,
+          period: 'yesterday',
+          type: 'previous',
+          metric: 'metaroas'
+        },
+        {
+          start: last7DaysStart,
+          end: yesterday,
+          period: 'last7Days',
+          type: 'current',
+          metric: 'metaspend'
+        },
+        {
+          start: previous7DaysStart,
+          end: previous7DaysEnd,
+          period: 'last7Days',
+          type: 'previous',
+          metric: 'metaspend'
+        },
+        {
+          start: last7DaysStart,
+          end: yesterday,
+          period: 'last7Days',
+          type: 'current',
+          metric: 'metaroas'
+        },
+        {
+          start: previous7DaysStart,
+          end: previous7DaysEnd,
+          period: 'last7Days',
+          type: 'previous',
+          metric: 'metaroas'
+        },
+        {
+          start: last30DaysStart,
+          end: yesterday,
+          period: 'last30Days',
+          type: 'current',
+          metric: 'metaspend'
+        },
+        {
+          start: previous30DaysStart,
+          end: previous30DaysEnd,
+          period: 'last30Days',
+          type: 'previous',
+          metric: 'metaspend'
+        },
+        {
+          start: last30DaysStart,
+          end: yesterday,
+          period: 'last30Days',
+          type: 'current',
+          metric: 'metaroas'
+        },
+        {
+          start: previous30DaysStart,
+          end: previous30DaysEnd,
+          period: 'last30Days',
+          type: 'previous',
+          metric: 'metaroas'
+        }
+      ];
+    };
+
+    const dateRanges = calculateDateRanges();
+
     // Initialize period data structure
     const periodData = {
       yesterday: {
@@ -567,22 +683,6 @@ export async function getFacebookAdsSummary(req, res) {
       }
     };
 
-    const dateRanges = [
-      { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaspend' },
-      { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaspend' },
-      { start: yesterday, end: yesterday, period: 'yesterday', type: 'current', metric: 'metaroas' },
-      { start: dayBeforeYesterday, end: dayBeforeYesterday, period: 'yesterday', type: 'previous', metric: 'metaroas' },
-
-      { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaspend' },
-      { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaspend' },
-      { start: last7DaysStart, end: yesterday, period: 'last7Days', type: 'current', metric: 'metaroas' },
-      { start: previous7DaysStart, end: previous7DaysEnd, period: 'last7Days', type: 'previous', metric: 'metaroas' },
-
-      { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaspend' },
-      { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaspend' },
-      { start: last30DaysStart, end: yesterday, period: 'last30Days', type: 'current', metric: 'metaroas' },
-      { start: previous30DaysStart, end: previous30DaysEnd, period: 'last30Days', type: 'previous', metric: 'metaroas' }
-    ];
 
     // Fetch all metrics
     const results = await Promise.all(
@@ -698,6 +798,32 @@ export async function getGoogleAdsSummary(req, res) {
         message: "No Google ads account found for this brand"
       });
     }
+
+    const today = new Date();
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dayBeforeYesterday = new Date(today);
+    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+    const last7DaysStart = new Date(today);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+    const previous7DaysStart = new Date(last7DaysStart);
+    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+    const previous7DaysEnd = new Date(last7DaysStart);
+    previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+    const previous30DaysStart = new Date(last30DaysStart);
+    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+    const previous30DaysEnd = new Date(last30DaysStart);
+    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
 
     // Create empty objects to store period-wise data
     const periodData = {

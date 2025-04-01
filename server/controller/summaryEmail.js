@@ -1,4 +1,4 @@
-import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject,getGoogleAccessToken, client } from "./summary.js";
+import { fetchGoogleAdsData, fetchAnalyticsData, fetchMetaAdsData, buildMetricObject, getGoogleAccessToken, client } from "./summary.js";
 import nodemailer from "nodemailer"
 import User from "../models/User.js";
 import Brands from "../models/Brands.js";
@@ -13,45 +13,11 @@ const slackChannelMapping = {
   "Litlmeu": "litlemeu-aaaaofzywanliwgxizzhhupcpa@messold-india.slack.com",
   "Ethnic Trends By Shaheen": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
 };
-// Create date ranges more efficiently
-const today = new Date();
-const yesterday = new Date(today);
-yesterday.setDate(yesterday.getDate() - 1);
-
-const dayBeforeYesterday = new Date(today);
-dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
-
-const last7DaysStart = new Date(today);
-last7DaysStart.setDate(last7DaysStart.getDate() - 7);
-
-const previous7DaysStart = new Date(last7DaysStart);
-previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
-
-const previous7DaysEnd = new Date(last7DaysStart);
-previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
-
-const last30DaysStart = new Date(today);
-last30DaysStart.setDate(last30DaysStart.getDate() - 30);
-
-const previous30DaysStart = new Date(last30DaysStart);
-previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
-
-const previous30DaysEnd = new Date(last30DaysStart);
-previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
-
- const dateRanges = [
-  { start: yesterday, end: yesterday },
-  { start: dayBeforeYesterday, end: dayBeforeYesterday },
-  { start: last7DaysStart, end: yesterday },
-  { start: previous7DaysStart, end: previous7DaysEnd },
-  { start: last30DaysStart, end: yesterday },
-  { start: previous30DaysStart, end: previous30DaysEnd }
-];
 
 const smtpConfig = {
   host: 'smtp.gmail.com',
   port: 587,
-  secure: false, // Use STARTTLS
+  secure: false, 
   auth: {
     user: 'team@messold.com',
     pass: 'hqik hgtm bcbr eign'
@@ -69,20 +35,68 @@ export async function getPlatformSummaryWithPartialData(
   googleAdsRefreshToken
 ) {
   try {
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dayBeforeYesterday = new Date(today);
+    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+    const last7DaysStart = new Date(today);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+
+    const previous7DaysStart = new Date(last7DaysStart);
+    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+
+    const previous7DaysEnd = new Date(last7DaysStart);
+    previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+
+    const previous30DaysStart = new Date(last30DaysStart);
+    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+
+    const previous30DaysEnd = new Date(last30DaysStart);
+    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+    const dateRanges = [
+      { start: yesterday, end: yesterday },
+      { start: dayBeforeYesterday, end: dayBeforeYesterday },
+      { start: last7DaysStart, end: yesterday },
+      { start: previous7DaysStart, end: previous7DaysEnd },
+      { start: last30DaysStart, end: yesterday },
+      { start: previous30DaysStart, end: previous30DaysEnd }
+    ];
     // Get Google Ads access token if we have Google Ad accounts
-    const hasGoogleAdsAccounts = googleAdAccounts && googleAdAccounts.length > 0 ;
+    const hasGoogleAdsAccounts = googleAdAccounts && googleAdAccounts.length > 0;
     const accessToken = await getGoogleAccessToken(googleAdsRefreshToken);
 
-    // Array to store all platform metrics
     const allMetrics = [];
 
-    // Fetch data for all date ranges
     for (let i = 0; i < 3; i++) {
       // Process each time period (yesterday, last 7 days, last 30 days)
-      const currentStart = i === 0 ? dateRanges[0].start : i === 1 ? dateRanges[2].start : dateRanges[4].start;
-      const currentEnd = i === 0 ? dateRanges[0].end : i === 1 ? dateRanges[2].end : dateRanges[4].end;
-      const prevStart = i === 0 ? dateRanges[1].start : i === 1 ? dateRanges[3].start : dateRanges[5].start;
-      const prevEnd = i === 0 ? dateRanges[1].end : i === 1 ? dateRanges[3].end : dateRanges[5].end;
+      let currentStart, currentEnd, prevStart, prevEnd;
+      switch (i) {
+        case 0:
+          currentStart = dateRanges[0].start;
+          currentEnd = dateRanges[0].end;
+          prevStart = dateRanges[1].start;
+          prevEnd = dateRanges[1].end;
+          break;
+        case 1:
+          currentStart = dateRanges[2].start;
+          currentEnd = dateRanges[2].end;
+          prevStart = dateRanges[3].start;
+          prevEnd = dateRanges[3].end;
+          break;
+        default:
+          currentStart = dateRanges[4].start;
+          currentEnd = dateRanges[4].end;
+          prevStart = dateRanges[5].start;
+          prevEnd = dateRanges[5].end;
+      }
 
       const periodLabel = i === 0 ? 'yesterday' : i === 1 ? 'week' : 'month';
 
@@ -274,12 +288,14 @@ async function processBrand(user, brandId, transporter, results) {
       throw new Error(metricsData.error);
     }
 
+    console.log(`Preparing to send email for brand ${brand.name} to ${user.email}`);
     await sendBrandMetricsEmail(transporter, user.email, brand.name, metricsData);
     results.totalEmailsSent++;
     console.log(`Sent email for brand ${brand.name} to ${user.email}`);
 
     const slackChannelEmail = slackChannelMapping[brand.name];
     if (slackChannelEmail) {
+      console.log(`Preparing to send email for brand ${brand.name} to Slack channel: ${slackChannelEmail}`);
       await sendBrandMetricsEmail(transporter, slackChannelEmail, brand.name, metricsData);
       results.totalEmailsSent++;
       console.log(`Sent email for brand ${brand.name} to Slack channel: ${slackChannelEmail}`);
@@ -396,23 +412,23 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
 
       if (googleAds && googleAds.dataAvailable && googleAds.spend && googleAds.spend.trend === 'up')
         improvements.push(`Google Ads Spend improved by ${formatPercentage(googleAds.spend.change)}`);
-    else if (googleAds && googleAds.dataAvailable && googleAds.spend && googleAds.spend.trend === 'down')
+      else if (googleAds && googleAds.dataAvailable && googleAds.spend && googleAds.spend.trend === 'down')
         attentionItems.push(`Google Ads Spend decreased by ${formatPercentage(googleAds.spend.change)}`);
-    
-    // For Google Ads ROAS
-    if (googleAds && googleAds.dataAvailable && googleAds.roas && googleAds.roas.trend === 'up')
+
+      // For Google Ads ROAS
+      if (googleAds && googleAds.dataAvailable && googleAds.roas && googleAds.roas.trend === 'up')
         improvements.push(`Google Ads ROAS improved by ${formatPercentage(googleAds.roas.change)}`);
-    else if (googleAds && googleAds.dataAvailable && googleAds.roas && googleAds.roas.trend === 'down')
+      else if (googleAds && googleAds.dataAvailable && googleAds.roas && googleAds.roas.trend === 'down')
         attentionItems.push(`Google Ads ROAS decreased by ${formatPercentage(googleAds.roas.change)}`);
-    
-    const googleAdsDataAvailable = googleAds && 
-    googleAds.dataAvailable && 
-    googleAds.spend && 
-    googleAds.spend.current !== null && 
-    googleAds.spend.current !== undefined;
-    // Create the Google Ads HTML based on whether data is available
-    const googleAdsHTML = googleAdsDataAvailable ? 
-    `<li>
+
+      const googleAdsDataAvailable = googleAds &&
+        googleAds.dataAvailable &&
+        googleAds.spend &&
+        googleAds.spend.current !== null &&
+        googleAds.spend.current !== undefined;
+      // Create the Google Ads HTML based on whether data is available
+      const googleAdsHTML = googleAdsDataAvailable ?
+        `<li>
         <span class="metric-label">Google:</span> 
         <span class="current-value">${formatCurrency(googleAds.spend.current)}</span> spend
         <span class="previous-value">(prev: ${formatCurrency(googleAds.spend.previous)})</span>
@@ -422,12 +438,12 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
         <span class="previous-value">(prev: ${formatNumber(googleAds.roas.previous)}x)</span>
         ${getChangeIndicator(googleAds.roas.trend, googleAds.roas.change)}
       </li>` :
-    `<li>
+        `<li>
         <span class="metric-label">Google:</span> 
         <span class="unavailable-data">No data available</span>
       </li>`;
 
-    return `
+      return `
         <div class="period-section">
           <h2>${periodName.charAt(0).toUpperCase() + periodName.slice(1)} Performance Highlights</h2>
           <div class="insights-container">
@@ -504,21 +520,21 @@ export async function sendBrandMetricsEmail(transporter, userEmail, brandName, m
         </div>
         <div class="divider"></div>
       `;
-  };
+    };
 
-  // Generate the complete HTML template
-  const yesterday = metricsData.data.yesterday;
-  const week = metricsData.data.week;
-  const month = metricsData.data.month;
+    // Generate the complete HTML template
+    const yesterday = metricsData.data.yesterday;
+    const week = metricsData.data.week;
+    const month = metricsData.data.month;
 
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
-  const emailHTML = `
+    const emailHTML = `
     <!DOCTYPE html>
     <html>
     <head>

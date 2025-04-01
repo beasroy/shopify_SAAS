@@ -257,7 +257,7 @@ export default function OtherPlatformModalContent({
     } else if ('id' in account) {
       accountId = account.id;
       displayName = `${account.adname}`;
-    } else {
+    } else { 
       accountId = '';
       displayName = '';
     }

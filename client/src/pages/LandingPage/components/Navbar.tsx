@@ -58,7 +58,9 @@ function Navbar() {
               <Link to="/login" className="text-sm font-medium hover:text-primary">
                 Log in
               </Link>
+              <Link to="/login" >
               <Button>Get Started</Button>
+              </Link>
             </>
           )}
         </div>

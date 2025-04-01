@@ -30,10 +30,10 @@ const GoogleCallback = () => {
                             console.log(`${type} token updated successfully, redirecting to /dashboard`);
                             if (type === "zohoToken") {
                                 console.log("Zoho token updated, redirecting to /profile");
-                                navigate('/profile');
+                                 navigate('/profile');
                             } else {
                                 console.log(`${type} token updated, redirecting to /dashboard`);
-                                navigate('/dashboard');
+                                navigate('/brand-setup');
                             }
                             return true;
                         } else {

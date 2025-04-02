@@ -26,15 +26,39 @@ export default {
         "source-sans": ['"Source Sans 3"', "sans-serif"],
       },
       colors: {
+        // Primary palette - Teal
+        primary: {
+          DEFAULT: "#06B6D4",
+          light: "#67E8F9",
+          dark: "#0891B2",
+          bg: "#ECFEFF",
+        },
+        // Success states - Green
+        success: {
+          DEFAULT: "#10B981",
+          light: "#6EE7B7",
+          dark: "#059669",
+          bg: "#ECFDF5",
+        },
+        // Warning states - Amber
+        warning: {
+          DEFAULT: "#F59E0B",
+          light: "#FCD34D",
+          dark: "#D97706",
+          bg: "#FFFBEB",
+        },
+        // Danger states - Rose
+        danger: {
+          DEFAULT: "#F43F5E",
+          light: "#FDA4AF",
+          dark: "#E11D48",
+          bg: "#FFF1F2",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",

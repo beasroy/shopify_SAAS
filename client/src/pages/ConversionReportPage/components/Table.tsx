@@ -513,7 +513,7 @@ export default function ConversionTable({
             </div>
           </div>
         ) : currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
-          <div className="flex flex-col border-b border-slate-300">
+          <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value)}</span>
@@ -530,7 +530,7 @@ export default function ConversionTable({
             <span>{renderCell(value, "sessions")}</span>
           </div>
         ) : currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
-          <div className="flex flex-col border-b border-slate-300">
+          <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value, "percentage")}</span>

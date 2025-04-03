@@ -12,8 +12,6 @@ import SegmentDashboard from './pages/SegmentDashboard/SegmentDashboard.tsx';
 import GoogleCallback from './Auth/OauthSucces.tsx';
 import ReportsPage from './pages/ReportPage/ReportsPage.tsx';
 import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
-import AudienceConversionReportPage from './pages/ConversionReportPage/AudienceConversionReportPage.tsx';
-import WebsiteConversionReportPage from './pages/ConversionReportPage/WebsiteConversionReportPage.tsx';
 import GoogleAdsDashboard from './pages/GoogleAdsHub/Dashboard.tsx';
 import FbReportPage from './pages/FbReports/FbReportPage.tsx';
 import { Provider } from 'react-redux';
@@ -25,6 +23,7 @@ import TutorialManager from './components/Tutorial/TutorialManager.tsx';
 import TutorialDriver from './components/Tutorial/TutorialDriver.tsx';
 import LandingPage from './pages/LandingPage/page.tsx';
 import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
+import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
 
 function App() {
   return (
@@ -49,8 +48,7 @@ function App() {
                   <Route path='/segment-dashboard/:brandId' element={<SegmentDashboard />} />
                   <Route path='/meta-reports/:brandId' element={<FbReportPage />} />
                   <Route path='/google-reports/:brandId' element={<GoogleAdsDashboard />} />
-                  <Route path="/conversion-reports/:brandId/demographics" element={<AudienceConversionReportPage />} />
-                  <Route path="/conversion-reports/:brandId/performance" element={<WebsiteConversionReportPage />} />
+                  <Route path="/conversion-reports/:brandId" element={<ConversionLens />} />
                   <Route path="/callback" element={<GoogleCallback />} />
                   <Route path ="/profile" element = {<ProfilePage />} />
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />

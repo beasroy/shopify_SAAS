@@ -18,13 +18,14 @@ import createAxiosInstance from '../ConversionReportPage/components/axiosInstanc
 
 
 
+
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [dataSource, setDataSource] = useState<DataSource>('all');
-  const [locale, setLocale] = useState<"en-IN" | "en-US">("en-IN");
+  const locale = useSelector((state:RootState) => state.locale.locale)
   const [rawMetrics, setRawMetrics] = useState({
     totalSpent: 0,
     totalRevenue: 0,
@@ -296,8 +297,7 @@ export default function Dashboard() {
         handleManualRefresh={() => {
           fetchAdData();
         }}
-        locale={locale}
-        setLocale={setLocale} />
+ />
 
       <div className="bg-white px-6 sticky top-0 z-10">
         <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleDataSourceChange} />

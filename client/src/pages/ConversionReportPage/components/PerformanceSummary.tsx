@@ -75,7 +75,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       {
         name: 'Top Performers',
         color: 'text-green-700',
-        bgColor: 'bg-green-100',
+        bgColor: 'bg-[#D7FFDF]',
         count: categorizedItems['Top Performers'].length,
         items: categorizedItems['Top Performers'],
         description: `Above average in both ${metricConfig.primary.name} (>${thresholds[metricConfig.primary.key].toFixed(2)}) and ${metricConfig.secondary.name} (>${thresholds[metricConfig.secondary.key].toFixed(2)})`
@@ -83,7 +83,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       {
         name: `High ${metricConfig.primary.name}`,
         color: 'text-blue-700',
-        bgColor: 'bg-[#E0F4FF]',
+        bgColor: 'bg-[#EFF6FF]',
         count: categorizedItems[`High ${metricConfig.primary.name}`].length,
         items: categorizedItems[`High ${metricConfig.primary.name}`],
         description: `High ${metricConfig.primary.name} (>${thresholds[metricConfig.primary.key].toFixed(2)}) but below average ${metricConfig.secondary.name} (<${thresholds[metricConfig.secondary.key].toFixed(2)})`
@@ -91,7 +91,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       {
         name: `High ${metricConfig.secondary.name}`,
         color: 'text-yellow-700',
-        bgColor: 'bg-yellow-100',
+        bgColor: 'bg-[#FFFBEB]',
         count: categorizedItems[`High ${metricConfig.secondary.name}`].length,
         items: categorizedItems[`High ${metricConfig.secondary.name}`],
         description: `High ${metricConfig.secondary.name} (>${thresholds[metricConfig.secondary.key].toFixed(2)}) but below average ${metricConfig.primary.name} (<${thresholds[metricConfig.primary.key].toFixed(2)})`
@@ -99,7 +99,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       {
         name: 'Underperformers',
         color: 'text-red-700',
-        bgColor: 'bg-red-50',
+        bgColor: 'bg-[#FFF1F2]',
         count: categorizedItems['Underperformers'].length,
         items: categorizedItems['Underperformers'],
         description: `Below average in both ${metricConfig.primary.name} (<${thresholds[metricConfig.primary.key].toFixed(2)}) and ${metricConfig.secondary.name} (<${thresholds[metricConfig.secondary.key].toFixed(2)})`

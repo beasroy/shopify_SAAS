@@ -10,6 +10,8 @@ import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/data/logo";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 
 type ApiResponse = {
@@ -39,6 +41,7 @@ const Brand: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =>
   };
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+  const locale = useSelector((state:RootState)=>state.locale.locale)
 
   const axiosInstance = createAxiosInstance();
 
@@ -112,6 +115,7 @@ const Brand: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =>
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
                 rows={10}
+                locale={locale}
               />
             </div>
           )}

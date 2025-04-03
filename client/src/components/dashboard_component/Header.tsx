@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "./DatePickerWithRange";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import HeaderTutorialButton from "../Tutorial/HeaderTutorialButton";
-
+import { useDispatch, useSelector } from "react-redux";
+import { setLocale } from "@/store/slices/LocalSlice";
+import { RootState } from "@/store";
 
 interface HeaderProps {
   title: string;
@@ -13,8 +15,6 @@ interface HeaderProps {
   showRefresh?: boolean;
   isLoading?: boolean;
   handleManualRefresh?: () => void;
-  locale?: "en-IN" | "en-US";
-  setLocale?: (value: "en-IN" | "en-US") => void;
 }
  
 export default function Header({
@@ -25,10 +25,10 @@ export default function Header({
   showRefresh = false,
   isLoading = false,
   handleManualRefresh,
-  locale,
-  setLocale,
 }: HeaderProps) {
 
+  const dispatch = useDispatch();
+  const locale = useSelector((state: RootState) => state.locale.locale);
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300">
@@ -82,7 +82,7 @@ export default function Header({
                         name="locale"
                         value="en-IN"
                         checked={locale === "en-IN"}
-                        onChange={() => setLocale && setLocale("en-IN")}
+                        onChange={() => dispatch(setLocale("en-IN"))}
                         className="mr-2"
                       />
                       Indian Formatting
@@ -93,7 +93,7 @@ export default function Header({
                         name="locale"
                         value="en-US"
                         checked={locale === "en-US"}
-                        onChange={() => setLocale && setLocale("en-US")}
+                        onChange={() => dispatch(setLocale("en-US"))}
                         className="mr-2"
                       />
                       Western Formatting
@@ -103,7 +103,7 @@ export default function Header({
               </PopoverContent>
             </Popover>
           )}
-<HeaderTutorialButton />
+          <HeaderTutorialButton />
         </div>
       </div>
     </header>

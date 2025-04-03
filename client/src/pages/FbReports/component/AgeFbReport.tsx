@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom";
 import { Card, CardContent} from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/data/logo";
@@ -15,6 +14,8 @@ import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 
 type ApiResponse = {
@@ -62,7 +63,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
     const dispatch = useDispatch();
-
+    const locale = useSelector((state : RootState)=>state.locale.locale);
 
     const user = useSelector((state: RootState) => state.user.user);
     const { brandId } = useParams();
@@ -96,7 +97,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
 
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 15 * 60 * 1000);
+        const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000);
         return () => clearInterval(intervalId);
     }, [fetchData]);
 
@@ -131,6 +132,10 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     };
     const blendedAgeData = apiResponse?.blendedAgeData;
 
+    if(loading){
+        return <Loader />
+    }
+
     return (
         <div>
             {/* Dashboard Header */}
@@ -144,12 +149,6 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
 
             </div>
 
-            {/* Account Cards Grid */}
-            {loading ? (
-                <div className="grid grid-cols-1 gap-6">
-                    <TableSkeleton />
-                </div>
-            ) : (
                 <div className="grid grid-cols-1 gap-6">
                     {(blendedAgeData && blendedAgeData.length > 0) && (
                         <Card
@@ -170,6 +169,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
 
                                             />
                                         </div>}
+                                        <NumberFormatSelector />
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}
@@ -208,7 +208,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                                         monthlyDataKey={monthlyDataKey}
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === 'blended-summary'}
-                                        
+                                        locale={locale}
                                     />
                                 </div>
                             </CardContent>
@@ -233,6 +233,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
 
                                             />
                                         </div>}
+                                        <NumberFormatSelector />
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}
@@ -271,13 +272,13 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                                         monthlyDataKey={monthlyDataKey}
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
+                                        locale={locale}
                                     />
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
-            )}
         </div>
     );
 }

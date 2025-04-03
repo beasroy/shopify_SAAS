@@ -136,6 +136,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
   const monthlyDataKey = "MonthlyData";
   const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
   const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
+  const locale = useSelector((state:RootState)=>state.locale.locale)
 
   return (
     <>
@@ -185,6 +186,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =
                   monthlyDataKey={monthlyDataKey}
                   monthlyMetrics={monthlyMetrics}
                   isFullScreen={isFullScreen}
+                  locale={locale}
                 />
               </div>
             )}

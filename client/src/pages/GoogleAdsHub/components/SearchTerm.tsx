@@ -49,6 +49,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const locale = useSelector((state:RootState)=>state.locale.locale)
 
   const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
@@ -184,6 +185,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
                     monthlyDataKey={monthlyDataKey}
                     monthlyMetrics={monthlyMetrics}
                     isFullScreen={isFullScreen}
+                    locale={locale}
                   />
                 </div>
               )}

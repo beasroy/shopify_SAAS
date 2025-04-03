@@ -50,6 +50,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const locale = useSelector((state:RootState)=>state.locale.locale)
   const dispatch = useDispatch();
   
   
@@ -187,6 +188,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
                     monthlyDataKey={monthlyDataKey}
                     monthlyMetrics={monthlyMetrics}
                     isFullScreen={isFullScreen}
+                    locale={locale}
                   />
                 </div>
               )}

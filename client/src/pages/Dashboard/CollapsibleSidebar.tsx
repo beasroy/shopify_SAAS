@@ -95,17 +95,7 @@ export default function CollapsibleSidebar() {
         ]
     },
         {
-            name: "Conversion Radar", path: `/#`, icon: <Radar size={20} />,
-            subItems: [
-                {
-                    name: "Audience & Traffic Sources",
-                    path: `/conversion-reports/${selectedBrandId}/demographics`
-                },
-                {
-                    name: "Camapign and Website Performance",
-                    path: `/conversion-reports/${selectedBrandId}/performance`
-                }
-            ]
+            name: "Conversion Lens", path: `/conversion-reports/${selectedBrandId}`, icon: <Radar size={20} />,
         },
 
 

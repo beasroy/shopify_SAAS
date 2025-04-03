@@ -4,8 +4,7 @@ import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
-import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
+import { Maximize, Minimize, RefreshCw} from "lucide-react";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/data/logo";
@@ -15,6 +14,8 @@ import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 
 type ApiResponse = {
@@ -51,9 +52,9 @@ interface CityBasedReportsProps {
     dateRange: DateRange | undefined;
 }
 
-const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-    const dateForm = useSelector((state : RootState) => state.date.from);
-    const dateTo = useSelector((state : RootState) => state.date.to);
+const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+    const dateForm = useSelector((state: RootState) => state.date.from);
+    const dateTo = useSelector((state: RootState) => state.date.to);
     const date = useMemo(() => ({
         from: dateForm,
         to: dateTo
@@ -64,9 +65,9 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
     const [fullScreenAccount, setFullScreenAccount] = useState('');
 
 
-    const user  = useSelector((state : RootState) => state.user.user);
+    const user = useSelector((state: RootState) => state.user.user);
     const { brandId } = useParams();
-    const toggleFullScreen = (accountId:string) => {
+    const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
     };
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -96,29 +97,29 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
 
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 15 * 60 * 1000);
+        const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000);
         return () => clearInterval(intervalId);
     }, [fetchData]);
 
     useEffect(() => {
         if (propDateRange) {
-          dispatch(setDate({
-            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-          }));
+            dispatch(setDate({
+                from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+                to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+            }));
         }
-      }, [propDateRange]);
-      
-      useEffect(() => {
+    }, [propDateRange]);
+
+    useEffect(() => {
         if (!fullScreenAccount) {
-          if (propDateRange) {
-          dispatch(setDate({
-            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-          }));
+            if (propDateRange) {
+                dispatch(setDate({
+                    from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+                    to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+                }));
+            }
         }
-        }
-      }, [fullScreenAccount, propDateRange]);
+    }, [fullScreenAccount, propDateRange]);
 
     const handleManualRefresh = () => {
         fetchData();
@@ -130,6 +131,11 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
     const monthlyDataKey = "MonthlyData";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
+    const locale = useSelector((state: RootState) => state.locale.locale)
+
+    if(loading){
+        return <Loader />
+    }
 
     return (
         <div>
@@ -144,75 +150,71 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
 
             </div>
 
-            {/* Account Cards Grid */}
-            {loading ? (
+
                 <div className="grid grid-cols-1 gap-6">
-                    <TableSkeleton />
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-6">
-                    {(blendedGenderData && blendedGenderData.length >0) &&(
-                         <Card
-   
-                         className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
-                     >
-                         <div className="bg-white rounded-md px-3 pt-2">
-                             <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                     <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                     <div className="text-lg font-medium">
-                                         Blended Summary
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center space-x-2">
-                                     {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                                         <DatePickerWithRange
-                                             
-                                         />
-                                     </div>}
-                                     <Button
-                                         onClick={handleManualRefresh}
-                                         disabled={loading}
-                                         size="sm"
-                                         variant="outline"
-                                         className="hover:bg-muted"
-                                     >
-                                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                     </Button>
-                                     <Button
-                                         onClick={() => toggleFullScreen('blended-summary')}
-                                         size="sm"
-                                         variant="outline"
-                                         className="hover:bg-muted"
-                                     >
-                                         {fullScreenAccount === 'blended-summary' ? (
-                                             <Minimize className="h-4 w-4" />
-                                         ) : (
-                                             <Maximize className="h-4 w-4" />
-                                         )}
-                                     </Button>
-                                 </div>
-                             </div>
-                         </div>
-                         <CardContent className="p-0">
-                             <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
-                             <PerformanceSummary
+                    {(blendedGenderData && blendedGenderData.length > 0) && (
+                        <Card
+
+                            className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
+                        >
+                            <div className="bg-white rounded-md px-3 pt-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                                        <div className="text-lg font-medium">
+                                            Blended Summary
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                            <DatePickerWithRange
+
+                                            />
+                                        </div>}
+                                        <NumberFormatSelector />
+                                        <Button
+                                            onClick={handleManualRefresh}
+                                            disabled={loading}
+                                            size="sm"
+                                            variant="outline"
+                                            className="hover:bg-muted"
+                                        >
+                                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                        </Button>
+                                        <Button
+                                            onClick={() => toggleFullScreen('blended-summary')}
+                                            size="sm"
+                                            variant="outline"
+                                            className="hover:bg-muted"
+                                        >
+                                            {fullScreenAccount === 'blended-summary' ? (
+                                                <Minimize className="h-4 w-4" />
+                                            ) : (
+                                                <Maximize className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                            <CardContent className="p-0">
+                                <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                                    <PerformanceSummary
                                         data={blendedGenderData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
                                     />
-                                 <ConversionTable
-                                     data={Array.isArray(blendedGenderData) ? blendedGenderData : [blendedGenderData]}
-                                     primaryColumn={primaryColumn}
-                                     secondaryColumns={secondaryColumns}
-                                     monthlyDataKey={monthlyDataKey}
-                                     monthlyMetrics={monthlyMetrics}
-                                     isFullScreen={fullScreenAccount === 'blended-summary'}
-                                     
-                                 />
-                             </div>
-                         </CardContent>
-                     </Card>
+                                    <ConversionTable
+                                        data={Array.isArray(blendedGenderData) ? blendedGenderData : [blendedGenderData]}
+                                        primaryColumn={primaryColumn}
+                                        secondaryColumns={secondaryColumns}
+                                        monthlyDataKey={monthlyDataKey}
+                                        monthlyMetrics={monthlyMetrics}
+                                        isFullScreen={fullScreenAccount === 'blended-summary'}
+                                        locale={locale}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
                     )}
                     {apiResponse?.data.map((account, index) => (
                         <Card
@@ -228,11 +230,12 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                    {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                                             <DatePickerWithRange
-                                               
+
                                             />
                                         </div>}
+                                     <NumberFormatSelector />
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}
@@ -259,7 +262,7 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
                             </div>
                             <CardContent className="p-0">
                                 <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
-                                     <PerformanceSummary
+                                    <PerformanceSummary
                                         data={account.genderData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
@@ -272,13 +275,13 @@ const GenderFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateR
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
                                         isAdsTable={true}
+                                        locale={locale}
                                     />
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
-            )}
         </div>
     );
 }

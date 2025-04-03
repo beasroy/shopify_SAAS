@@ -21,6 +21,7 @@ interface ConversionTableProps {
   isFullScreen: boolean
   rows?: number
   isAdsTable?: boolean
+  locale: string
 }
 
 export default function ConversionTable({
@@ -31,7 +32,7 @@ export default function ConversionTable({
   monthlyMetrics,
   isFullScreen,
   rows,
-  isAdsTable,
+  isAdsTable, locale
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([])
@@ -45,7 +46,7 @@ export default function ConversionTable({
       }
       return "max-h-[calc(100vh-130px)]"
     }
-    return "max-h-[400px]"
+    return "max-h-[450px]"
   }
 
   const months = useMemo(() => {
@@ -287,15 +288,17 @@ export default function ConversionTable({
     }
   }
 
-  const renderCell = (value: number | string, type?: "spend" | "percentage" | "default") => {
+  const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions") => {
     if (typeof value === "number") {
       switch (type) {
         case "spend":
-          return Math.round(value).toLocaleString()
+          return Math.round(value).toLocaleString(locale)
         case "percentage":
-          return `${value.toFixed(2)}%`
+          return `${Number.parseFloat(value.toLocaleString(locale)).toFixed(2)}%`
+        case "sessions":
+          return Math.round(value).toLocaleString(locale)
         default:
-          return value.toFixed(2)
+          return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
       }
     }
     return value
@@ -304,7 +307,10 @@ export default function ConversionTable({
   const renderMonthCell = (monthData: MonthlyData | undefined, metric: string) => {
     if (!monthData) {
       return (
-        <td className="w-[100px] text-right whitespace-nowrap p-2 text-xs font-medium border-r border-slate-200 bg-white">
+        <td
+          className="w-[100px] text-right whitespace-nowrap p-3 text-sm font-medium border-r border-b border-slate-300 bg-white"
+          style={{ color: COLORS.text.muted }}
+        >
           <span style={{ color: COLORS.text.muted }}>—</span>
         </td>
       )
@@ -370,11 +376,12 @@ export default function ConversionTable({
 
     return (
       <td
-        className="w-[100px] text-right whitespace-nowrap p-2 text-xs font-medium border-r border-slate-200"
+        className="w-[100px] text-right whitespace-nowrap p-3 text-sm font-medium border-r border-b border-slate-300"
         style={{
           backgroundColor: colorStyle.bg,
           color: colorStyle.text,
           transition: "background-color 0.2s ease-in-out",
+          lineHeight: "1.4",
         }}
       >
         <div className="flex items-center justify-end gap-1.5">
@@ -382,41 +389,44 @@ export default function ConversionTable({
           <span>
             {renderCell(
               value,
-              metric.toLowerCase().includes("rate")
-                ? "percentage"
-                : metric.toLowerCase().includes("spend") || metric.toLowerCase().includes("cost")
-                  ? "spend"
-                  : "default",
+              metric === "Sessions"
+                ? "sessions"
+                : metric.toLowerCase().includes("rate")
+                  ? "percentage"
+                  : metric.toLowerCase().includes("spend") || metric.toLowerCase().includes("cost")
+                    ? "spend"
+                    : "default",
             )}
           </span>
         </div>
-        {metric === "Conv. Rate" && (
+        {metric === "Conv. Rate" && monthData["Purchases"] !== undefined && (
           <div
-            className="text-xs mt-0.5"
-            style={{ color: COLORS.text.muted }}
-          >{`Purchases: ${monthData["Purchases"] ?? 0}`}</div>
+            className="text-xs mt-1"
+            style={{ color: COLORS.text.secondary }}
+          >{`Purchases: ${monthData["Purchases"].toLocaleString(locale) ?? 0}`}</div>
         )}
-        {metric === "Cost" && (
+        {metric === "Cost" && monthData["Clicks"] !== undefined && (
           <div
-            className="text-xs mt-0.5"
-            style={{ color: COLORS.text.muted }}
+            className="text-xs mt-1"
+            style={{ color: COLORS.text.secondary }}
           >{`clicks: ${monthData["Clicks"] ?? 0}`}</div>
         )}
-        {metric === "Conv. Value/ Cost" && (
+        {metric === "Conv. Value/ Cost" && monthData["Conversion Rate"] !== undefined && (
           <div
-            className="text-xs mt-0.5"
-            style={{ color: COLORS.text.muted }}
-          >{`conv. rate: ${Number(monthData["Conversion Rate"]).toFixed(2) ?? 0}%`}</div>
+            className="text-xs mt-1"
+            style={{ color: COLORS.text.secondary }}
+          >{`conv. rate: ${monthData["Conversion Rate"].toLocaleString(locale) ?? 0}%`}</div>
         )}
-        {metric === "Purchase ROAS" && (
+        {metric === "Purchase ROAS" && monthData["Purchase Conversion Value"] !== undefined && (
           <div
-            className="text-xs mt-0.5"
-            style={{ color: COLORS.text.muted }}
-          >{`PCV: ${Number(monthData["Purchase Conversion Value"]).toFixed(2) ?? 0}`}</div>
+            className="text-xs mt-1"
+            style={{ color: COLORS.text.secondary }}
+          >{`PCV: ${monthData["Purchase Conversion Value"].toLocaleString(locale) ?? 0}`}</div>
         )}
       </td>
     )
   }
+
 
   const renderMetricValue = (row: RowData, column: string, currentMetric: string, columnIndex: number) => {
     const value = row[column]
@@ -424,7 +434,7 @@ export default function ConversionTable({
     if (typeof value !== "number") {
       return (
         <td
-          className="sticky top-0 min-w-[130px] p-2 text-xs font-medium border-r border-slate-200 bg-white"
+          className="sticky top-0 min-w-[130px] p-3 text-sm font-medium border-r border-b border-slate-300 bg-white"
           style={{ left: `${130 + 100 + columnIndex * 130}px` }}
         >
           {""}
@@ -481,13 +491,13 @@ export default function ConversionTable({
       }
     }
 
-    const totalPurchases = typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString() : null
-    const totalConvValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toFixed(2) : null
-    const totalPCV = typeof row["Total PCV"] === "number" ? row["Total PCV"].toFixed(2) : null
+    const totalPurchases = typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null
+    const totalConvValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null
+    const totalPCV = typeof row["Total PCV"] === "number" ? row["Total PCV"].toLocaleString(locale) : null
 
     return (
       <td
-        className="sticky top-0 min-w-[130px] p-2 text-xs font-medium border-r border-slate-200"
+        className="sticky top-0 min-w-[130px] p-3 text-sm font-medium border-r border-b border-slate-200"
         style={{
           left: `${130 + 100 + columnIndex * 130}px`,
           backgroundColor: colorStyle.bg,
@@ -495,7 +505,7 @@ export default function ConversionTable({
           transition: "background-color 0.2s ease-in-out",
         }}
       >
-        {currentMetric.toLowerCase() === "cost" && column === "Total Cost" ? (
+       {currentMetric.toLowerCase() === "cost" && column === "Total Cost" ? (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               {directionIndicator && renderIndicator(directionIndicator)}
@@ -503,7 +513,7 @@ export default function ConversionTable({
             </div>
           </div>
         ) : currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
-          <div className="flex flex-col">
+          <div className="flex flex-col border-b border-slate-300">
             <div className="flex items-center gap-1.5">
               {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value)}</span>
@@ -517,10 +527,10 @@ export default function ConversionTable({
         ) : currentMetric.toLowerCase() === "sessions" && column.includes("Sessions") ? (
           <div className="flex items-center gap-1.5">
             {directionIndicator && renderIndicator(directionIndicator)}
-            <span>{renderCell(value)}</span>
+            <span>{renderCell(value, "sessions")}</span>
           </div>
         ) : currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
-          <div className="flex flex-col">
+          <div className="flex flex-col border-b border-slate-300">
             <div className="flex items-center gap-1.5">
               {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value, "percentage")}</span>
@@ -544,7 +554,7 @@ export default function ConversionTable({
             </div>
             {totalPCV && (
               <span className="text-xs mt-0.5" style={{ color: COLORS.text.muted }}>
-                Total PCV: {totalPCV}
+                PCV: {totalPCV}
               </span>
             )}
           </div>
@@ -601,9 +611,9 @@ export default function ConversionTable({
     }
 
     return (
-      <tr key={`${row[primaryColumn]}-${metric}`} className="hover:bg-slate-50 transition-colors duration-150">
+      <tr key={`${row[primaryColumn]}-${metric}`} className="hover:bg-slate-50 transition-colors duration-150 border-b border-slate-300">
         <td
-          className="sticky left-0 min-w-[130px] max-w-[200px] p-2 text-xs font-medium border-r border-slate-200"
+          className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium border-r border-b border-slate-300"
           style={{
             backgroundColor: colorStyle.bg,
             color: colorStyle.text,
@@ -618,7 +628,7 @@ export default function ConversionTable({
             : null}
         </td>
         <td
-          className="sticky left-[130px] min-w-[100px] whitespace-nowrap p-2 text-xs font-medium border-r border-slate-200"
+          className="sticky left-[130px] min-w-[100px] whitespace-nowrap p-3 text-sm font-medium border-r border-b border-slate-300"
           style={{
             backgroundColor: colorStyle.bg,
             color: colorStyle.text,
@@ -673,14 +683,13 @@ export default function ConversionTable({
     return (
       <th
         key={column}
-        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-2.5 py-2.5 text-left text-sm font-semibold border-r border-b border-slate-200 shadow-sm"
+        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-300 shadow-sm"
         style={{
           left: `${130 + 100 + index * 130}px`,
           background: "linear-gradient(to bottom, #F8FAFC, #F3F4F6)",
-          
           color: COLORS.text.primary,
-          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           letterSpacing: "-0.01em",
+          borderBottom: `2px solid ${COLORS.border.dark}`,
         }}
       >
         <div className="flex flex-col">
@@ -698,37 +707,36 @@ export default function ConversionTable({
   return (
     <div
       id="age-report-table"
-      className="w-full rounded-xl overflow-hidden border border-slate-200 shadow-lg bg-white flex flex-col"
+      className="w-full rounded-xl overflow-hidden border border-slate-300 shadow-lg bg-white flex flex-col"
       style={{
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
       }}
     >
       <div
         className={`relative overflow-x-auto ${getTableHeight()} scrollbar-thin`}
         onScroll={isFullScreen ? handleScroll : undefined}
       >
-        <table className="w-full">
+        <table className="w-full table-auto">
           <thead>
             <tr>
               <th
-                className="sticky left-0 top-0 min-w-[130px] w-[150px] z-20 px-2.5 py-2.5 text-left text-sm font-semibold border-r border-b border-slate-200 shadow-sm"
+                className="sticky left-0 top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-200 shadow-sm"
                 style={{
                   background: COLORS.background.headerGradient,
                   color: COLORS.text.primary,
-                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
                   letterSpacing: "-0.01em",
+                  borderBottom: `2px solid ${COLORS.border.dark}`,
                 }}
               >
                 {primaryColumn}
               </th>
               <th
-                className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-2.5 py-2.5 text-left text-sm font-semibold border-r border-b border-slate-200 shadow-sm"
+                className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-200 shadow-sm"
                 style={{
                   background: COLORS.background.headerGradient,
                   color: COLORS.text.primary,
-                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
                   letterSpacing: "-0.01em",
+                  borderBottom: `2px solid ${COLORS.border.dark}`,
                 }}
               >
                 Metric
@@ -737,12 +745,12 @@ export default function ConversionTable({
               {months.map((month) => (
                 <th
                   key={month}
-                  className="sticky top-0 min-w-[100px] z-10 px-2.5 py-2.5 text-right text-sm font-semibold whitespace-nowrap border-r border-b border-slate-200 shadow-sm"
+                  className="sticky top-0 min-w-[100px] z-10 px-3 py-3 text-right text-base font-medium whitespace-nowrap border-r border-b border-slate-200 shadow-sm"
                   style={{
                     background: "linear-gradient(to bottom, #F8FAFC, #F3F4F6)",
                     color: COLORS.text.primary,
-                    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
                     letterSpacing: "-0.01em",
+                    borderBottom: `2px solid ${COLORS.border.dark}`,
                   }}
                 >
                   {month}
@@ -750,8 +758,26 @@ export default function ConversionTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
-            {displayRows.map(({ dataIndex, metricIndex }) => renderMetricRow(data[dataIndex], metricIndex))}
+          <tbody className="divide-y divide-slate-300">
+            {displayRows.length > 0 ? (
+              displayRows.map(({ dataIndex, metricIndex }) => {
+                console.log(`Rendering row at index: dataIndex=${dataIndex}, metricIndex=${metricIndex}`)
+                if (dataIndex < data.length && metricIndex < monthlyMetrics.length) {
+                  return renderMetricRow(data[dataIndex], metricIndex)
+                }
+                console.warn(`Skipping invalid row: dataIndex=${dataIndex}, metricIndex=${metricIndex}`)
+                return null
+              })
+            ) : (
+              <tr>
+                <td
+                  colSpan={2 + (secondaryColumns?.length || 0) + months.length}
+                  className="p-4 text-center text-gray-500"
+                >
+                  No data to display
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

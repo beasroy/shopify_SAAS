@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { FacebookLogo } from "@/data/logo";
@@ -15,6 +14,8 @@ import { setDate } from "@/store/slices/DateSlice";
 import { RootState } from "@/store";
 import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 
 type ApiResponse = {
@@ -96,7 +97,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
 
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 15 * 60 * 1000);
+        const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000);
         return () => clearInterval(intervalId);
     }, [fetchData]);
 
@@ -131,6 +132,11 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const monthlyDataKey = "MonthlyData";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
+    const locale = useSelector((state:RootState) => state.locale.locale)
+
+    if(loading){
+        return <Loader />
+    }
 
     return (
         <div>
@@ -145,12 +151,6 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
 
             </div>
 
-            {/* Account Cards Grid */}
-            {loading ? (
-                <div className="grid grid-cols-1 gap-6">
-                    <TableSkeleton />
-                </div>
-            ) : (
                 <div className="grid grid-cols-1 gap-6">
                     {(blendedAudienceData && blendedAudienceData.length > 0)&&(
                          <Card
@@ -171,6 +171,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                              
                                          />
                                      </div>}
+                                     <NumberFormatSelector />
                                      <Button
                                          onClick={handleManualRefresh}
                                          disabled={loading}
@@ -209,7 +210,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                      monthlyDataKey={monthlyDataKey}
                                      monthlyMetrics={monthlyMetrics}
                                      isFullScreen={fullScreenAccount === 'blended-summary'}
-                                     
+                                     locale={locale}
                                  />
                              </div>
                          </CardContent>
@@ -234,6 +235,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                                
                                             />
                                         </div>}
+                                        <NumberFormatSelector />
                                         <Button
                                             onClick={handleManualRefresh}
                                             disabled={loading}
@@ -272,14 +274,13 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                         monthlyDataKey={monthlyDataKey}
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
-                                       
+                                       locale={locale}
                                     />
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
-            )}
         </div>
     );
 }

@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/data/logo";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
@@ -17,6 +16,8 @@ import { RootState } from '@/store';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 
 type ApiResponse = {
@@ -49,7 +50,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const filters = useSelector((state: RootState) => 
     state.conversionFilters[componentId] || {}, shallowEqual
   );
-  
+  const locale = useSelector((state:RootState)=>state.locale.locale);
   const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
@@ -99,7 +100,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 5 minutes
+    const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000); 
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
@@ -131,7 +132,11 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const primaryColumn = "Age";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
-  const monthlyMetrics = ["Sessions", "Conv. Rate"];
+  const monthlyMetrics = ["Sessions", "Conv. Rate"]; 
+
+  if(loading){
+    return <Loader />
+  }
 
   return (
     <Card id="age-report" className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
@@ -151,6 +156,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
                     }}
                   />
                 </div>}
+                <NumberFormatSelector />
             <Button id="refresh" onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -174,9 +180,6 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
         </div>
 
         <div className="rounded-md overflow-hidden">
-          {loading ? (
-            <TableSkeleton />
-          ) : (
             <div>
               <PerformanceSummary
                 data={apiResponse?.data || []}
@@ -190,9 +193,9 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
+                locale={locale}
               />
             </div>
-          )}
         </div>
 
       </CardContent>

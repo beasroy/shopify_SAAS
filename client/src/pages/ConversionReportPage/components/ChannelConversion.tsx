@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/data/logo";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
@@ -17,6 +16,8 @@ import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 type ApiResponse = {
   reportType: string;
@@ -44,8 +45,8 @@ const ChannelConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'channel-conversion'
-
-  const user = useSelector((state: RootState) => state.user.user , shallowEqual) ;
+  const locale = useSelector((state:RootState) => state.locale.locale);
+  const user = useSelector((state: RootState) => state.user.user) ;
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -93,7 +94,7 @@ const fetchData = useCallback(async () => {
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 5 minutes
+    const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
@@ -127,6 +128,9 @@ const fetchData = useCallback(async () => {
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
+  if (loading) {
+    return <Loader />;
+  }
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
       <CardContent>
@@ -145,6 +149,7 @@ const fetchData = useCallback(async () => {
                     }}
                   />
                 </div>}
+                <NumberFormatSelector />
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -165,9 +170,6 @@ const fetchData = useCallback(async () => {
         </div>
 
         <div className="rounded-md overflow-hidden">
-          {loading ? (
-            <TableSkeleton />
-          ) : (
             <div>
               <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} />
               <ConversionTable
@@ -177,9 +179,9 @@ const fetchData = useCallback(async () => {
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
+                locale={locale}
               />
             </div>
-          )}
         </div>
       </CardContent>
     </Card>

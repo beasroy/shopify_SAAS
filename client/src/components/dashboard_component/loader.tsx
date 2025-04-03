@@ -5,6 +5,7 @@ export default function Loader() {
   const [progress, setProgress] = useState(0)
   const [messageIndex, setMessageIndex] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Loading messages
   const loadingMessages = [
@@ -21,28 +22,51 @@ export default function Loader() {
   ]
 
   useEffect(() => {
-    // Progress bar animation
+    // Progress bar animation - stops at 95% until loading is complete
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
-          setIsComplete(true)
-          return 100
+        // Cap at 95% during loading
+        if (isLoading && prev >= 95) {
+          return 95;
         }
-        return prev + 1
-      })
-    }, 80)
+        
+        // Jump to 100% when loading completes
+        if (!isLoading && prev < 100) {
+          clearInterval(progressInterval);
+          setProgress(100);
+          setTimeout(() => {
+            setIsComplete(true);
+          }, 300);
+          return 100;
+        }
+        
+        // Normal progress increase
+        if (prev < 95) {
+          return prev + 1;
+        }
+        
+        return prev;
+      });
+    }, 80);
+
+    // Simulate backend loading process
+    const loadingTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 8000); // Adjust this time to match your actual loading needs
 
     // Message changing animation
     const messageInterval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % loadingMessages.length)
-    }, 2500)
+      if (!isComplete) {
+        setMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+      }
+    }, 2500);
 
     return () => {
-      clearInterval(progressInterval)
-      clearInterval(messageInterval)
-    }
-  }, [])
+      clearInterval(progressInterval);
+      clearInterval(messageInterval);
+      clearTimeout(loadingTimer);
+    };
+  }, [isLoading, isComplete]);
 
   return (
     <div className="flex flex-col items-center justify-center bg-white text-black text-center px-4 z-50 min-h-screen">
@@ -93,4 +117,3 @@ export default function Loader() {
     </div>
   )
 }
-

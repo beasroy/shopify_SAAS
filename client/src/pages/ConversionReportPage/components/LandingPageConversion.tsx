@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Ga4Logo } from "@/data/logo";
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
-import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "./axiosInstance";
 import PerformanceSummary from "./PerformanceSummary";
@@ -17,6 +16,8 @@ import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
 import { metricConfigs } from "@/data";
+import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
+import Loader from "@/components/dashboard_component/loader";
 
 type ApiResponse = {
   reportType: string;
@@ -44,11 +45,11 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'landingPage-conversion'
 
-
-  const user = useSelector((state: RootState)=>state.user.user , shallowEqual);
+  const locale = useSelector((state: RootState) => state.locale.locale)
+  const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
+    setIsFullScreen(!isFullScreen); 
   };
 
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -56,8 +57,8 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
 
   const axiosInstance = createAxiosInstance();
 
-  const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {} , shallowEqual
+  const filters = useSelector((state: RootState) =>
+    state.conversionFilters[componentId] || {}, shallowEqual
   );
 
   const transformedFilters = useMemo(() => {
@@ -74,28 +75,28 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
     }, {});
   }, [filters]);
 
-  
-const fetchData = useCallback(async () => {
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
-            userId: user?.id,
-            startDate,
-            endDate,  ...transformedFilters  // Spread the transformed filters
-        });
-        const fetchedData = response.data || [];
-        setApiResponse(fetchedData);
+      const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
+        userId: user?.id,
+        startDate,
+        endDate, ...transformedFilters  // Spread the transformed filters
+      });
+      const fetchedData = response.data || [];
+      setApiResponse(fetchedData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
-}, [brandId, startDate, endDate, transformedFilters, user?.id]);
+  }, [brandId, startDate, endDate, transformedFilters, user?.id]);
 
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 5 minutes
+    const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
@@ -111,11 +112,11 @@ const fetchData = useCallback(async () => {
   useEffect(() => {
     if (!isFullScreen) {
       if (propDateRange) {
-      dispatch(setDate({
-        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-      }));
-    }
+        dispatch(setDate({
+          from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+          to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+        }));
+      }
     }
   }, [isFullScreen, propDateRange]);
 
@@ -129,6 +130,10 @@ const fetchData = useCallback(async () => {
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
+  if (loading) {
+    return <Loader />;
+  }
+
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''} overflow-auto`}>
       <CardContent>
@@ -138,14 +143,12 @@ const fetchData = useCallback(async () => {
             <Ga4Logo />
           </div>
           <div className="flex flex-wrap items-center gap-3">
-          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                  <DatePickerWithRange
-                    defaultDate={{
-                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                      to: new Date()
-                    }}
-                  />
-                </div>}
+            {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+              <DatePickerWithRange
+               
+              />
+            </div>}
+            <NumberFormatSelector  />
             <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -166,9 +169,7 @@ const fetchData = useCallback(async () => {
         </div>
 
         <div className="rounded-md overflow-hidden">
-          {loading ? (
-            <TableSkeleton />
-          ) : (
+
             <div>
               <PerformanceSummary
                 data={apiResponse?.data || []}
@@ -182,9 +183,9 @@ const fetchData = useCallback(async () => {
                 monthlyDataKey={monthlyDataKey}
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
+                locale={locale}
               />
             </div>
-          )}
         </div>
       </CardContent>
     </Card>

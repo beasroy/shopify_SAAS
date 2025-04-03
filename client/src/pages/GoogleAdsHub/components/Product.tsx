@@ -96,6 +96,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
 
   const componentId = "google-ads-product";
+  const locale = useSelector((state:RootState)=>state.locale.locale)
 
   return (
     <>
@@ -145,6 +146,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
                   monthlyDataKey={monthlyDataKey}
                   monthlyMetrics={monthlyMetrics}
                   isFullScreen={isFullScreen}
+                  locale={locale}
                 />
               </div>
             )}

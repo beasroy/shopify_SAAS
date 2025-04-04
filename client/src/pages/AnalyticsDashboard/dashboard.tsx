@@ -380,9 +380,12 @@ export default function Dashboard() {
                 data={{
                   account_name: accountMetrics.account_name,
                   account_id: accountMetrics.adAccountId,
-                  campaigns: accountMetrics.campaigns
+                  campaigns: accountMetrics.campaigns.map(campaign => ({
+                    ...campaign,
+                    Campaign: campaign.campaignName
+                  }))
                 }}
-                height={height}  // Adjust the height according to the number of campaigns
+                height={height}
               />
 </div>
 <div className='mt-6'>

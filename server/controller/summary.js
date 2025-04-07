@@ -78,10 +78,6 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
         },
       }
     );
-
-    // Log raw response for debugging
-    console.log('Raw Analytics Response:', JSON.stringify(response.data, null, 2));
-
     // Sum up all rows for the date range
     const rows = response?.data?.rows || [];
     const aggregatedData = rows.reduce((acc, row) => {
@@ -109,8 +105,8 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
       checkouts: aggregatedData.checkouts,
       purchases: aggregatedData.purchases,
       addToCartRate: calculateRate(aggregatedData.addToCarts, aggregatedData.sessions),
-      checkoutRate: calculateRate(aggregatedData.checkouts, aggregatedData.addToCarts),
-      purchaseRate: calculateRate(aggregatedData.purchases, aggregatedData.checkouts)
+      checkoutRate: calculateRate(aggregatedData.checkouts, aggregatedData.sessions),
+      purchaseRate: calculateRate(aggregatedData.purchases, aggregatedData.sessions)
     };
 
     console.log('Processed Analytics Data:', result);
@@ -219,7 +215,7 @@ export async function getGoogleAccessToken(refreshToken) {
 export async function getAnalyticsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const { userId } = req.body;
+    const userId = req.user.id;
 
     // Validate input
     if (!brandId || !userId) {
@@ -489,7 +485,7 @@ export async function getAnalyticsSummary(req, res) {
 export async function getFacebookAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const { userId } = req.body;
+    const userId = req.user.id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -767,7 +763,7 @@ export async function getFacebookAdsSummary(req, res) {
 export async function getGoogleAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const { userId } = req.body;
+    const userId = req.user.id;
 
     // Run these database queries in parallel
     const [brand, user] = await Promise.all([

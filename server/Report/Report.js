@@ -30,6 +30,7 @@ export const fetchTotalSales = async (brandId) => {
       const shopify = new Shopify({
           shopName: brand.shopifyAccount?.shopName,
           accessToken: access_token,
+          apiVersion: '2023-07' // Added API version to match the monthly function
       });
 
       // Get store timezone from Shopify shop data
@@ -52,90 +53,161 @@ export const fetchTotalSales = async (brandId) => {
       const yesterdaySales = {
           date: yesterday.format('YYYY-MM-DD'),
           grossSales: 0,
+          totalPrice: 0,
           refundAmount: 0,
+          discountAmount: 0,
           orderCount: 0
       };
 
-      const queryParams = {
-          status: 'any',
-          created_at_min: startOfYesterday,
-          created_at_max: endOfYesterday,
-          limit: 250,
-          fields: 'id,created_at,total_price,refunds'
+      // Function to calculate refund amount (matching the monthly function)
+      const calculateRefundAmount = (refund) => {
+          if (!refund) return 0;
+          
+          const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
+              return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
+          }, 0) || 0;
+
+          const transactionAmount = refund.transactions?.reduce((sum, trans) => {
+              return sum + Number(trans.amount || 0);
+          }, 0) || 0;
+
+          return Math.max(lineItemAmount, transactionAmount);
       };
 
-      let hasNextPage = true;
-      let pageInfo;
-      let orders = [];
+      // Process orders using a similar chunking approach as monthly function
+      const processOrdersForTimeRange = async (startTime, endTime) => {
+          let pageInfo = null;
+          let retryCount = 0;
+          const MAX_RETRIES = 3;
+          const RETRY_DELAY = 5000;
 
-      // Fetch all orders for yesterday
-      while (hasNextPage) {
-          if (pageInfo) {
-              queryParams.page_info = pageInfo;
-          } else {
-              delete queryParams.page_info;
-          }
+          do {
+              try {
+                  // Add mandatory delay between requests
+                  await new Promise(resolve => setTimeout(resolve, 1000));
 
-          try {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
-              
-              const response = await shopify.order.list(queryParams);
-              if (!response || response.length === 0) {
-                  break;
+                  const params = {
+                      status: 'any',
+                      created_at_min: startTime,
+                      created_at_max: endTime,
+                      limit: 150, // Reduced limit for better stability
+                      fields: 'id,created_at,total_price,subtotal_price,total_discounts,line_items,refunds'
+                  };
+
+                  if (pageInfo) {
+                      params.page_info = pageInfo;
+                  }
+
+                  const response = await shopify.order.list(params);
+                  
+                  if (!response || !Array.isArray(response)) {
+                      console.warn('Unexpected response format:', response);
+                      break;
+                  }
+
+                  // Process orders immediately
+                  for (const order of response) {
+                      const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+                      
+                      // Only process orders from yesterday
+                      if (orderDate === yesterday.format('YYYY-MM-DD')) {
+                          const totalPrice = Number(order.total_price || 0);
+                          const discountAmount = Number(order.total_discounts || 0);
+                          
+                          // Calculate true gross sales from line items (before discounts)
+                          let lineItemTotal = 0;
+                          if (order.line_items && Array.isArray(order.line_items)) {
+                              for (const item of order.line_items) {
+                                  // Calculate pre-discount price: price × quantity
+                                  const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
+                                  lineItemTotal += itemTotal;
+                              }
+                          }
+                          
+                          // Fallback to subtotal_price + discounts if line items calculation is not available
+                          const grossSales = lineItemTotal > 0 ? 
+                              lineItemTotal : 
+                              (Number(order.subtotal_price || 0) + discountAmount);
+                          
+                          yesterdaySales.grossSales += grossSales;
+                          yesterdaySales.totalPrice += totalPrice;
+                          yesterdaySales.discountAmount += discountAmount;
+                          yesterdaySales.orderCount += 1;
+                      }
+
+                      // Process refunds
+                      if (order.refunds?.length > 0) {
+                          for (const refund of order.refunds) {
+                              const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                              
+                              // Only process refunds from yesterday
+                              if (refundDate === yesterday.format('YYYY-MM-DD')) {
+                                  const refundAmount = calculateRefundAmount(refund);
+                                  yesterdaySales.refundAmount += refundAmount;
+                              }
+                          }
+                      }
+                  }
+
+                  console.log(`Processed ${response.length} orders`);
+
+                  // Extract pagination info from headers
+                  const linkHeader = response.headers?.link;
+                  if (linkHeader) {
+                      const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
+                      pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
+                  } else {
+                      pageInfo = null;
+                  }
+
+                  retryCount = 0; // Reset retry count on successful request
+
+              } catch (error) {
+                  console.error('Error fetching orders:', error);
+
+                  if (error.statusCode === 429) {
+                      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                      continue;
+                  }
+
+                  if (error.statusCode === 400 && pageInfo) {
+                      console.log('Bad request with page_info, restarting chunk');
+                      pageInfo = null;
+                      retryCount++;
+                      
+                      if (retryCount >= MAX_RETRIES) {
+                          console.error('Max retries reached for time range');
+                          break;
+                      }
+                      
+                      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                      continue;
+                  }
+
+                  throw error;
               }
+          } while (pageInfo);
+      };
 
-              orders = orders.concat(response);
-              pageInfo = response.nextPageParameters?.page_info || null;
-              hasNextPage = !!pageInfo;
+      // Split day into 4 chunks as in the monthly function
+      const timeChunks = Array.from({ length: 4 }, (_, i) => ({
+          start: yesterday.clone().startOf('day').add(i * 6, 'hours').toISOString(),
+          end: yesterday.clone().startOf('day').add((i + 1) * 6, 'hours').toISOString()
+      }));
 
-          } catch (error) {
-              console.error('Error while fetching orders:', error);
-              if (error.statusCode === 429) {
-                  console.warn('Rate limit reached, retrying in 2 seconds...');
-                  await new Promise(resolve => setTimeout(resolve, 2000));
-                  continue;
-              }
-              throw new Error(`Error fetching orders: ${error.message}`);
-          }
+      for (const chunk of timeChunks) {
+          await processOrdersForTimeRange(chunk.start, chunk.end);
       }
 
-      console.log(`Successfully fetched ${orders.length} orders for yesterday`);
-
-      // Process orders and refunds
-      orders.forEach(order => {
-          const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-          if (orderDate === yesterday.format('YYYY-MM-DD')) {
-              const orderAmount = Number(order.total_price || 0);
-              yesterdaySales.grossSales += orderAmount;
-              yesterdaySales.orderCount += 1;
-
-              // Process refunds
-              if (order.refunds && order.refunds.length > 0) {
-                  order.refunds.forEach(refund => {
-                      const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-                      if (refundDate === yesterday.format('YYYY-MM-DD')) {
-                          const lineItemAmount = refund.refund_line_items.reduce((sum, item) => {
-                              return sum + Number(item.subtotal_set.shop_money.amount || 0);
-                          }, 0);
-
-                          const transactionAmount = refund.transactions ? refund.transactions.reduce((sum, trans) => {
-                              return sum + Number(trans.amount || 0);
-                          }, 0) : 0;
-
-                          const refundAmount = Math.max(lineItemAmount, transactionAmount);
-                          yesterdaySales.refundAmount += refundAmount;
-                      }
-                  });
-              }
-          }
-      });
-
-      // Calculate final amounts
+      // Calculate final amounts using the same formulas as in monthlyFetchTotalSales
       const dailySales = [{
           date: yesterdaySales.date,
-          totalSales: Number(yesterdaySales.grossSales.toFixed(2)),
+          // Net product sales (excluding shipping, taxes, etc.)
+          shopifySales: Number((yesterdaySales.grossSales - yesterdaySales.discountAmount).toFixed(2)),
+          // Total customer payments including all charges, minus refunds
+          totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
           refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
-          shopifySales: Number((yesterdaySales.grossSales - yesterdaySales.refundAmount).toFixed(2)),
+          discountAmount: Number(yesterdaySales.discountAmount.toFixed(2)),
           orderCount: yesterdaySales.orderCount
       }];
 

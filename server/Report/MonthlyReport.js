@@ -42,8 +42,10 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
             const dateStr = currentDay.format('YYYY-MM-DD');
             dailySalesMap[dateStr] = {
                 date: dateStr,
-                grossSales: 0,
+                grossSales: 0,       // Line items total before discounts
+                totalPrice: 0,       // Total including all charges (shipping, taxes, etc.)
                 refundAmount: 0,
+                discountAmount: 0,
                 orderCount: 0
             };
             currentDay.add(1, 'day');
@@ -69,7 +71,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                         created_at_min: startTime,
                         created_at_max: endTime,
                         limit: 150, // Reduced limit for better stability
-                        fields: 'id,created_at,total_price,refunds'
+                        fields: 'id,created_at,total_price,subtotal_price,total_discounts,line_items,refunds'
                     };
 
                     if (pageInfo) {
@@ -84,6 +86,8 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                     }
 
                     orders = orders.concat(response);
+
+                    console.log(orders);
 
                     // Extract pagination info from headers
                     const linkHeader = response.headers?.link;
@@ -141,10 +145,28 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                 
                 orders.forEach(order => {
                     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-                    const orderAmount = Number(order.total_price || 0);
+                    const totalPrice = Number(order.total_price || 0);
+                    const discountAmount = Number(order.total_discounts || 0);
+                    
+                    // Calculate true gross sales from line items (before discounts)
+                    let lineItemTotal = 0;
+                    if (order.line_items && Array.isArray(order.line_items)) {
+                        lineItemTotal = order.line_items.reduce((sum, item) => {
+                            // Calculate pre-discount price: price × quantity
+                            const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
+                            return sum + itemTotal;
+                        }, 0);
+                    }
+                    
+                    // Fallback to subtotal_price + discounts if line items calculation is not available
+                    const grossSales = lineItemTotal > 0 ? 
+                        lineItemTotal : 
+                        (Number(order.subtotal_price || 0) + discountAmount);
                     
                     if (dailySalesMap[orderDate]) {
-                        dailySalesMap[orderDate].grossSales += orderAmount;
+                        dailySalesMap[orderDate].grossSales += grossSales;
+                        dailySalesMap[orderDate].totalPrice += totalPrice;
+                        dailySalesMap[orderDate].discountAmount += discountAmount;
                         dailySalesMap[orderDate].orderCount += 1;
                     }
 
@@ -167,9 +189,12 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
 
         return Object.values(dailySalesMap).map(day => ({
             ...day,
-            shopifySales: Number((day.grossSales - day.refundAmount).toFixed(2)),
-            totalSales: Number(day.grossSales.toFixed(2)),
-            refundAmount: Number(day.refundAmount.toFixed(2))
+            // Net product sales (excluding shipping, taxes, etc.)
+            shopifySales: Number((day.grossSales - day.discountAmount).toFixed(2)),
+            // Total customer payments including all charges, minus refunds
+            totalSales: Number((day.totalPrice - day.refundAmount).toFixed(2)),
+            refundAmount: Number(day.refundAmount.toFixed(2)),
+            discountAmount: Number(day.discountAmount.toFixed(2))
         }));
 
     } catch (error) {

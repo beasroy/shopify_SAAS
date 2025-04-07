@@ -17,10 +17,8 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal"
 import type { ITooltipHeaderProps, IMonthlyAggregate } from "@/interfaces/index"
 import Loader from "@/components/dashboard_component/loader"
+import { baseURL } from "@/data/constant"
 
-// Add this to your CSS or globals.css
-// @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-// @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 function TooltipHeader({
   title,
@@ -127,7 +125,6 @@ export const ExcelMetricsPage: React.FC = () => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
 
-  const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen)
@@ -326,7 +323,7 @@ export const ExcelMetricsPage: React.FC = () => {
                         {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm">
-                        {formatCurrency(monthData.totalSales)}
+                        {formatCurrency(monthData.shopifySales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.ROI)}
@@ -335,7 +332,7 @@ export const ExcelMetricsPage: React.FC = () => {
                         {formatCurrency(monthData.refundAmount)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
-                        {formatCurrency(monthData.shopifySales)}
+                        {formatCurrency(monthData.totalSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.netROI)}
@@ -379,7 +376,7 @@ export const ExcelMetricsPage: React.FC = () => {
                             {format(new Date(daily.date), "dd/MM/yyyy")}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.totalSales)}
+                            {formatCurrency(daily.shopifySales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.ROI)}
@@ -388,7 +385,7 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatCurrency(daily.refundAmount)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.shopifySales)}
+                            {formatCurrency(daily.totalSales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.netROI)}

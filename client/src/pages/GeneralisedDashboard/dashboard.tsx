@@ -288,9 +288,13 @@ const SummaryDashboard: React.FC = () => {
   const axiosInstance = createAxiosInstance();
 
   const fetchPerformanceData = useCallback(async () => {
+    if (!brandId) {
+      console.log('No brand ID available, skipping API calls');
+      return;
+    }
+    
     setLoading(true);
     setPerformanceData({});
-    // Reset API status for new fetch
     setApiStatus({
       meta: true,
       google: true,
@@ -300,7 +304,6 @@ const SummaryDashboard: React.FC = () => {
     try {
       const metaPromise = axiosInstance.post(
         `api/summary/facebook-ads/${brandId}`,
-        { userId: user?.id },
         { withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Meta data:', error);
@@ -310,7 +313,6 @@ const SummaryDashboard: React.FC = () => {
 
       const googlePromise = axiosInstance.post(
         `api/summary/google-ads/${brandId}`,
-        { userId: user?.id },
         { withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Google data:', error);
@@ -320,7 +322,6 @@ const SummaryDashboard: React.FC = () => {
 
       const analyticsPromise = axiosInstance.post(
         `api/summary/analytics/${brandId}`,
-        { userId: user?.id },
         { withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Analytics data:', error);
@@ -357,10 +358,10 @@ const SummaryDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [brandId, user?.id]);
+  }, [brandId]);
 
   useEffect(() => {
-    fetchPerformanceData();
+      fetchPerformanceData();
   }, [fetchPerformanceData]);
 
   useEffect(()=>{

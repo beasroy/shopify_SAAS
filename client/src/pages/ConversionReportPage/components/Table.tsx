@@ -331,11 +331,7 @@ export default function ConversionTable({
       })
       colorStyle = metricStyle
 
-      if (metric === "Sessions") {
-        directionIndicator = metricStyle.sessionIndicator || ""
-      } else if (metric === "Conv. Rate") {
-        directionIndicator = metricStyle.conversionIndicator || ""
-      }
+    
     }
 
     if (
@@ -348,12 +344,6 @@ export default function ConversionTable({
         purchaseROAS: Number(monthData["Purchase ROAS"]),
       })
       colorStyle = metricStyle
-
-      if (metric === "Spend") {
-        directionIndicator = metricStyle.spendIndicator || ""
-      } else if (metric === "Purchase ROAS") {
-        directionIndicator = metricStyle.roasIndicator || ""
-      }
     }
 
     if (
@@ -366,12 +356,6 @@ export default function ConversionTable({
         convValuePerCost: Number(monthData["Conv. Value/ Cost"]),
       })
       colorStyle = metricStyle
-
-      if (metric === "Cost") {
-        directionIndicator = metricStyle.costIndicator || ""
-      } else if (metric === "Conv. Value/ Cost") {
-        directionIndicator = metricStyle.valueIndicator || ""
-      }
     }
 
     return (
@@ -683,7 +667,7 @@ export default function ConversionTable({
     return (
       <th
         key={column}
-        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-300 shadow-sm"
+        className="sticky top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-sm font-medium border-r border-b border-slate-300 shadow-sm"
         style={{
           left: `${130 + 100 + index * 130}px`,
           background: "linear-gradient(to bottom, #F8FAFC, #F3F4F6)",
@@ -720,7 +704,7 @@ export default function ConversionTable({
           <thead>
             <tr>
               <th
-                className="sticky left-0 top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-200 shadow-sm"
+                className="sticky left-0 top-0 min-w-[130px] w-[150px] z-20 px-3 py-3 text-left text-sm font-medium border-r border-b border-slate-200 shadow-sm"
                 style={{
                   background: COLORS.background.headerGradient,
                   color: COLORS.text.primary,
@@ -731,7 +715,7 @@ export default function ConversionTable({
                 {primaryColumn}
               </th>
               <th
-                className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-3 py-3 text-left text-base font-medium border-r border-b border-slate-200 shadow-sm"
+                className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-3 py-3 text-left text-sm font-medium border-r border-b border-slate-200 shadow-sm"
                 style={{
                   background: COLORS.background.headerGradient,
                   color: COLORS.text.primary,
@@ -745,7 +729,7 @@ export default function ConversionTable({
               {months.map((month) => (
                 <th
                   key={month}
-                  className="sticky top-0 min-w-[100px] z-10 px-3 py-3 text-right text-base font-medium whitespace-nowrap border-r border-b border-slate-200 shadow-sm"
+                  className="sticky top-0 min-w-[100px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap border-r border-b border-slate-200 shadow-sm"
                   style={{
                     background: "linear-gradient(to bottom, #F8FAFC, #F3F4F6)",
                     color: COLORS.text.primary,

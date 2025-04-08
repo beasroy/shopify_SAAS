@@ -18,7 +18,7 @@ import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
-import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js";
+
 
 const app = express();
 dotenv.config();
@@ -35,7 +35,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// monthlyCalculateMetricsForAllBrands("2025-04-01","2025-06-01","67eb85f2f583a37ca251622a");
 
 const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);

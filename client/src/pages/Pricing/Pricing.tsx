@@ -1,4 +1,5 @@
 import { Check, Star } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const pricingPlans = [
     {
@@ -113,6 +114,7 @@ function Pricing() {
 
                         {/* Button */}
                         <div className="mt-8">
+                            <Link to="https://parallelsapp-production.up.railway.app/">
                             <button
                                 className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${plan.id === "FREE"
                                     ? "bg-teal-600 hover:bg-teal-700 text-white"
@@ -123,6 +125,7 @@ function Pricing() {
                             >
                                 {plan.buttonText}
                             </button>
+                            </Link>
                         </div>
                     </div>
                 </div>

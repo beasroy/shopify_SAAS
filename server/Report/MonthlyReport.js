@@ -203,7 +203,6 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     }
 };
 
-// Helper function to calculate refund amount
 const calculateRefundAmount = (refund) => {
     const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
         return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
@@ -215,7 +214,6 @@ const calculateRefundAmount = (refund) => {
 
     return Math.max(lineItemAmount, transactionAmount);
 };
-
 
 export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate) => {
     try {
@@ -383,28 +381,18 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
     }
 };
 
-
 export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) => {
     try {
         const [brand, user] = await Promise.all([
             Brand.findById(brandId).lean(),
             User.findById(userId).lean(),
-        ])
+        ]);
+        
         if (!brand || !user) {
             return {
                 success: false,
                 message: !brand ? 'Brand not found.' : 'User not found.',
             };
-        }
-
-        const adAccountId = brand.googleAdAccount.clientId;
-        const managerId = brand.googleAdAccount.managerId;
-        if (!adAccountId) {
-          return {
-            success: false,
-            message: 'No Google Ads accounts found for this brand.',
-            data: [],
-          };
         }
 
         const refreshToken = user.googleRefreshToken;
@@ -416,6 +404,15 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
+        // Check if there are any Google Ad accounts
+        if (!brand.googleAdAccount || !brand.googleAdAccount.length) {
+            return {
+                success: false,
+                message: 'No Google Ads accounts found for this brand.',
+                data: [],
+            };
+        }
+
         const client = new GoogleAdsApi({
             client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -423,51 +420,91 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             refresh_token: refreshToken,
         });
 
-        const customer = client.Customer({
-            customer_id: adAccountId,
-            refresh_token: refreshToken,
-            login_customer_id: managerId,
+        // Initialize a map to store metrics by date
+        const metricsMap = new Map();
+        
+        // Process each Google Ad account
+        for (const adAccount of brand.googleAdAccount) {
+            const adAccountId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+            
+            if (!adAccountId) continue;
+            
+            const customer = client.Customer({
+                customer_id: adAccountId,
+                refresh_token: refreshToken,
+                login_customer_id: managerId,
+            });
+
+            let currentDate = moment(startDate);
+            const end = moment(endDate);
+
+            while (currentDate.isSameOrBefore(end)) {
+                const formattedDate = currentDate.format('YYYY-MM-DD');
+                
+                try {
+                    const adsReport = await customer.report({
+                        entity: "customer",
+                        attributes: ["customer.descriptive_name"],
+                        metrics: [
+                            "metrics.cost_micros",
+                            "metrics.conversions_value",
+                        ],
+                        from_date: formattedDate,
+                        to_date: formattedDate,
+                    });
+
+                    let totalSpend = 0;
+                    let totalConversionsValue = 0;
+
+                    // Process each row of the report
+                    for (const row of adsReport) {
+                        const costMicros = row.metrics.cost_micros || 0;
+                        const spend = costMicros / 1_000_000;
+                        totalSpend += spend;
+                        totalConversionsValue += row.metrics.conversions_value || 0;
+                    }
+                    
+                    // Update or create metrics for this date
+                    if (!metricsMap.has(formattedDate)) {
+                        metricsMap.set(formattedDate, {
+                            date: formattedDate,
+                            googleSpend: 0,
+                            googleConversionsValue: 0,
+                        });
+                    }
+                    
+                    const dateMetrics = metricsMap.get(formattedDate);
+                    dateMetrics.googleSpend += totalSpend;
+                    dateMetrics.googleConversionsValue += totalConversionsValue;
+                    
+                } catch (error) {
+                    console.error(`Error fetching data for account ${adAccountId} on date ${formattedDate}:`, error);
+                    // Continue with other dates and accounts if one fails
+                }
+                
+                currentDate = currentDate.add(1, 'day');
+            }
+        }
+
+        // Convert map to array and calculate ROAS and sales for each date
+        const metricsByDate = Array.from(metricsMap.values()).map(metrics => {
+            const googleRoas = metrics.googleSpend > 0 ? 
+                (metrics.googleConversionsValue / metrics.googleSpend) : 0;
+            const googleSales = googleRoas * metrics.googleSpend || 0;
+            
+            return {
+                date: metrics.date,
+                googleSpend: metrics.googleSpend.toFixed(2),
+                googleRoas: googleRoas.toFixed(2),
+                googleSales: googleSales.toFixed(2),
+            };
         });
 
-        const metricsByDate = [];
-
-        let currentDate = moment(startDate);
-        const end = moment(endDate);
-
-        while (currentDate.isSameOrBefore(end)) {
-            const formattedDate = currentDate.format('YYYY-MM-DD');
-            const adsReport = await customer.report({
-                entity: "customer",
-                attributes: ["customer.descriptive_name"],
-                metrics: [
-                    "metrics.cost_micros",
-                    "metrics.conversions_value",
-                ],
-                from_date: formattedDate,
-                to_date: formattedDate,
-            });
-
-            let totalSpend = 0;
-            let totalConversionsValue = 0;
-
-            // Process each row of the report
-            for (const row of adsReport) {
-                const costMicros = row.metrics.cost_micros || 0;
-                const spend = costMicros / 1_000_000;
-                totalSpend += spend;
-                totalConversionsValue += row.metrics.conversions_value || 0;
-            }
-            const googleRoas = totalSpend > 0 ? (totalConversionsValue / totalSpend) : 0;
-            const totalSales = googleRoas * totalSpend || 0;
-            metricsByDate.push({
-                date: formattedDate,
-                googleSpend: totalSpend.toFixed(2),
-                googleRoas: googleRoas.toFixed(2),
-                googleSales: totalSales.toFixed(2),
-            });
-            currentDate = currentDate.add(1, 'day');
-        }
-        console.log(metricsByDate)
+        // Sort by date
+        metricsByDate.sort((a, b) => moment(a.date).diff(moment(b.date)));
+        
+        console.log(metricsByDate);
         return {
             success: true,
             data: metricsByDate,

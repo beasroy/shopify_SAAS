@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent} from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -10,8 +10,8 @@ import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosIn
 import { FacebookLogo } from "@/data/logo";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useDispatch, useSelector } from "react-redux";
-import { setDate } from "@/store/slices/DateSlice";
 import { RootState } from "@/store";
+import { setDate } from "@/store/slices/DateSlice";
 import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
 import { metricConfigs } from "@/data";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
@@ -21,11 +21,11 @@ import Loader from "@/components/dashboard_component/loader";
 type ApiResponse = {
     data: Array<{
         account_name: string;
-        audienceData: Array<{
-            "Audience Segments": string;
+        placementData: Array<{
+            "Placements": string;
             "Total Spend": number;
             "Total Purchase ROAS": number;
-            "Total PCV":number;
+            "Total PCV": number;
             MonthlyData?: Array<{
                 Month: string;
                 spend: number;
@@ -34,8 +34,8 @@ type ApiResponse = {
             }>;
         }>;
     }>,
-    blendedAudienceData: Array<{
-        "Audience Segments": string;
+    blendedPlacementData: Array<{
+        "Placements": string;
         "Total Spend": number;
         "Total Purchase ROAS": number;
         "Total PCV": number;
@@ -52,22 +52,22 @@ interface CityBasedReportsProps {
     dateRange: DateRange | undefined;
 }
 
-const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-    const dateFrom = useSelector((state: RootState) => state.date.from);
-    const dateTo = useSelector((state: RootState) => state.date.to);
+const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+    const dateFrom = useSelector((state : RootState) =>state.date.from)
+    const dateTo = useSelector((state : RootState)=>state.date.to)
     const date = useMemo(() => ({
-      from: dateFrom,
-      to: dateTo
+        from: dateFrom,
+        to: dateTo
     }), [dateFrom, dateTo]);
+    const dispatch = useDispatch();
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
-    const dispatch = useDispatch();
 
 
-    const user = useSelector((state : RootState) =>state.user.user);
+    const user = useSelector((state : RootState)=>state.user.user);
     const { brandId } = useParams();
-    const toggleFullScreen = (accountId:string) => {
+    const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
     };
     const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
@@ -79,7 +79,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         setLoading(true);
         try {
 
-            const response = await axiosInstance.post(`/api/fbReport/audience/${brandId}`, {
+            const response = await axiosInstance.post(`/api/meta/report/placement/${brandId}`, {
                 userId: user?.id, startDate: startDate, endDate: endDate,
             }, { withCredentials: true })
 
@@ -125,10 +125,10 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         fetchData();
     };
 
-    const blendedAudienceData = apiResponse?.blendedAudienceData;
+    const blendedPlacementData = apiResponse?.blendedPlacementData;    
 
     // Extract columns dynamically from the API response
-    const primaryColumn = "Audience Segments";
+    const primaryColumn = "Placements";
     const monthlyDataKey = "MonthlyData";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
@@ -137,7 +137,6 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     if(loading){
         return <Loader />
     }
-
     return (
         <div>
             {/* Dashboard Header */}
@@ -145,16 +144,15 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                 <div className="flex items-center gap-3">
                     <FacebookLogo />
                     <div>
-                        <h2 className="text-xl font-semibold tracking-tight">Audience Segments Insights</h2>
+                        <h2 className="text-xl font-semibold tracking-tight">Placements Insights</h2>
                     </div>
                 </div>
 
             </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                    {(blendedAudienceData && blendedAudienceData.length > 0)&&(
+                    {(blendedPlacementData && blendedPlacementData.length > 0)&&(
                          <Card
-   
                          className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
                      >
                          <div className="bg-white rounded-md pt-2 px-3">
@@ -199,12 +197,12 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                          <CardContent className="p-0">
                              <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
                              <PerformanceSummary
-                                        data={blendedAudienceData || []}
+                                        data={blendedPlacementData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
                                     />
                                  <ConversionTable
-                                     data={Array.isArray(blendedAudienceData) ? blendedAudienceData : [blendedAudienceData]}
+                                     data={Array.isArray(blendedPlacementData) ? blendedPlacementData : [blendedPlacementData]}
                                      primaryColumn={primaryColumn}
                                      secondaryColumns={secondaryColumns}
                                      monthlyDataKey={monthlyDataKey}
@@ -230,7 +228,7 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                    {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
                                             <DatePickerWithRange
                                                
                                             />
@@ -263,18 +261,18 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
                             <CardContent className="p-0">
                                 <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
                                 <PerformanceSummary
-                                        data={account.audienceData || []}
+                                        data={account.placementData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
                                     />
                                     <ConversionTable
-                                        data={account.audienceData}
+                                        data={account.placementData}
                                         primaryColumn={primaryColumn}
                                         secondaryColumns={secondaryColumns}
                                         monthlyDataKey={monthlyDataKey}
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
-                                       locale={locale}
+                                        locale={locale}
                                     />
                                 </div>
                             </CardContent>
@@ -284,4 +282,4 @@ const AudienceFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         </div>
     );
 }
-export default AudienceFbReport;
+export default PlacementFbReport;

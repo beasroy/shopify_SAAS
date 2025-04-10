@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import {
   ChevronLeft,
@@ -11,7 +13,6 @@ import {
   CalendarRange,
   LineChart,
   Target,
-  FileSpreadsheet,
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -23,8 +24,9 @@ import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "../../store/index.ts"
 import { clearUser } from "@/store/slices/UserSlice.ts"
 import { baseURL } from "@/data/constant.ts"
-import { IBrand } from "@/interfaces"
-import { WhiteGa4Logo } from "@/data/logo.tsx"
+import type { IBrand } from "@/interfaces"
+import { WhiteGa4Logo, WhiteGoogleAdsLogo } from "@/data/logo.tsx"
+import { FaMeta } from "react-icons/fa6"
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -102,14 +104,17 @@ export default function CollapsibleSidebar() {
       ],
     },
     {
-      name: "Ad Reports",
+      name: "Meta",
       path: `#`,
-      icon: <FileSpreadsheet size={20} />,
+      icon: <FaMeta />,
       subItems: [
+        { name: "Campaign Analysis", path: `/meta-campaigns/${selectedBrandId}` },
         { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}` },
-        { name: "Google Reports", path: `/google-reports/${selectedBrandId}` },
       ],
     },
+
+    { name: "Google Reports", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
+
     { name: "Brands Targets", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 
@@ -131,7 +136,7 @@ export default function CollapsibleSidebar() {
     <TooltipProvider>
       <div
         ref={sidebarRef}
-        className={`bg-[rgb(4,16,33)] text-white transition-all duration-500 ease-in-out flex flex-col ${isExpanded ? "w-64" : "w-16"}`}
+        className={`bg-[rgb(4,16,33)] text-white transition-all duration-500 ease-in-out flex flex-col ${isExpanded ? "w-56" : "w-16"}`}
         style={{ height: "100vh" }}
       >
         <div className={`flex justify-between items-center p-4 relative`}>
@@ -190,7 +195,6 @@ export default function CollapsibleSidebar() {
 
               {/* Dashboard items - all open by default */}
               {allDashboards.map((item, index) => {
-
                 const isAnySubItemSelected = item.subItems?.some((subItem) => location.pathname === subItem.path)
 
                 const isMainItemActive =
@@ -199,13 +203,12 @@ export default function CollapsibleSidebar() {
                 // Main heading with tooltip when collapsed
                 const dashboardItemContent = (
                   <div
-                    className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer 
-                      ${isMainItemActive
-                        ? "text-white font-semibold relative"
-                        : "text-gray-100"
+                    className={`flex items-center px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 ${item.subItems ? "cursor-default" : "cursor-pointer"}
+                      ${
+                        isMainItemActive ? "text-white font-semibold relative" : "text-gray-100"
                       } ${isItemDisabled(item) ? "cursor-not-allowed opacity-50" : ""}`}
                     onClick={() => {
-                      if (!isItemDisabled(item) && item.path && item.path !== "#") {
+                      if (!isItemDisabled(item) && item.path && item.path !== "#" && !item.subItems) {
                         navigate(item.path)
                       }
                     }}
@@ -256,14 +259,14 @@ export default function CollapsibleSidebar() {
                         {item.subItems.map((subItem, subIndex) => (
                           <div
                             key={subIndex}
-                            className={`flex items-center text-xs w-full p-2.5 transition-colors duration-200 ${location.pathname === subItem.path
+                            className={`flex items-center text-xs w-full p-2 transition-colors duration-200 cursor-pointer ${
+                              location.pathname === subItem.path
                                 ? "text-white font-semibold relative bg-gray-800"
                                 : "text-gray-100"
-                              } hover:bg-gray-700`}
+                            } hover:bg-gray-700`}
                             onClick={() => navigate(subItem.path)}
                           >
                             <span>{subItem.name}</span>
-
                           </div>
                         ))}
                       </div>
@@ -320,7 +323,7 @@ function SidebarChild({
     }
   }, [isActive])
 
-  const baseClasses = `flex items-center text-xs w-full p-2.5 transition-colors duration-200 
+  const baseClasses = `flex items-center text-xs w-full p-2 transition-colors duration-200 
       ${isActive ? "text-white font-semibold relative bg-gray-800" : "text-gray-100"} 
       ${disabled ? "cursor-not-allowed text-gray-400" : "hover:bg-gray-700"}`
 
@@ -441,8 +444,9 @@ function SidebarItem({
           onClick()
         }
       }}
-      className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isActive ? "text-white font-semibold relative" : "text-gray-100"
-        } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+      className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${
+        isActive ? "text-white font-semibold relative" : "text-gray-100"
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       <span className="mr-2">{icon}</span>
       {isExpanded && <span className="text-xs">{text}</span>}
@@ -491,7 +495,7 @@ function UserProfile({ isExpanded, user }: UserProfileProps) {
     <div
       onClick={() => navigate("/profile")}
       className={
-        "flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
+        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
       }
     >
       <span className="text-gray-300 hover:text-white">
@@ -527,7 +531,7 @@ function LogoutButton({ handleLogout, isExpanded }: LogoutButtonProps) {
     <div
       onClick={handleLogout}
       className={
-        "flex items-center gap-4 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
+        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
       }
     >
       <span className="text-gray-300 hover:text-white">

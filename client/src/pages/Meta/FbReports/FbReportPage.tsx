@@ -1,6 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
-import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import { FaMeta } from "react-icons/fa6";
 import AudienceFbReport from './component/AudienceFbReport';
 import PlacementFbReport from './component/PlacementFbReport';
@@ -13,6 +11,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import Header from '@/components/dashboard_component/Header';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
+import CollapsibleSidebar from '@/pages/Dashboard/CollapsibleSidebar';
+import { CustomTabs } from '@/pages/ConversionReportPage/components/CustomTabs';
 
 
 

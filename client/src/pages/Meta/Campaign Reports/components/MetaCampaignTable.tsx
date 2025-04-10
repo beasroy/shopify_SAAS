@@ -29,7 +29,7 @@ import type { RootState } from "@/store"
 import { addLabelToCampaign, removeLabelFromCampaign } from "@/store/slices/campaignLabelsSlice"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import ColumnManagementSheet from "./ColumnManagementSheet"
+import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet"
 
 // Enhanced label colors with better contrast and visual hierarchy
 const LABEL_COLORS = [
@@ -58,6 +58,7 @@ interface MetaCampaignTableProps {
     campaigns: Campaign[]
   }
   height: string
+  type?:string
 }
 
 // New interface for grouped campaigns
@@ -67,7 +68,7 @@ interface GroupedCampaign {
   isExpanded: boolean
 }
 
-const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) => {
+const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,type }) => {
   const dispatch = useDispatch()
   const [draggedCampaign, setDraggedCampaign] = useState<string | null>(null)
   const [dragOverCampaign, setDragOverCampaign] = useState<string | null>(null)
@@ -94,7 +95,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
   const { labels } = useSelector((state: RootState) => state.campaignLabels)
 
   const accountLabels = useMemo(() => {
-    return labels[data.account_id] || {}
+    return data.account_id ? labels[data.account_id] || {} : {};
   }, [labels, data.account_id])
 
   const PREDEFINED_LABELS = ["TOFU", "MOFU", "BOFU", "TOFU+MOFU"]
@@ -1012,7 +1013,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""}`}
+                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50" : ""}`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
@@ -1071,7 +1072,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height }) =
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r sticky z-10`}
+                              className={`p-2 border-r sticky z-10 bg-white`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,

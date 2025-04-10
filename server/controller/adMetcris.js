@@ -4,6 +4,7 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
+import { fetchCampaignData } from './fbCampaign.js';
 
 config();
 
@@ -149,158 +150,7 @@ const fetchAdAccountInsights = async (adAccountIds, accessToken, startDate, endD
   return accountsData;
 };
 
-const fetchCampaignData = async (adAccountIds, accessToken, startDate, endDate) => {
-  const batchRequests = adAccountIds.map((accountId) => ({
-    method: 'GET',
-    relative_url: `${accountId}/campaigns?fields=insights.time_range({'since':'${startDate}','until':'${endDate}'}){campaign_name,account_id,spend,reach,purchase_roas,frequency,cpm,account_name,actions,action_values,clicks,impressions,outbound_clicks_ctr,unique_inline_link_clicks,video_p50_watched_actions},status`,
-  }));
 
-  try {
-    const response = await axios.post(
-      `https://graph.facebook.com/v21.0/`,
-      { batch: batchRequests },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        params: { access_token: accessToken },
-      }
-    );
-
-    const campaignData = adAccountIds.map((accountId, index) => {
-      const campaignResponse = response.data[index];
-      let accountName = '';
-      const campaigns = [];
-
-      if (!campaignResponse) {
-        console.log(`[ERROR] No response data for account ${accountId} at index ${index}`);
-        return { account_name: '', account_id: accountId, campaigns: [] };
-      }
-
-      if (campaignResponse.code === 200) {
-        const campaignBody = JSON.parse(campaignResponse.body);
-
-        if (Array.isArray(campaignBody.data)) {
-          let campaignsWithInsights = 0;
-
-          campaignBody.data.forEach(campaign => {
-            if (!campaign.insights || !campaign.insights.data || campaign.insights.data.length === 0) {
-              return;
-            }
-
-            const insights = campaign.insights.data[0];
-            campaignsWithInsights++;
-            
-            // Set account information
-            accountName = insights.account_name || '';
-            accountId = insights.account_id || '';
-            
-            // Extract all the required metrics from insights
-            const content_view = insights.actions?.find(action => action.action_type === 'view_content')?.value || 0;
-            const purchase = insights.actions?.find(action => action.action_type === 'purchase')?.value || 0;
-            const addToCart = Number(insights.actions?.find(action => action.action_type === 'add_to_cart')?.value) || 0;
-            const checkoutInitiated = Number(insights.actions?.find(action => action.action_type === 'initiate_checkout')?.value) || 0;
-            const linkClick = insights.actions?.find(action => action.action_type === 'link_click')?.value || 0;
-            const landingPageView = Number(insights.actions?.find(action => action.action_type === 'landing_page_view')?.value) || 0;
-            const totalClicks = insights.clicks || 0;
-            
-            // Calculate conversion rates
-            const cvToatcRate = content_view > 0 ? (addToCart / content_view) * 100 : 0;
-            const atcToCIRate = addToCart > 0 ? (checkoutInitiated / addToCart) * 100 : 0;
-            const ciToPurchaseRate = checkoutInitiated > 0 ? (purchase / checkoutInitiated) * 100 : 0;
-            const conversionRate = linkClick > 0 ? (purchase / linkClick) * 100 : 0;
-            
-            // Calculate High Intent Click Rate
-            const HighIntentClickRate = Number(parseFloat((((landingPageView + addToCart + checkoutInitiated) / totalClicks) * 100).toFixed(2))) || 0;
-            
-            // Additional metrics
-            const spend = parseFloat(insights.spend) || 0;
-            const frequency = Number(parseFloat(insights.frequency).toFixed(2)) || 0;
-            const outboundCTR = insights.outbound_clicks_ctr && insights.outbound_clicks_ctr.length > 0
-              ? Number(parseFloat(insights.outbound_clicks_ctr[0].value).toFixed(2))
-              : 0.00;
-            const uniqueLinkClicks = Number(insights.unique_inline_link_clicks) || 0;
-            const reach = Number(insights.reach) || 0;
-            
-            // Calculate CPM and CPA metrics
-            const cpmReachBased = reach > 0 ? spend / (reach / 1000) : 0;
-            const cpa = {
-              content_view: content_view > 0 ? spend / content_view : 0,
-              add_to_cart: addToCart > 0 ? spend / addToCart : 0,
-              checkout_initiated: checkoutInitiated > 0 ? spend / checkoutInitiated : 0,
-              purchase: purchase > 0 ? spend / purchase : 0
-            };
-            
-            // Calculate ROAS
-            const roas = parseFloat(parseFloat(insights.purchase_roas?.[0]?.value || 0).toFixed(2));
-            
-            // Video metrics
-            const threeSecondsView = Number(insights.actions?.find(action => action.action_type === 'video_view')?.value) || 0;
-            const HookRate = insights.impressions > 0 ? Number(parseFloat((threeSecondsView / insights.impressions) * 100).toFixed(2)) : 0;
-            
-            const video50Watched = insights.video_p50_watched_actions && insights.video_p50_watched_actions.length > 0
-              ? Number(parseFloat(insights.video_p50_watched_actions[0].value).toFixed(2))
-              : 0.00;
-            
-            const HoldRate = insights.impressions > 0 ? Number(parseFloat((video50Watched / insights.impressions) * 100).toFixed(2)) : 0;
-
-            // Push the fully processed campaign data
-            campaigns.push({
-              "campaignName": insights.campaign_name || "",
-              "Status": campaign.status || "",
-              "Amount spend": spend || 0,
-              "Conversion Rate": parseFloat(conversionRate.toFixed(2)) || 0.00,
-              "ROAS": roas || 0.00,
-              "Reach": reach || 0.00,
-              "Frequency": frequency || 0.00,
-              "CPM": Number(parseFloat(insights.cpm).toFixed(2)) || 0.00,
-              "CPM (Reach Based)": Number(parseFloat(cpmReachBased).toFixed(2)) || 0.00,
-              "Link Click": Number(linkClick),
-              "Outbound CTR": outboundCTR,
-              "Audience Saturation Score": outboundCTR > 0 ? Number(parseFloat((frequency / outboundCTR) * 100).toFixed(2)) : 0.00,
-              "Reach v/s Unique Click": uniqueLinkClicks > 0 ? Number(parseFloat((reach / uniqueLinkClicks).toFixed(2))) : 0.00,
-              "High-Intent Click Rate": HighIntentClickRate || 0.00,
-              "Hook Rate": HookRate || 0.00,
-              "Hold Rate": HoldRate || 0.00,
-              "Content View (CV)": Number(content_view),
-              "Cost per CV": parseFloat(cpa.content_view.toFixed(2)),
-              "Add To Cart (ATC)": Number(addToCart),
-              "Cost per ATC": parseFloat(cpa.add_to_cart.toFixed(2)),
-              "CV to ATC Rate": parseFloat(cvToatcRate.toFixed(2)),
-              "Checkout Initiate (CI)": Number(checkoutInitiated),
-              "Cost per CI": parseFloat(cpa.checkout_initiated.toFixed(2)),
-              "ATC to CI Rate": parseFloat(atcToCIRate.toFixed(2)),
-              "Purchases": Number(purchase),
-              "Cost per purchase": parseFloat(cpa.purchase.toFixed(2)),
-              "CI to Purchase Rate": parseFloat(ciToPurchaseRate.toFixed(2)),
-              "Unique Link Click": uniqueLinkClicks || 0,
-              "Landing Page View": landingPageView || 0,
-              "Three Seconds View": threeSecondsView || 0,
-              "Impressions": parseFloat(parseFloat(insights.impressions).toFixed(2))
-            });
-          });
-        } else {
-          console.log(`[CAMPAIGN] Account ${accountId}: No campaigns data array in response`);
-        }
-      } else {
-        console.log(`[ERROR] Failed to fetch campaigns for account ${accountId}: HTTP ${campaignResponse.code}`);
-        console.log(`[ERROR] Response body: ${JSON.stringify(campaignResponse.body || {})}`);
-      }
-
-      return {
-        account_name: accountName,
-        account_id: accountId,
-        campaigns: campaigns
-      };
-    });
-    return campaignData;
-  } catch (error) {
-    console.error(`[CAMPAIGN] Error in fetchCampaignData: ${error.message}`);
-    console.error(`[CAMPAIGN] Stack: ${error.stack}`);
-    if (error.response) {
-      console.error(`[CAMPAIGN] Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
-    }
-    throw error;
-  }
-};
 
 const fetchInterestData = async (adAccountIds, accessToken, startDate, endDate) => {
   try {
@@ -973,10 +823,6 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     });
   }
 }
-
-
-
-
 
 
 

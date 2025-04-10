@@ -13,7 +13,7 @@ import GoogleCallback from './Auth/OauthSucces.tsx';
 import ReportsPage from './pages/ReportPage/ReportsPage.tsx';
 import { TokenErrorProvider } from './context/TokenErrorContext.tsx';
 import GoogleAdsDashboard from './pages/GoogleAdsHub/Dashboard.tsx';
-import FbReportPage from './pages/FbReports/FbReportPage.tsx';
+import FbReportPage from './pages/Meta/FbReports/FbReportPage';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
@@ -24,6 +24,7 @@ import TutorialDriver from './components/Tutorial/TutorialDriver.tsx';
 import LandingPage from './pages/LandingPage/page.tsx';
 import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
 import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
+import CampaignPage from './pages/Meta/Campaign Reports/CampaignPage.tsx';
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
                   <Route path ="/profile" element = {<ProfilePage />} />
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
                   <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
                 </Routes>
                 </TutorialManager>
               </Router>

@@ -137,6 +137,7 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
         resultsByAccount[accountName].interestMetrics = Object.values(resultsByAccount[accountName].interestMetrics);
         
       } catch (accountError) {
+        console.log(accountError);
         resultsByAccount[adAccountId] = {
           adAccountId,
           error: accountError.message,

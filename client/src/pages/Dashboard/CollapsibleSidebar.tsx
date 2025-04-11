@@ -203,7 +203,7 @@ export default function CollapsibleSidebar() {
                 // Main heading with tooltip when collapsed
                 const dashboardItemContent = (
                   <div
-                    className={`flex items-center px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 ${item.subItems ? "cursor-default" : "cursor-pointer"}
+                    className={`flex items-center px-4 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 ${item.subItems ? "cursor-auto" : "cursor-pointer"}
                       ${
                         isMainItemActive ? "text-white font-semibold relative" : "text-gray-100"
                       } ${isItemDisabled(item) ? "cursor-not-allowed opacity-50" : ""}`}

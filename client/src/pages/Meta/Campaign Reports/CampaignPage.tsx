@@ -107,6 +107,7 @@ function CampaignPage() {
                                 }))
                             }}
                             height={height}
+                            type="blended-summary"
                         />
                     )}
                     {(accountData && accountData.map(account => (

@@ -58,7 +58,7 @@ interface MetaCampaignTableProps {
     campaigns: Campaign[]
   }
   height: string
-  type?:string
+  type?: string
 }
 
 // New interface for grouped campaigns
@@ -68,7 +68,7 @@ interface GroupedCampaign {
   isExpanded: boolean
 }
 
-const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,type }) => {
+const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, type }) => {
   const dispatch = useDispatch()
   const [draggedCampaign, setDraggedCampaign] = useState<string | null>(null)
   const [dragOverCampaign, setDragOverCampaign] = useState<string | null>(null)
@@ -122,7 +122,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
       // Check all possible status property names and formats
       const statusValue = campaign.status || campaign.Status || '';
       const status = String(statusValue).toLowerCase();
-      
+
       return statusFilter === 'active' ? status === 'active' : status === 'paused';
     });
   };
@@ -572,7 +572,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
             </div>
           </div>
           <div className="flex items-center gap-2">
-          <DropdownMenu>
+            <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
@@ -580,24 +580,24 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                   className={`gap-1 font-medium ${statusFilter !== 'all' ? "bg-blue-50 text-blue-600 border-blue-200" : ""}`}
                 >
                   <Filter className={`h-4 w-4 ${statusFilter !== 'all' ? "text-blue-600" : "text-slate-500"}`} />
-                  {statusFilter === 'all' ? 'All Status' : 
-                   statusFilter === 'active' ? 'Active' : 'Paused'}
+                  {statusFilter === 'all' ? 'All Status' :
+                    statusFilter === 'active' ? 'Active' : 'Paused'}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-32">
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setStatusFilter('all')}
                   className={statusFilter === 'all' ? "bg-blue-50" : ""}
                 >
                   All Status
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setStatusFilter('active')}
                   className={statusFilter === 'active' ? "bg-blue-50" : ""}
                 >
                   Active
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setStatusFilter('paused')}
                   className={statusFilter === 'paused' ? "bg-blue-50" : ""}
                 >
@@ -666,7 +666,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
               <TooltipContent>{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</TooltipContent>
             </Tooltip>
 
-           
+
           </div>
         </div>
 
@@ -690,9 +690,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                         <th
                           key={column}
                           ref={(el) => (columnRefs.current[column] = el)}
-                          className={`text-left p-2 font-medium text-slate-700 border-b border-r ${
-                            isFrozen ? "sticky z-20 bg-slate-50" : ""
-                          } ${dragOverColumn === column ? "bg-blue-50" : ""}`}
+                          className={`text-left p-2 font-medium text-slate-700 border-b border-r ${isFrozen ? "sticky z-20 bg-slate-50" : ""
+                            } ${dragOverColumn === column ? "bg-blue-50" : ""}`}
                           style={{
                             left: leftPos,
                             ...columnStyle,
@@ -761,11 +760,10 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                               return (
                                 <td
                                   key={column}
-                                  className={`p-2 border-r ${
-                                    isFrozen
+                                  className={`p-2 border-r ${isFrozen
                                       ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
                                       : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                  }`}
+                                    }`}
                                   style={{
                                     left: leftPos,
                                     ...columnStyle,
@@ -800,11 +798,10 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                             return (
                               <td
                                 key={column}
-                                className={`p-2 border-r ${
-                                  isFrozen
+                                className={`p-2 border-r ${isFrozen
                                     ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
                                     : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                } font-semibold`}
+                                  } font-semibold`}
                                 style={{
                                   left: leftPos,
                                   ...columnStyle,
@@ -821,9 +818,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                         group.campaigns.map((campaign, index) => (
                           <tr
                             key={`group-${group.label}-campaign-${campaign.Campaign}-${index}`}
-                            className={`border-b hover:bg-slate-50 transition-colors ${
-                              dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
-                            }`}
+                            className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                              }`}
                             draggable
                             onDragStart={() => handleDragStart(campaign.campaignName)}
                             onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
@@ -849,7 +845,15 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                                         ...columnStyle,
                                       }}
                                     >
-                                      <div>{campaign.Campaign}</div>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="font-medium">{campaign.Campaign}</span>
+                                        {type === "blended-summary" && campaign.accountName && (
+                                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                                            {campaign.accountName}
+                                          </span>
+                                        )}
+
+                                      </div>
                                     </td>
                                   )
                                 }
@@ -1030,11 +1034,10 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                         return (
                           <td
                             key={column}
-                            className={`p-2 border-r ${
-                              isFrozen
+                            className={`p-2 border-r ${isFrozen
                                 ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
                                 : "bg-gradient-to-r from-gray-100 to-gray-50"
-                            } font-semibold`}
+                              } font-semibold`}
                             style={{
                               left: leftPos,
                               ...columnStyle,
@@ -1051,9 +1054,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                 {(isGroupingEnabled ? ungroupedCampaigns : filteredCampaigns).map((campaign, index) => (
                   <tr
                     key={`${isGroupingEnabled ? 'ungrouped' : 'all'}-${campaign.Campaign}-${index}`}
-                    className={`border-b hover:bg-slate-50 transition-colors ${
-                      dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
-                    }`}
+                    className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                      }`}
                     draggable
                     onDragStart={() => handleDragStart(campaign.campaignName)}
                     onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
@@ -1067,7 +1069,6 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                         const isFrozen = frozenColumns.includes(column)
                         const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
                         const columnStyle = getColumnStyle(column)
-
                         if (column === "Campaign") {
                           return (
                             <td
@@ -1078,7 +1079,15 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height ,typ
                                 ...columnStyle,
                               }}
                             >
-                              <div>{campaign.Campaign}</div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium">{campaign.Campaign}</span>
+                                {type === "blended-summary" && campaign.accountName && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                                    {campaign.accountName}
+                                  </span>
+                                )}
+
+                              </div>
                             </td>
                           )
                         }

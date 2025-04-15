@@ -4,7 +4,7 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
-import { fetchCampaignData } from './fbCampaign.js';
+
 
 config();
 
@@ -304,7 +304,7 @@ const fetchInterestData = async (adAccountIds, accessToken, startDate, endDate) 
   }
 };
 
-export const fetchFBAdAccountAndCampaignData = async (req, res) => {
+export const fetchFBAdAccountData = async (req, res) => {
   let { startDate, endDate, userId } = req.body;
   const { brandId } = req.params;
 
@@ -401,17 +401,11 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
         console.log(`[BATCH] Processing batch ${batchIndex + 1}/${batches.length} from ${batch.start} to ${batch.end}`);
 
         try {
-          const [accountsData, campaignsData, interestsData] = await Promise.all([
-            fetchAdAccountInsights(adAccountIds, accessToken, batch.start, batch.end),
-            fetchCampaignData(adAccountIds, accessToken, batch.start, batch.end),
-            fetchInterestData(adAccountIds, accessToken, batch.start, batch.end)
-          ]);
+          const accountsData = await fetchAdAccountInsights(adAccountIds, accessToken, batch.start, batch.end)
           // Merge the data for each account
           return accountsData.map((accountData, index) => {
             return {
               ...accountData,
-              campaigns: campaignsData[index].campaigns,
-              interestMetrics: interestsData[index].interestMetrics,
               dateRange: { start: batch.start, end: batch.end }
             };
           });
@@ -419,8 +413,6 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
           console.error(`[BATCH] Error processing batch ${batchIndex + 1}: ${batchError.message}`);
           return adAccountIds.map(accountId => ({
             adAccountId: accountId,
-            campaigns: [],
-            interestMetrics: [],
             dateRange: { start: batch.start, end: batch.end },
             error: batchError.message
           }));
@@ -430,17 +422,12 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
       // Merge all batch results into a single dataset
       results = mergeAccountDataAcrossBatches(batchResults.flat());
     } else {
-      const [accountsData, campaignsData, interestsData] = await Promise.all([
-        fetchAdAccountInsights(adAccountIds, accessToken, startDate, endDate),
-        fetchCampaignData(adAccountIds, accessToken, startDate, endDate),
-        fetchInterestData(adAccountIds, accessToken, startDate, endDate)
-      ]);
+      const accountsData = await fetchAdAccountInsights(adAccountIds, accessToken, startDate, endDate)
+       
       // Merge the data for each account
       results = accountsData.map((accountData, index) => {
         return {
           ...accountData,
-          campaigns: campaignsData[index].campaigns,
-          interestMetrics: interestsData[index].interestMetrics
         };
       });
     }
@@ -448,52 +435,21 @@ export const fetchFBAdAccountAndCampaignData = async (req, res) => {
     // Calculate aggregated metrics
     const aggregatedMetrics = getAggregatedFbMetrics(results);
 
-    // Aggregate interest metrics across all accounts
-    const aggregatedInterestMetricsMap = {};
-
-    results.forEach(account => {
-      account.interestMetrics.forEach(interestMetric => {
-        const interestName = interestMetric.Interest;
-
-        if (!aggregatedInterestMetricsMap[interestName]) {
-          aggregatedInterestMetricsMap[interestName] = {
-            Interest: interestName,
-            InterestId: interestMetric.InterestId,
-            Spend: 0,
-            Revenue: 0,
-          };
-        }
-
-        aggregatedInterestMetricsMap[interestName].Spend += interestMetric.Spend;
-        aggregatedInterestMetricsMap[interestName].Revenue += interestMetric.Revenue;
-      });
-    });
-
-    // Convert the map to array and calculate ROAS for each interest
-    const aggregatedInterestMetrics = Object.values(aggregatedInterestMetricsMap).map(interest => {
-      return {
-        ...interest,
-        Roas: interest.Spend > 0 ? interest.Revenue / interest.Spend : 0
-      };
-    });
-
-    console.log(`[API] Returning data with ${aggregatedInterestMetrics.length} aggregated interests`);
-
+   
     return res.status(200).json({
       success: true,
       data: results,
       aggregatedMetrics,
-      aggregatedInterestMetrics
     });
   } catch (error) {
-    console.error('[ERROR] Error fetching Facebook Ad Account and Campaign Data:', error);
+    console.error('[ERROR] Error fetching Facebook Ad Account :', error);
     if (error.response) {
       console.log(`[ERROR] API response status: ${error.response.status}`);
       console.log(`[ERROR] API response data:`, error.response.data);
     }
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while fetching Facebook Ad Account and Campaign data.',
+      message: 'An error occurred while fetching Facebook Ad Account  data.',
       error: error.message,
     });
   }
@@ -517,8 +473,6 @@ const mergeAccountDataAcrossBatches = (batchedAccounts) => {
         ctr: 0,
         clicks: 0,
         impressions: 0,
-        campaigns: [],
-        interestMetrics: [],
         batches: []
       };
     }
@@ -537,31 +491,6 @@ const mergeAccountDataAcrossBatches = (batchedAccounts) => {
     if (account.purchases) {
       currentAccount.purchases.value += parseFloat(account.purchases.value || 0);
     }
-
-    // Append campaigns and interest metrics
-    currentAccount.campaigns = [...currentAccount.campaigns, ...account.campaigns];
-
-    // Merge interest metrics by name
-    const interestMap = {};
-    [...currentAccount.interestMetrics, ...account.interestMetrics].forEach(interest => {
-      if (!interestMap[interest.Interest]) {
-        interestMap[interest.Interest] = {
-          Interest: interest.Interest,
-          InterestId: interest.InterestId,
-          Spend: 0,
-          Revenue: 0,
-        };
-      }
-
-      interestMap[interest.Interest].Spend += interest.Spend;
-      interestMap[interest.Interest].Revenue += interest.Revenue;
-    });
-
-    // Recalculate ROAS for each interest
-    currentAccount.interestMetrics = Object.values(interestMap).map(interest => ({
-      ...interest,
-      Roas: interest.Spend > 0 ? interest.Revenue / interest.Spend : 0
-    }));
 
     // Save batch information
     if (account.dateRange) {

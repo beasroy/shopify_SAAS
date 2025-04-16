@@ -11,6 +11,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import Loader from "@/components/dashboard_component/loader";
 import MetaCampaignTable from "./components/MetaCampaignTable";
+import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
+import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
 
 function CampaignPage() {
 
@@ -91,7 +93,9 @@ function CampaignPage() {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                <div className="flex-none">
+                {(!date.from || !date.to) ? <MissingDateWarning /> :(     
+                    <>      
+                    <div className="flex-none">
                     <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
                 </div>
                 <main className="p-4 md:p-6 lg:px-8 overflow-auto">
@@ -126,6 +130,11 @@ function CampaignPage() {
                     )))}
                 </div>
                 </main>
+            
+                
+                </>
+)}
+    <HelpDeskModal />
             </div>
         </div>
     )

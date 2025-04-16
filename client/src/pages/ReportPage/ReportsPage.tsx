@@ -13,6 +13,7 @@ import Header from '@/components/dashboard_component/Header';
 import DaywiseMetricsPage from './component/DaywiseMetricsPage';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
+import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 
 const ReportsPage: React.FC = () => {
 
@@ -45,6 +46,7 @@ const ReportsPage: React.FC = () => {
     setActiveTab(value);
   };
 
+
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
@@ -59,7 +61,7 @@ const ReportsPage: React.FC = () => {
               onSuccess={(platform, accountName, accountId) => {
                 console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
               }} /> </>
-        ) : (
+        ) :(!dateRange.from || !dateRange.to) ? <MissingDateWarning /> : (
           <>
             {/* Existing page content */}
             <Header title='E-Commerce Insighhts' Icon={ShoppingCart} showDatePicker={true} />

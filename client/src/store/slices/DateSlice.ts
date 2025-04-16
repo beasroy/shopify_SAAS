@@ -7,7 +7,6 @@ interface DateRange {
   compareTo?: string;   // Optional comparison date range end
 }
 
-// Define the initial state with default date range (first day of current month to today)
 const initialState: DateRange = {
   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
   to: new Date().toISOString(),

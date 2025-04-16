@@ -18,6 +18,7 @@ import NewReportTable from "./NewReportTable";
 import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet";
 import Loader from "@/components/dashboard_component/loader";
 
+
 interface EcommerceMetric {
   "Date": string
   "Add To Carts": string
@@ -65,6 +66,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const user = useSelector((state: RootState) => state.user.user)
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
+
 
   // Consolidate date range effects
   useEffect(() => {
@@ -212,7 +214,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     setFilters(filters.filter((_, i) => i !== index));
   };
 
-  
   if(isLoading){
     return <Loader />
   }

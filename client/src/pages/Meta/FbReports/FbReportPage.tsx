@@ -13,6 +13,7 @@ import Header from '@/components/dashboard_component/Header';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import CollapsibleSidebar from '@/pages/Dashboard/CollapsibleSidebar';
 import { CustomTabs } from '@/pages/ConversionReportPage/components/CustomTabs';
+import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 
 
 
@@ -51,7 +52,9 @@ const FbReportPage: React.FC = () => {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                {/* Header */}
+                {(!date.from || !date.to) ? <MissingDateWarning /> :
+                 (<>
+
                 <div className="flex-none">
                     <Header title='Meta Reports' Icon={FaMeta} showDatePicker={true} />
 
@@ -101,8 +104,10 @@ const FbReportPage: React.FC = () => {
                         )}
                     </div>
                 </div>
+                </>)}
                 <HelpDeskModal />
             </div>
+       
         </div>
     );
 

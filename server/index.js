@@ -5,7 +5,7 @@ import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.js"
 import spotifyRoutes from "./routes/shopify.js"
-import analyticsRoutes from "./routes/analytics.js"
+import analyticsRoutes from "./routes/analytics.js"  
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
 import excelReportRoutes from "./routes/report.js" 
@@ -18,6 +18,7 @@ import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
+// import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js"
 
 
 const app = express();
@@ -61,7 +62,7 @@ if (process.env.NODE_ENV === 'production') {
   console.log('Running in development mode - cron jobs not initialized');
 }
 
-
+// monthlyCalculateMetricsForAllBrands("2024-01-01","2025-04-14","67eb85f2f583a37ca251622a")
  
 const PORT = process.env.PORT || 5000;
 

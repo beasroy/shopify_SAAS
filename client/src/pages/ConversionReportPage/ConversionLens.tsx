@@ -25,6 +25,7 @@ import CityTypeConversion from './components/CityConversion';
 import CountryConversion from './components/CountryConversion';
 import CampaignConversion from './components/CampaignConversion';
 import ChannelConversion from './components/ChannelConversion';
+import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 
 const ConversionLens: React.FC = () => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -84,123 +85,131 @@ const ConversionLens: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex-none">
-          <Header
-            title="Conversion Lens"
-            Icon={Radar}
-            showDatePicker={true}
-          />
+      
+         <div className="flex-1 h-screen overflow-hidden flex flex-col">
+         {(!date.from || !date.to) ? (
+          <MissingDateWarning />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex-none">
+              <Header
+                title="Conversion Lens"
+                Icon={Radar}
+                showDatePicker={true}
+              />
 
-          <div id="report-tab" className="bg-white px-6 sticky top-0 z-10 w-full">
-            <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
-        </div>
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="px-6 py-4 space-y-6">
-            {activeTab === 'age' && <div id="age-conversion-report">
-              <AgeConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'gender' && <div id="gender">
-              <GenderConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+              <div id="report-tab" className="bg-white px-6 sticky top-0 z-10 w-full">
+                <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
+              </div>
+            </div>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-auto">
+              <div className="px-6 py-4 space-y-6">
+                {activeTab === 'age' && <div id="age-conversion-report">
+                  <AgeConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'gender' && <div id="gender">
+                  <GenderConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'interest' && <div id="interest">
-              <InterestConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'interest' && <div id="interest">
+                  <InterestConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'device' && <div id="device" >
-              <DeviceTypeConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'operatingSystem' && <div id="operatingSystem" >
-              <OperatingSystemConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'browser' && <div id="browser">
-              <BrowserConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'device' && <div id="device" >
+                  <DeviceTypeConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'operatingSystem' && <div id="operatingSystem" >
+                  <OperatingSystemConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'browser' && <div id="browser">
+                  <BrowserConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'source' && <div id="source" >
-              <SourceConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'source' && <div id="source" >
+                  <SourceConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'channel' && <div id="channel" >
-              <ChannelConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'channel' && <div id="channel" >
+                  <ChannelConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'campaign' && <div id="campaign">
-              <CampaignConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'country' && <div id="country">
-              <CountryConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'city' && <div id="city">
-              <CityTypeConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'campaign' && <div id="campaign">
+                  <CampaignConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'country' && <div id="country">
+                  <CountryConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'city' && <div id="city">
+                  <CityTypeConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'region' && <div id="region" >
-              <RegionConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'landingPage' && <div id="landingPage" >
-              <LandingPageConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-            {activeTab === 'pagePath' && <div id="pagePath">
-              <PagePathConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
+                {activeTab === 'region' && <div id="region" >
+                  <RegionConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'landingPage' && <div id="landingPage" >
+                  <LandingPageConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+                {activeTab === 'pagePath' && <div id="pagePath">
+                  <PagePathConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
 
-            {activeTab === 'pageTitle' && <div id="pageTitle" >
-              <PageTitleConversion dateRange={{
-                from: date.from ? new Date(date.from) : undefined,
-                to: date.to ? new Date(date.to) : undefined
-              }} />
-            </div>}
-          </div>
-          <HelpDeskModal />
-        </div>
+                {activeTab === 'pageTitle' && <div id="pageTitle" >
+                  <PageTitleConversion dateRange={{
+                    from: date.from ? new Date(date.from) : undefined,
+                    to: date.to ? new Date(date.to) : undefined
+                  }} />
+                </div>}
+              </div>
+              <HelpDeskModal />
+            </div>
+          </>
+        )}
       </div>
+     
       </div>
       );
 };

@@ -371,7 +371,7 @@ const SummaryDashboard: React.FC = () => {
   },[])
 
   if (loading) {
-    return <Loader />;
+    return <Loader isLoading={loading} />;
   }
 
   return (

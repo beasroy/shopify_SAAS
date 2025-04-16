@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import {
   ChevronLeft,
@@ -30,6 +28,7 @@ import { FaMeta } from "react-icons/fa6"
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -57,15 +56,20 @@ export default function CollapsibleSidebar() {
 
       if (!selectedBrandId && response.data.length > 0) {
         dispatch(setSelectedBrandId(response.data[0]._id))
+        // For first load after login, navigate to dashboard
+        if (isInitialLoad) {
+          navigate('/dashboard')
+          setIsInitialLoad(false)
+        }
       }
     } catch (error) {
       console.error("Error fetching brands:", error)
     }
-  }, [user?.brands, dispatch, selectedBrandId]) // Only depends on user.brands and baseURL
+  }, [user?.brands, dispatch, selectedBrandId, isInitialLoad, navigate]) // Added isInitialLoad and navigate
 
   useEffect(() => {
     fetchBrands()
-  }, [fetchBrands]) // Will only run when user.brands changes
+  }, [fetchBrands]) // Will only run when dependencies change
 
   const toggleSidebar = () => setIsExpanded((prev) => !prev)
 
@@ -76,6 +80,8 @@ export default function CollapsibleSidebar() {
         dispatch(clearUser())
         dispatch(resetBrand())
         navigate("/")
+        // Reset initial load state for next login
+        setIsInitialLoad(true)
       }
     } catch (error) {
       console.error("Error logging out:", error)
@@ -88,6 +94,42 @@ export default function CollapsibleSidebar() {
       dispatch(setSelectedBrandId(pathParts[2]))
     }
   }, [location.pathname, dispatch])
+
+  // Helper function to get current path type
+  const getCurrentPathType = () => {
+    const pathParts = location.pathname.split("/")
+    if (pathParts.length >= 2) {
+      return pathParts[1] // Returns the path type (e.g., 'ad-metrics', 'analytics-dashboard', etc.)
+    }
+    return 'dashboard' // Default
+  }
+
+  // Function to handle brand change navigation
+  const handleBrandChange = (brandId: string) => {
+    dispatch(setSelectedBrandId(brandId))
+    
+    // If it's initial load, we'll navigate to dashboard (this is handled in fetchBrands)
+    // For subsequent brand changes, stay on current dashboard type but with new brand ID
+    if (!isInitialLoad) {
+      const currentPathType = getCurrentPathType()
+      
+      // Special case for main dashboard that doesn't have brandId in URL
+      if (currentPathType === 'dashboard') {
+        navigate('/dashboard')
+        return
+      }
+      
+      // For pages with brand ID in URL path, replace the old brand ID with the new one
+      const pathParts = location.pathname.split("/")
+      if (pathParts.length >= 3) {
+        pathParts[2] = brandId
+        navigate(pathParts.join('/'))
+      } else {
+        // Fallback - navigate to the same dashboard type with new brandId
+        navigate(`/${currentPathType}/${brandId}`)
+      }
+    }
+  }
 
   // Define base dashboards that all users can see
   const allDashboards = [
@@ -109,6 +151,7 @@ export default function CollapsibleSidebar() {
       icon: <FaMeta />,
       subItems: [
         { name: "Campaign Analysis", path: `/meta-campaigns/${selectedBrandId}` },
+        { name: "Interest 360", path:`/meta-interest/${selectedBrandId}`},
         { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}` },
       ],
     },
@@ -164,7 +207,7 @@ export default function CollapsibleSidebar() {
         <div className={`flex-1 overflow-y-auto ${isExpanded ? "h-[calc(100vh-64px)]" : "h-[calc(100vh-16px)]"}`}>
           <ScrollArea className="h-full">
             <nav className="mt-3">
-              {/* Brand selector - keeping this the same as requested */}
+              {/* Brand selector - Modified to use handleBrandChange */}
               <SidebarItem
                 icon={<Store size={24} />}
                 text={
@@ -182,12 +225,9 @@ export default function CollapsibleSidebar() {
                 {brands.map((brand: IBrand) => (
                   <SidebarChild
                     key={brand._id}
-                    path={`/dashboard`}
+                    path={`#`} // Changed to # to prevent default navigation
                     text={brand.name.replace(/_/g, " ")}
-                    onClick={() => {
-                      dispatch(setSelectedBrandId(brand._id))
-                      navigate(`/dashboard`)
-                    }}
+                    onClick={() => handleBrandChange(brand._id)} // Use our new handler
                     isSelected={selectedBrandId === brand._id}
                   />
                 ))}
@@ -345,7 +385,7 @@ function SidebarChild({
       className={baseClasses}
       onClick={(e) => {
         // Stop default navigation for items that are just containers
-        if (path === "/#" || !path) {
+        if (path === "/#" || !path || path === "#") {
           e.preventDefault()
         }
 

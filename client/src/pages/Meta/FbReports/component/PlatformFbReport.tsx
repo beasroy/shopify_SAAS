@@ -133,8 +133,9 @@ const PlatformFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
 
+   
     if(loading){
-        return <Loader />
+        return <Loader isLoading={loading}/>
     }
 
     return (

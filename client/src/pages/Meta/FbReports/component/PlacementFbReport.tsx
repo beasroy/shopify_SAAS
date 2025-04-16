@@ -134,8 +134,9 @@ const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
     const locale = useSelector((state:RootState) => state.locale.locale)
 
+   
     if(loading){
-        return <Loader />
+        return <Loader isLoading={loading}/>
     }
     return (
         <div>

@@ -132,7 +132,7 @@ const fetchData = useCallback(async () => {
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   if (loading) {
-    return <Loader />;
+    return <Loader isLoading={loading} />
   }
   return (
     <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>

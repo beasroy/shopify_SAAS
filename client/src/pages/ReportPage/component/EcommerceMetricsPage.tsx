@@ -215,7 +215,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   };
 
   if(isLoading){
-    return <Loader />
+    return <Loader isLoading={isLoading} />
   }
 
   return (

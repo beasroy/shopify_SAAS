@@ -74,11 +74,12 @@ export interface Interest {
 
 export interface InterestTableProps {
     data: {
-        account_name: string
+       
         account_id: string
         interest: Interest[]
     }
     height: string
+    account_name: string
 }
 
 export interface ILogoProps {

@@ -101,7 +101,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   return (
     <>
     {loading ? (
-      <Loader />
+     <Loader isLoading={loading}/>
     ) : (
       apiResponse?.data && apiResponse.data.map((account, _) => (
         <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>

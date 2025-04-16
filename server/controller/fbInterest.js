@@ -3,11 +3,28 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 
-// Create instance of axios with defaults for reuse
+
 const fbApi = axios.create({
   baseURL: 'https://graph.facebook.com/v19.0',
-  timeout: 10000
+  timeout: 30000
 });
+
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+
+const makeRequestWithRetry = async (requestFn, retries = MAX_RETRIES) => {
+  try {
+    return await requestFn();
+  } catch (error) {
+    if (error.code === 'ECONNABORTED' && retries > 0) {
+      console.log(`[INTEREST] Request timed out, retrying... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return makeRequestWithRetry(requestFn, retries - 1);
+    }
+    throw error;
+  }
+};
 
 // Batch size for parallel API requests
 const BATCH_SIZE = 5;
@@ -34,7 +51,6 @@ export const divideDateRange = (startDate, endDate, chunks = 4) => {
   return dateRanges;
 };
 
-// Process ad sets in batches to limit concurrent requests
 const processBatch = async (items, processFn) => {
   const results = [];
   
@@ -47,7 +63,6 @@ const processBatch = async (items, processFn) => {
   return results;
 };
 
-// Fetch ad sets and their metrics in a single call to reduce API requests
 export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, startDate, endDate) {
   try {
     const accountIds = Array.isArray(adAccountIds) ? adAccountIds : [adAccountIds];
@@ -67,7 +82,7 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
           fbApi.get(`/${adAccountId}/adsets`, {
             params: {
               fields: 'id,name,targeting,insights.time_range({"since":"' + startDate + '","until":"' + endDate + '"}).fields(spend,action_values)',
-              limit: 100, // Increase limit to reduce pagination
+              limit: 250, 
               time_range: JSON.stringify({ since: startDate, until: endDate }),
               access_token: accessToken
             }
@@ -77,14 +92,12 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
         const accountName = accountInfoResponse.data.name || adAccountId;
         resultsByAccount[accountName] = {
           adAccountId,
-          interestMetrics: {} // Temporary object for aggregation
+          interestMetrics: {} 
         };
         
         const adSets = adSetsResponse.data.data || [];
-        
-        // Process ad sets and extract data in a single loop
+  
         adSets.forEach(adSet => {
-          // Extract interests
           const interests = adSet.targeting && 
                           adSet.targeting.flexible_spec && 
                           adSet.targeting.flexible_spec[0] &&
@@ -94,7 +107,6 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
           
           if (interests.length === 0) return;
           
-          // Extract metrics (directly from the insights edge we requested)
           const metrics = adSet.insights && adSet.insights.data && adSet.insights.data[0] 
             ? adSet.insights.data[0] 
             : { spend: '0' };
@@ -105,6 +117,9 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
           
           const spend = parseFloat(metrics.spend || 0);
           const revenue = parseFloat(purchaseValue?.value || 0);
+          
+          // Skip if there's no spend for this ad set
+          if (spend <= 0) return;
           
           // Update interest metrics
           interests.forEach(interest => {
@@ -126,21 +141,41 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
           });
         });
         
-        // Calculate ROAS for each interest and convert to array
+        // Calculate ROAS for each interest
         Object.values(resultsByAccount[accountName].interestMetrics).forEach(interest => {
           interest.Roas = interest.Spend > 0 
             ? interest.Revenue / interest.Spend 
             : 0;
         });
         
-        // Convert object to array as requested
-        resultsByAccount[accountName].interestMetrics = Object.values(resultsByAccount[accountName].interestMetrics);
+        // Convert to array and filter out interests with zero spend
+        resultsByAccount[accountName].interestMetrics = Object.values(resultsByAccount[accountName].interestMetrics)
+          .filter(interest => interest.Spend > 0);
         
       } catch (accountError) {
-        console.log(accountError);
+        console.error(`Error processing account ${adAccountId}:`, {
+          message: accountError.message,
+          status: accountError.response?.status,
+          statusText: accountError.response?.statusText,
+          fbError: accountError.response?.data?.error || 'No FB error details',
+          requestURL: accountError.config?.url,
+          requestParams: accountError.config?.params,
+          stack: accountError.stack
+        });
+        
         resultsByAccount[adAccountId] = {
           adAccountId,
-          error: accountError.message,
+          error: {
+            message: accountError.message,
+            fbErrorCode: accountError.response?.data?.error?.code,
+            fbErrorType: accountError.response?.data?.error?.type,
+            fbErrorMessage: accountError.response?.data?.error?.message,
+            fbErrorSubcode: accountError.response?.data?.error?.error_subcode,
+            requestParams: {
+              fields: accountError.config?.params?.fields,
+              timeRange: accountError.config?.params?.time_range
+            }
+          },
           interestMetrics: []
         };
       }
@@ -148,8 +183,21 @@ export async function getAdSetInterestsAndMetrics(accessToken, adAccountIds, sta
     
     return resultsByAccount;
   } catch (error) {
-    console.error('Error fetching ad set interests and metrics:', error);
-    throw error;
+    // Enhanced error logging for general errors
+    console.error('Error fetching ad set interests and metrics:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      fbError: error.response?.data?.error || 'No FB error details',
+      stack: error.stack
+    });
+    
+    throw {
+      message: error.message,
+      fbErrorDetails: error.response?.data?.error,
+      status: error.response?.status,
+      stack: error.stack
+    };
   }
 }
 
@@ -157,6 +205,7 @@ export const fetchChunkedInterestData = async (accessToken, adAccountIds, startD
   try {
     // Divide the date range into chunks
     const dateRanges = divideDateRange(startDate, endDate, chunks);
+    let blendedSummary = [];
     
     // Fetch data for each chunk in parallel batches
     const chunkResults = await processBatch(dateRanges, async (range) => {
@@ -172,7 +221,7 @@ export const fetchChunkedInterestData = async (accessToken, adAccountIds, startD
     const mergedResults = mergeChunkedResults(chunkResults);
     
     // Create blended summary
-    const blendedSummary = createBlendedSummary(mergedResults);
+    blendedSummary = adAccountIds.length > 1 ? createBlendedSummary(mergedResults) : [];
     
     return {
       resultsByAccount: mergedResults,

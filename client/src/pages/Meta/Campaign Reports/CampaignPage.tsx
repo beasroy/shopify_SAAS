@@ -84,17 +84,12 @@ function CampaignPage() {
         height = 'max-h-[calc(100vh-210px)]'
     }
 
-
-    if (isLoading) {
-        return <Loader />
-    }
-
     return (
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                {(!date.from || !date.to) ? <MissingDateWarning /> :(     
-                    <>      
+                {(!date.from || !date.to) ? <MissingDateWarning /> :(   (isLoading) ? <Loader isLoading={isLoading}/>  : 
+                    <>     
                     <div className="flex-none">
                     <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
                 </div>

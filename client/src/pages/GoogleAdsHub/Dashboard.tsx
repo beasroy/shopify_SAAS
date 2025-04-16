@@ -37,9 +37,9 @@ const GoogleAdsDashboard: React.FC = () => {
 
   const tabs = [
     { label: 'Search Term', value: 'searchterm' },
+    { label: 'Keyword', value: 'keyword' },
     { label: 'Age', value: 'age' },
     { label: 'Gender', value: 'gender' },
-    { label: 'Keyword', value: 'keyword' },
     { label: 'Product', value: 'product' }
   ];
 
@@ -86,6 +86,14 @@ const GoogleAdsDashboard: React.FC = () => {
                     }} />
                   </div>
                 )}
+                 {activeTab === 'keyword' && (
+                  <div id="keyword">
+                    <Keyword dateRange={{
+                      from: date.from ? new Date(date.from) : undefined,
+                      to: date.to ? new Date(date.to) : undefined
+                    }} />
+                  </div>
+                )}
                 {activeTab === 'age' && (
                   <div id="age" >
                     <Age dateRange={{
@@ -102,14 +110,7 @@ const GoogleAdsDashboard: React.FC = () => {
                     }} />
                   </div>
                 )}
-                {activeTab === 'keyword' && (
-                  <div id="keyword">
-                    <Keyword dateRange={{
-                      from: date.from ? new Date(date.from) : undefined,
-                      to: date.to ? new Date(date.to) : undefined
-                    }} />
-                  </div>
-                )}
+               
                 {activeTab === 'product' && (
                   <div id="product">
                     <Product dateRange={{

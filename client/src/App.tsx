@@ -25,6 +25,7 @@ import LandingPage from './pages/LandingPage/page.tsx';
 import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
 import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
 import CampaignPage from './pages/Meta/Campaign Reports/CampaignPage.tsx';
+import InterestPage from './pages/Meta/Interest Reports/InterestReportPage.tsx';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
                   <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
+                  <Route path = "/meta-interest/:brandId" element={<InterestPage />} />
                 </Routes>
                 </TutorialManager>
               </Router>

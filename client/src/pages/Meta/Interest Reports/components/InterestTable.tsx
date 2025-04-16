@@ -1,4 +1,4 @@
-import React, { useState, useRef} from "react"
+import React, { useState, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FacebookLogo } from "@/data/logo"
@@ -8,30 +8,64 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import ColumnManagementSheet from "./ColumnManagementSheet"
-import { InterestTableProps } from "@/interfaces"
+import ColumnManagementSheet from "../../../AnalyticsDashboard/Components/ColumnManagementSheet"
 
+const DEFAULT_COLUMN_WIDTH = "100px"
 
-const DEFAULT_COLUMN_WIDTH = "85px"
+// Update props interface to match the new data structure
+interface InterestData {
+  Interest: string;
+  InterestId: string;
+  Spend: number;
+  Revenue: number;
+  Roas: number;
+  accounts?: string[];
+}
 
+interface InterestTableProps {
+  data: {
+    resultsByAccount: {
+      [accountName: string]: {
+        adAccountId: string;
+        interestMetrics: InterestData[];
+      }
+    },
+    blendedSummary: InterestData[];
+  };
+  height?: string;
+  accountName?: string;
+  showAccounts?: boolean;
+}
 
-
-
-const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
-
+const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96", accountName, showAccounts = false }) => {
   const [draggedInterest, setDraggedInterest] = useState<string | null>(null)
   const [dragOverInterest, setDragOverInterest] = useState<string | null>(null)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
 
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(["Interest", "Spend", "Revenue", "Roas"])
-  const [columnOrder, setColumnOrder] = useState<string[]>(["Interest", "Spend", "Revenue", "Roas"])
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+    showAccounts 
+      ? ["Interest", "Spend", "Revenue", "Roas", "accounts"]
+      : ["Interest", "Spend", "Revenue", "Roas"]
+  );
+  const [columnOrder, setColumnOrder] = useState<string[]>(
+    showAccounts 
+      ? ["Interest", "Spend", "Revenue", "Roas", "accounts"]
+      : ["Interest", "Spend", "Revenue", "Roas"]
+  );
   const [frozenColumns, setFrozenColumns] = useState<string[]>(["Interest"])
-
 
   const tableRef = useRef<HTMLDivElement>(null)
   const columnRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({})
+
+  // Determine which data to display based on accountName prop
+  const interestData = accountName 
+    ? data.resultsByAccount[accountName]?.interestMetrics || []
+    : data.blendedSummary || []
+
+  // Get display name for the table header
+  const displayName = accountName || "All Accounts"
 
   // Calculate left position for frozen columns
   const getLeftPosition = (columnIndex: number): number => {
@@ -57,6 +91,9 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
   const getColumnStyle = (column: string) => {
     if (column === "Interest") {
       return { width: "auto", minWidth: "200px" }
+    }
+    if (column === "accounts") {
+      return { width: "auto", minWidth: "120px" }
     }
     return {
       width: DEFAULT_COLUMN_WIDTH,
@@ -135,7 +172,7 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
 
   const getTableHeight = () => {
     if (isFullScreen) {
-      return "max-h-[calc(100vh-100px)]"
+      return "max-h-screen"
     }
     return height
   }
@@ -154,13 +191,46 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
     return value.toFixed(2) + 'x';
   }
 
+  // Format accounts array
+  const formatAccounts = (accounts: string[] | undefined) => {
+    if (!accounts || accounts.length === 0) return "-";
+    if (accounts.length <= 2) return accounts.join(", ");
+    return `${accounts[0]}, ${accounts[1]} +${accounts.length - 2} more`;
+  }
+
+  // Render cell content based on column
+  const renderCellContent = (interest: InterestData, column: string) => {
+    switch(column) {
+      case "Interest":
+        return interest.Interest;
+      case "Spend":
+        return formatCurrency(interest.Spend);
+      case "Revenue":
+        return formatCurrency(interest.Revenue);
+      case "Roas":
+        return formatRoas(interest.Roas);
+      case "accounts":
+        return formatAccounts(interest.accounts);
+      default:
+        return interest[column as keyof InterestData] || "-";
+    }
+  }
+
+  if (!interestData || interestData.length === 0) {
+    return (
+      <Card className="p-4">
+        <div className="text-center text-slate-500">No interest data available</div>
+      </Card>
+    )
+  }
+
   return (
     <TooltipProvider>
       <Card className={`overflow-hidden ${isFullScreen ? "fixed inset-0 z-50" : ""} border-slate-200 shadow-md`}>
         <div className="flex items-center justify-between p-3 border-b bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center gap-2">
             <FacebookLogo height={"1rem"} width={"1rem"} />
-            <div className="text-base font-semibold text-slate-800">Interest Performance <span>({data.account_name})</span></div>
+            <div className="text-base font-semibold text-slate-800">Interest Performance <span>({displayName})</span></div>
           </div>
           <div className="flex items-center gap-2">
             <Tooltip>
@@ -232,16 +302,16 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
                 </tr>
               </thead>
               <tbody>
-                {data.interest.map((interest, _) => (
+                {interestData.map((interest) => (
                   <tr 
-                    key={interest.InterestId.toString()} 
+                    key={interest.InterestId} 
                     className={`border-b hover:bg-slate-50 transition-colors ${
-                        dragOverInterest === interest.Interest ? "bg-blue-50" : ""
+                        dragOverInterest === interest.InterestId ? "bg-blue-50" : ""
                       }`}
                     draggable
-                    onDragStart={() => handleDragStart(interest.InterestId.toString())}
-                    onDragOver={(e) => handleDragOver(e, interest.InterestId.toString())}
-                    onDrop={() => handleDrop(interest.InterestId.toString())}
+                    onDragStart={() => handleDragStart(interest.InterestId)}
+                    onDragOver={(e) => handleDragOver(e, interest.InterestId)}
+                    onDrop={() => handleDrop(interest.InterestId)}
                     onDragEnd={handleDragEnd}
                   >
                     {columnOrder
@@ -250,15 +320,6 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
                         const isFrozen = frozenColumns.includes(column)
                         const leftPos = isFrozen ? `${getLeftPosition(colIndex)}px` : undefined
                         const columnStyle = getColumnStyle(column)
-                        
-                        let cellContent: React.ReactNode = interest[column]
-                        
-                        // Format values based on column type
-                        if (column === "Spend" || column === "Revenue") {
-                          cellContent = formatCurrency(Number(interest[column]))
-                        } else if (column === "Roas") {
-                          cellContent = formatRoas(Number(interest[column]))
-                        }
                         
                         return (
                           <td
@@ -271,7 +332,7 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height }) => {
                               ...columnStyle,
                             }}
                           >
-                            {cellContent}
+                            {renderCellContent(interest, column)}
                           </td>
                         )
                       })}

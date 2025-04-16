@@ -133,7 +133,7 @@ const fetchData = useCallback(async () => {
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
   if (loading) {
-    return <Loader />;
+    return <Loader isLoading={loading} />
   }
 
   return (

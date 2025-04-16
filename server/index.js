@@ -62,7 +62,7 @@ if (process.env.NODE_ENV === 'production') {
   console.log('Running in development mode - cron jobs not initialized');
 }
 
-// monthlyCalculateMetricsForAllBrands("2024-01-01","2025-04-14","67eb85f2f583a37ca251622a")
+// monthlyCalculateMetricsForAllBrands("2025-01-01","2025-04-15","67eb85f2f583a37ca251622a")
  
 const PORT = process.env.PORT || 5000;
 

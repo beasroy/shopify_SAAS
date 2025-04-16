@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react"
 import { CheckCircle } from "lucide-react"
 
-export default function Loader() {
+export default function Loader({ isLoading }: { isLoading: boolean }) {
   const [progress, setProgress] = useState(0)
   const [messageIndex, setMessageIndex] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
 
   // Loading messages
   const loadingMessages = [
@@ -49,10 +48,6 @@ export default function Loader() {
       });
     }, 80);
 
-    // Simulate backend loading process
-    const loadingTimer = setTimeout(() => {
-      setIsLoading(false);
-    }, 8000); // Adjust this time to match your actual loading needs
 
     // Message changing animation
     const messageInterval = setInterval(() => {
@@ -64,7 +59,6 @@ export default function Loader() {
     return () => {
       clearInterval(progressInterval);
       clearInterval(messageInterval);
-      clearTimeout(loadingTimer);
     };
   }, [isLoading, isComplete]);
 

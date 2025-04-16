@@ -238,7 +238,7 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const renderTable = (): React.ReactNode => {
     if (loading) {
-      return <Loader />
+      return <Loader isLoading={loading}/>
     }
 
     if (error) {

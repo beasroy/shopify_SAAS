@@ -176,7 +176,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
     setFilters(filters.filter((_, i) => i !== index));
   };
   if(isLoading){
-    return <Loader />
+    return <Loader isLoading={isLoading} />
   }
   return (
     <Card className={`mx-4 ${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>

@@ -129,7 +129,7 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
     const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
     if(loading){
-        return <Loader />
+        return <Loader isLoading={loading} />
     }
 
     return (

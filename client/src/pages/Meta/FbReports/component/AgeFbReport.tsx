@@ -133,7 +133,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     const blendedAgeData = apiResponse?.blendedAgeData;
 
     if(loading){
-        return <Loader />
+        return <Loader isLoading={loading}/>
     }
 
     return (

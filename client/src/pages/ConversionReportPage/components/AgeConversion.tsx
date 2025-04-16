@@ -135,7 +135,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const monthlyMetrics = ["Sessions", "Conv. Rate"]; 
 
   if(loading){
-    return <Loader />
+    return <Loader isLoading={loading} />
   }
 
   return (

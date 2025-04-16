@@ -271,7 +271,7 @@ export default function Dashboard() {
   ]
 
   if(isLoading){
-    return <Loader />;
+    return <Loader isLoading={isLoading} />
   }
 
   return (

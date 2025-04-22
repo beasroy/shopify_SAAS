@@ -761,3 +761,35 @@ export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, us
         console.error('Error processing metrics for all brands:', error);
     }
 };
+
+
+export const calculateMetricsForSingleBrand = async (brandId, userId) => {
+    try {
+      console.log(`Starting historical metrics calculation for brand: ${brandId}`);
+      
+      const endDate = new Date();
+      const startDate = subYears(startOfDay(endDate), 2);
+      
+      console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      const existingMetrics = await AdMetrics.findOne({ brandId });
+      
+      if (existingMetrics) {
+        console.log(`Metrics already exist for brand ${brandId}, skipping initial calculation`);
+        return { success: true, message: 'Metrics already exist for this brand' };
+      }
+      
+      const result = await monthlyAddReportData(brandId, startDate, endDate, userId);
+      
+      if (result.success) {
+        console.log(`Historical metrics successfully calculated and saved for brand ${brandId}`);
+        return { success: true, message: 'Historical metrics successfully calculated' };
+      } else {
+        console.error(`Failed to calculate historical metrics for brand ${brandId}: ${result.message}`);
+        return { success: false, message: result.message };
+      }
+    } catch (error) {
+      console.error(`Error calculating historical metrics for brand ${brandId}:`, error);
+      return { success: false, message: error.message };
+    }
+};

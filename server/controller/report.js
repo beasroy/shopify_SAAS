@@ -10,17 +10,25 @@ export const getMetricsbyID = async (req, res) => {
     try {
         const query = { brandId: objectID };
 
+        const today = new Date();
+        const twoYearsAgo = new Date(today);
+        twoYearsAgo.setFullYear(today.getFullYear() - 2);
+
         if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
-            const targetStartDate = new Date(start);
-            const targetEndDate = new Date(end);
 
+            if (start < twoYearsAgo || end < twoYearsAgo) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please select a date range within the last 2 years.'
+                });
+            }
 
-            const dayStart = new Date(targetStartDate);
+            const dayStart = new Date(start);
             dayStart.setUTCHours(0, 0, 0, 0);
 
-            const dayEnd = new Date(targetEndDate);
+            const dayEnd = new Date(end);
             dayEnd.setUTCHours(23, 59, 59, 999);
 
             query.date = { $gte: dayStart, $lte: dayEnd };
@@ -28,7 +36,15 @@ export const getMetricsbyID = async (req, res) => {
 
         console.log("Final query:", query);
 
-        // Aggregate data by adjusted month
+        // Check if data exists for this brand at all
+        const existingData = await AdMetrics.findOne({ brandId: objectID });
+        if (!existingData) {
+            return res.status(404).json({
+                success: false,
+                message: 'No metrics data available yet. Please try again later.'
+            });
+        }
+
         const metrics = await AdMetrics.aggregate([
             { $match: query },
             {
@@ -37,8 +53,8 @@ export const getMetricsbyID = async (req, res) => {
                         month: { $month: "$date" },
                         year: { $year: "$date" }
                     },
-                    totalSales: { $sum : "$totalSales" },
-                    refundAmount: { $sum : "$refundAmount" },
+                    totalSales: { $sum: "$totalSales" },
+                    refundAmount: { $sum: "$refundAmount" },
                     shopifySales: { $sum: "$shopifySales" },
                     metaSpend: { $sum: "$metaSpend" },
                     googleSpend: { $sum: "$googleSpend" },
@@ -73,17 +89,19 @@ export const getMetricsbyID = async (req, res) => {
                     dailyMetrics: {
                         $sortArray: {
                             input: "$dailyMetrics",
-                            sortBy: { date: -1 } // Sort by date in descending order
+                            sortBy: { date: -1 }
                         }
                     }
                 }
             },
-            { $sort: { year: -1, month: -1 } } // Sort by most recent month
+            { $sort: { year: -1, month: -1 } }
         ]);
-        
 
         if (!metrics || metrics.length === 0) {
-            return res.status(404).json({ success: false, message: 'Metrics not found.' });
+            return res.status(404).json({
+                success: false,
+                message: 'No data found for the selected date range.'
+            });
         }
 
         res.status(200).json({ success: true, data: metrics });
@@ -93,6 +111,7 @@ export const getMetricsbyID = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
 
 
 

@@ -134,8 +134,8 @@ export default function CollapsibleSidebar() {
   // Define base dashboards that all users can see
   const allDashboards = [
     { name: "Business Overview", path: `/dashboard`, icon: <Blend size={20} /> },
-    { name: "Marketing Insights Tracker", path: `/ad-metrics/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
-    { name: "AdMetrics Hub", path: `/analytics-dashboard/${selectedBrandId}`, icon: <LineChart size={20} /> },
+    { name: "Marketing Insights Tracker", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
+    { name: "Ad Metrics Hub", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
     {
       name: "GA4 Analytics",
       path: `#`,

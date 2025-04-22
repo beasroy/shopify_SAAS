@@ -1000,6 +1000,191 @@ export async function fetchProductMetrics(req, res) {
     }
 }
 
+// Helper function to process monthly data
+function processMonthlyData(monthlyData, metrics, month) {
+    if (!monthlyData.has(month)) {
+        monthlyData.set(month, {
+            Month: moment(month).format('YYYYMM'),
+            Cost: 0,
+            Clicks: 0,
+            Conversions: 0,
+            "Conversion Value": 0,
+            "Conv. Value/ Cost": 0,
+            "Conversion Rate": 0,
+        });
+    }
+
+    const monthData = monthlyData.get(month);
+    monthData.Cost += (metrics.cost_micros / 1_000_000);
+    monthData.Clicks += metrics.clicks;
+    monthData.Conversions += metrics.conversions;
+    monthData["Conversion Value"] += metrics.conversions_value;
+    monthData["Conv. Value/ Cost"] = metrics.conversions_value_per_cost;
+    monthData["Conversion Rate"] = metrics.conversions_from_interactions_rate * 100;
+}
+// Helper function to format state data
+function formatStateData(stateData) {
+    return Array.from(stateData.entries()).map(([stateName, { MonthlyData }]) => {
+        const totalCost = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Cost, 0);
+        const totalConvValue = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData["Conversion Value"], 0);
+        const totalClicks = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Clicks, 0);
+        const totalConversions = Array.from(MonthlyData.values()).reduce((sum, monthData) => sum + monthData.Conversions, 0);
+        const totalConvValueCostRatio = totalCost > 0 ? totalConvValue / totalCost : 0;
+        const totalConversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+        
+        return {
+            "State": stateName,
+            "Total Cost": totalCost,
+            "Total Clicks": totalClicks,
+            "Total Conversions": totalConversions,
+            "Conv. Value / Cost": totalConvValueCostRatio,
+            "Conversion Rate": totalConversionRate,
+            "Total Conv. Value": totalConvValue,
+            MonthlyData: Array.from(MonthlyData.values()).sort((a, b) => a.Month.localeCompare(b.Month)),
+        };
+    });
+}
+
+// Helper function to validate brand and user
+function validateBrandAndUser(brand, user) {
+    if (!brand || !user) {
+        return {
+            success: false,
+            message: !brand ? 'Brand not found.' : 'User not found.',
+        };
+    }
+    return null;
+}
+
+// Helper function to validate refresh token
+function validateRefreshToken(refreshToken, userId) {
+    if (!refreshToken?.trim()) {
+        console.warn(`No refresh token found for User ID: ${userId}`);
+        return { error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' };
+    }
+    return null;
+}
+
+// Helper function to process account data
+async function processAccountStateData(customer, adjustedStartDate, adjustedEndDate) {
+    const stateQuery = `
+        SELECT
+            customer.descriptive_name,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.conversions_value,
+            metrics.clicks,
+            metrics.conversions_from_interactions_rate,
+            segments.geo_target_state,
+            segments.month
+        FROM
+            user_location_view
+        WHERE
+            segments.date BETWEEN '${adjustedStartDate}' AND '${adjustedEndDate}'
+        ORDER BY
+            metrics.cost_micros DESC
+        LIMIT 1000
+    `;
+
+    const results = await customer.query(stateQuery);
+    const stateData = new Map();
+
+    for (const result of results) {
+        const state = result.segments.geo_target_state || 'Unknown';
+        if (!stateData.has(state)) {
+            stateData.set(state, { MonthlyData: new Map() });
+        }
+        processMonthlyData(stateData.get(state).MonthlyData, result.metrics, result.segments.month);
+    }
+
+    return {
+        accountName: results[0]?.customer?.descriptive_name || `Account ${customer.customer_id}`,
+        stateData
+    };
+}
+
+export async function fetchStateMetrics(req, res) {
+    const { brandId } = req.params;
+    const user = req.user;
+    const userId = user.id;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    try {
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean(),
+        ]);
+
+        const validationError = validateBrandAndUser(brand, user);
+        if (validationError) return res.status(404).json(validationError);
+
+        const refreshTokenError = validateRefreshToken(user.googleRefreshToken, userId);
+        if (refreshTokenError) return res.status(403).json(refreshTokenError);
+
+        const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+        if (!brand.googleAdAccount?.length) {
+            return res.json({
+                success: true,
+                data: [],
+                message: "No Google ads accounts found for this brand"
+            });
+        }
+
+        const allAccountsData = await Promise.all(brand.googleAdAccount.map(async (adAccount) => {
+            const clientId = adAccount.clientId;
+            const managerId = adAccount.managerId;
+
+            if (!clientId) return null;
+
+            try {
+                const customer = client.Customer({
+                    customer_id: clientId,
+                    refresh_token: user.googleRefreshToken,
+                    login_customer_id: managerId
+                });
+
+                const { accountName, stateData } = await processAccountStateData(customer, adjustedStartDate, adjustedEndDate);
+                let limitedData = formatStateData(stateData).slice(0, 500);
+
+                if (costFilter || convValuePerCostFilter) {
+                    limitedData = limitedData.filter(item => {
+                        const costCondition = costFilter ? compareValues(item["Total Cost"], costFilter.value, costFilter.operator) : true;
+                        const convValuePerCostCondition = convValuePerCostFilter ? compareValues(item["Conv. Value / Cost"], convValuePerCostFilter.value, convValuePerCostFilter.operator) : true;
+                        return costCondition && convValuePerCostCondition;
+                    });
+                }
+
+                return {
+                    accountId: clientId,
+                    accountName,
+                    stateMetrics: limitedData
+                };
+            } catch (accountError) {
+                console.error(`Error processing ad account ${clientId} for state metrics:`, accountError);
+                return {
+                    accountId: clientId,
+                    accountName: `Account ${clientId}`,
+                    stateMetrics: [],
+                    error: accountError.message
+                };
+            }
+        }));
+
+        return res.json({
+            success: true,
+            data: allAccountsData.filter(Boolean)
+        });
+    } catch (error) {
+        console.error("Failed to fetch Google Ads state metrics:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+}
+
 
 
 

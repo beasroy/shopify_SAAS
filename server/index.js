@@ -12,13 +12,16 @@ import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import metaRoutes from "./routes/meta.js"
+import googleRoutes from "./routes/google.js"
 import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
-// import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js"
+import shopifyAppRoutes from "./routes/app_sync.js"
+
+
 
 
 const app = express();
@@ -51,9 +54,11 @@ dataOperationRouter.use("/segment",segmentReportRoutes);
 dataOperationRouter.use("/setup",setupBrandRoutes);
 dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
 dataOperationRouter.use("/meta",metaRoutes);
+dataOperationRouter.use("/google",googleRoutes);
 dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
+dataOperationRouter.use("/app",shopifyAppRoutes)
 
 if (process.env.NODE_ENV === 'production') {
   setupCronJobs();
@@ -62,8 +67,6 @@ if (process.env.NODE_ENV === 'production') {
   console.log('Running in development mode - cron jobs not initialized');
 }
 
-// monthlyCalculateMetricsForAllBrands("2025-01-01","2025-04-15","67eb85f2f583a37ca251622a")
- 
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

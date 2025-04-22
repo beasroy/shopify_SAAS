@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
@@ -18,6 +16,7 @@ import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal"
 import type { ITooltipHeaderProps, IMonthlyAggregate } from "@/interfaces/index"
 import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
+import DataBuilding from "./components/DataBuilding"
 
 
 function TooltipHeader({
@@ -152,10 +151,14 @@ export const ExcelMetricsPage: React.FC = () => {
           withCredentials: true,
         })
         const metricsData: IMonthlyAggregate[] = reportResponse.data.data
-        setMetricsData(metricsData)
+        setMetricsData(metricsData);
       } catch (err) {
         console.error(err)
-        setError("Failed to fetch data. Please try again later.")
+        const message =
+          axios.isAxiosError(err) && err.response?.data?.message
+            ? err.response.data.message
+            : 'Something went wrong'
+        setError(message)
       } finally {
         setLoading(false)
       }
@@ -236,11 +239,8 @@ export const ExcelMetricsPage: React.FC = () => {
     }
   }, [processedData])
 
-  const renderTable = (): React.ReactNode => {
-    if (loading) {
-      return <Loader isLoading={loading}/>
-    }
 
+  const renderTable = (): React.ReactNode => {
     if (error) {
       return <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200">{error}</div>
     }
@@ -429,12 +429,12 @@ export const ExcelMetricsPage: React.FC = () => {
     )
   }
 
-  return (
-    <div className="flex h-screen font-inter">
-      <CollapsibleSidebar />
+  const renderContent = () => {
+    if (loading) return <Loader isLoading={loading} />
+    if (error === 'No metrics data available yet. Please try again later.') return <DataBuilding />
+    return (
       <div className="flex-1 h-screen overflow-hidden bg-slate-100">
         <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
-
         <Card
           id="metrics-table"
           className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : "m-6"} shadow-md`}
@@ -472,6 +472,15 @@ export const ExcelMetricsPage: React.FC = () => {
             {renderTable()}
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <CollapsibleSidebar />
+      <div className="flex-1 h-screen overflow-hidden flex flex-col">
+        {renderContent()}
       </div>
       <HelpDeskModal />
     </div>

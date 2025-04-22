@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
     isAdmin: { type: Boolean, default: false },  
     method: { 
         type: String, 
-        enum: ['password', 'google'], 
+        enum: ['password', 'google','shopify'], 
         required: true 
     },
     brands: [

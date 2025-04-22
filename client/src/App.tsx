@@ -43,9 +43,9 @@ function App() {
                   <Route path='/' element={<LandingPage />} />
                   <Route path="/login" element={<AuthForm />} />
                   <Route path="/dashboard" element={<GeneralDashboard />} />
-                  <Route path="/analytics-dashboard/:brandId" element={<AnalyticsDashboard />} />
+                  <Route path="/admetrics/:brandId" element={<AnalyticsDashboard />} />
                   <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />
-                  <Route path="/ad-metrics/:brandId" element={<ExcelMetricsPage />} />
+                  <Route path="/marketing-insights/:brandId" element={<ExcelMetricsPage />} />
                   <Route path='/performance-metrics' element={<PerformanceDashboard />} />
                   <Route path='/segment-dashboard/:brandId' element={<SegmentDashboard />} />
                   <Route path='/meta-reports/:brandId' element={<FbReportPage />} />

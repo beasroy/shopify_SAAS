@@ -11,37 +11,44 @@ export const app_sync = async (req, res) => {
       ownerEmail 
     } = req.body;
 
-    const email = ownerEmail || `${shopName}@${shopifyDomain}`;
-    const username = ownerName || shopName;
+    // Declare user variable at function scope level
+    let user = null;
     
-    let user = await User.findOne({ email });
-    
-    if (!user) {
-      user = new User({
-        username: username,
-        email,
-        method: 'shopify',
-        brands: [] 
-      });
+    // Only create/update user if owner information is provided
+    if (ownerEmail || ownerName) {
+      const email = ownerEmail || `${shopName}@${shopifyDomain}`;
+      const username = ownerName || shopName;
       
-      await user.save();
+      user = await User.findOne({ email });
+      
+      if (!user) {
+        user = new User({
+          username: username,
+          email,
+          method: 'shopify',
+          brands: [] 
+        });
+        
+        await user.save();
+      }
     }
     
-    let brand = await Brand.findOne({ 'shopifyAccount.shopName': shopName });
+    // Brand handling continues regardless of user creation
+    let brand = await Brand.findOne({ 'shopifyAccount.shopName': shopifyDomain });
     
     if (brand) {
-
       brand.shopifyAccount.shopifyAccessToken = shopifyAccessToken;
       await brand.save();
       
-      if (!user.brands.includes(brand._id.toString())) {
+      // Only associate brand with user if user was created/found
+      if (user && !user.brands.includes(brand._id.toString())) {
         user.brands.push(brand._id);
         await user.save();
       }
       
       return res.status(200).json({ 
         message: 'Shopify store data updated successfully',
-        userId: user._id,
+        userId: user ? user._id : null,
         brandId: brand._id
       });
     } else {
@@ -56,12 +63,15 @@ export const app_sync = async (req, res) => {
       
       await newBrand.save();
 
-      user.brands.push(newBrand._id);
-      await user.save();
+      // Only associate brand with user if user was created/found
+      if (user) {
+        user.brands.push(newBrand._id);
+        await user.save();
+      }
       
       return res.status(201).json({ 
-        message: 'User and brand created with Shopify store data',
-        userId: user._id,
+        message: user ? 'User and brand created with Shopify store data' : 'Brand created with Shopify store data',
+        userId: user ? user._id : null,
         brandId: newBrand._id,
       });
     }

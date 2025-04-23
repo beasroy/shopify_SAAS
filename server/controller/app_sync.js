@@ -1,5 +1,9 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js"; 
+import jwt from "jsonwebtoken";
+import { config } from "dotenv";
+
+config();
 
 export const app_sync = async (req, res) => {
   try { 

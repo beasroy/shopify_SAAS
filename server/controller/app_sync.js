@@ -76,7 +76,6 @@ export const app_sync = async (req, res) => {
       success : true ,
       message: 'Shopify store synced successfully',
       userId: user._id,
-      brandId: brand ? brand._id : newBrand._id,
     });
   } catch (error) {
     console.error('Error syncing Shopify store:', error);

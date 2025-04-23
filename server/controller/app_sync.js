@@ -2,79 +2,78 @@ import Brand from "../models/Brands.js";
 import User from "../models/User.js"; 
 
 export const app_sync = async (req, res) => {
-  try {
+  try { 
     const { 
       shopName, 
-      shopifyDomain, 
-      shopifyAccessToken, 
-      ownerName, 
-      ownerEmail 
+      shopifyDomain,  
+      shopifyAccessToken
     } = req.body;
-
-    // Declare user variable at function scope level
-    let user = null;
     
-    // Only create/update user if owner information is provided
-    if (ownerEmail || ownerName) {
-      const email = ownerEmail || `${shopName}@${shopifyDomain}`;
-      const username = ownerName || shopName;
+    const email = req.body.ownerEmail || `${shopName}@${shopifyDomain}`;
+    const username = req.body.ownerName || shopName;
+    
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      user = new User({
+        username,
+        email,
+        method: 'shopify',
+        brands: [] 
+      });
       
-      user = await User.findOne({ email });
-      
-      if (!user) {
-        user = new User({
-          username: username,
-          email,
-          method: 'shopify',
-          brands: [] 
-        });
-        
-        await user.save();
-      }
+      await user.save();
     }
     
-    // Brand handling continues regardless of user creation
+    // Brand handling
     let brand = await Brand.findOne({ 'shopifyAccount.shopName': shopifyDomain });
     
     if (brand) {
       brand.shopifyAccount.shopifyAccessToken = shopifyAccessToken;
       await brand.save();
       
-      // Only associate brand with user if user was created/found
-      if (user && !user.brands.includes(brand._id.toString())) {
+      if (!user.brands.includes(brand._id.toString())) {
         user.brands.push(brand._id);
         await user.save();
       }
-      
-      return res.status(200).json({ 
-        message: 'Shopify store data updated successfully',
-        userId: user ? user._id : null,
-        brandId: brand._id
-      });
     } else {
       // Create a new brand
       const newBrand = new Brand({
-        name: `${shopName}`, 
+        name: shopName, 
         shopifyAccount: {
           shopName: shopifyDomain,
-          shopifyAccessToken: shopifyAccessToken
+          shopifyAccessToken
         },
       });
       
       await newBrand.save();
-
-      // Only associate brand with user if user was created/found
-      if (user) {
-        user.brands.push(newBrand._id);
-        await user.save();
-      }
-      
-      return res.status(201).json({ 
-        message: user ? 'User and brand created with Shopify store data' : 'Brand created with Shopify store data',
-        userId: user ? user._id : null,
-        brandId: newBrand._id,
-      });
+      user.brands.push(newBrand._id);
+      await user.save();
     }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email
+      }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '30d' } 
+    );
+
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 
+    });
+    
+    return res.status(brand ? 200 : 201).json({ 
+      message: 'Shopify store synced successfully',
+      userId: user._id,
+      brandId: brand ? brand._id : newBrand._id,
+      token 
+    });
   } catch (error) {
     console.error('Error syncing Shopify store:', error);
     res.status(500).json({ error: 'Internal server error' });

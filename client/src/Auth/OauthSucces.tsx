@@ -22,6 +22,7 @@ const GoogleCallback = () => {
                     const fbToken = queryParams.get('fbToken');
                     const googleRefreshToken = queryParams.get('googleRefreshToken');
                     const zohoRefreshToken = queryParams.get('zohoToken');
+                    const userId = queryParams.get('userId');
         
                     // Helper function for token update
                     const updateToken = async (url: string, token: string, type: string) => {
@@ -92,9 +93,38 @@ const GoogleCallback = () => {
                         await updateToken('/api/auth/updateTokens/zoho', zohoRefreshToken, 'zohoToken');
                         return;
                     }
+
+                     if (userId) {
+                        console.log('Token found, proceeding with user saving');
+                        const getUser = await axios.get(`${baseURL}/api/users/getuser/${userId}`);
+                    
+                        if (getUser.data.success) {
+                            const user = getUser.data.user;
+                    
+                            dispatch(setUser(user));
+                    
+                            if (!user.brands || user.brands.length === 0) {
+                                console.log('No brands found, redirecting to /brand-setup');
+                                navigate('/brand-setup');
+                            } else {
+                                console.log('Brands found, redirecting to /dashboard');
+                                navigate('/dashboard');
+                            }
+                            return;
+                        } else {
+                            console.log('Login failed, redirecting to /');
+                            toast({
+                                title: 'Login Failed',
+                                description: 'Unable to authenticate with Google.',
+                                variant: 'destructive',
+                            });
+                            navigate('/');
+                            return;
+                        }
+                    }
         
-                    console.log('No token present, redirecting to /');
-                    navigate('/');
+                    console.log('No token present, redirecting to /login');
+                    navigate('/login');
         
                 } catch (error) {
                     console.error('Error during OAuth callback:', error);
@@ -103,7 +133,7 @@ const GoogleCallback = () => {
                         description: 'An error occurred while handling the login callback.',
                         variant: 'destructive',
                     });
-                    navigate('/');
+                    navigate('/login');
                 }
             };
         

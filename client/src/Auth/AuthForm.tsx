@@ -85,13 +85,9 @@ export default function AuthForm() {
           // Set the user in the context with hasSeenLandingSlides flag
           const userData = {
             ...response.data.user,
-            // Only set hasSeenLandingSlides to false if the user has no brands
-            hasSeenLandingSlides: response.data.user.brands && response.data.user.brands.length > 0 
           };
           dispatch(setUser(userData))
-          // Only show landing popup if user has no brands
-          // setShowLandingPopup(!(response.data.user.brands && response.data.user.brands.length > 0));
-
+         
           toast({
             title: 'Login successful!',
             description: 'Welcome! Redirecting to your dashboard.',

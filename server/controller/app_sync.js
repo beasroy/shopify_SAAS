@@ -73,13 +73,13 @@ export const app_sync = async (req, res) => {
     });
     
     return res.status(brand ? 200 : 201).json({ 
+      success : true ,
       message: 'Shopify store synced successfully',
       userId: user._id,
       brandId: brand ? brand._id : newBrand._id,
-      token 
     });
   } catch (error) {
     console.error('Error syncing Shopify store:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', success: false });
   }
-};
+};   

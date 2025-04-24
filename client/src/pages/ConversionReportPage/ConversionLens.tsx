@@ -1,9 +1,8 @@
 import React, { useState,useMemo } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { useParams } from 'react-router-dom';
-import { Radar } from 'lucide-react';
+import { ChartBar, Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
-import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import DeviceTypeConversion from './components/DeviceConversion';
 import GenderConversion from './components/GenderConversion';
 import AgeConversion from './components/AgeConversion';
@@ -26,6 +25,7 @@ import CountryConversion from './components/CountryConversion';
 import CampaignConversion from './components/CampaignConversion';
 import ChannelConversion from './components/ChannelConversion';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
+import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 
 const ConversionLens: React.FC = () => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -68,7 +68,18 @@ const ConversionLens: React.FC = () => {
   };
 
   if (tokenError) {
-    return <NoGA4AcessPage />;
+    return <NoAccessPage
+    platform="Google Analytics"
+    message="We need access to your Google Analytics account to show you amazing insights about your website performance."
+    icon={<ChartBar className="w-8 h-8 text-blue-600" />}
+    loginOptions={[
+      {
+        label: "Connect Google Analytics",
+        context: "googleAnalyticsSetup",
+        provider: "google"
+      }
+    ]}
+  />;
   }
 
 

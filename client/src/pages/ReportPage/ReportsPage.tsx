@@ -3,9 +3,8 @@ import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetrics
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { useParams } from 'react-router-dom';
-import {ShoppingCart } from 'lucide-react';
+import {ChartBar, ShoppingCart } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
-import NoGA4AcessPage from './NoGA4AccessPage.';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import ConnectPlatform from './ConnectPlatformPage';
@@ -14,6 +13,7 @@ import DaywiseMetricsPage from './component/DaywiseMetricsPage';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
+import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 
 const ReportsPage: React.FC = () => {
 
@@ -52,7 +52,18 @@ const ReportsPage: React.FC = () => {
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-auto">
         {tokenError ? (
-          <NoGA4AcessPage />
+          <NoAccessPage
+          platform="Google Analytics"
+          message="We need access to your Google Analytics account to show you amazing insights about your website performance."
+          icon={<ChartBar className="w-8 h-8 text-blue-600" />}
+          loginOptions={[
+            {
+              label: "Connect Google Analytics",
+              context: "googleAnalyticsSetup",
+              provider: "google"
+            }
+          ]}
+        />
         ) : !hasGA4Account ? (
           <>
             <ConnectPlatform

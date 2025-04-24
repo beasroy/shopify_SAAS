@@ -48,15 +48,23 @@ export const handleGoogleCallback = async (req, res) => {
         const context = state || 'default';
         const isProduction = process.env.NODE_ENV === 'production';
 
-        if (context === 'brandSetup') {
-            const googleRefreshToken = tokens.refresh_token;
+        if (context === 'googleAdSetup') {
+            const googleadRefreshToken = tokens.refresh_token;
 
             const clientURL = isProduction
                 ? 'https://parallels.messold.com/callback'
                 : 'http://localhost:5173/callback';
 
-            return res.redirect(clientURL + `?googleRefreshToken=${googleRefreshToken}`);
-        } else if (context === 'userLogin') {
+            return res.redirect(clientURL + `?googleadRefreshToken=${googleadRefreshToken}`);
+        } else if (context === 'googleAnalyticsSetup') {
+            const googleanalyticsRefreshToken = tokens.refresh_token;
+
+            const clientURL = isProduction
+                ? 'https://parallels.messold.com/callback'
+                : 'http://localhost:5173/callback';
+
+            return res.redirect(clientURL + `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}`);
+        }else if (context === 'userLogin') {
 
             const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
             const userInfo = await oauth2.userinfo.get();
@@ -69,29 +77,25 @@ export const handleGoogleCallback = async (req, res) => {
                     email,
                     googleId: id,
                     method: 'google',
-                    googleRefreshToken: tokens.refresh_token,
+                    googleAdsRefreshToken: tokens.refresh_token, 
+                    googleAnalyticsRefreshToken: tokens.refresh_token, 
                     isAdmin: false,
                     isClient: true
                 });
                 await user.save();
-            } else {
-                if (tokens.refresh_token) {
-                    user.googleRefreshToken = tokens.refresh_token;
-                }
-                await user.save();
-            }
+            } 
 
             const jwtToken = jwt.sign(
                 { id: user._id, email: user.email, method: user.method },
                 SECRET_KEY,
-                { expiresIn: '7d' }
+                { expiresIn: '14d' }
             );
 
             res.cookie('token', jwtToken, {
                 httpOnly: true,
                 secure: isProduction,
                 sameSite: isProduction ? 'strict' : 'lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
+                maxAge: 14 * 24 * 60 * 60 * 1000,
             });
 
             const clientURL = isProduction
@@ -407,10 +411,10 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
             });
         }
 
-        if (type === 'google') {
-            const { googleRefreshToken } = req.query;
+        if (type === 'googleadRefreshToken') {
+            const { googleAdRefreshToken } = req.query;
 
-            if (!googleRefreshToken) {
+            if (!googleAdRefreshToken) {
                 return res.status(400).json({
                     success: false,
                     message: 'Google refresh token is required.',
@@ -418,12 +422,32 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
             }
 
             await User.findByIdAndUpdate(userId, {
-                googleRefreshToken: googleRefreshToken,
+                googleAdsRefreshToken: googleAdRefreshToken,
             });
 
             return res.status(200).json({
                 success: true,
-                message: 'Google refresh token updated successfully.',
+                message: 'Google Ads refresh token updated successfully.',
+            });
+        }
+
+        if (type === 'googleanalyticsRefreshToken') {
+            const { googleAnalyticsRefreshToken } = req.query;
+
+            if (!googleAnalyticsRefreshToken) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Google analytics refresh token is required.',
+                });
+            }
+
+            await User.findByIdAndUpdate(userId, {
+                googleAnalyticsRefreshToken: googleAnalyticsRefreshToken,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Google Ads refresh token updated successfully.',
             });
         }
 

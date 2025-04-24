@@ -46,7 +46,7 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'region-conversion'
   const locale = useSelector((state : RootState)=> state.locale.locale);
-  const user = useSelector((state: RootState)=> state.user.user);
+  
   const { brandId } = useParams();
 
   const toggleFullScreen = () => {
@@ -79,7 +79,7 @@ const fetchData = useCallback(async () => {
     setLoading(true);
     try {
         const response = await axiosInstance.post(`/api/analytics/regionConversionReport/${brandId}`, {
-            userId: user?.id,
+            
             startDate,
             endDate,  ...transformedFilters  // Spread the transformed filters
         });
@@ -90,7 +90,7 @@ const fetchData = useCallback(async () => {
     } finally {
       setLoading(false);
     }
-}, [brandId, startDate, endDate, transformedFilters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

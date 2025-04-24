@@ -48,7 +48,6 @@ const CampaignConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'campaign-conversion';
   const locale = useSelector((state: RootState) => state.locale.locale);
-  const user = useSelector((state: RootState) => state.user.user);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -79,7 +78,6 @@ const CampaignConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     setLoading(true);
     try {
       const response = await axiosInstance.post(`/api/analytics/campaignConversionReport/${brandId}`, {
-        userId: user?.id,
         startDate,
         endDate, ...transformedFilters  // Spread the transformed filters
       });
@@ -90,7 +88,7 @@ const CampaignConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+  }, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

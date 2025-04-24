@@ -46,7 +46,7 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
   const componentId = 'landingPage-conversion'
 
   const locale = useSelector((state: RootState) => state.locale.locale)
-  const user = useSelector((state: RootState) => state.user.user, shallowEqual);
+  
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen); 
@@ -80,7 +80,7 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
     setLoading(true);
     try {
       const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
-        userId: user?.id,
+       
         startDate,
         endDate, ...transformedFilters  // Spread the transformed filters
       });
@@ -91,7 +91,7 @@ const LandingPageConversion: React.FC<CityBasedReportsProps> = ({ dateRange: pro
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+  }, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

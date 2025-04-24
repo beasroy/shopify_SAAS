@@ -46,7 +46,6 @@ const DeviceTypeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: prop
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'device-conversion'
 
-  const user = useSelector((state: RootState) => state.user.user);
   const locale = useSelector((state: RootState) => state.locale.locale);
 
   const { brandId } = useParams();
@@ -80,7 +79,7 @@ const fetchData = useCallback(async () => {
     setLoading(true);
     try {
         const response = await axiosInstance.post(`/api/analytics/deviceTypeConversionReport/${brandId}`, {
-            userId: user?.id,
+    
             startDate,
             endDate,  ...transformedFilters  
         });
@@ -91,7 +90,7 @@ const fetchData = useCallback(async () => {
     } finally {
         setLoading(false);
     }
-}, [brandId, startDate, endDate, transformedFilters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

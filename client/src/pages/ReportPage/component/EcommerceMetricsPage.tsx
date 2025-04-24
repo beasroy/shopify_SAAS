@@ -63,7 +63,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const user = useSelector((state: RootState) => state.user.user)
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
@@ -109,7 +108,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
           `/api/analytics/atcreport/${brandId}`,
           {
             dateRanges: dateRanges,
-            userId: user?.id,
           },
           { withCredentials: true }
         );
@@ -153,7 +151,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ dateRange: prop
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, user?.id]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
 
   // Consolidate to single useEffect for fetching metrics
   useEffect(() => {

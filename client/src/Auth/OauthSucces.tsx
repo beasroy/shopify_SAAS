@@ -20,9 +20,11 @@ const GoogleCallback = () => {
                     const queryParams = new URLSearchParams(window.location.search);
                     const googletoken = queryParams.get('token');
                     const fbToken = queryParams.get('fbToken');
-                    const googleRefreshToken = queryParams.get('googleRefreshToken');
+                    const googleAdRefreshToken = queryParams.get('googleadRefreshToken');
+                    const googleAnalyticsRefreshToken = queryParams.get('googleanalyticsRefreshToken');
                     const zohoRefreshToken = queryParams.get('zohoToken');
                     const userId = queryParams.get('userId');
+                    const appToken = queryParams.get('app_token');
         
                     // Helper function for token update
                     const updateToken = async (url: string, token: string, type: string) => {
@@ -85,24 +87,30 @@ const GoogleCallback = () => {
                         return;
                     }
         
-                    if (googleRefreshToken) {
-                        await updateToken('/api/auth/updateTokens/google', googleRefreshToken, 'googleRefreshToken');
+                    if (googleAdRefreshToken) {
+                        await updateToken('/api/auth/updateTokens/google', googleAdRefreshToken, 'googleadRefreshToken');
                         return;
                     }
+
+                    if (googleAnalyticsRefreshToken) {
+                        await updateToken('/api/auth/updateTokens/google', googleAnalyticsRefreshToken, 'googleanalyticsRefreshToken');
+                        return;
+                    }
+
                     if (zohoRefreshToken) {
                         await updateToken('/api/auth/updateTokens/zoho', zohoRefreshToken, 'zohoToken');
                         return;
                     }
 
-                     if (userId) {
+                     if (userId && appToken) {
                         console.log('Token found, proceeding with user saving');
-                        const getUser = await axios.get(`${baseURL}/api/users/getuser/${userId}`);
+                        const getUser = await axios.get(`${baseURL}/api/users/getuser/${userId}?token=${appToken}`);
                     
                         if (getUser.data.success) {
                             const user = getUser.data.user;
                     
                             dispatch(setUser(user));
-                    
+                     
                             if (!user.brands || user.brands.length === 0) {
                                 console.log('No brands found, redirecting to /brand-setup');
                                 navigate('/brand-setup');

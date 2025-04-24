@@ -3,10 +3,11 @@ import axios, { AxiosError } from 'axios';
 import { Search, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {FacebookLogo, GoogleLogo, Ga4Logo} from "@/data/logo";
+import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { setBrands } from '@/store/slices/BrandSlice';
 
 
 interface PlatformModalProps {
@@ -20,8 +21,10 @@ interface PlatformModalProps {
 interface GoogleAdsAccount {
   name: string;
   clientId: string;
+  managerId?: string;
   hidden?: boolean;
 }
+
 
 interface GoogleAnalyticsAccount {
   propertyName: string;
@@ -51,7 +54,8 @@ export default function PlatformModal({
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
   const user = useSelector((state: RootState) => state.user.user);
   const userId = user?.id;
-  console.log(userId);
+  const dispatch = useDispatch();
+  const brands = useSelector((state: RootState) => state.brand.brands);
 
   useEffect(() => {
     const fetchConnectedAccounts = async () => {
@@ -60,12 +64,12 @@ export default function PlatformModal({
           withCredentials: true,
         });
         const brand = response.data;
-        
+
         const connectedIds: string[] = [];
         if (brand.fbAdAccounts?.length) connectedIds.push(...brand.fbAdAccounts);
         if (brand.googleAdAccount) connectedIds.push(brand.googleAdAccount);
         if (brand.ga4Account?.PropertyID) connectedIds.push(brand.ga4Account.PropertyID);
-     
+
         setConnectedAccounts(connectedIds);
       } catch (error) {
         console.error('Error fetching connected accounts:', error);
@@ -80,7 +84,7 @@ export default function PlatformModal({
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!open) return;
-      
+
       setLoading(true);
       try {
         let endpoint = '';
@@ -155,7 +159,7 @@ export default function PlatformModal({
     }
   };
 
-  const updateBrandWithAccount = async (accountId: string, accountName: string) => {
+  const updateBrandWithAccount = async (accountId: string, accountName: string, managerId: string | undefined) => {
     try {
       let updateData = {};
       
@@ -164,20 +168,35 @@ export default function PlatformModal({
           updateData = { fbAdAccounts: [accountId] };
           break;
         case 'google ads':
-          updateData = { googleAdAccount: accountId };
+          updateData = { 
+            googleAdAccount: [{ 
+              clientId: accountId, 
+              managerId: managerId 
+            }] 
+          };
           break;
         case 'google analytics':
           updateData = { ga4Account: { PropertyID: accountId } };
           break;
       }
-
+  
       const response = await axios.patch(
         `${baseURL}/api/brands/update/${brandId}`,
         updateData,
         { withCredentials: true }
       );
-
+  
       if (response.status === 200) {
+        
+        const updatedBrand = response.data;
+        
+        
+        const updatedBrands = brands.map(brand => 
+          brand._id === brandId ? updatedBrand : brand
+        );
+        
+        dispatch(setBrands(updatedBrands));
+        
         onSuccess?.(platform, accountName, accountId);
         onOpenChange(false);
       }
@@ -189,10 +208,14 @@ export default function PlatformModal({
   const handleConnect = async (account: GoogleAdsAccount | GoogleAnalyticsAccount | FacebookAdsAccount) => {
     let accountId: string;
     let displayName: string;
+    let managerId: string | undefined;
 
     if ('clientId' in account) {
       accountId = account.clientId;
-      displayName = `${account.name} (${accountId})`;
+      managerId = account.managerId;
+      displayName = managerId
+        ? `${account.name} (${accountId}/${managerId})`
+        : `${account.name} (${accountId})`;
     } else if ('propertyId' in account) {
       accountId = account.propertyId;
       displayName = `${account.propertyName} (${accountId})`;
@@ -203,12 +226,22 @@ export default function PlatformModal({
       return;
     }
 
-    await updateBrandWithAccount(accountId, displayName);
+    await updateBrandWithAccount(accountId, displayName, managerId);
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleAdLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`, { withCredentials: true });
+      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAdSetup`, { withCredentials: true });
+      const { authUrl } = response.data;
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error getting Google Auth URL:', error);
+    }
+  };
+
+  const handleGoogleAnalyticsLogin = async () => {
+    try {
+      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAnalyticsSetup`, { withCredentials: true });
       const { authUrl } = response.data;
       window.location.href = authUrl;
     } catch (error) {
@@ -228,26 +261,30 @@ export default function PlatformModal({
   };
 
   const filteredAccounts = () => {
-    let accounts: any[] = [];
-    
-    switch (platform.toLowerCase()) {
-      case 'google ads':
-        accounts = googleAdsAccounts;
-        break;
-      case 'google analytics':
-        accounts = googleAnalyticsAccounts;
-        break;
-      case 'facebook':
-        accounts = facebookAdsAccounts;
-        break;
+    if (platform.toLowerCase() === 'google ads') {
+      if (!googleAdsAccounts || googleAdsAccounts.length === 0) {
+        return null;
+      }
+      return googleAdsAccounts.filter((account) =>
+        account.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    } else if (platform.toLowerCase() === 'google analytics') {
+      if (!googleAnalyticsAccounts || googleAnalyticsAccounts.length === 0) {
+        return null;
+      }
+      return googleAnalyticsAccounts.filter((account) =>
+        account.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    } else if (platform.toLowerCase() === 'facebook') {
+      if (!facebookAdsAccounts || facebookAdsAccounts.length === 0) {
+        return null; // Return null if there are no Facebook Ads accounts
+      }
+      return facebookAdsAccounts.filter((account) =>
+        account.adname.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    } else {
+      return [];
     }
-
-    return accounts.filter((account) => {
-      const searchField = 'clientId' in account ? account.name 
-        : 'propertyName' in account ? account.propertyName 
-        : account.adname;
-      return searchField.toLowerCase().includes(searchTerm.toLowerCase());
-    });
   };
 
   return (
@@ -256,14 +293,14 @@ export default function PlatformModal({
         <DialogHeader>
           <DialogTitle>Connect {platform} Account</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {loading ? (
             <div className="flex justify-center py-4">Loading...</div>
           ) : showLoginButton ? (
             <Button
               size="sm"
-              onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : handleGoogleLogin}
+              onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
               className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
             >
               {platform.toLowerCase() === 'google ads' && (
@@ -308,6 +345,10 @@ export default function PlatformModal({
                       ? (account as FacebookAdsAccount).id
                       : (account as GoogleAnalyticsAccount).propertyId;
 
+                  const managerId = isGoogleAds
+                    ? (account as GoogleAdsAccount).managerId
+                    : undefined;
+
                   const accountName = isGoogleAds
                     ? (account as GoogleAdsAccount).name
                     : isFacebook
@@ -324,6 +365,12 @@ export default function PlatformModal({
 
                   const isConnected = connectedAccounts.includes(accountId);
 
+                  const displayText = isGoogleAds && managerId
+                    ? `${accountName} (${accountId}/${managerId})`
+                    : isFacebook
+                      ? `${accountName}`
+                      : `${accountName} (${accountId})`;
+
                   return (
                     <div
                       key={accountId}
@@ -332,9 +379,7 @@ export default function PlatformModal({
                       <span>
                         <div className="flex flex-row items-center gap-3">
                           {platformLogo}
-                          {isFacebook
-                            ? `${accountName}`
-                            : `${accountName} (${accountId})`}
+                          {displayText}
                         </div>
                       </span>
                       <Button

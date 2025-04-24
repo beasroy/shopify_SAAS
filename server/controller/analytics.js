@@ -50,8 +50,8 @@ export async function getGoogleAccessToken(refreshToken) {
 export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
-    let { dateRanges, userId } = req.body;
-
+    let { dateRanges } = req.body;
+    const userId = req.user._id;
     // Ensure dateRanges is an array and has at least one range
     if (!dateRanges || !Array.isArray(dateRanges) || dateRanges.length === 0) {
       const now = new Date();
@@ -73,7 +73,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 
     const propertyId = brand.ga4Account?.PropertyID;
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({
@@ -216,7 +216,10 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
 export async function getDayWiseAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
-    let { startDate, endDate, userId } = req.body;
+    let { startDate, endDate } = req.body;
+
+    const userId = req.user._id;
+    console.log(userId);
 
     const brand = await Brand.findById(brandId).lean();
 
@@ -228,7 +231,7 @@ export async function getDayWiseAddToCartAndCheckouts(req, res) {
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -368,7 +371,7 @@ export async function getLandingPageMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken) {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
@@ -469,7 +472,7 @@ export async function getChannelMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken) {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
@@ -571,7 +574,7 @@ export async function getLocationMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken) {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
@@ -699,7 +702,7 @@ export async function getAgeMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken) {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
@@ -801,7 +804,7 @@ export async function getGenderMetrics(req, res) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken) {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(200).json([]);
@@ -881,7 +884,9 @@ export async function getGenderMetrics(req, res) {
 export async function getCityWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -899,7 +904,7 @@ export async function getCityWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1022,7 +1027,9 @@ export async function getCityWiseConversions(req, res) {
 export async function getRegionWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1039,7 +1046,7 @@ export async function getRegionWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1168,7 +1175,8 @@ export async function getRegionWiseConversions(req, res) {
 export async function getPageWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+    const userId = req.user._id;
 
     const [user, brand] = await Promise.all([
       User.findById(userId).lean(),
@@ -1185,7 +1193,7 @@ export async function getPageWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1312,7 +1320,9 @@ export async function getPageWiseConversions(req, res) {
 export async function getDeviceTypeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1329,7 +1339,7 @@ export async function getDeviceTypeWiseConversions(req, res) {
     const propertyId = brand.ga4Account?.PropertyID;
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1452,7 +1462,9 @@ export async function getDeviceTypeWiseConversions(req, res) {
 export async function getChannelWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1470,7 +1482,7 @@ export async function getChannelWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1595,7 +1607,9 @@ export async function getChannelWiseConversions(req, res) {
 export async function getAgeWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1612,7 +1626,7 @@ export async function getAgeWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1736,7 +1750,9 @@ export async function getAgeWiseConversions(req, res) {
 export async function getGenderWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1754,7 +1770,7 @@ export async function getGenderWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1878,7 +1894,9 @@ export async function getGenderWiseConversions(req, res) {
 export async function getInterestWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -1896,7 +1914,7 @@ export async function getInterestWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2022,7 +2040,9 @@ export async function getInterestWiseConversions(req, res) {
 export async function getOperatingSystemWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -2038,7 +2058,7 @@ export async function getOperatingSystemWiseConversions(req, res) {
     const propertyId = brand.ga4Account?.PropertyID;
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2162,8 +2182,8 @@ export async function getOperatingSystemWiseConversions(req, res) {
 export async function getCampaignWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
-
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+    const userId = req.user._id;
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
       User.findById(userId).lean(),
@@ -2179,7 +2199,7 @@ export async function getCampaignWiseConversions(req, res) {
     const propertyId = brand.ga4Account?.PropertyID;
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2303,7 +2323,9 @@ export async function getCampaignWiseConversions(req, res) {
 export async function getBrowserWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -2321,7 +2343,7 @@ export async function getBrowserWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2445,7 +2467,9 @@ export async function getBrowserWiseConversions(req, res) {
 export async function getSourceWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -2463,7 +2487,7 @@ export async function getSourceWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2586,7 +2610,9 @@ export async function getSourceWiseConversions(req, res) {
 export async function getPagePathWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, userId, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const userId = req.user._id;
 
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
@@ -2605,7 +2631,7 @@ export async function getPagePathWiseConversions(req, res) {
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2733,7 +2759,6 @@ export async function getPageTitleWiseConversions(req, res) {
     const {
       startDate,
       endDate,
-      userId,
       sessionsFilter,
       convRateFilter
     } = req.body;
@@ -2753,6 +2778,8 @@ export async function getPageTitleWiseConversions(req, res) {
       });
     }
 
+    const userId = req.user._id;
+
     const [brand, user] = await Promise.all([
       Brand.findById(brandId).lean(),
       User.findById(userId).lean(),
@@ -2769,7 +2796,7 @@ export async function getPageTitleWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2890,10 +2917,11 @@ export async function getCountryWiseConversions(req, res) {
     const {
       startDate,
       endDate,
-      userId,
       sessionsFilter,
       convRateFilter
     } = req.body;
+
+    const userId = req.user._id;
 
     // Validate filter formats if provided
     if (sessionsFilter && (!sessionsFilter.value || !sessionsFilter.operator)) {
@@ -2926,7 +2954,7 @@ export async function getCountryWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for User ID: ${userId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });

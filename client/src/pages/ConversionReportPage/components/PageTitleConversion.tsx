@@ -44,8 +44,7 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'pageTitle-conversion'
-    const locale = useSelector((state : RootState)=> state.locale.locale)
-    const user = useSelector((state: RootState) => state.user.user , shallowEqual);
+    const locale = useSelector((state : RootState)=> state.locale.locale);
     const { brandId } = useParams();
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
@@ -79,7 +78,7 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
         try {
         
             const response = await axiosInstance.post(`/api/analytics/pageTitleConversionReport/${brandId}`, {
-                userId: user?.id, startDate: startDate, endDate: endDate, ...transformedFilters
+                 startDate: startDate, endDate: endDate, ...transformedFilters
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];
@@ -91,7 +90,7 @@ const PageTitleConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propD
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+    }, [brandId, startDate, endDate, transformedFilters]);
 
 
     useEffect(() => {

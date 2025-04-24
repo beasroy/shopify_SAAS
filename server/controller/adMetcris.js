@@ -524,7 +524,9 @@ const mergeAccountDataAcrossBatches = (batchedAccounts) => {
 };
 export async function fetchGoogleAdAndCampaignMetrics(req, res) {
   const { brandId } = req.params;
-  let { startDate, endDate, userId } = req.body;
+  let { startDate, endDate } = req.body;
+
+  const userId = req.user._id;
 
   try {
     const [brand, user] = await Promise.all([
@@ -539,7 +541,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
       });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAdsRefreshToken;
     if (!refreshToken) {
       return res.status(200).json({
         success: true,

@@ -31,7 +31,9 @@ function getAdjustedDates(startDate, endDate) {
 
 export async function fetchSearchTermMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    const userId = req.user._id;
 
     try {
         const [brand, user] = await Promise.all([
@@ -46,7 +48,7 @@ export async function fetchSearchTermMetrics(req, res) {
             });
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
             console.warn(`No refresh token found for User ID: ${userId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
@@ -215,7 +217,9 @@ export async function fetchSearchTermMetrics(req, res) {
 }
 export async function fetchAgeMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    const userId = req.user._id;
 
     const ageRanges = {
         0: "UNSPECIFIED",
@@ -242,7 +246,7 @@ export async function fetchAgeMetrics(req, res) {
             });
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
             console.warn(`No refresh token found for User ID: ${userId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
@@ -409,7 +413,9 @@ export async function fetchAgeMetrics(req, res) {
 }
 export async function fetchGenderMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    const userId = req.user._id;
 
     const genderTypes = {
         0: "UNSPECIFIED",
@@ -432,7 +438,7 @@ export async function fetchGenderMetrics(req, res) {
             });
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
             console.warn(`No refresh token found for User ID: ${userId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
@@ -600,7 +606,9 @@ export async function fetchGenderMetrics(req, res) {
 
 export async function fetchKeywordMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    const userId = req.user._id; 
 
     try {
         const [brand, user] = await Promise.all([
@@ -615,7 +623,7 @@ export async function fetchKeywordMetrics(req, res) {
             });
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
             console.warn(`No refresh token found for User ID: ${userId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
@@ -783,7 +791,9 @@ export async function fetchKeywordMetrics(req, res) {
 
 export async function fetchProductMetrics(req, res) {
     const { brandId } = req.params;
-    let { startDate, endDate, userId, costFilter, convValuePerCostFilter } = req.body;
+    let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
+
+    const userId = req.user._id;
 
     try {
         const [brand, user] = await Promise.all([
@@ -798,7 +808,7 @@ export async function fetchProductMetrics(req, res) {
             });
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
             console.warn(`No refresh token found for User ID: ${userId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
@@ -1118,7 +1128,7 @@ export async function fetchStateMetrics(req, res) {
         const validationError = validateBrandAndUser(brand, user);
         if (validationError) return res.status(404).json(validationError);
 
-        const refreshTokenError = validateRefreshToken(user.googleRefreshToken, userId);
+        const refreshTokenError = validateRefreshToken(user.googleAdsRefreshToken, userId);
         if (refreshTokenError) return res.status(403).json(refreshTokenError);
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
@@ -1140,7 +1150,7 @@ export async function fetchStateMetrics(req, res) {
             try {
                 const customer = client.Customer({
                     customer_id: clientId,
-                    refresh_token: user.googleRefreshToken,
+                    refresh_token: user.googleAdsRefreshToken,
                     login_customer_id: managerId
                 });
 

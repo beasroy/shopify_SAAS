@@ -51,7 +51,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const user = useSelector((state: RootState) => state.user.user)
+  
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
  
@@ -106,7 +106,6 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
         {
           startDate: startDate,
           endDate: endDate,
-          userId: user?.id,
         },
         { withCredentials: true }
       );
@@ -137,7 +136,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ dateRange: propDateR
 
   useEffect(() => {
     fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 15 * 60 * 1000);
+    const intervalId = setInterval(fetchMetrics, 3* 60 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [fetchMetrics]);
 

@@ -45,7 +45,7 @@ const OperatingSystemConversion: React.FC<CityBasedReportsProps> = ({ dateRange:
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'operatingSystem-conversion'
 
-    const user = useSelector((state: RootState) => state.user.user );
+
     const locale = useSelector((state: RootState)=>state.locale.locale);
     const { brandId } = useParams();
     const toggleFullScreen = () => {
@@ -80,7 +80,7 @@ const OperatingSystemConversion: React.FC<CityBasedReportsProps> = ({ dateRange:
         setLoading(true);
         try {
             const response = await axiosInstance.post(`/api/analytics/operatingSystemConversionReport/${brandId}`, {
-                userId: user?.id,
+               
                 startDate,
                 endDate,  ...transformedFilters  // Spread the transformed filters
             });
@@ -93,7 +93,7 @@ const OperatingSystemConversion: React.FC<CityBasedReportsProps> = ({ dateRange:
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+    }, [brandId, startDate, endDate, transformedFilters]);
 
     useEffect(() => {
         fetchData();

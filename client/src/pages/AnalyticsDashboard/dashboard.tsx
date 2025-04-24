@@ -62,7 +62,7 @@ export default function Dashboard() {
     try {
       const googleAdResponse = await axiosInstance.post(
         `/api/metrics/googleAdAndCampaign/${brandId}`,
-        { startDate, endDate, userId },
+        { startDate, endDate },
         { withCredentials: true }
       );
       return googleAdResponse.data?.data || [];

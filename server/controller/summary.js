@@ -215,7 +215,7 @@ export async function getGoogleAccessToken(refreshToken) {
 export async function getAnalyticsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     // Validate input
     if (!brandId || !userId) {
@@ -241,7 +241,7 @@ export async function getAnalyticsSummary(req, res) {
 
     // Get GA4 Property ID and Refresh Token
     const propertyId = brand.ga4Account?.PropertyID;
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAnalyticsRefreshToken;
 
     // Validate Google Analytics access
     if (!propertyId) {
@@ -778,7 +778,7 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAdsRefreshToken;
     if (!refreshToken) {
       return res.status(403).json({
         success: false,

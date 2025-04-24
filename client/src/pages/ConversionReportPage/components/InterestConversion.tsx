@@ -45,7 +45,6 @@ const InterestConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'interest-conversion'
 
-  const user = useSelector((state: RootState) =>state.user.user);
   const locale = useSelector((state: RootState)=>state.locale.locale);
   const { brandId } = useParams();
 
@@ -81,7 +80,7 @@ const fetchData = useCallback(async () => {
     try {
     
         const response = await axiosInstance.post(`/api/analytics/interestConversionReport/${brandId}`, {
-            userId: user?.id,
+           
             startDate,
             endDate,  ...transformedFilters  // Spread the transformed filters
         });
@@ -93,7 +92,7 @@ const fetchData = useCallback(async () => {
     } finally {
       setLoading(false);
     }
-}, [brandId, startDate, endDate, transformedFilters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

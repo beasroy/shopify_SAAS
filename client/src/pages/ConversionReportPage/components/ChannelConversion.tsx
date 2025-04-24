@@ -46,7 +46,6 @@ const ChannelConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const componentId = 'channel-conversion'
   const locale = useSelector((state:RootState) => state.locale.locale);
-  const user = useSelector((state: RootState) => state.user.user) ;
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -78,7 +77,6 @@ const fetchData = useCallback(async () => {
     try {
     
         const response = await axiosInstance.post(`/api/analytics/channelConversionReport/${brandId}`, {
-            userId: user?.id,
             startDate,
             endDate,  ...transformedFilters  // Spread the transformed filters
         });
@@ -89,7 +87,7 @@ const fetchData = useCallback(async () => {
     } finally {
       setLoading(false);
     }
-}, [brandId, startDate, endDate, transformedFilters, user?.id]);
+}, [brandId, startDate, endDate, transformedFilters]);
 
 
   useEffect(() => {

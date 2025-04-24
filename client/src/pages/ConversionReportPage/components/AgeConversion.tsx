@@ -51,7 +51,6 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
     state.conversionFilters[componentId] || {}, shallowEqual
   );
   const locale = useSelector((state:RootState)=>state.locale.locale);
-  const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -80,7 +79,6 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
     try {
    
       const response = await axiosInstance.post(`/api/analytics/ageConversionReport/${brandId}`, {
-        userId: user?.id, 
         startDate: startDate, 
         endDate: endDate, 
         ...transformedFilters  
@@ -96,7 +94,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+  }, [brandId, startDate, endDate, transformedFilters]);
 
   useEffect(() => {
     fetchData();

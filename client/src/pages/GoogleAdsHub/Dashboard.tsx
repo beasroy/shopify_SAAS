@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
-import { SquareChartGantt } from 'lucide-react';
+import { SquareChartGantt, Target } from 'lucide-react';
 import SearchTerm from './components/SearchTerm';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import Age from './components/Age';
@@ -10,11 +10,11 @@ import { RootState } from '@/store';
 import Header from '@/components/dashboard_component/Header';
 import { useParams } from 'react-router-dom';
 import { useTokenError } from '@/context/TokenErrorContext';
-import NoGA4AcessPage from '../ReportPage/NoGA4AccessPage.';
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import Keyword from './components/Keyword';
 import Product from './components/Product';
+import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 
 
 const GoogleAdsDashboard: React.FC = () => {
@@ -53,7 +53,18 @@ const GoogleAdsDashboard: React.FC = () => {
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-hidden flex flex-col">
         {tokenError ? (
-          <NoGA4AcessPage />
+           <NoAccessPage
+           platform="Google Ads"
+           message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
+           icon={<Target className="w-8 h-8 text-red-500" />}
+           loginOptions={[
+             {
+               label: "Connect Google Ads",
+               context: "googleAdSetup",
+               provider: "google"
+             }
+           ]}
+         />
         ) : !hasGoogleAdAccount ? (
           <>
             <ConnectPlatform

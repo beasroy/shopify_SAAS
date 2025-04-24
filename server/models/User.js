@@ -4,14 +4,15 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String },
-    googleRefreshToken: { type: String }, 
+    googleAdsRefreshToken: { type: String }, 
+    googleAnalyticsRefreshToken: { type: String },    
     zohoRefreshToken: { type: String},
     fbAccessToken: {type: String},
     isClient: { type: Boolean, default: false }, 
     isAdmin: { type: Boolean, default: false },  
     method: { 
         type: String, 
-        enum: ['password', 'google','shopify'], 
+        enum: ['password', 'google', 'shopify'], 
         required: true 
     },
     brands: [
@@ -27,4 +28,6 @@ const userSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("User", userSchema);
+
+
 

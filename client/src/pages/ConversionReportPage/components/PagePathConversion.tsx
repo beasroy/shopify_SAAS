@@ -45,7 +45,6 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'pagePath-conversion'
 
-    const user  = useSelector((state: RootState) => state.user.user);
     const locale = useSelector((state: RootState) => state.locale.locale);
     const { brandId } = useParams();
     const toggleFullScreen = () => {
@@ -79,7 +78,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
         setLoading(true);
         try {
             const response = await axiosInstance.post(`/api/analytics/pagePathConversionReport/${brandId}`, {
-                userId: user?.id,
+               
                 startDate,
                 endDate,  ...transformedFilters 
             });
@@ -92,7 +91,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+    }, [brandId, startDate, endDate, transformedFilters]);
 
 
     useEffect(() => {

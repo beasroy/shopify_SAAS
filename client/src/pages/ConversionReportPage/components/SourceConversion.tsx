@@ -47,7 +47,7 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'source-conversion'
     const locale = useSelector((state: RootState)=> state.locale.locale)
-    const user = useSelector((state: RootState)=> state.user.user )
+    
     const { brandId } = useParams();
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
@@ -78,7 +78,6 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
         setLoading(true);
         try {
             const response = await axiosInstance.post(`/api/analytics/sourceConversionReport/${brandId}`, {
-                userId: user?.id,
                 startDate,
                 endDate, ...transformedFilters
             });
@@ -89,7 +88,7 @@ const SourceConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+    }, [brandId, startDate, endDate, transformedFilters]);
 
 
     useEffect(() => {

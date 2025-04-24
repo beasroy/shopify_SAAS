@@ -48,7 +48,6 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
     const componentId = 'browser-conversion';
     const locale = useSelector((state:RootState) => state.locale.locale)
-    const user = useSelector((state:RootState) => state.user.user);
     const { brandId } = useParams();
 
     const toggleFullScreen = () => {
@@ -84,7 +83,6 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         setLoading(true);
         try {
             const response = await axiosInstance.post(`/api/analytics/browserConversionReport/${brandId}`, {
-                userId: user?.id,
                 startDate,
                 endDate, sessionsFilter, convRateFilter
             });
@@ -95,7 +93,7 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate, transformedFilters, user?.id]);
+    }, [brandId, startDate, endDate, transformedFilters]);
 
     useEffect(() => {
         fetchData();

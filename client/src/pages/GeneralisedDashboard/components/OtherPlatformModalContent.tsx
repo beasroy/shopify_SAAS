@@ -265,16 +265,25 @@ export default function OtherPlatformModalContent({
     onConnect(platform, displayName, accountId, managerId);
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleAdLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/google?context=brandSetup`, { withCredentials: true });
+      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAdSetup`, { withCredentials: true });
       const { authUrl } = response.data;
-
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error getting Google Auth URL:', error);
     }
-  }
+  };
+
+  const handleGoogleAnalyticsLogin = async () => {
+    try {
+      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAnalyticsSetup`, { withCredentials: true });
+      const { authUrl } = response.data;
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error getting Google Auth URL:', error);
+    }
+  };
 
   const handleFbLogin = async () => {
     try {
@@ -294,10 +303,10 @@ export default function OtherPlatformModalContent({
       <>
         {showLoginButton ? (
           <Button
-            size="sm"
-            onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : handleGoogleLogin}
-            className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
-          >
+          size="sm"
+          onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
+          className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
+        >
             {platform.toLowerCase() === 'google ads' && (
               <>
                 <GoogleLogo height="1rem" width="1rem" />

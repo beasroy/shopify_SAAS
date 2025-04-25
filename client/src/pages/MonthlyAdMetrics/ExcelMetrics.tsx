@@ -326,7 +326,7 @@ export const ExcelMetricsPage: React.FC = () => {
                         {formatCurrency(monthData.shopifySales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
-                        {formatPercentage(monthData.ROI)}
+                         {formatPercentage(monthData.netROI)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
                         {formatCurrency(monthData.refundAmount)}
@@ -335,7 +335,7 @@ export const ExcelMetricsPage: React.FC = () => {
                         {formatCurrency(monthData.totalSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
-                        {formatPercentage(monthData.netROI)}
+                      {formatPercentage(monthData.ROI)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
                         {formatCurrency(monthData.totalSpend)}
@@ -379,7 +379,7 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatCurrency(daily.shopifySales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
-                            {formatPercentage(daily.ROI)}
+                              {formatPercentage(daily.netROI)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
                             {formatCurrency(daily.refundAmount)}
@@ -388,7 +388,7 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatCurrency(daily.totalSales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
-                            {formatPercentage(daily.netROI)}
+                          {formatPercentage(daily.ROI)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
                             {formatCurrency(daily.totalSpend)}

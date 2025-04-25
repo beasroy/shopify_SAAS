@@ -56,7 +56,8 @@ export const fetchTotalSales = async (brandId) => {
           totalPrice: 0,
           refundAmount: 0,
           discountAmount: 0,
-          orderCount: 0
+          orderCount: 0,
+          cancelledOrderCount: 0
       };
 
       // Function to calculate refund amount (matching the monthly function)
@@ -91,7 +92,7 @@ export const fetchTotalSales = async (brandId) => {
                       created_at_min: startTime,
                       created_at_max: endTime,
                       limit: 150, // Reduced limit for better stability
-                      fields: 'id,created_at,total_price,subtotal_price,total_discounts,line_items,refunds'
+        
                   };
 
                   if (pageInfo) {
@@ -108,9 +109,16 @@ export const fetchTotalSales = async (brandId) => {
                   // Process orders immediately
                   for (const order of response) {
                       const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-                      
+                      const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
                       // Only process orders from yesterday
                       if (orderDate === yesterday.format('YYYY-MM-DD')) {
+
+                        if (isCancelled) {
+                          // Only increment cancelled order count, don't add to sales metrics
+                          if (yesterdaySales) {
+                            yesterdaySales.cancelledOrderCount += 1;
+                          }
+                      } else {
                           const totalPrice = Number(order.total_price || 0);
                           const discountAmount = Number(order.total_discounts || 0);
                           
@@ -146,7 +154,7 @@ export const fetchTotalSales = async (brandId) => {
                                   yesterdaySales.refundAmount += refundAmount;
                               }
                           }
-                      }
+                       } }
                   }
 
                   console.log(`Processed ${response.length} orders`);

@@ -46,10 +46,13 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                 totalPrice: 0,       // Total including all charges (shipping, taxes, etc.)
                 refundAmount: 0,
                 discountAmount: 0,
-                orderCount: 0
+                orderCount: 0,
+                cancelledOrderCount: 0
             };
             currentDay.add(1, 'day');
         }
+
+
 
         // Reset for fetching
         currentDay = moment.tz(startDate, storeTimezone).startOf('day');
@@ -71,7 +74,6 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                         created_at_min: startTime,
                         created_at_max: endTime,
                         limit: 150, // Reduced limit for better stability
-                        fields: 'id,created_at,total_price,subtotal_price,total_discounts,line_items,refunds'
                     };
 
                     if (pageInfo) {
@@ -79,7 +81,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                     }
 
                     const response = await shopify.order.list(params);
-                    
+
                     if (!response || !Array.isArray(response)) {
                         console.warn('Unexpected response format:', response);
                         break;
@@ -113,12 +115,12 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                         console.log('Bad request with page_info, restarting chunk');
                         pageInfo = null;
                         retryCount++;
-                        
+
                         if (retryCount >= MAX_RETRIES) {
                             console.error('Max retries reached for time range');
                             break;
                         }
-                        
+
                         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                         continue;
                     }
@@ -142,47 +144,58 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
 
             for (const chunk of timeChunks) {
                 const orders = await fetchOrdersForTimeRange(chunk.start, chunk.end);
-                
+
                 orders.forEach(order => {
                     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-                    const totalPrice = Number(order.total_price || 0);
-                    const discountAmount = Number(order.total_discounts || 0);
-                    
-                    // Calculate true gross sales from line items (before discounts)
-                    let lineItemTotal = 0;
-                    if (order.line_items && Array.isArray(order.line_items)) {
-                        lineItemTotal = order.line_items.reduce((sum, item) => {
-                            // Calculate pre-discount price: price × quantity
-                            const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
-                            return sum + itemTotal;
-                        }, 0);
-                    }
-                    
-                    // Fallback to subtotal_price + discounts if line items calculation is not available
-                    const grossSales = lineItemTotal > 0 ? 
-                        lineItemTotal : 
-                        (Number(order.subtotal_price || 0) + discountAmount);
-                    
-                    if (dailySalesMap[orderDate]) {
-                        dailySalesMap[orderDate].grossSales += grossSales;
-                        dailySalesMap[orderDate].totalPrice += totalPrice;
-                        dailySalesMap[orderDate].discountAmount += discountAmount;
-                        dailySalesMap[orderDate].orderCount += 1;
-                    }
 
-                    // Process refunds
-                    if (order.refunds?.length > 0) {
-                        order.refunds.forEach(refund => {
-                            const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-                            const refundAmount = calculateRefundAmount(refund);
-                            
-                            if (dailySalesMap[refundDate]) {
-                                dailySalesMap[refundDate].refundAmount += refundAmount;
-                            }
-                        });
+                    const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
+
+                    if (isCancelled) {
+                        // Only increment cancelled order count, don't add to sales metrics
+                        if (dailySalesMap[orderDate]) {
+                            dailySalesMap[orderDate].cancelledOrderCount += 1;
+                        }
+                    } else {
+                        const totalPrice = Number(order.total_price || 0);
+                        const discountAmount = Number(order.total_discounts || 0);
+
+                        // Calculate true gross sales from line items (before discounts)
+                        let lineItemTotal = 0;
+                        if (order.line_items && Array.isArray(order.line_items)) {
+                            lineItemTotal = order.line_items.reduce((sum, item) => {
+                                // Calculate pre-discount price: price × quantity
+                                const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
+                                return sum + itemTotal;
+                            }, 0);
+                        }
+
+                        // Fallback to subtotal_price + discounts if line items calculation is not available
+                        const grossSales = lineItemTotal > 0 ?
+                            lineItemTotal :
+                            (Number(order.subtotal_price || 0) + discountAmount);
+
+                        if (dailySalesMap[orderDate]) {
+                            dailySalesMap[orderDate].grossSales += grossSales;
+                            dailySalesMap[orderDate].totalPrice += totalPrice;
+                            dailySalesMap[orderDate].discountAmount += discountAmount;
+                            dailySalesMap[orderDate].orderCount += 1;
+                        }
+
+                        // Process refunds
+                        if (order.refunds?.length > 0) {
+                            order.refunds.forEach(refund => {
+                                const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                                const refundAmount = calculateRefundAmount(refund);
+
+                                if (dailySalesMap[refundDate]) {
+                                    dailySalesMap[refundDate].refundAmount += refundAmount;
+                                }
+                            });
+                        }
                     }
                 });
             }
+
 
             currentDay.add(1, 'day');
         }
@@ -387,7 +400,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             Brand.findById(brandId).lean(),
             User.findById(userId).lean(),
         ]);
-        
+
         if (!brand || !user) {
             return {
                 success: false,
@@ -395,7 +408,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
-        const refreshToken = user.googleRefreshToken;
+        const refreshToken = user.googleAdsRefreshToken;
         if (!refreshToken) {
             return {
                 success: false,
@@ -422,14 +435,14 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
 
         // Initialize a map to store metrics by date
         const metricsMap = new Map();
-        
+
         // Process each Google Ad account
         for (const adAccount of brand.googleAdAccount) {
             const adAccountId = adAccount.clientId;
             const managerId = adAccount.managerId;
-            
+
             if (!adAccountId) continue;
-            
+
             const customer = client.Customer({
                 customer_id: adAccountId,
                 refresh_token: refreshToken,
@@ -441,7 +454,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
 
             while (currentDate.isSameOrBefore(end)) {
                 const formattedDate = currentDate.format('YYYY-MM-DD');
-                
+
                 try {
                     const adsReport = await customer.report({
                         entity: "customer",
@@ -464,7 +477,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
                         totalSpend += spend;
                         totalConversionsValue += row.metrics.conversions_value || 0;
                     }
-                    
+
                     // Update or create metrics for this date
                     if (!metricsMap.has(formattedDate)) {
                         metricsMap.set(formattedDate, {
@@ -473,26 +486,26 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
                             googleConversionsValue: 0,
                         });
                     }
-                    
+
                     const dateMetrics = metricsMap.get(formattedDate);
                     dateMetrics.googleSpend += totalSpend;
                     dateMetrics.googleConversionsValue += totalConversionsValue;
-                    
+
                 } catch (error) {
                     console.error(`Error fetching data for account ${adAccountId} on date ${formattedDate}:`, error);
                     // Continue with other dates and accounts if one fails
                 }
-                
+
                 currentDate = currentDate.add(1, 'day');
             }
         }
 
         // Convert map to array and calculate ROAS and sales for each date
         const metricsByDate = Array.from(metricsMap.values()).map(metrics => {
-            const googleRoas = metrics.googleSpend > 0 ? 
+            const googleRoas = metrics.googleSpend > 0 ?
                 (metrics.googleConversionsValue / metrics.googleSpend) : 0;
             const googleSales = googleRoas * metrics.googleSpend || 0;
-            
+
             return {
                 date: metrics.date,
                 googleSpend: metrics.googleSpend.toFixed(2),
@@ -503,7 +516,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
 
         // Sort by date
         metricsByDate.sort((a, b) => moment(a.date).diff(moment(b.date)));
-        
+
         console.log(metricsByDate);
         return {
             success: true,
@@ -765,31 +778,31 @@ export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, us
 
 export const calculateMetricsForSingleBrand = async (brandId, userId) => {
     try {
-      console.log(`Starting historical metrics calculation for brand: ${brandId}`);
-      
-      const endDate = new Date();
-      const startDate = subYears(startOfDay(endDate), 2);
-      
-      console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      
-      const existingMetrics = await AdMetrics.findOne({ brandId });
-      
-      if (existingMetrics) {
-        console.log(`Metrics already exist for brand ${brandId}, skipping initial calculation`);
-        return { success: true, message: 'Metrics already exist for this brand' };
-      }
-      
-      const result = await monthlyAddReportData(brandId, startDate, endDate, userId);
-      
-      if (result.success) {
-        console.log(`Historical metrics successfully calculated and saved for brand ${brandId}`);
-        return { success: true, message: 'Historical metrics successfully calculated' };
-      } else {
-        console.error(`Failed to calculate historical metrics for brand ${brandId}: ${result.message}`);
-        return { success: false, message: result.message };
-      }
+        console.log(`Starting historical metrics calculation for brand: ${brandId}`);
+
+        const endDate = new Date();
+        const startDate = subYears(startOfDay(endDate), 2);
+
+        console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+        const existingMetrics = await AdMetrics.findOne({ brandId });
+
+        if (existingMetrics) {
+            console.log(`Metrics already exist for brand ${brandId}, skipping initial calculation`);
+            return { success: true, message: 'Metrics already exist for this brand' };
+        }
+
+        const result = await monthlyAddReportData(brandId, startDate, endDate, userId);
+
+        if (result.success) {
+            console.log(`Historical metrics successfully calculated and saved for brand ${brandId}`);
+            return { success: true, message: 'Historical metrics successfully calculated' };
+        } else {
+            console.error(`Failed to calculate historical metrics for brand ${brandId}: ${result.message}`);
+            return { success: false, message: result.message };
+        }
     } catch (error) {
-      console.error(`Error calculating historical metrics for brand ${brandId}:`, error);
-      return { success: false, message: error.message };
+        console.error(`Error calculating historical metrics for brand ${brandId}:`, error);
+        return { success: false, message: error.message };
     }
 };

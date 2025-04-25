@@ -20,14 +20,17 @@ import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
+import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js"
 
 
 
 
 const app = express();
 dotenv.config();
-  
+             
 connectDB(); 
+
+monthlyCalculateMetricsForAllBrands("2025-02-01","2025-03-31 ","67eb85f2f583a37ca251622a");
 
 
 app.use(cors({

@@ -30,8 +30,8 @@ dotenv.config();
              
 connectDB(); 
 
-monthlyCalculateMetricsForAllBrands("2025-02-01","2025-03-31 ","67eb85f2f583a37ca251622a");
-
+//monthlyCalculateMetricsForAllBrands("2024-08-01","2024-12-31","67eb85f2f583a37ca251622a");
+ 
 
 app.use(cors({
   origin: ['http://13.203.31.8', 'http://localhost:5173','https://parallels.messold.com'],  

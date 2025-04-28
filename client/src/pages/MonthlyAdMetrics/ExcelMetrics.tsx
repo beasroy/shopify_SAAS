@@ -281,7 +281,7 @@ export const ExcelMetricsPage: React.FC = () => {
                 />
                 <TooltipHeader title="Spend" tooltip="Total Spent = Meta Spent + Google Spent" isSubHeader />
                 <TooltipHeader title="Sales" tooltip="Sales = (MetaSales + GoogleSales)" isSubHeader />
-                <TooltipHeader title="ROI" tooltip="ROI = (MetaSales + GoogleSales)/ Total Spent" isSubHeader />
+                <TooltipHeader title="ROI" tooltip="ROI = (MetaSales + GoogleSales)/ Total Spent" isSubHeader isImportant={true} />
                 <TooltipHeader title="Spend" tooltip="Meta Spent" isSubHeader />
                 <TooltipHeader title="Sales" tooltip="Meta Sales = Meta Spent * Meta ROAS" isSubHeader />
                 <TooltipHeader title="ROAS" tooltip="Meta ROAS" isSubHeader isImportant={true} />
@@ -331,7 +331,7 @@ export const ExcelMetricsPage: React.FC = () => {
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
                         {formatCurrency(monthData.refundAmount)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm">
                         {formatCurrency(monthData.totalSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">

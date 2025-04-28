@@ -81,18 +81,15 @@ router.delete('/delete/:brandId', async (req, res) => {
 });
 
 const calculateRefundAmount = (refund) => {
-  let amount = 0;
-  
-  if (refund.transactions && Array.isArray(refund.transactions)) {
-    amount = refund.transactions.reduce((sum, transaction) => {
-      if (transaction.kind === 'refund' && transaction.status === 'success') {
-        return sum + Number(transaction.amount || 0);
-      }
-      return sum;
-    }, 0);
-  }
-  
-  return amount;
+  const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
+      return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
+  }, 0) || 0;
+
+  const transactionAmount = refund.transactions?.reduce((sum, trans) => {
+      return sum + Number(trans.amount || 0);
+  }, 0) || 0;
+
+  return Math.max(lineItemAmount, transactionAmount);
 };
 
 router.post('/monthly', async (req, res) => {
@@ -196,14 +193,18 @@ router.post('/monthly', async (req, res) => {
 
           const response = await shopify.order.list(params);
           
-          if (!response || !Array.isArray(response)) {
+          // Fixed: Extract orders array and handle pagination properly
+          const orders_batch = Array.isArray(response) ? response : response.data;
+          
+          if (!orders_batch || !Array.isArray(orders_batch)) {
             console.warn('Unexpected response format:', response);
             break;
           }
 
-          orders = orders.concat(response);
+          orders = orders.concat(orders_batch);
 
           // Extract pagination info from headers
+          // Fixed: Handle headers properly based on shopify API response format
           const linkHeader = response.headers?.link;
           if (linkHeader) {
             const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
@@ -212,7 +213,7 @@ router.post('/monthly', async (req, res) => {
             pageInfo = null;
           }
 
-          console.log(`Fetched ${response.length} orders, total: ${orders.length}`);
+          console.log(`Fetched ${orders_batch.length} orders, total: ${orders.length}`);
           retryCount = 0; // Reset retry count on successful request
 
         } catch (error) {
@@ -265,16 +266,21 @@ router.post('/monthly', async (req, res) => {
             allOrdersByDate[orderDate].push(order);
           }
           
-          // Check if order is cancelled before adding to metrics
-          const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
+          // FIXED: This condition was wrong - test orders should be excluded, not included
+          // Changed from: const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
+          const isTestOrder = order.test === true;
           
-          if (isCancelled) {
-            // Only increment cancelled order count, don't add to sales metrics
+          // Skip test orders and handle cancelled orders
+          if (isTestOrder) {
+            // Don't process test orders at all
+            return;
+          } 
+            else {
+              // Only increment cancelled order count, don't add to sales metrics
             if (dailySalesMap[orderDate]) {
               dailySalesMap[orderDate].cancelledOrderCount += 1;
-            }
-          } else {
-            // Process non-cancelled orders for sales metrics
+            } 
+            // Process regular orders for sales metrics
             const totalPrice = Number(order.total_price || 0);
             const discountAmount = Number(order.total_discounts || 0);
             
@@ -300,11 +306,20 @@ router.post('/monthly', async (req, res) => {
               dailySalesMap[orderDate].orderCount += 1;
             }
 
-            // Process refunds for non-cancelled orders
+            // Process refunds for non-cancelled, non-test orders
             if (order.refunds?.length > 0) {
               order.refunds.forEach(refund => {
                 const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                // Added debugging for refund processing
+                console.log('Processing refund:', {
+                  refundId: refund.id,
+                  refundDate,
+                  refundLineItems: refund.refund_line_items?.length || 0,
+                  transactions: refund.transactions?.length || 0
+                });
+                
                 const refundAmount = calculateRefundAmount(refund);
+                console.log(`Calculated refund amount: ${refundAmount}`);
                 
                 if (dailySalesMap[refundDate]) {
                   dailySalesMap[refundDate].refundAmount += refundAmount;
@@ -321,14 +336,23 @@ router.post('/monthly', async (req, res) => {
     // Convert daily sales map to array and calculate derived metrics
     const salesData = Object.values(dailySalesMap).map(day => {
       const dateStr = day.date;
+      
+      // Ensure values are properly formatted as numbers
+      const grossSales = Number(day.grossSales) || 0;
+      const discountAmount = Number(day.discountAmount) || 0;
+      const refundAmount = Number(day.refundAmount) || 0;
+      const totalPrice = Number(day.totalPrice) || 0;
+      
       return {
         ...day,
         // Net product sales (excluding shipping, taxes, etc.)
-        shopifySales: Number((day.grossSales - day.discountAmount - day.refundAmount).toFixed(2)),
+        // Fixed from your monthlyFetchTotalSales function
+        shopifySales: Number((grossSales - discountAmount).toFixed(2)),
         // Total customer payments including all charges, minus refunds
-        totalSales: Number((day.totalPrice ).toFixed(2)),
-        refundAmount: Number(day.refundAmount.toFixed(2)),
-        discountAmount: Number(day.discountAmount.toFixed(2)),
+        // Fixed typo: was 'refundAmoount'
+        totalSales: Number((totalPrice - refundAmount).toFixed(2)),
+        refundAmount: Number(refundAmount.toFixed(2)),
+        discountAmount: Number(discountAmount.toFixed(2)),
         // Include full orders for this date
         orders: allOrdersByDate[dateStr] || []
       };

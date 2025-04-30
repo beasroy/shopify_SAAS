@@ -26,7 +26,7 @@ const GoogleCallback = () => {
                 const pathSegments = window.location.pathname.split('/');
              
                 const userId = pathSegments[2];
-                const appToken = pathSegments[3];
+                const appToken = pathSegments[1];
 
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {

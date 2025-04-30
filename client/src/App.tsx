@@ -26,6 +26,7 @@ import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
 import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
 import CampaignPage from './pages/Meta/Campaign Reports/CampaignPage.tsx';
 import InterestPage from './pages/Meta/Interest Reports/InterestReportPage.tsx';
+import ShopifyAuth from "./Auth/Shopify.tsx";
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
                   <Route path="/conversion-reports/:brandId" element={<ConversionLens />} />
                   <Route path="/callback" element={<GoogleCallback />} />
                   <Route path ="/profile" element = {<ProfilePage />} />
+                  <Route path ="/shopify" element = {<ShopifyAuth />} />
                   <Route path ="/brand-setup" element = {<BrandSetupDashboard />} />
                   <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />

@@ -597,7 +597,7 @@ export const handleShopifyCallback = async (request, res) => {
             );
 
             // Set HTTP-only cookie
-            res.cookie('auth_token', token, {
+            res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production', 
                 sameSite: 'lax',

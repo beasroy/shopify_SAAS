@@ -159,7 +159,7 @@ export async function registerGDPRWebhooks(shop, accessToken) {
     try {
       // Create each webhook
       const results = await Promise.all(
-        webhooks.map(webhook => 
+        webhooks.map(webhookData => 
           axios({
             method: 'post',
             url: `https://${shop}/admin/api/2023-07/webhooks.json`,
@@ -167,7 +167,7 @@ export async function registerGDPRWebhooks(shop, accessToken) {
               'Content-Type': 'application/json',
               'X-Shopify-Access-Token': accessToken
             },
-            data: { webhook }
+            data: { webhook: webhookData } // Fixed: Correctly structure the webhook data
           })
         )
       );
@@ -175,8 +175,15 @@ export async function registerGDPRWebhooks(shop, accessToken) {
       console.log('Successfully registered GDPR webhooks for', shop);
       return results.map(r => r.data.webhook);
     } catch (error) {
-      console.error('Error registering GDPR webhooks:', error.response?.data || error.message);
+      // Improve error handling to continue even if one webhook fails
+      if (error.response?.status === 404) {
+        console.error('Invalid webhook topic:', error.response.data);
+      } else if (error.response?.data) {
+        console.error('Error registering webhooks:', error.response.data);
+      } else {
+        console.error('Error registering webhooks:', error.message);
+      }
       throw error;
     }
-}
+  }
   

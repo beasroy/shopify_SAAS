@@ -29,22 +29,41 @@ const GoogleCallback = () => {
 
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {
-                    const response = await axios.get(`${baseURL}${url}?${type}=${token}`, { withCredentials: true });
-                    if (response.data.success) {
-                        console.log(`${type} token updated successfully, redirecting to /dashboard`);
-                        if (type === "zohoToken") {
-                            console.log("Zoho token updated, redirecting to /profile");
-                            navigate('/profile');
+                    try {
+                        const response = await axios.put(
+                            `${baseURL}${url}/${type}`, 
+                            {}, // Empty body since we're using query params
+                            { 
+                                params: { [type]: token },
+                                withCredentials: true 
+                            }
+                        );
+                        
+                        if (response.data.success) {
+                            console.log(`${type} token updated successfully`);
+                            if (type === "zohoToken") {
+                                console.log("Zoho token updated, redirecting to /profile");
+                                navigate('/profile');
+                            } else {
+                                console.log(`${type} token updated, redirecting to /dashboard`);
+                                navigate('/brand-setup');
+                            }
+                            return true;
                         } else {
-                            console.log(`${type} token updated, redirecting to /dashboard`);
-                            navigate('/brand-setup');
+                            console.error(`Failed to update ${type} token`);
+                            toast({
+                                title: 'Update Failed',
+                                description: `Unable to update ${type} token.`,
+                                variant: 'destructive',
+                            });
+                            navigate('/');
+                            return false;
                         }
-                        return true;
-                    } else {
-                        console.error(`Failed to update ${type} token`);
+                    } catch (error: any) {
+                        console.error(`Error updating ${type} token:`, error);
                         toast({
                             title: 'Update Failed',
-                            description: `Unable to update ${type} token.`,
+                            description: error?.response?.data?.message || `Unable to update ${type} token.`,
                             variant: 'destructive',
                         });
                         navigate('/');

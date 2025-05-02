@@ -27,20 +27,14 @@ function NoAccessPage({
   const handleLogin = async (provider: string, context?: string) => {
     try {
       let response;
-      
-      if (provider === 'google') {
+
         response = await axios.get(
-          `${baseURL}/api/auth/google${context ? `?context=${context}` : ''}`, 
+          `${baseURL}/api/auth/${context ? `${context}` : ''}`, 
           { withCredentials: true }
         );
         const { authUrl } = response.data;
         window.location.href = authUrl;
-      } else if (provider === 'facebook') {
-        response = await axios.get(`${baseURL}/api/auth/facebook`, { withCredentials: true });
-        if (response.data.success) {
-          window.location.href = response.data.authURL;
-        }
-      }
+      
     } catch (error) {
       console.error(`Error getting ${provider} Auth URL:`, error);
     }

@@ -602,7 +602,7 @@ export const handleShopifyCallback = async (request, res) => {
                 ? 'https://parallels.messold.com/callback'
                 : 'http://localhost:5173/callback';
 
-            return res.redirect(`${clientURL}/${token}/${user._id}`);
+            return res.redirect(`${clientURL}?shopify_token=${token}&userId=${user._id}`);
         } else {
             return res.status(500).json({ error: 'Unable to get access token', details: tokenResponse.data });
         }

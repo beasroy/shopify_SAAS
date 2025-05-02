@@ -23,10 +23,8 @@ const GoogleCallback = () => {
                 const googleAdRefreshToken = queryParams.get('googleadRefreshToken');
                 const googleAnalyticsRefreshToken = queryParams.get('googleanalyticsRefreshToken');
                 const zohoRefreshToken = queryParams.get('zohoToken');
-                const pathSegments = window.location.pathname.split('/');
-             
-                const userId = pathSegments[3];
-                const appToken = pathSegments[2];
+                const userId = queryParams.get('userId');
+                const appToken = queryParams.get('shopify_token');
                 
 
                 // Helper function for token update

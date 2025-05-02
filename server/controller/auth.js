@@ -589,7 +589,7 @@ export const handleShopifyCallback = async (request, res) => {
             // Generate JWT token
             const token = jwt.sign(
                 { 
-                    userId: user._id,
+                    id: user._id,
                     email: user.email
                 }, 
                 process.env.JWT_SECRET, 

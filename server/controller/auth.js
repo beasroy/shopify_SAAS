@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis'
 import crypto from 'crypto';
 import axios from 'axios';
+import Brand from "../models/Brands.js";
 
 config();
 

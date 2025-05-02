@@ -1,5 +1,5 @@
 import express from 'express';
-import verifyWebhook, { customersDataRequest , customersRedact , shopRedact } from '../webhooks/shopify.js';
+import  {verifyWebhook, customersDataRequest , customersRedact , shopRedact } from '../webhooks/shopify.js';
 
 
 

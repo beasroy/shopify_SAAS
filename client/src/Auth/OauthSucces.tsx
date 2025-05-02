@@ -46,7 +46,7 @@ const GoogleCallback = () => {
                                 navigate('/profile');
                             } else {
                                 console.log(`${type} token updated, redirecting to /dashboard`);
-                                navigate('/brand-setup');
+                                navigate('/dashboard');
                             }
                             return true;
                         } else {
@@ -56,7 +56,7 @@ const GoogleCallback = () => {
                                 description: `Unable to update ${type} token.`,
                                 variant: 'destructive',
                             });
-                            navigate('/');
+                            navigate('/dashboard');
                             return false;
                         }
                     } catch (error: any) {

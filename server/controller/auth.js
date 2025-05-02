@@ -414,9 +414,9 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         }
 
         if (type === 'googleadRefreshToken') {
-            const { googleAdRefreshToken } = req.query;
+            const { googleadRefreshToken } = req.query;
 
-            if (!googleAdRefreshToken) {
+            if (!googleadRefreshToken) {
                 return res.status(400).json({
                     success: false,
                     message: 'Google refresh token is required.',
@@ -424,7 +424,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
             }
 
             await User.findByIdAndUpdate(userId, {
-                googleAdsRefreshToken: googleAdRefreshToken,
+                googleAdsRefreshToken: googleadRefreshToken,
             });
 
             return res.status(200).json({

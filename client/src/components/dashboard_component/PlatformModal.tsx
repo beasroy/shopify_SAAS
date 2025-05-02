@@ -111,7 +111,6 @@ export default function PlatformModal({
         }
         const response = await axios.post(
           `${baseURL}${endpoint}`,
-          { userId },
           { withCredentials: true }
         );
 

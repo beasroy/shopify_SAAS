@@ -19,7 +19,7 @@ const createGoogleAdsClient = (refreshToken) => {
 
 export const getGoogleAdAccounts = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId = req.user._id;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
         }
@@ -40,14 +40,14 @@ export const getGoogleAdAccounts = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        if (user.method !== 'google' || !user.googleRefreshToken) {
+        if (user.method !== 'google' || !user.googleAdsRefreshToken) {
             return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
-        const client = createGoogleAdsClient(user.googleRefreshToken);
+        const client = createGoogleAdsClient(user.googleAdsRefreshToken);
 
         // Get list of accessible customers
-        const customersResponse = await client.listAccessibleCustomers(user.googleRefreshToken);
+        const customersResponse = await client.listAccessibleCustomers(user.googleAdsRefreshToken);
         console.log('Accessible customers:', customersResponse);
 
         if (!customersResponse?.resource_names?.length) {
@@ -64,7 +64,7 @@ export const getGoogleAdAccounts = async (req, res) => {
             try {
                 const customer = client.Customer({
                     customer_id: customerId,
-                    refresh_token: user.googleRefreshToken,
+                    refresh_token: user.googleAdsRefreshToken,
                 });
                 const query = `
                     SELECT
@@ -127,7 +127,7 @@ export const getGoogleAdAccounts = async (req, res) => {
 
 export const getGa4PropertyIds = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId  = req.user._id;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
         }
@@ -145,7 +145,7 @@ export const getGa4PropertyIds = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        if (user.method !== 'google' && user.googleRefreshToken == null) {
+        if (user.method !== 'google' && user.googleAnalyticsRefreshToken == null) {
             return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
@@ -156,7 +156,7 @@ export const getGa4PropertyIds = async (req, res) => {
             process.env.GOOGLE_REDIRECT_URI
         );
 
-        oauth2Client.setCredentials({ refresh_token: user.googleRefreshToken });
+        oauth2Client.setCredentials({ refresh_token: user.googleAnalyticsRefreshToken });
 
 
         const analyticsAdmin = google.analyticsadmin({ version: 'v1alpha', auth: oauth2Client });
@@ -194,7 +194,7 @@ export const getGa4PropertyIds = async (req, res) => {
             console.log('Refresh token expired. Prompting user to reauthenticate.');
 
             // Invalidate the user's refresh token in the database
-            await User.findByIdAndUpdate(req.body.userId, { googleRefreshToken: null });
+            await User.findByIdAndUpdate(req.body.userId, { googleAnalyticsRefreshToken: null });
 
             return res.status(401).json({
                 message: 'Your Google session has expired. Please log in again to continue.',

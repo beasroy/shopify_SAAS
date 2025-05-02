@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useToast } from '../hooks/use-toast';
 import { useDispatch } from 'react-redux';
 import { setUser } from '@/store/slices/UserSlice'
-
+import { setBrands } from '@/store/slices/BrandSlice'
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
@@ -25,8 +25,9 @@ const GoogleCallback = () => {
                 const zohoRefreshToken = queryParams.get('zohoToken');
                 const pathSegments = window.location.pathname.split('/');
              
-                const userId = pathSegments[2];
-                const appToken = pathSegments[1];
+                const userId = pathSegments[3];
+                const appToken = pathSegments[2];
+                
 
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {
@@ -110,8 +111,10 @@ const GoogleCallback = () => {
 
                     if (getUser.data.success) {
                         const user = getUser.data.user;
+                        const brands = getUser.data.brands;
 
                         dispatch(setUser(user));
+                        dispatch(setBrands(brands));
 
                         if (!user.brands || user.brands.length === 0) {
                             console.log('No brands found, redirecting to /brand-setup');

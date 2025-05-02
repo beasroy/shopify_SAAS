@@ -565,7 +565,7 @@ export const handleShopifyCallback = async (request, res) => {
                 }
             } else {
                 // Create a new brand
-                const newBrand = new Brand({
+                brand = new Brand({
                     name: shopName, 
                     shopifyAccount: {
                         shopName: shop,
@@ -573,8 +573,8 @@ export const handleShopifyCallback = async (request, res) => {
                     },
                 });
                 
-                await newBrand.save();
-                user.brands.push(newBrand._id);
+                await brand.save();
+                user.brands.push(brand._id);
                 await user.save();
             }
 

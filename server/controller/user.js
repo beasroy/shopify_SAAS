@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
+import Brand from "../models/Brand.js";
 
 config();
 
@@ -48,7 +49,6 @@ export const addBrandToUser = async (req, res) => {
   }
 };
 
-
 export const getUserById = async (req, res) => {
   const { userId } = req.params;
   const token = req.query.token;
@@ -58,7 +58,6 @@ export const getUserById = async (req, res) => {
   }
   
   try {
-
     let decodedToken;
     try {
       decodedToken = jwt.verify(token, process.env.JWT_SECRET);
@@ -76,18 +75,30 @@ export const getUserById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // Find all brands associated with the user
+    const brands = await Brand.find({ _id: { $in: user.brands } });
+
     return res.status(200).json({
       success: true,
       user: {
         id: user._id,
         username: user.username,
         email: user.email,
-        brands: user.brands,
+        brands: user.brands, // Keep the original brand IDs
         isAdmin: user.isAdmin,
         isClient: user.isClient,
         method: user.method,
         loginCount: user.loginCount
-      }
+      },
+      brands: brands.map(brand => ({
+        id: brand._id,
+        name: brand.name,
+        logoUrl: brand.logoUrl,
+        fbAdAccounts: brand.fbAdAccounts,
+        googleAdAccount: brand.googleAdAccount,
+        ga4Account: brand.ga4Account,
+        shopifyAccount: brand.shopifyAccount
+      }))
     });
   } catch (error) {
     console.error('Error fetching user:', error);

@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
-import Brand from "../models/Brand.js";
+import Brand from "../models/Brands.js";
 
 config();
 

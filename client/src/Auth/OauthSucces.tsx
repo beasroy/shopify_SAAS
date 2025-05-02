@@ -113,6 +113,9 @@ const GoogleCallback = () => {
                         const user = getUser.data.user;
                         const brands = getUser.data.brands;
 
+                        console.log("User brands:", user.brands); 
+                        console.log("Brands data:", brands);
+
                         dispatch(setUser(user));
                         dispatch(setBrands(brands));
 

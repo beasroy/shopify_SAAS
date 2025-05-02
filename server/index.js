@@ -20,6 +20,7 @@ import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
+import webhookRoutes from "./routes/webhook.js"
 import { monthlyCalculateMetricsForAllBrands } from "./Report/MonthlyReport.js"
 
 
@@ -62,6 +63,7 @@ dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
 dataOperationRouter.use("/app",shopifyAppRoutes)
+dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 
 if (process.env.NODE_ENV === 'production') {
   setupCronJobs();

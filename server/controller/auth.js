@@ -7,6 +7,7 @@ import { google } from 'googleapis'
 import crypto from 'crypto';
 import axios from 'axios';
 import Brand from "../models/Brands.js";
+import { registerGDPRWebhooks } from "../webhooks/shopify.js";
 
 config();
 
@@ -537,6 +538,13 @@ export const handleShopifyCallback = async (request, res) => {
             const shopName = shopData.name;
             const ownerEmail = shopData.email;
             const ownerName = shopData.shop_owner;
+
+            try {
+                await registerGDPRWebhooks(shop, accessToken);
+                console.log(`Webhooks registered successfully for ${shop}`);
+            } catch (webhookError) {
+                console.error(`Failed to register webhooks for ${shop}:`, webhookError);
+            }
             
             // Find or create user
             let user = await User.findOne({ email: ownerEmail || `${shopName}@${shop}` });
@@ -612,7 +620,7 @@ export const handleShopifyCallback = async (request, res) => {
     }
 };
 
-export const getShpifyUrlInstall = async (req, res) => {
+export const getShopifyUrlInstall = async (req, res) => {
   const { hmac, shop, timestamp, host } = req.body;
 
     const message = Object.entries({ shop, timestamp, host })

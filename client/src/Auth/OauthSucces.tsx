@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useToast } from '../hooks/use-toast';
 import { useDispatch } from 'react-redux';
 import { setUser } from '@/store/slices/UserSlice'
-import { setBrands } from '@/store/slices/BrandSlice'
+import { setBrands , setSelectedBrandId } from '@/store/slices/BrandSlice'
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
@@ -116,7 +116,7 @@ const GoogleCallback = () => {
 
                         dispatch(setUser(user));
                         dispatch(setBrands(brands));
-
+                        dispatch(setSelectedBrandId(brands[0]._id));
                         if (!user.brands || user.brands.length === 0) {
                             console.log('No brands found, redirecting to /brand-setup');
                             navigate('/brand-setup');

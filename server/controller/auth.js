@@ -434,22 +434,22 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         }
 
         if (type === 'googleanalyticsRefreshToken') {
-            const { googleAnalyticsRefreshToken } = req.query;
+            const { googleanalyticsRefreshToken } = req.query; // <-- lowercase as in URL
 
-            if (!googleAnalyticsRefreshToken) {
+            if (!googleanalyticsRefreshToken) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Google analytics refresh token is required.',
+                    message: 'Google Analytics refresh token is required.',
                 });
             }
 
             await User.findByIdAndUpdate(userId, {
-                googleAnalyticsRefreshToken: googleAnalyticsRefreshToken,
+                googleAnalyticsRefreshToken: googleanalyticsRefreshToken, // match field name
             });
 
             return res.status(200).json({
                 success: true,
-                message: 'Google Ads refresh token updated successfully.',
+                message: 'Google Analytics refresh token updated successfully.',
             });
         }
 
@@ -479,9 +479,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         });
 
     } catch (err) {
-
         console.error(`Error updating ${type} token:`, err);
-
         return res.status(500).json({
             success: false,
             message: `Failed to update ${type} token.`,
@@ -489,6 +487,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         });
     }
 };
+
 
 export const getShopifyAuthUrl = (req, res) => {
     const { shop } = req.body;

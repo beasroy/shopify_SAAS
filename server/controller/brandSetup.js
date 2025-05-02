@@ -19,7 +19,7 @@ const createGoogleAdsClient = (refreshToken) => {
 
 export const getGoogleAdAccounts = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const userId  = req.user._id;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
         }
@@ -40,7 +40,7 @@ export const getGoogleAdAccounts = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        if (user.method !== 'google' || !user.googleAdsRefreshToken) {
+        if (user.method !== 'google' && !user.googleAdsRefreshToken) {
             return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
@@ -102,7 +102,7 @@ export const getGoogleAdAccounts = async (req, res) => {
         // Check if refresh token is expired
         if (error.message?.includes('invalid_grant')) {
             console.log('Refresh token expired. Prompting user to reauthenticate.');
-            await User.findByIdAndUpdate(req.body.userId, { googleRefreshToken: null });
+            await User.findByIdAndUpdate(req.body.userId, { googleAdsRefreshToken: null });
             return res.status(401).json({
                 message: 'Your Google session has expired. Please log in again.',
                 code: 'TOKEN_EXPIRED',

@@ -50,8 +50,16 @@ export const addBrandToUser = async (req, res) => {
 };
 
 export const getUserById = async (req, res) => {
+  console.log('Request query:', req.query); // Debug: See what's in the query
+  
   const { userId } = req.params;
-  const token = req.query.token;
+  
+  // Try multiple token sources
+  const token = req.query.token || 
+                req.headers.authorization?.replace('Bearer ', '') || 
+                req.headers['x-access-token'];
+  
+  console.log('Token found:', token ? 'Yes (length: ' + token.length + ')' : 'No'); // Debug: Check token
   
   if (!token) {
     return res.status(401).json({ success: false, message: 'No token provided' });
@@ -61,7 +69,9 @@ export const getUserById = async (req, res) => {
     let decodedToken;
     try {
       decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Token decoded successfully for user:', decodedToken.userId); // Debug: successful decode
     } catch (tokenError) {
+      console.error('Token verification error:', tokenError.message); // Debug: error info
       return res.status(401).json({ success: false, message: 'Invalid or expired token' });
     }
 
@@ -84,7 +94,7 @@ export const getUserById = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        brands: user.brands, // Keep the original brand IDs
+        brands: user.brands,
         isAdmin: user.isAdmin,
         isClient: user.isClient,
         method: user.method,

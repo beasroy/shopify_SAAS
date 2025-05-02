@@ -138,6 +138,10 @@ export const shopRedact = async (req, res) => {
   
 
 export async function registerGDPRWebhooks(shop, accessToken) {
+    // Using the latest API version that appears in the response headers
+    const apiVersion = '2024-04';
+    
+    // Correct GDPR webhook topics (these are standard Shopify GDPR topics)
     const webhooks = [
       {
         topic: 'customers/data_request',
@@ -156,34 +160,31 @@ export async function registerGDPRWebhooks(shop, accessToken) {
       }
     ];
   
-    try {
-      // Create each webhook
-      const results = await Promise.all(
-        webhooks.map(webhookData => 
-          axios({
-            method: 'post',
-            url: `https://${shop}/admin/api/2023-07/webhooks.json`,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': accessToken
-            },
-            data: { webhook: webhookData } // Fixed: Correctly structure the webhook data
-          })
-        )
-      );
-      
-      console.log('Successfully registered GDPR webhooks for', shop);
-      return results.map(r => r.data.webhook);
-    } catch (error) {
-      // Improve error handling to continue even if one webhook fails
-      if (error.response?.status === 404) {
-        console.error('Invalid webhook topic:', error.response.data);
-      } else if (error.response?.data) {
-        console.error('Error registering webhooks:', error.response.data);
-      } else {
-        console.error('Error registering webhooks:', error.message);
+    // Improved error handling to register webhooks individually
+    const results = [];
+    
+    for (const webhookData of webhooks) {
+      try {
+        const response = await axios({
+          method: 'post',
+          url: `https://${shop}/admin/api/${apiVersion}/webhooks.json`,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': accessToken
+          },
+          data: { webhook: webhookData }
+        });
+        
+        console.log(`Successfully registered ${webhookData.topic} webhook for ${shop}`);
+        results.push(response.data.webhook);
+      } catch (error) {
+        console.error(`Error registering ${webhookData.topic} webhook:`, 
+          error.response?.data?.errors || error.message);
+        
+        // Continue with the next webhook instead of failing completely
       }
-      throw error;
     }
+    
+    return results;
   }
   

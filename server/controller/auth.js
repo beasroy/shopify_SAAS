@@ -504,7 +504,7 @@ export const getShopifyAuthUrl = (req, res) => {
 }
 export const handleShopifyCallback = async (request, res) => {
     const absoluteUrl = `${request.protocol}://${request.get('host')}${request.originalUrl}`;
-    const url = new URL(absoluteUrl); // Now it's a valid absolute URL
+    const url = new URL(absoluteUrl);
 
     const code = url.searchParams.get('code');
     const shop = url.searchParams.get('shop');
@@ -516,6 +516,7 @@ export const handleShopifyCallback = async (request, res) => {
     }
 
     try {
+        // Get access token from Shopify
         const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
             client_id: clientId,
             client_secret: clientSecret,
@@ -523,20 +524,122 @@ export const handleShopifyCallback = async (request, res) => {
         });
 
         if (tokenResponse.data && tokenResponse.data.access_token) {
+            const accessToken = tokenResponse.data.access_token;
+            
+            // Get shop details
+            const shopResponse = await axios.get(`https://${shop}/admin/api/2023-07/shop.json`, {
+                headers: {
+                    'X-Shopify-Access-Token': accessToken
+                }
+            });
+            
+            const shopData = shopResponse.data.shop;
+            const shopName = shopData.name;
+            const ownerEmail = shopData.email;
+            const ownerName = shopData.shop_owner;
+            
+            // Find or create user
+            let user = await User.findOne({ email: ownerEmail || `${shopName}@${shop}` });
+            
+            if (!user) {
+                user = new User({
+                    username: ownerName || shopName,
+                    email: ownerEmail || `${shopName}@${shop}`,
+                    method: 'shopify',
+                    brands: [] 
+                });
+                
+                await user.save();
+            }
+            
+            // Find or create brand
+            let brand = await Brand.findOne({ 'shopifyAccount.shopName': shop });
+            
+            if (brand) {
+                brand.shopifyAccount.shopifyAccessToken = accessToken;
+                await brand.save();
+                
+                if (!user.brands.includes(brand._id.toString())) {
+                    user.brands.push(brand._id);
+                    await user.save();
+                }
+            } else {
+                // Create a new brand
+                const newBrand = new Brand({
+                    name: shopName, 
+                    shopifyAccount: {
+                        shopName: shop,
+                        shopifyAccessToken: accessToken
+                    },
+                });
+                
+                await newBrand.save();
+                user.brands.push(newBrand._id);
+                await user.save();
+            }
+
+            // Generate JWT token
+            const token = jwt.sign(
+                { 
+                    userId: user._id,
+                    email: user.email
+                }, 
+                process.env.JWT_SECRET, 
+                { expiresIn: '30d' } 
+            );
+
+            // Set HTTP-only cookie
+            res.cookie('auth_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'lax',
+                maxAge: 30 * 24 * 60 * 60 * 1000 
+            });
+            
+            // Redirect to client with user ID and token
             const isProduction = process.env.NODE_ENV === 'production';
             const clientURL = isProduction
-                ? 'https://parallels.messold.com/dashboard'
-                : 'http://localhost:5173/dashboard';
+                ? 'https://parallels.messold.com/callback'
+                : 'http://localhost:5173/callback';
 
-            return res.redirect(`${clientURL}?access_token=${tokenResponse.data.access_token}&shop_name=${shop}`);
+            return res.redirect(`${clientURL}/${token}/${user._id}`);
         } else {
             return res.status(500).json({ error: 'Unable to get access token', details: tokenResponse.data });
         }
     } catch (error) {
-        return res.status(500).json({ error: 'Error occurred while fetching the access token', details: error.response?.data || error.message });
+        console.error('Error in Shopify callback:', error);
+        return res.status(500).json({ error: 'Error occurred while processing callback', details: error.response?.data || error.message });
     }
 };
 
+export const getShpifyUrlInstall = async (req, res) => {
+  const { hmac, shop, timestamp, host } = req.body;
+
+    const message = Object.entries({ shop, timestamp, host })
+    .sort(([a], [b]) => a.localeCompare(b)) 
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+  
+  const generatedHash = crypto
+    .createHmac('sha256', process.env.SHOPIFY_CLIENT_SECRET)
+    .update(message)
+    .digest('hex');
+  
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(generatedHash, 'hex'),
+    Buffer.from(hmac, 'hex')
+  );
+  
+  if (!isValid) {
+    return res.status(401).json({ success: false, error: 'Invalid HMAC' });
+  }
+  
+  const SCOPES = "read_analytics, write_returns, read_returns, write_orders, read_orders, write_customers, read_customers, write_products, read_products";
+  const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
+  
+  return res.json({ success: true, authUrl });
+};
+ 
 export const getZohoAuthURL = (req, res) => {
     const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +
         `?client_id=${process.env.ZOHO_CLIENT_ID}` +

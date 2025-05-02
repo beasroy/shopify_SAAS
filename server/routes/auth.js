@@ -12,6 +12,7 @@ router.get('/google/callback',handleGoogleCallback);
 router.get('/facebook',getFbAuthURL);
 router.get('/facebook/callback',handleFbCallback);
 router.get('/updateTokens/:type',verifyAuth,updateTokensForGoogleAndFbAndZoho);
+router.post('/shopify-install',getShopifyAuthUrl);
 router.post('/shopify',getShopifyAuthUrl);
 router.get('/shopify/callback',handleShopifyCallback);
 router.get('/zoho',getZohoAuthURL);

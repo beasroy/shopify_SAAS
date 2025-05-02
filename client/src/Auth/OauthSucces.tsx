@@ -89,12 +89,12 @@ const GoogleCallback = () => {
                 }
 
                 if (googleAdRefreshToken) {
-                    await updateToken('/api/auth/updateTokens/google', googleAdRefreshToken, 'googleadRefreshToken');
+                    await updateToken('/api/auth/updateTokens', googleAdRefreshToken, 'googleadRefreshToken');
                     return;
                 }
 
                 if (googleAnalyticsRefreshToken) {
-                    await updateToken('/api/auth/updateTokens/google', googleAnalyticsRefreshToken, 'googleanalyticsRefreshToken');
+                    await updateToken('/api/auth/updateTokens', googleAnalyticsRefreshToken, 'googleanalyticsRefreshToken');
                     return;
                 }
 

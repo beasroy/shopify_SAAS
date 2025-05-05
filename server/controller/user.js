@@ -50,16 +50,15 @@ export const addBrandToUser = async (req, res) => {
 };
 
 export const getUserById = async (req, res) => {
-  console.log('Request query:', req.query); // Debug: See what's in the query
+  console.log('Request query:', req.query);
+  console.log('Request params:', req.params);
   
   const { userId } = req.params;
   
   // Try multiple token sources
-  const token = req.query.token || 
-                req.headers.authorization?.replace('Bearer ', '') || 
-                req.headers['x-access-token'];
+  const token = req.query.token ;
   
-  console.log('Token found:', token ? 'Yes (length: ' + token.length + ')' : 'No'); // Debug: Check token
+  console.log('Token found:', token ? 'Yes (length: ' + token.length + ')' : 'No');
   
   if (!token) {
     return res.status(401).json({ success: false, message: 'No token provided' });
@@ -69,21 +68,24 @@ export const getUserById = async (req, res) => {
     let decodedToken;
     try {
       decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token decoded successfully for user:', decodedToken.userId); // Debug: successful decode
+      console.log('Token decoded successfully:', decodedToken);
     } catch (tokenError) {
-      console.error('Token verification error:', tokenError.message); // Debug: error info
+      console.error('Token verification error:', tokenError.message);
       return res.status(401).json({ success: false, message: 'Invalid or expired token' });
     }
 
-    if (decodedToken.userId !== userId) {
-      return res.status(403).json({ success: false, message: 'Not authorized to access this user data' });
-    }
-    
-    // Find the user
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    
+    // Optional: If you want to restrict users to only access their own data
+    // but allow admins to access any user data, you could do:
+    /*
+    if (decodedToken.id !== userId && !decodedToken.isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized to access this user data' });
+    }
+    */
 
     // Find all brands associated with the user
     const brands = await Brand.find({ _id: { $in: user.brands } });

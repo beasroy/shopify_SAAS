@@ -1,6 +1,6 @@
 export const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
-
+export const apphandle = import.meta.env.VITE_APP_HANDLE ;
 // Define a new color scheme directly in the component
 export const COLORS = {
   primary: {

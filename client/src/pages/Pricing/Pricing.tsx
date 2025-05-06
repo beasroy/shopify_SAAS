@@ -1,5 +1,8 @@
 import { Check, Star } from "lucide-react"
 import { Link } from "react-router-dom"
+import { apphandle } from "@/data/constant"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store"
 
 const pricingPlans = [
     {
@@ -49,7 +52,17 @@ const pricingPlans = [
     },
 ]
 
+
 function Pricing() {
+    const { selectedBrandId, brands } = useSelector((state: RootState) => state.brand);
+    console.log('App handle in Pricing component:', apphandle);
+    
+    const selectedBrand = brands.find(brand => brand._id === selectedBrandId);
+    
+    const shopifyStoreName = selectedBrand?.shopifyAccount?.shopName.replace(".myshopify.com", "") || '';
+
+    const handle = apphandle || 'parallels';
+
     return (
         <div className="grid lg:grid-cols-3 gap-6">
             {pricingPlans.map((plan) => (
@@ -114,7 +127,7 @@ function Pricing() {
 
                         {/* Button */}
                         <div className="mt-8">
-                            <Link to="https://parallelsapp-production.up.railway.app/">
+                            <Link to={`https://admin.shopify.com/store/${shopifyStoreName}/charges/${handle}/pricing_plans`}>
                             <button
                                 className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${plan.id === "FREE"
                                     ? "bg-teal-600 hover:bg-teal-700 text-white"

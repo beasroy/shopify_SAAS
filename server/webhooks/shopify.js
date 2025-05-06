@@ -1,4 +1,4 @@
-import axios from 'axios';
+// import axios from 'axios';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 
@@ -137,54 +137,54 @@ export const shopRedact = async (req, res) => {
 };
   
 
-export async function registerGDPRWebhooks(shop, accessToken) {
-    // Using the latest API version that appears in the response headers
-    const apiVersion = '2024-04';
+// export async function registerGDPRWebhooks(shop, accessToken) {
+//     // Using the latest API version that appears in the response headers
+//     const apiVersion = '2024-04';
     
-    // Correct GDPR webhook topics (these are standard Shopify GDPR topics)
-    const webhooks = [
-      {
-        topic: 'customers/data_request',
-        address: `https://parallels.messold.com/api/shopify/webhooks/customers/data_request`,
-        format: 'json'
-      },
-      {
-        topic: 'customers/redact',
-        address: `https://parallels.messold.com/api/shopify/webhooks/customers/redact`,
-        format: 'json'
-      },
-      {
-        topic: 'shop/redact',
-        address: `https://parallels.messold.com/api/shopify/webhooks/shop/redact`,
-        format: 'json'
-      }
-    ];
+//     // Correct GDPR webhook topics (these are standard Shopify GDPR topics)
+//     const webhooks = [
+//       {
+//         topic: 'customers/data_request',
+//         address: `https://parallels.messold.com/api/shopify/webhooks/customers/data_request`,
+//         format: 'json'
+//       },
+//       {
+//         topic: 'customers/redact',
+//         address: `https://parallels.messold.com/api/shopify/webhooks/customers/redact`,
+//         format: 'json'
+//       },
+//       {
+//         topic: 'shop/redact',
+//         address: `https://parallels.messold.com/api/shopify/webhooks/shop/redact`,
+//         format: 'json'
+//       }
+//     ];
   
-    // Improved error handling to register webhooks individually
-    const results = [];
+//     // Improved error handling to register webhooks individually
+//     const results = [];
     
-    for (const webhookData of webhooks) {
-      try {
-        const response = await axios({
-          method: 'post',
-          url: `https://${shop}/admin/api/${apiVersion}/webhooks.json`,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': accessToken
-          },
-          data: { webhook: webhookData }
-        });
+//     for (const webhookData of webhooks) {
+//       try {
+//         const response = await axios({
+//           method: 'post',
+//           url: `https://${shop}/admin/api/${apiVersion}/webhooks.json`,
+//           headers: {
+//             'Content-Type': 'application/json',
+//             'X-Shopify-Access-Token': accessToken
+//           },
+//           data: { webhook: webhookData }
+//         });
         
-        console.log(`Successfully registered ${webhookData.topic} webhook for ${shop}`);
-        results.push(response.data.webhook);
-      } catch (error) {
-        console.error(`Error registering ${webhookData.topic} webhook:`, 
-          error.response?.data?.errors || error.message);
+//         console.log(`Successfully registered ${webhookData.topic} webhook for ${shop}`);
+//         results.push(response.data.webhook);
+//       } catch (error) {
+//         console.error(`Error registering ${webhookData.topic} webhook:`, 
+//           error.response?.data?.errors || error.message);
         
-        // Continue with the next webhook instead of failing completely
-      }
-    }
+//         // Continue with the next webhook instead of failing completely
+//       }
+//     }
     
-    return results;
-  }
+//     return results;
+//   }
   

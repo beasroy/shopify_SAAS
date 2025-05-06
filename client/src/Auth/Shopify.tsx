@@ -54,7 +54,7 @@ function ShopifyAuth() {
     return <div className="flex justify-center items-center h-screen">
       <div className="text-center">
         <div className="spinner mb-4"></div>
-        <p className="text-lg">Connecting to Shopify...</p>
+        <p className="text-lg">Connecting to Dashboard...</p>
       </div>
     </div>;
   }

@@ -25,9 +25,12 @@ import { baseURL } from "@/data/constant.ts"
 import type { IBrand } from "@/interfaces"
 import { WhiteGa4Logo, WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
+import { Crown } from 'lucide-react';
+import PricingModal from "../Pricing/Pricing.tsx"
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isPricingOpen, setIsPricingOpen] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -129,6 +132,10 @@ export default function CollapsibleSidebar() {
         navigate(`/${currentPathType}/${brandId}`)
       }
     }
+  }
+
+  const handlePricing = ()=>{
+    setIsPricingOpen(true);
   }
 
   // Define base dashboards that all users can see
@@ -319,10 +326,12 @@ export default function CollapsibleSidebar() {
         </div>
 
         <div className="flex flex-col">
+          <PricingButton isExpanded={isExpanded} handlePricing={handlePricing} />
           <UserProfile isExpanded={isExpanded} user={user} />
           <LogoutButton handleLogout={handleLogout} isExpanded={isExpanded} />
         </div>
       </div>
+      <PricingModal open={isPricingOpen} onOpenChange={setIsPricingOpen} />
     </TooltipProvider>
   )
 }
@@ -592,6 +601,42 @@ function LogoutButton({ handleLogout, isExpanded }: LogoutButtonProps) {
         </Tooltip>
       ) : (
         logoutContent
+      )}
+    </div>
+  )
+}
+
+interface pricingButtonProps {
+  handlePricing: () => void
+  isExpanded: boolean
+}
+
+function PricingButton({ handlePricing, isExpanded }: pricingButtonProps) {
+  const pricingContent = (
+    <div
+      onClick={handlePricing}
+      className={
+        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
+      }
+    >
+      <span className="text-gray-300 hover:text-white">
+        <Crown size={24} />
+      </span>
+      {isExpanded && <span className="hidden sm:inline">Pricing</span>}
+    </div>
+  )
+
+  return (
+    <div>
+      {!isExpanded ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{pricingContent}</TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Pricing</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        pricingContent
       )}
     </div>
   )

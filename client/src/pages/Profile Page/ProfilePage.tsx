@@ -15,7 +15,6 @@ import { RootState } from '@/store';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import Pricing from '../Pricing/Pricing';
 import { baseURL } from '@/data/constant';
 
 function ProfilePage() {
@@ -148,11 +147,6 @@ function ProfilePage() {
 
                                 </div>
                             }
-                             {activeTab.toLowerCase() === "pricing" && (
-                                <div className="p-5">
-                                   <Pricing />
-                                </div>
-                            )}
                             {activeTab.toLowerCase() === "support" && user?.isAdmin && (
                                 <div className="py-8 flex gap-4 items-center justify-center">
                                     <Button onClick={handleZohoLogin} className="bg-teal-600 hover:bg-teal-700">

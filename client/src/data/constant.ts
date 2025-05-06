@@ -1,7 +1,7 @@
 export const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
 export const apphandle = import.meta.env.VITE_APP_HANDLE ;
-// Define a new color scheme directly in the component
+
 export const COLORS = {
   primary: {
     main: "#0EA5E9", // Vivid sky blue
@@ -49,6 +49,55 @@ export const COLORS = {
     headerGradient: "linear-gradient(to bottom, #F1F5F9, #E2E8F0)",
   },
 };
+
+
+export const pricingPlans = [
+  {
+      id: "FREE",
+      title: "Free Plan",
+      price: "Free",
+      description: "Perfect for getting started with analytics",
+      features: [
+          "Basic Analytics Dashboard",
+          "Shopify Integration",
+          "Daily Data Updates",
+          "Basic Reports",
+          "Email Support",
+      ],
+      buttonText: "Get Started",
+  },
+  {
+      id: "STARTUP",
+      title: "Startup Plan",
+      price: "$10",
+      period: "/month",
+      description: "Ideal for growing businesses",
+      features: [
+          "Everything in Free Plan",
+          "Real-time Analytics",
+          "Custom Dashboards",
+          "Advanced Reports",
+          "Priority Email Support",
+      ],
+      isPopular: true,
+      buttonText: "Subscribe Now",
+  },
+  {
+      id: "GROWTH",
+      title: "Growth Plan",
+      price: "$50",
+      period: "/month",
+      description: "For businesses ready to scale",
+      features: [
+          "Everything in Startup Plan",
+          "AI-Powered Insights",
+          "White-label Reports",
+          "Custom Integrations",
+          "Team Collaboration",
+      ],
+      buttonText: "Subscribe Now",
+  },
+]
 
 
 

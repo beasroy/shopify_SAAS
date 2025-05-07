@@ -7,7 +7,7 @@ import { google } from 'googleapis'
 import crypto from 'crypto';
 import axios from 'axios';
 import Brand from "../models/Brands.js";
-
+import Subscription from "../models/Subscription.js";
 
 config();
 
@@ -575,6 +575,24 @@ export const handleShopifyCallback = async (request, res) => {
                 await brand.save();
                 user.brands.push(brand._id);
                 await user.save();
+            }
+
+            let subscription = await Subscription.findOne({ 
+                brandId: brand._id.toString(),
+                shopName: shop,
+                status: 'active'
+            });
+            if (!subscription) {
+                subscription = new Subscription({
+                    brandId: brand._id.toString(),
+                    shopName: shop,
+                    planName: 'Free Plan',
+                    price: 0,
+                    status: 'active',
+                    billingOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 
+                });
+                
+                await subscription.save();
             }
 
             // Generate JWT token

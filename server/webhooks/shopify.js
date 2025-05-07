@@ -4,6 +4,7 @@ import User from '../models/User.js';
 
 
 export function verifyWebhook(req, res, next) {
+  try {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
     
     if (!hmacHeader) {
@@ -23,6 +24,10 @@ export function verifyWebhook(req, res, next) {
     }
     
     next();
+  } catch (error) {
+    console.error('Error during webhook verification:', error);
+    return res.status(401).send('HMAC validation failed');
+  }
 }
   
 export const customersDataRequest = async (req, res) => {

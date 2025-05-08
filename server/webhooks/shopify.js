@@ -2,7 +2,7 @@
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import Subscription from '../models/Subscription.js';
-import Shopify from 'shopify-api-node';
+import axios from 'axios';
 
 const mapPlanName = (shopifyPlanName) => {
   if (!shopifyPlanName) return 'Free Plan';

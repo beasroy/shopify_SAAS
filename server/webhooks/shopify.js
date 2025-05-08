@@ -32,7 +32,7 @@ const mapStatus = (shopifyStatus) => {
 const extractShopDomain = async (shopId) => {
   try {
 
-    
+
     const shopRecord = await Brand.findOne({ 'shopifyAccount.shopId': shopId });
 
     if (shopRecord && shopRecord.shopifyAccount.shopName) {
@@ -52,18 +52,18 @@ export function verifyWebhook(req, res, next) {
     if (!hmacHeader) {
       return res.status(401).send('HMAC validation failed');
     }
-    
+
     const rawBody = req.rawBody.toString('utf8');
     const shopifySecret = process.env.SHOPIFY_CLIENT_SECRET;
-    
+
     const calculatedHmac = crypto
       .createHmac('sha256', shopifySecret)
       .update(rawBody, 'utf8')
       .digest('base64');
-      
+
     console.log('Received HMAC:', hmacHeader);
     console.log('Calculated HMAC:', calculatedHmac);
-    
+
     if (calculatedHmac !== hmacHeader) {
       return res.status(401).send('HMAC validation failed');
     }
@@ -186,13 +186,54 @@ export const shopRedact = async (req, res) => {
   }
 };
 
+const fetchSubscriptionDetails = async (shop, accessToken, subscriptionGid) => {
+  const query = `
+    query {
+      node(id: "${subscriptionGid}") {
+        ... on AppSubscription {
+          id
+          name
+          status
+          trialDays
+          createdAt
+          currentPeriodEnd
+          test
+          lineItems {
+            plan {
+              pricingDetails {
+                __typename
+                ... on AppRecurringPricing {
+                  price {
+                    amount
+                    currencyCode
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await axios.post(
+    `https://${shop}/admin/api/2024-01/graphql.json`,
+    { query },
+    {
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+
+  return response.data.data.node;
+};
+
 export const subscriptionUpdate = async (req, res) => {
   try {
-
     res.status(200).send('OK');
-
     console.log('Received subscription webhook:', JSON.stringify(req.body, null, 2));
-
 
     const data = req.body;
     const subscription = data.app_subscription;
@@ -205,62 +246,66 @@ export const subscriptionUpdate = async (req, res) => {
     const chargeId = subscription.admin_graphql_api_id.split('/').pop();
     const shopId = subscription.admin_graphql_api_shop_id.split('/').pop();
 
-    let shopName = null;
-    if (subscription.admin_graphql_api_shop_id) {
-      shopName = await extractShopDomain(shopId);
-    }
-
+    let shopName = await extractShopDomain(shopId);
     if (!shopName) {
-      console.error('Could not determine shop for subscription:', chargeId);
+      console.error('Could not determine shop domain from ID:', shopId);
       return;
     }
 
-    // Find associated brand
     const brand = await Brand.findOne({ 'shopifyAccount.shopName': shopName });
-
     if (!brand) {
       console.error(`Brand not found for shop: ${shopName}`);
       return;
     }
 
-    // Map the plan name and status
-    const planName = mapPlanName(subscription.name);
-    const status = mapStatus(subscription.status);
+    const accessToken = brand.shopifyAccount.shopifyAccessToken;
 
-    // Find existing subscription or create new one
+    const fullDetails = await fetchSubscriptionDetails(shopName, accessToken, subscription.admin_graphql_api_id);
+
+    if (!fullDetails) {
+      console.error('Failed to fetch full subscription details from Shopify');
+      return;
+    }
+
+    const planName = mapPlanName(fullDetails.name);
+    const status = mapStatus(fullDetails.status);
+    const price = parseFloat(fullDetails.lineItems?.[0]?.plan?.pricingDetails?.price?.amount || 0);
+    const billingOn = fullDetails.currentPeriodEnd ? new Date(fullDetails.currentPeriodEnd) : null;
+    const trialEndsOn = fullDetails.trialDays
+      ? new Date(new Date(fullDetails.createdAt).getTime() + fullDetails.trialDays * 24 * 60 * 60 * 1000)
+      : null;
+
     let subscriptionRecord = await Subscription.findOne({
-      chargeId: chargeId
+      brandId: brand._id.toString(),
+      shopId: shopId
     });
 
     if (subscriptionRecord) {
-      // Update existing subscription
       subscriptionRecord.planName = planName;
       subscriptionRecord.status = status;
-      subscriptionRecord.price = parseFloat(subscription.price || 0);
-
-      // Handle billing date updates
-      if (subscription.billing_on) {
-        subscriptionRecord.billingOn = new Date(subscription.billing_on);
-      }
+      subscriptionRecord.price = price;
+      subscriptionRecord.billingOn = billingOn;
+      subscriptionRecord.trialEndsOn = trialEndsOn;
 
       await subscriptionRecord.save();
-      console.log(`Updated subscription ${chargeId} for shop ${shopName}`);
+      console.log(`Updated subscription for shop ${shopName}`);
     } else {
-      // Create new subscription
+      // Create new
       subscriptionRecord = new Subscription({
         brandId: brand._id.toString(),
         shopId: shopId,
         chargeId: chargeId,
         planName: planName,
-        price: parseFloat(subscription.price || 0),
         status: status,
-        billingOn: subscription.billing_on ? new Date(subscription.billing_on) : null,
-        trialEndsOn: subscription.trial_ends_on ? new Date(subscription.trial_ends_on) : null
+        price: price,
+        billingOn: billingOn,
+        trialEndsOn: trialEndsOn
       });
 
       await subscriptionRecord.save();
-      console.log(`Created new subscription ${chargeId} for shop ${shopName}`);
+      console.log(`Created new subscription for shop ${shopName}`);
     }
+
   } catch (error) {
     console.error('Error processing subscription webhook:', error);
   }

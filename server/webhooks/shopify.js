@@ -272,7 +272,7 @@ export async function registerWebhooks(shop, accessToken) {
   const webhooks = [
     {
       topic: 'app_subscriptions/update',
-      address: `https://parallels.messold.com/api/shopify/webhooks/app_subscription/update`,
+      address: `https://parallels.messold.com/api/shopify/webhooks/app_subscriptions/update`,
       format: 'json'
     },
   ];

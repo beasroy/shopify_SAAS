@@ -27,7 +27,7 @@ const mapStatus = (shopifyStatus) => {
   }
 };
 
-const extractShopDomainFromDatabase = async (shopId) => {
+const extractShopDomain = async (shopId) => {
   try {
 
     const numericId = shopId.split('/').pop();

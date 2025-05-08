@@ -31,6 +31,7 @@ export const handlePricingCallback = async (req, res) => {
             existingSubscription.status = 'pending';
             existingSubscription.planName = 'Free Plan';
             existingSubscription.price = 0;
+            existingSubscription.chargeId = chargeId;
 
             // Save the updated subscription
             await existingSubscription.save();

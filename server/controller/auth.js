@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
-import { registerWebhooks } from "../webhooks/shopify.js"
+import { registerWebhooks } from '../webhooks/shopify.js';
 
 
 config();
@@ -598,7 +598,7 @@ export const handleShopifyCallback = async (request, res) => {
                 
                 await subscription.save();
             }
-
+            console.log("webhook registraton started");
             await registerWebhooks(shop , accessToken);
 
             // Generate JWT token

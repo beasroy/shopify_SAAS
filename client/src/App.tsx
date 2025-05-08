@@ -27,6 +27,7 @@ import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
 import CampaignPage from './pages/Meta/Campaign Reports/CampaignPage.tsx';
 import InterestPage from './pages/Meta/Interest Reports/InterestReportPage.tsx';
 import ShopifyAuth from "./Auth/Shopify.tsx";
+import PricingCallback from './Auth/PricingSuccess.tsx';
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
                   <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
                   <Route path = "/meta-interest/:brandId" element={<InterestPage />} />
+                  <Route path = "/pricing_callback" element={<PricingCallback />} />
                 </Routes>
                 </TutorialManager>
               </Router>

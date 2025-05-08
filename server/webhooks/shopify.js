@@ -1,9 +1,11 @@
-// import axios from 'axios';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import Subscription from '../models/Subscription.js';
 import crypto from 'crypto';
 import axios from 'axios';
+import { config } from "dotenv";
+
+config();
 
 const mapPlanName = (shopifyPlanName) => {
   if (!shopifyPlanName) return 'Free Plan';
@@ -53,7 +55,7 @@ export function verifyWebhook(req, res, next) {
     }
 
     const rawBody = JSON.stringify(req.body);
-    const shopifySecret = process.env.SHOPIFY_WEBHOOK_SECRET;
+    const shopifySecret = process.env.SHOPIFY_CLIENT_SECRET;
 
     const calculatedHmac = crypto
       .createHmac('sha256', shopifySecret)

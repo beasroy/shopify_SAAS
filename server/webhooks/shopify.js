@@ -32,8 +32,8 @@ const mapStatus = (shopifyStatus) => {
 const extractShopDomain = async (shopId) => {
   try {
 
-    const numericId = shopId.split('/').pop();
-    const shopRecord = await Brand.findOne({ 'shopifyAccount.shopId': numericId });
+    
+    const shopRecord = await Brand.findOne({ 'shopifyAccount.shopId': shopId });
 
     if (shopRecord && shopRecord.shopifyAccount.shopName) {
       return shopRecord.shopifyAccount.shopName;
@@ -203,10 +203,11 @@ export const subscriptionUpdate = async (req, res) => {
     }
 
     const chargeId = subscription.admin_graphql_api_id.split('/').pop();
+    const shopId = subscription.admin_graphql_api_shop_id.split('/').pop();
 
     let shopName = null;
     if (subscription.admin_graphql_api_shop_id) {
-      shopName = await extractShopDomain(subscription.admin_graphql_api_shop_id);
+      shopName = await extractShopDomain(shopId);
     }
 
     if (!shopName) {
@@ -242,18 +243,13 @@ export const subscriptionUpdate = async (req, res) => {
         subscriptionRecord.billingOn = new Date(subscription.billing_on);
       }
 
-      // Handle trial end date if present
-      if (subscription.trial_ends_on) {
-        subscriptionRecord.trialEndsOn = new Date(subscription.trial_ends_on);
-      }
-
       await subscriptionRecord.save();
       console.log(`Updated subscription ${chargeId} for shop ${shopName}`);
     } else {
       // Create new subscription
       subscriptionRecord = new Subscription({
         brandId: brand._id.toString(),
-        shopName: shopName,
+        shopId: shopId,
         chargeId: chargeId,
         planName: planName,
         price: parseFloat(subscription.price || 0),

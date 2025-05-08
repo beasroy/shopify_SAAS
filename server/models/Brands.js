@@ -24,6 +24,9 @@ const brandSchema = new mongoose.Schema({
     },
     shopifyAccessToken: {
       type: String,
+    },
+    shopId:{
+      type: Number
     }
   },
 }, {

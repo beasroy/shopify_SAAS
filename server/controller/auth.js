@@ -8,6 +8,8 @@ import crypto from 'crypto';
 import axios from 'axios';
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
+import { registerWebhooks } from "../webhooks/shopify.js"
+
 
 config();
 
@@ -527,13 +529,14 @@ export const handleShopifyCallback = async (request, res) => {
             const accessToken = tokenResponse.data.access_token;
             
             // Get shop details
-            const shopResponse = await axios.get(`https://${shop}/admin/api/2023-07/shop.json`, {
+            const shopResponse = await axios.get(`https://${shop}/admin/api/2024-04/shop.json`, {
                 headers: {
                     'X-Shopify-Access-Token': accessToken
                 }
             });
             
             const shopData = shopResponse.data.shop;
+            const shopId = shopData.id;
             const shopName = shopData.name;
             const ownerEmail = shopData.email;
             const ownerName = shopData.shop_owner;
@@ -556,6 +559,7 @@ export const handleShopifyCallback = async (request, res) => {
             
             if (brand) {
                 brand.shopifyAccount.shopifyAccessToken = accessToken;
+                brand.shopifyAccount.shopId = shopId
                 await brand.save();
                 
                 if (!user.brands.includes(brand._id.toString())) {
@@ -568,7 +572,8 @@ export const handleShopifyCallback = async (request, res) => {
                     name: shopName, 
                     shopifyAccount: {
                         shopName: shop,
-                        shopifyAccessToken: accessToken
+                        shopifyAccessToken: accessToken,
+                        shopId : shopId
                     },
                 });
                 
@@ -579,13 +584,12 @@ export const handleShopifyCallback = async (request, res) => {
 
             let subscription = await Subscription.findOne({ 
                 brandId: brand._id.toString(),
-                shopName: shop,
-                status: 'active'
+                shopId: shopId,
             });
             if (!subscription) {
                 subscription = new Subscription({
                     brandId: brand._id.toString(),
-                    shopName: shop,
+                    shopId: shopId,
                     planName: 'Free Plan',
                     price: 0,
                     status: 'active',
@@ -594,6 +598,8 @@ export const handleShopifyCallback = async (request, res) => {
                 
                 await subscription.save();
             }
+
+            await registerWebhooks(shop , accessToken);
 
             // Generate JWT token
             const token = jwt.sign(

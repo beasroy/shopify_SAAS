@@ -7,8 +7,8 @@ const subscriptionSchema = new mongoose.Schema({
     index: true,
     ref: 'Brand'
   },
-  shopName: {
-    type: String,
+  shopId: {
+    type: Number,
     required: true,
     index: true,
     ref: 'Brand'

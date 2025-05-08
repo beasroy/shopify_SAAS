@@ -49,29 +49,31 @@ const extractShopDomain = async (shopId) => {
 export function verifyWebhook(req, res, next) {
   try {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
-
     if (!hmacHeader) {
       return res.status(401).send('HMAC validation failed');
     }
-
-    const rawBody = JSON.stringify(req.body);
+    
+    const rawBody = req.rawBody.toString('utf8');
     const shopifySecret = process.env.SHOPIFY_CLIENT_SECRET;
-
+    
     const calculatedHmac = crypto
       .createHmac('sha256', shopifySecret)
       .update(rawBody, 'utf8')
       .digest('base64');
-
+      
+    console.log('Received HMAC:', hmacHeader);
+    console.log('Calculated HMAC:', calculatedHmac);
+    
     if (calculatedHmac !== hmacHeader) {
       return res.status(401).send('HMAC validation failed');
     }
-
     next();
   } catch (error) {
     console.error('Error during webhook verification:', error);
     return res.status(401).send('HMAC validation failed');
   }
 }
+
 
 export const customersDataRequest = async (req, res) => {
   try {

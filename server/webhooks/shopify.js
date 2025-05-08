@@ -31,8 +31,6 @@ const mapStatus = (shopifyStatus) => {
 
 const extractShopDomain = async (shopId) => {
   try {
-
-
     const shopRecord = await Brand.findOne({ 'shopifyAccount.shopId': shopId });
 
     if (shopRecord && shopRecord.shopifyAccount.shopName) {
@@ -261,6 +259,8 @@ export const subscriptionUpdate = async (req, res) => {
     const accessToken = brand.shopifyAccount.shopifyAccessToken;
 
     const fullDetails = await fetchSubscriptionDetails(shopName, accessToken, subscription.admin_graphql_api_id);
+
+    console.log(fullDetails);
 
     if (!fullDetails) {
       console.error('Failed to fetch full subscription details from Shopify');

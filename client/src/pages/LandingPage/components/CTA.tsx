@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"
-import { Link } from "react-router-dom"
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 function CTA() {
   return (
@@ -11,16 +11,25 @@ function CTA() {
               You’ve made it this far—why stop now?
             </h2>
             <p className="max-w-[900px] md:text-xl">
-              Let’s take your marketing to the next level. Start your 14-day free trial today.
+              Let’s taka your marketing to the next level. Start your 14-day
+              free trial today.
             </p>
           </div>
           <div className="flex flex-col gap-2 min-[400px]:flex-row">
             <Link to="/login">
-            <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-blue-50">
-              Start Free Trial
-            </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                className="bg-white text-primary hover:bg-blue-50"
+              >
+                Start Free Trial
+              </Button>
             </Link>
-            <Button size="lg" variant="outline" className="border-white text-black hover:bg-blue-50">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white text-black hover:bg-blue-50"
+            >
               Schedule a Demo
             </Button>
           </div>
@@ -33,7 +42,7 @@ function CTA() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export default CTA
+export default CTA;

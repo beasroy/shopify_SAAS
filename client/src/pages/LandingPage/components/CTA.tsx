@@ -11,7 +11,7 @@ function CTA() {
               You’ve made it this far—why stop now?
             </h2>
             <p className="max-w-[900px] md:text-xl">
-              Let’s taka your marketing to the next level. Start your 14-day
+              Let’s take your marketing to the next level. Start your 14-day
               free trial today.
             </p>
           </div>

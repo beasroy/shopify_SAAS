@@ -157,7 +157,7 @@ const ConnectPlatform: React.FC<ConnectPlatformProps> = ({
       </div>
 
       <PlatformModal
-        platform={config.title}
+        platform={platform}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         brandId={brandId}

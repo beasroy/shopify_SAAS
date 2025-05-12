@@ -85,7 +85,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/segment/searchTerm/${brandId}`, {
+      const response = await axiosInstance.post(`/api/google/searchTerm/${brandId}`, {
         userId: user?.id,
         startDate,
         endDate,

@@ -16,7 +16,6 @@ export interface IBrandState {
     brands: IBrand[];
 }
 
-
 export interface ITooltipHeaderProps {
     title: string
     tooltip: string
@@ -74,7 +73,7 @@ export interface Interest {
 
 export interface InterestTableProps {
     data: {
-       
+
         account_id: string
         interest: Interest[]
     }
@@ -149,20 +148,38 @@ interface Campaign {
     "Landing Page View": number;
     "Three Seconds View": number;
     Impressions: number;
-  }
-  
-  interface Account {
+}
+
+interface Account {
     account_id: string;
     account_name: string;
     campaigns: Campaign[];
-  }
-  
-  interface BlendedCampaign extends Campaign {
+}
+
+interface BlendedCampaign extends Campaign {
     accountName: string;
     accountId: string;
-  }
-  
-  export interface ICampaignData {
+}
+
+export interface ICampaignData {
     accountData: Account[];
     blendedSummary: BlendedCampaign[];
-  }
+}
+
+
+export interface BrandDetail {
+    _id: string;
+    name: string;
+}
+
+export interface FullBrandData {
+    _id: string;
+    name: string;
+    fbAdAccounts: string[];
+    googleAdAccount: Array<{ clientId: string, managerId: string }>;
+    ga4Account: { PropertyID: string };
+    shopifyAccount: {
+        shopName: string;
+        shopId: number;
+    };
+}

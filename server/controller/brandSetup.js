@@ -207,7 +207,7 @@ export const getGa4PropertyIds = async (req, res) => {
 
 export const getFbAdAccountIds = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId  = req.user._id;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
@@ -231,7 +231,7 @@ export const getFbAdAccountIds = async (req, res) => {
         }
 
         // Construct the Graph API request URL
-        const url = `https://graph.facebook.com/v21.0/me?fields=adaccounts{account_id,name}&access_token=${user.fbAccessToken}`;
+        const url = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${user.fbAccessToken}`;
 
         // Make the request to Facebook Graph API
         const response = await axios.get(url);

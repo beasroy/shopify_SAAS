@@ -13,6 +13,7 @@ import Loader from "@/components/dashboard_component/loader";
 import MetaCampaignTable from "./components/MetaCampaignTable";
 import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
+import ConnectPlatform from "@/pages/ReportPage/ConnectPlatformPage";
 
 function CampaignPage() {
 
@@ -27,6 +28,12 @@ function CampaignPage() {
 
     const axiosInstance = createAxiosInstance();
     const { brandId } = useParams();
+    const brands = useSelector((state: RootState) => state.brand.brands);
+    const user = useSelector((state : RootState)=> state.user.user);
+    const selectedBrand = brands.find((brand) => brand._id === brandId);
+    const hasFbAdAccount = (selectedBrand?.fbAdAccounts && selectedBrand?.fbAdAccounts.length > 0) && user?.fbAccessToken
+        ? true
+        : false;
 
     const navigate = useNavigate();
 
@@ -88,48 +95,57 @@ function CampaignPage() {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                {(!date.from || !date.to) ? <MissingDateWarning /> :(   (isLoading) ? <Loader isLoading={isLoading}/>  : 
-                    <>     
-                    <div className="flex-none">
-                    <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
-                </div>
-                <main className="p-4 md:p-6 lg:px-8 overflow-auto">
-                <div className="grid grid-cols-1 gap-6">
-                    {(blendedSummary && blendedSummary.length > 0) && (
-                        <MetaCampaignTable
-                            data={{
-                                account_name: "Blended Summary",
-                                account_id: "blended_summary",
-                                campaigns: blendedSummary.map(campaign => ({
-                                    ...campaign,
-                                    Campaign: campaign.campaignName
-                                }))
+                {!hasFbAdAccount ? (
+                    <>
+                        <ConnectPlatform
+                            platform="facebook"
+                            brandId={brandId ?? ''}
+                            onSuccess={(platform, accountName, accountId) => {
+                                console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
                             }}
-                            height={height}
-                            type="blended-summary"
                         />
+                    </>) : (!date.from || !date.to) ? <MissingDateWarning /> : ((isLoading) ? <Loader isLoading={isLoading} /> :
+                        <>
+                            <div className="flex-none">
+                                <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
+                            </div>
+                            <main className="p-4 md:p-6 lg:px-8 overflow-auto">
+                                <div className="grid grid-cols-1 gap-6">
+                                    {(blendedSummary && blendedSummary.length > 0) && (
+                                        <MetaCampaignTable
+                                            data={{
+                                                account_name: "Blended Summary",
+                                                account_id: "blended_summary",
+                                                campaigns: blendedSummary.map(campaign => ({
+                                                    ...campaign,
+                                                    Campaign: campaign.campaignName
+                                                }))
+                                            }}
+                                            height={height}
+                                            type="blended-summary"
+                                        />
+                                    )}
+                                    {(accountData && accountData.map(account => (
+                                        <MetaCampaignTable
+                                            key={account.account_id}
+                                            data={{
+                                                account_name: account.account_name,
+                                                account_id: account.account_id,
+                                                campaigns: account.campaigns.map(campaign => ({
+                                                    ...campaign,
+                                                    Campaign: campaign.campaignName
+                                                }))
+                                            }}
+                                            height={height}
+                                        />
+                                    )))}
+                                </div>
+                            </main>
+
+
+                        </>
                     )}
-                    {(accountData && accountData.map(account => (
-                        <MetaCampaignTable
-                            key={account.account_id}
-                            data={{
-                                account_name: account.account_name,
-                                account_id: account.account_id,
-                                campaigns: account.campaigns.map(campaign => ({
-                                    ...campaign,
-                                    Campaign: campaign.campaignName
-                                }))
-                            }}
-                            height={height}
-                        />
-                    )))}
-                </div>
-                </main>
-            
-                
-                </>
-)}
-    <HelpDeskModal />
+                <HelpDeskModal />
             </div>
         </div>
     )

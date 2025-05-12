@@ -9,8 +9,9 @@ import campaignGroupsReducer from './slices/CampaignGroupSlice.ts';
 import campaignLabelsReducer from './slices/campaignLabelsSlice.ts';
 import tutorialsReducer from "./slices/TutorialSlice.ts"
 import localReducer from "./slices/LocalSlice.ts"
+import tokenReducer from "./slices/TokenSllice.ts"
 
-// Combine all reducers
+
 const rootReducer = combineReducers({
   conversionFilters: conversionFiltersReducer,
   brand: brandReducer, 
@@ -20,25 +21,25 @@ const rootReducer = combineReducers({
   campaignLabels: campaignLabelsReducer,
   tutorials: tutorialsReducer,
   locale: localReducer,
+  tokenError: tokenReducer
 });
 
-// Persist config - specify which slices to persist
+
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale"], // Persist both conversionFilters & brand
+  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale"], // Persist both conversionFilters & brand
 };
 
-// Apply persistReducer to the rootReducer
+
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-// Configure Redux store
+
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Explicitly ignore Redux Persist actions to avoid warnings
         ignoredActions: ["persist/PERSIST", "persist/REHYDRATE", "persist/REGISTER"],
       },
     }),
@@ -46,6 +47,6 @@ export const store = configureStore({
 
 export const persistor = persistStore(store);
 
-// Define types for Redux state & dispatch
+
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

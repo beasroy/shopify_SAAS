@@ -85,7 +85,7 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/segment/keyword/${brandId}`, {
+      const response = await axiosInstance.post(`/api/google/keyword/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate, ...transformedFilters
       }, { withCredentials: true })
 

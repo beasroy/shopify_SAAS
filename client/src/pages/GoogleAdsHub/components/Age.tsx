@@ -88,7 +88,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/segment/age/${brandId}`, {
+      const response = await axiosInstance.post(`/api/google/age/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate, ...transformedFilters
       }, { withCredentials: true })
 

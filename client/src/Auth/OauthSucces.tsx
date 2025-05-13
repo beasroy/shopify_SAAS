@@ -103,7 +103,7 @@ const GoogleCallback = () => {
 
 
                 if (fbToken) {
-                    await updateToken('/api/auth/updateTokens/facebook', fbToken, 'fbToken');
+                    await updateToken('/api/auth/updateTokens', fbToken, 'fbToken');
                     return;
                 }
 

@@ -6,7 +6,7 @@ import {
     Shield,
     HelpCircle,
 } from 'lucide-react';
-import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
+import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { RootState } from '@/store';
 import { useSelector } from 'react-redux';
 import axios from 'axios';

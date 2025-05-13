@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
+import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { SquareChartGantt } from 'lucide-react';
 import SearchTerm from './components/SearchTerm';
 import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';

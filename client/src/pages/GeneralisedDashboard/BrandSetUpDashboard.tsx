@@ -3,7 +3,7 @@ import type { RootState } from "@/store"
 import {  Sparkles , CircleCheckBig } from "lucide-react"
 import { setupSteps } from "@/data/constant"
 
-import CollapsibleSidebar from "../Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "../../components/dashboard_component/CollapsibleSidebar"
 import BrandSetup from "./components/BrandForm"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"

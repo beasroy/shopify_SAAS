@@ -1,5 +1,5 @@
 import Header from "@/components/dashboard_component/Header";
-import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { FaMeta } from "react-icons/fa6";
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { useSelector } from "react-redux";

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetricsPage';
-import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
+import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { useParams } from 'react-router-dom';
 import { ChartBar, ShoppingCart } from 'lucide-react';

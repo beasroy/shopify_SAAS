@@ -26,7 +26,7 @@ import type { IBrand } from "@/interfaces"
 import { WhiteGa4Logo, WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
 import { Crown } from 'lucide-react';
-import PricingModal from "../Pricing/Pricing.tsx"
+import PricingModal from "../../pages/Pricing/Pricing.tsx"
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -110,18 +110,18 @@ export default function CollapsibleSidebar() {
   // Function to handle brand change navigation
   const handleBrandChange = (brandId: string) => {
     dispatch(setSelectedBrandId(brandId))
-    
+
     // If it's initial load, we'll navigate to dashboard (this is handled in fetchBrands)
     // For subsequent brand changes, stay on current dashboard type but with new brand ID
     if (!isInitialLoad) {
       const currentPathType = getCurrentPathType()
-      
+
       // Special case for main dashboard that doesn't have brandId in URL
       if (currentPathType === 'dashboard') {
         navigate('/dashboard')
         return
       }
-      
+
       // For pages with brand ID in URL path, replace the old brand ID with the new one
       const pathParts = location.pathname.split("/")
       if (pathParts.length >= 3) {
@@ -134,7 +134,7 @@ export default function CollapsibleSidebar() {
     }
   }
 
-  const handlePricing = ()=>{
+  const handlePricing = () => {
     setIsPricingOpen(true);
   }
 
@@ -158,7 +158,7 @@ export default function CollapsibleSidebar() {
       icon: <FaMeta />,
       subItems: [
         { name: "Campaign Analysis", path: `/meta-campaigns/${selectedBrandId}` },
-        { name: "Interest 360", path:`/meta-interest/${selectedBrandId}`},
+        { name: "Interest 360", path: `/meta-interest/${selectedBrandId}` },
         { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}` },
       ],
     },
@@ -251,8 +251,7 @@ export default function CollapsibleSidebar() {
                 const dashboardItemContent = (
                   <div
                     className={`flex items-center px-4 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 ${item.subItems ? "cursor-auto" : "cursor-pointer"}
-                      ${
-                        isMainItemActive ? "text-white font-semibold relative" : "text-gray-100"
+                      ${isMainItemActive ? "text-white font-semibold relative" : "text-gray-100"
                       } ${isItemDisabled(item) ? "cursor-not-allowed opacity-50" : ""}`}
                     onClick={() => {
                       if (!isItemDisabled(item) && item.path && item.path !== "#" && !item.subItems) {
@@ -278,18 +277,22 @@ export default function CollapsibleSidebar() {
                             <>
                               <div className="h-[1px] w-full my-2 bg-gray-400" />
                               <div className="mt-1">
-                                {item.subItems.map((subItem, subIndex) => (
-                                  <div
-                                    key={subIndex}
-                                    className="text-xs py-1.5 px-1 hover:bg-gray-700 rounded cursor-pointer"
-                                    onClick={(e) => {
-                                      e.stopPropagation() // Prevent parent click
-                                      navigate(subItem.path)
-                                    }}
-                                  >
-                                    {subItem.name}
-                                  </div>
-                                ))}
+                                {item.subItems.map((subItem, subIndex) => {
+                                  const disabled = isItemDisabled(subItem);
+                                  return (
+                                    <div
+                                      key={subIndex}
+                                      className={`text-xs py-1.5 px-1 rounded transition-colors ${disabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-700 cursor-pointer"
+                                        }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!disabled) navigate(subItem.path);
+                                      }}
+                                    >
+                                      {subItem.name}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </>
                           )}
@@ -303,19 +306,26 @@ export default function CollapsibleSidebar() {
                     {isExpanded && item.subItems && (
                       <div className="pl-8 mb-2">
                         <div className="h-[1px] w-2/3 my-2 bg-gray-400" />
-                        {item.subItems.map((subItem, subIndex) => (
-                          <div
-                            key={subIndex}
-                            className={`flex items-center text-xs w-full p-2 transition-colors duration-200 cursor-pointer ${
-                              location.pathname === subItem.path
-                                ? "text-white font-semibold relative bg-gray-800"
-                                : "text-gray-100"
-                            } hover:bg-gray-700`}
-                            onClick={() => navigate(subItem.path)}
-                          >
-                            <span>{subItem.name}</span>
-                          </div>
-                        ))}
+                        {item.subItems.map((subItem, subIndex) => {
+                          const disabled = isItemDisabled(subItem);
+                          return (
+                            <div
+                              key={subIndex}
+                              className={`flex items-center text-xs w-full p-2 transition-colors duration-200 ${disabled
+                                  ? "opacity-50"
+                                  : "cursor-pointer hover:bg-gray-700"
+                                } ${location.pathname === subItem.path && !disabled
+                                  ? "text-white font-semibold relative bg-gray-800"
+                                  : "text-gray-100"
+                                }`}
+                              onClick={() => {
+                                if (!disabled) navigate(subItem.path);
+                              }}
+                            >
+                              <span>{subItem.name}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -493,9 +503,8 @@ function SidebarItem({
           onClick()
         }
       }}
-      className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${
-        isActive ? "text-white font-semibold relative" : "text-gray-100"
-      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+      className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isActive ? "text-white font-semibold relative" : "text-gray-100"
+        } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       <span className="mr-2">{icon}</span>
       {isExpanded && <span className="text-xs">{text}</span>}

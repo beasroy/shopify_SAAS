@@ -1,5 +1,5 @@
 import React from "react";
-import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar";
+import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { useSelector } from "react-redux";
 import BrandSetupDashboard from "./BrandSetUpDashboard";
 import SummaryDashboard from "./dashboard";
@@ -8,17 +8,24 @@ import { RootState } from "@/store";
 
 
 const GeneralDashboard: React.FC = () => {
-    const user = useSelector((state:RootState)=>state.user.user);
+    const user = useSelector((state: RootState) => state.user.user);
 
     return (
-        <div className="flex h-screen relative"> 
-            <CollapsibleSidebar />
-            <div className="flex-1 h-screen overflow-auto"> 
-                {user?.brands?.length === 0 ? <BrandSetupDashboard /> : <SummaryDashboard />}
+        <>
+          {user?.brands?.length === 0 ? (
+            <BrandSetupDashboard />
+          ) : (
+            <div className="flex h-screen relative">
+              <CollapsibleSidebar />
+              <div className="flex-1 h-screen overflow-auto">
+                <SummaryDashboard />
+              </div>
+              <HelpDeskModal />
             </div>
-            <HelpDeskModal />
-        </div>
-    );
+          )}
+        </>
+      );
+      
 }
 
 export default GeneralDashboard;

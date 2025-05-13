@@ -9,8 +9,6 @@ interface User {
   isAdmin: boolean;
   metgod: string;
   loginCount: number;
-  fbAccessToken:string;
-  googleAnalyticsRefreshToken:string;
 }
 
 interface UserState {

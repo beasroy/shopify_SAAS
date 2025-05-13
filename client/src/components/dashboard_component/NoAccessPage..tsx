@@ -3,14 +3,14 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import axios from 'axios';
 
-// Define props interface for the component
+
 interface NoAccessPageProps {
   platform: string;
   message: string;
   icon?: React.ReactNode;
   loginOptions: {
     label: string;
-    context: string;
+    context?: string;
     provider: 'google' | 'facebook';
   }[];
 }
@@ -62,7 +62,7 @@ function NoAccessPage({
           </p>
         </div>
 
-        {/* Current Account Info */}
+
         {user?.email && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
@@ -75,7 +75,6 @@ function NoAccessPage({
           </div>
         )}
 
-        {/* Action Section */}
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
             Just a quick update to your {platform} token is needed to continue.

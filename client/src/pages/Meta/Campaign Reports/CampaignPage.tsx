@@ -14,6 +14,9 @@ import MetaCampaignTable from "./components/MetaCampaignTable";
 import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
 import ConnectPlatform from "@/pages/ReportPage/ConnectPlatformPage";
+import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
+import { selectFbTokenError } from "@/store/slices/TokenSllice";
+import { Target } from "lucide-react";
 
 function CampaignPage() {
 
@@ -29,11 +32,11 @@ function CampaignPage() {
     const axiosInstance = createAxiosInstance();
     const { brandId } = useParams();
     const brands = useSelector((state: RootState) => state.brand.brands);
-    const user = useSelector((state : RootState)=> state.user.user);
     const selectedBrand = brands.find((brand) => brand._id === brandId);
-    const hasFbAdAccount = (selectedBrand?.fbAdAccounts && selectedBrand?.fbAdAccounts.length > 0) && user?.fbAccessToken
+    const hasFbAdAccount = (selectedBrand?.fbAdAccounts && selectedBrand?.fbAdAccounts.length > 0)
         ? true
         : false;
+    const fbTokenError = useSelector(selectFbTokenError);
 
     const navigate = useNavigate();
 
@@ -95,7 +98,19 @@ function CampaignPage() {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                {!hasFbAdAccount ? (
+                {fbTokenError ? (
+                    <NoAccessPage
+                        platform="Facebook Ads"
+                        message="Looks like we need to refresh your Facebook Ads connection to optimize your campaigns."
+                        icon={<Target className="w-8 h-8 text-red-500" />}
+                        loginOptions={[
+                            {
+                                label: "Connect Facebook Ads",
+                                provider: "facebook"
+                            }
+                        ]}
+                    />
+                ) : !hasFbAdAccount ? (
                     <>
                         <ConnectPlatform
                             platform="facebook"

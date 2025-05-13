@@ -395,7 +395,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 
         const userId = user._id;
 
-        if (type === 'facebook') {
+        if (type === 'fbToken') {
             const { fbToken } = req.query;
 
             if (!fbToken) {

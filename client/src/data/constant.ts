@@ -1,6 +1,8 @@
-export const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
+export const baseURL = import.meta.env.PROD
+  ? import.meta.env.VITE_API_URL
+  : import.meta.env.VITE_LOCAL_API_URL;
 
-export const apphandle = import.meta.env.VITE_APP_HANDLE ;
+export const apphandle = import.meta.env.VITE_APP_HANDLE;
 
 export const COLORS = {
   primary: {
@@ -31,7 +33,6 @@ export const COLORS = {
     bg: "#EFF6FF", // Very light blue
   },
   neutral: {
-
     main: "#F59E0B", // Amber
     dark: "#B45309", // Deep amber
     bg: "#FFFBEB", // Very light amber
@@ -50,60 +51,50 @@ export const COLORS = {
   },
 };
 
-
 export const pricingPlans = [
   {
-      id: "FREE",
-      title: "Free Plan",
-      price: "Free",
-      description: "Perfect for getting started with analytics",
-      features: [
-          "Basic Analytics Dashboard",
-          "Shopify Integration",
-          "Daily Data Updates",
-          "Basic Reports",
-          "Email Support",
-      ],
-      buttonText: "Get Started",
+    id: "FREE",
+    title: "Free Plan",
+    price: "Free",
+    description: "Perfect for getting started with analytics",
+    features: [
+      "Basic Analytics Dashboard",
+      "Shopify Integration",
+      "Daily Data Updates",
+      "Basic Reports",
+      "Email Support",
+    ],
+    buttonText: "Get Started",
   },
   {
-      id: "STARTUP",
-      title: "Startup Plan",
-      price: "$10",
-      period: "/month",
-      description: "Ideal for growing businesses",
-      features: [
-          "Everything in Free Plan",
-          "Real-time Analytics",
-          "Custom Dashboards",
-          "Advanced Reports",
-          "Priority Email Support",
-      ],
-      isPopular: true,
-      buttonText: "Subscribe Now",
+    id: "STARTUP",
+    title: "Startup Plan",
+    price: "$10",
+    period: "/month",
+    description: "Ideal for growing businesses",
+    features: [
+      "Everything in Free Plan",
+      "Real-time Analytics",
+      "Custom Dashboards",
+      "Advanced Reports",
+      "Priority Email Support",
+    ],
+    isPopular: true,
+    buttonText: "Subscribe Now",
   },
   {
-      id: "GROWTH",
-      title: "Growth Plan",
-      price: "$50",
-      period: "/month",
-      description: "For businesses ready to scale",
-      features: [
-          "Everything in Startup Plan",
-          "AI-Powered Insights",
-          "White-label Reports",
-          "Custom Integrations",
-          "Team Collaboration",
-      ],
-      buttonText: "Subscribe Now",
+    id: "GROWTH",
+    title: "Growth Plan",
+    price: "$50",
+    period: "/month",
+    description: "For businesses ready to scale",
+    features: [
+      "Everything in Startup Plan",
+      "AI-Powered Insights",
+      "White-label Reports",
+      "Custom Integrations",
+      "Team Collaboration",
+    ],
+    buttonText: "Subscribe Now",
   },
-]
-
-
-
-
-  
-  
-  
-  
-
+];

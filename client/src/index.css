@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap");
 
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
@@ -9,6 +9,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* @theme {
+  --breakpoint-xs: 36rem;
+} */
 
 @layer base {
   :root {
@@ -118,15 +122,13 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Roboto', sans-serif;
+    font-family: "Roboto", sans-serif;
   }
 }
-
 
 .gradient-bg {
   background: linear-gradient(135deg, #334155 0%, #64748b 50%, #94a3b8 100%);
 }
-
 
 .gradient-text {
   background-clip: text;
@@ -141,7 +143,8 @@
 
 .feature-card-hover:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1),
+    0 8px 10px -6px rgba(59, 130, 246, 0.1);
 }
 
 .dark-slate-bg {
@@ -230,6 +233,3 @@ button.gradient-primary:hover {
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
 }
-
-
-

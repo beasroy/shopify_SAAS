@@ -4,12 +4,13 @@ import { Check, Star, AlertCircle, Calendar, Clock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { RootState } from "@/store"
 import { useSelector } from "react-redux"
-import { pricingPlans, apphandle } from "@/data/constant"
+import { pricingPlans, apphandle, baseURL } from "@/data/constant"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+
 
 interface PricingModalProps {
   open: boolean
@@ -38,6 +39,8 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
   const shopifyStoreName = selectedBrand?.shopifyAccount?.shopName.replace(".myshopify.com", "") || ""
   const handle = apphandle || "parallels"
 
+  const brandId = useSelector((state:RootState)=>state.brand.selectedBrandId);
+
   useEffect(() => {
     if (open) {
       fetchSubscriptionDetails()
@@ -47,7 +50,7 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
   const fetchSubscriptionDetails = async () => {
     try {
       setLoading(true)
-      const response = await axios.get("/api/subscription")
+      const response = await axios.get(`${baseURL}/api/pricing/details/${brandId}`)
       setSubscription(response.data)
     } catch (err) {
       console.error("Error fetching subscription details:", err)

@@ -220,13 +220,13 @@ function PerformanceCard({
     "last30Days": "Last 30 Days"
   };
 
-  if (Object.keys(combinedMetrics).length === 0) {
-    return (
-      <div className="bg-white border rounded-lg shadow-md p-6 text-center text-slate-500">
-        No data available for {periodLabels[period]}
-      </div>
-    );
-  }
+  // if (Object.keys(combinedMetrics).length === 0) {
+  //   return (
+  //     <div className="bg-white border rounded-lg shadow-md p-6 text-center text-slate-500">
+  //       No data available for {periodLabels[period]}
+  //     </div>
+  //   );
+  // }
 
   // Create cards for each data source, showing "No Data Found" for failed ones
   const renderSourceCards = () => {

@@ -245,7 +245,7 @@ export async function getAnalyticsSummary(req, res) {
 
     // Validate Google Analytics access
     if (!propertyId) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: 'GA4 Property ID is missing for this brand.'
       });
@@ -779,8 +779,8 @@ export async function getGoogleAdsSummary(req, res) {
     }
 
     if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
-      return res.json({
-        success: true,
+      return res.status(404).json({
+        success: false,
         periodData: {},
         message: "No Google ads account found for this brand"
       });

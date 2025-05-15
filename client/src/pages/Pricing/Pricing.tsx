@@ -1,5 +1,3 @@
-"use client"
-
 import { Check, Star, AlertCircle, Calendar, Clock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { RootState } from "@/store"
@@ -59,17 +57,16 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
     }
   }
 
-  // Helper function to get plan ID from plan name
+
   const getPlanIdFromName = (planName: string): string => {
     const planMap: Record<string, string> = {
       "Free Plan": "FREE",
       "Startup Plan": "STARTUP",
-      "Business Plan": "BUSINESS",
+      "Growth Plan": "GROWTH",
     }
     return planMap[planName] || "FREE"
   }
 
-  // Get current plan ID
   const currentPlanId = subscription ? getPlanIdFromName(subscription.planName) : null
 
   return (
@@ -81,14 +78,13 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
           </div>
         </DialogHeader>
 
-        {/* Subscription Status Section */}
         {loading ? (
           <div className="px-6 pt-6">
             <Skeleton className="h-24 w-full rounded-lg" />
           </div>
         ) : subscription ? (
-          <div className="px-6 pt-6">
-            <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+          <div className="px-6">
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 flex items-center">
@@ -164,14 +160,12 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
                     </div>
                   )}
 
-                  {/* Popular Badge */}
                   {plan.isPopular && !isCurrentPlan && (
                     <div className="absolute top-0 left-0 bg-amber-500 text-white text-xs font-semibold py-1 px-3 rounded-br-lg">
                       <Star className="h-3.5 w-3.5 fill-white inline-block mr-1" /> POPULAR
                     </div>
                   )}
 
-                  {/* Card Header */}
                   <div
                     className={`p-6 flex flex-col items-center ${
                       plan.id === "FREE"
@@ -181,10 +175,9 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
                           : "bg-gradient-to-b from-rose-50 to-white"
                     }`}
                   >
-                    {/* Icon and Title in the Same Row */}
+
                     <h3 className="text-xl font-bold text-slate-800">{plan.title}</h3>
 
-                    {/* Price and Description */}
                     <div className="flex items-baseline mt-4">
                       <span
                         className={`text-4xl font-bold ${
@@ -203,10 +196,8 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
                     <p className="mt-3 text-slate-600 text-sm text-center">{plan.description}</p>
                   </div>
 
-                  {/* Divider */}
                   <div className="w-full h-px bg-slate-100"></div>
 
-                  {/* Features */}
                   <div className="p-6 bg-white">
                     <ul className="space-y-4">
                       {plan.features.map((feature, index) => (
@@ -227,7 +218,6 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
                       ))}
                     </ul>
 
-                    {/* Button */}
                     <div className="mt-8">
                       <a href={`https://admin.shopify.com/store/${shopifyStoreName}/charges/${handle}/pricing_plans`}>
                         <button

@@ -13,9 +13,10 @@ const brandSchema = new mongoose.Schema({
     {clientId: { type: String }, managerId: { type: String }}
   ],
   ga4Account: {
-    PropertyID:{
+    PropertyID: {
       type: String,
-    }
+    },
+    default: {} 
   },
   shopifyAccount: {
     shopName: {

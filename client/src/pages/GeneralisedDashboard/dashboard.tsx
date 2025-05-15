@@ -3,6 +3,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   RefreshCw,
+  PlusCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,12 @@ import type { RootState } from "@/store";
 import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
 import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
 import { useNavigate } from "react-router-dom";
+import PlatformModal from "@/components/dashboard_component/PlatformModal";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period = "yesterday" | "last7Days" | "last30Days";
 export type Source = "meta" | "google" | "analytics";
+export type Platform = "Facebook" | "Google Ads" | "Google Analytics";
 
 export interface MetricData {
   current: number;
@@ -133,6 +136,44 @@ function MetricCard({
           {Math.abs(Number(change))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Component to display a card for connecting platforms
+function ConnectPlatformCard({ 
+  platform, 
+  onClick 
+}: { 
+  platform: Platform; 
+  onClick: () => void;
+}) {
+  const getPlatformLogo = () => {
+    switch (platform) {
+      case "Facebook":
+        return <FacebookLogo width={"2rem"} height={"2rem"} />;
+      case "Google Ads":
+        return <GoogleLogo width={"2rem"} height={"2rem"} />;
+      case "Google Analytics":
+        return <Ga4Logo width={"2rem"} height={"2rem"} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer" onClick={onClick}>
+      <div className="mb-3">
+        {getPlatformLogo()}
+      </div>
+      <h3 className="text-lg font-semibold text-slate-800 mb-2">Connect {platform}</h3>
+      <p className="text-sm text-slate-500 text-center mb-4">
+        Get better insights by connecting your {platform} account
+      </p>
+      <Button variant="outline" className="gap-2">
+        <PlusCircle className="h-4 w-4" />
+        Connect
+      </Button>
     </div>
   );
 }
@@ -267,8 +308,6 @@ function PerformanceCard({
 const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const brandId = useSelector((state: RootState) => state.brand.selectedBrandId);
-  const brand = useSelector((state: RootState) => state.brand.brands);
-  console.log(brand);
 
   const userName = user?.username;
   const [loading, setLoading] = useState(false);
@@ -286,6 +325,10 @@ const SummaryDashboard: React.FC = () => {
     google: true,
     analytics: true
   });
+
+  // State for platform modal
+  const [platformModalOpen, setPlatformModalOpen] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
 
   const axiosInstance = createAxiosInstance();
 
@@ -362,19 +405,33 @@ const SummaryDashboard: React.FC = () => {
     }
   }, [brandId]);
 
+  const handleConnectPlatform = (platform: Platform) => {
+    setSelectedPlatform(platform);
+    setPlatformModalOpen(true);
+  };
+
+  const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
+    console.log(`Successfully connected ${platform} - ${accountName} (${accountId})`);
+    // Refresh data to show the newly connected platform
+    fetchPerformanceData();
+  };
+
   useEffect(() => {
-      fetchPerformanceData();
+    fetchPerformanceData();
   }, [fetchPerformanceData]);
 
-  useEffect(()=>{
+  useEffect(() => {
     if(!user?.brands || user.brands.length === 0){
-      navigate("/brand-setup")
+      navigate("/brand-setup");
     }
-  },[])
+  }, [user, navigate]);
 
   if (loading) {
     return <Loader isLoading={loading} />;
   }
+
+  // Check if any platform is not connected
+  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -403,6 +460,42 @@ const SummaryDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Missing Platforms Section */}
+        {!allConnected && (
+          <div className="mb-8 animate-fade-up">
+            <div className="bg-white border rounded-lg shadow-md p-6 space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Connect Your Platforms
+                </h2>
+              </div>
+              <p className="text-slate-600">
+                Connect your advertising and analytics platforms to see all your performance data in one place.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {!apiStatus.meta && (
+                  <ConnectPlatformCard 
+                    platform="Facebook" 
+                    onClick={() => handleConnectPlatform("Facebook")} 
+                  />
+                )}
+                {!apiStatus.google && (
+                  <ConnectPlatformCard 
+                    platform="Google Ads" 
+                    onClick={() => handleConnectPlatform("Google Ads")} 
+                  />
+                )}
+                {!apiStatus.analytics && (
+                  <ConnectPlatformCard 
+                    platform="Google Analytics" 
+                    onClick={() => handleConnectPlatform("Google Analytics")} 
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Performance Cards for All Periods */}
         <div className="space-y-6">
           {(['yesterday', 'last7Days', 'last30Days'] as Period[]).map(period => (
@@ -415,6 +508,17 @@ const SummaryDashboard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Platform Connection Modal */}
+      {selectedPlatform && brandId && (
+        <PlatformModal
+          platform={selectedPlatform}
+          open={platformModalOpen}
+          onOpenChange={setPlatformModalOpen}
+          brandId={brandId}
+          onSuccess={handlePlatformModalSuccess}
+        />
+      )}
     </div>
   );
 };

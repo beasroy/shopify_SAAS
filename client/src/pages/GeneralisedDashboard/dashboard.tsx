@@ -267,6 +267,8 @@ function PerformanceCard({
 const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const brandId = useSelector((state: RootState) => state.brand.selectedBrandId);
+  const brand = useSelector((state: RootState) => state.brand.brands);
+  console.log(brand);
 
   const userName = user?.username;
   const [loading, setLoading] = useState(false);

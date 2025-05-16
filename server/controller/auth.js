@@ -9,6 +9,7 @@ import axios from 'axios';
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
 import { registerWebhooks } from '../webhooks/shopify.js';
+import { calculateMetricsForSingleBrand } from "../Report/MonthlyReport.js";
 
 
 config();

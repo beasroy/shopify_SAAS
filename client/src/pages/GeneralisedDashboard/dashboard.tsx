@@ -11,7 +11,6 @@ import createAxiosInstance from "../ConversionReportPage/components/axiosInstanc
 import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import HeaderTutorialButton from "@/components/Tutorial/HeaderTutorialButton";
 import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
 import { useNavigate } from "react-router-dom";
 import PlatformModal from "@/components/dashboard_component/PlatformModal";
@@ -446,7 +445,7 @@ const SummaryDashboard: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-row items-center gap-3">
-              <HeaderTutorialButton />
+              {/* <HeaderTutorialButton /> */}
               <Button
                 onClick={fetchPerformanceData}
                 disabled={loading}

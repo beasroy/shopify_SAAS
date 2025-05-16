@@ -1,15 +1,12 @@
 import Brand from "../models/Brands.js";
 import { calculateMetricsForSingleBrand } from "../Report/MonthlyReport.js";
 
-export const addBrands = async(req, res) => {
-    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount, logoUrl } = req.body;
-    const sanitizedLogoUrl = typeof logoUrl === 'string' ? logoUrl : '';
-    
+export const addBrands = async (req, res) => {
+    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount} = req.body;
+
     try {
-        // Create the brand as before
         const newBrand = new Brand({
             name,
-            logoUrl: sanitizedLogoUrl,
             fbAdAccounts,
             googleAdAccount,
             ga4Account,
@@ -17,17 +14,16 @@ export const addBrands = async(req, res) => {
         });
 
         await newBrand.save();
-        
+
         const userId = req.user?.id || 'system-brand-creation';
         const brandId = newBrand._id.toString();
-        
-        calculateMetricsForSingleBrand(brandId, userId)
-            .then(result => {
-                console.log(`Initial historical metrics calculation for brand ${brandId} completed:`, result);
-            })
-            .catch(error => {
-                console.error(`Error calculating initial metrics for brand ${brandId}:`, error);
-            });
+
+        try {
+            const result = await calculateMetricsForSingleBrand(brandId, userId);
+            console.log(`Initial historical metrics calculation for brand ${brandId} completed:`, result);
+        } catch (metricsError) {
+            console.error(`Error calculating initial metrics for brand ${brandId}:`, metricsError);
+        }
 
         res.status(201).json({ message: "Brand created successfully", brand: newBrand });
     } catch (error) {
@@ -35,6 +31,7 @@ export const addBrands = async(req, res) => {
         res.status(500).json({ message: 'Error creating brand', error: error.message });
     }
 }
+
 
 export const getBrands = async(req,res) =>{
     try{

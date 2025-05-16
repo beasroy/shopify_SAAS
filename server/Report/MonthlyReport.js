@@ -26,7 +26,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
         const shopify = new Shopify({
             shopName: brand.shopifyAccount?.shopName,
             accessToken: access_token,
-            apiVersion: '2023-07'
+            apiVersion: '2024-04'
         });
 
         const shopData = await shopify.shop.get();
@@ -148,14 +148,14 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                 orders.forEach(order => {
                     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
 
-                    const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
+                    // const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
 
-                    if (isCancelled) {
-                        // Only increment cancelled order count, don't add to sales metrics
-                        if (dailySalesMap[orderDate]) {
-                            dailySalesMap[orderDate].cancelledOrderCount += 1;
-                        }
-                    } else {
+                    // if (isCancelled) {
+                    //     // Only increment cancelled order count, don't add to sales metrics
+                    //     if (dailySalesMap[orderDate]) {
+                    //         dailySalesMap[orderDate].cancelledOrderCount += 1;
+                    //     }
+                    // } else {
                         const totalPrice = Number(order.total_price || 0);
                         const discountAmount = Number(order.total_discounts || 0);
 
@@ -192,7 +192,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                                 }
                             });
                         }
-                    }
+                    // }
                 });
             }
 

@@ -1,14 +1,15 @@
 import express from 'express';
 import { getMetricsbyID } from '../controller/report.js';
 import AdMetrics from '../models/AdMetrics.js';
-import {monthlyFetchTotalSales} from "../Report/MonthlyReport.js"
+import {calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js"
 import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
+import { verifyAuth } from '../middleware/verifyAuth.js';
 
 const router = express.Router();
 
-router.get('/:brandId', getMetricsbyID);
+router.get('/:brandId',verifyAuth, getMetricsbyID);
 
 router.delete('/delete/byDate', async (req, res) => {
     try {
@@ -67,7 +68,6 @@ router.delete('/delete/:brandId', async (req, res) => {
     try {
         const { brandId } = req.params;
         
-        // Delete all records associated with the given brandId
         const result = await AdMetrics.deleteMany({ brandId });
         
         if (result.deletedCount === 0) {
@@ -381,5 +381,32 @@ router.post('/monthly', async (req, res) => {
   }
 });
 
+// New route for async metrics calculation
+router.post('/calculate-metrics/:brandId', verifyAuth, async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        const userId = req.user._id;
+
+        calculateMetricsForSingleBrand(brandId, userId)
+            .then(result => {
+                console.log(`Metrics calculation completed for brand ${brandId}:`, result);
+            })
+            .catch(error => {
+                console.error(`Metrics calculation failed for brand ${brandId}:`, error);
+            });
+
+        res.json({
+            success: true,
+            message: 'Metrics calculation started in background'
+        });
+    } catch (error) {
+        console.error('Error initiating metrics calculation:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error initiating metrics calculation',
+            error: error.message
+        });
+    }
+});
 
 export default router;

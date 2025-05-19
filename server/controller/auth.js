@@ -604,15 +604,15 @@ export const handleShopifyCallback = async (req, res) => {
             await subscription.save();
         }
 
-        // Step 6: Register webhooks
         await registerWebhooks(shop, accessToken);
 
-        // Step 7: Calculate metrics (wrapped in try-catch for safety)
         try {
-            const result = await calculateMetricsForSingleBrand(brand._id.toString(), user._id.toString());
-            console.log(`Initial historical metrics calculation completed for brand ${brand._id}:`, result);
+            await axios.post(`https://${req.get('host')}/api/report/calculate-metrics/${brand._id}`, {}, {
+               withCredentials: true
+            });
+            console.log(`Metrics calculation initiated for brand ${brand._id}`);
         } catch (metricsError) {
-            console.error(`Metrics calculation failed for brand ${brand._id}:`, metricsError);
+            console.error(`Failed to initiate metrics calculation for brand ${brand._id}:`, metricsError);
         }
 
         // Step 8: Generate JWT token and set cookie

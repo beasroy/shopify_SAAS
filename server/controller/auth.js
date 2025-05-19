@@ -607,9 +607,11 @@ export const handleShopifyCallback = async (req, res) => {
         await registerWebhooks(shop, accessToken);
 
         try {
-            await axios.post(`https://${req.get('host')}/api/report/calculate-metrics/${brand._id}`, {}, {
-               withCredentials: true
-            });
+            await axios.post(
+                `https://${req.get('host')}/api/report/calculate-metrics/${brand._id}`,
+                { userId: user._id.toString() },
+                { withCredentials: true }
+            );
             console.log(`Metrics calculation initiated for brand ${brand._id}`);
         } catch (metricsError) {
             console.error(`Failed to initiate metrics calculation for brand ${brand._id}:`, metricsError);

@@ -385,7 +385,7 @@ router.post('/monthly', async (req, res) => {
 router.post('/calculate-metrics/:brandId', verifyAuth, async (req, res) => {
     try {
         const { brandId } = req.params;
-        const userId = req.user._id;
+        const { userId } = req.body;
 
         calculateMetricsForSingleBrand(brandId, userId)
             .then(result => {

@@ -1,4 +1,4 @@
-import { Check, Star, AlertCircle, Calendar, Clock } from "lucide-react"
+import { Check, Star, Calendar, Clock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { RootState } from "@/store"
 import { useSelector } from "react-redux"
@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+// import { Alert, AlertDescription } from "@/components/ui/alert"
 
 
 interface PricingModalProps {
@@ -129,12 +129,13 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
             </div>
           </div>
         ) : (
-          <div className="px-6 pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Unable to load subscription information. Please try again later.</AlertDescription>
-            </Alert>
-          </div>
+          // <div className="px-6 pt-6">
+          //   <Alert variant="destructive">
+          //     <AlertCircle className="h-4 w-4" />
+          //     <AlertDescription>Unable to load subscription information. Please try again later.</AlertDescription>
+          //   </Alert>
+          // </div>
+          <></>
         )}
 
         <div className="p-6">

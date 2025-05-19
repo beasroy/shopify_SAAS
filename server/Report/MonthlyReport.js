@@ -586,7 +586,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                 // Create lookup maps
                 const metricsByDate = new Map();
 
-                // Process Shopify data
+                // Process Shopify data - Add all Shopify dates to metricsByDate
                 const shopifySalesMap = new Map(
                     shopifyData.map(sale => [
                         sale.date,
@@ -597,8 +597,21 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                         }
                     ])
                 );
+                
+                // Initialize metricsByDate with all dates that have Shopify data
+                shopifySalesMap.forEach((value, date) => {
+                    if (!metricsByDate.has(date)) {
+                        metricsByDate.set(date, {
+                            totalMetaSpend: 0,
+                            totalMetaROAS: 0,
+                            googleSpend: 0,
+                            googleROAS: 0,
+                            googleSales: 0
+                        });
+                    }
+                });
 
-                // Process Google data
+                // Process Google data and add dates to metricsByDate
                 const googleDataMap = new Map(
                     googleData.map(entry => [
                         entry.date,
@@ -609,6 +622,25 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                         }
                     ])
                 );
+                
+                // Add all Google data dates to metricsByDate
+                googleDataMap.forEach((value, date) => {
+                    if (!metricsByDate.has(date)) {
+                        metricsByDate.set(date, {
+                            totalMetaSpend: 0,
+                            totalMetaROAS: 0,
+                            googleSpend: 0,
+                            googleROAS: 0,
+                            googleSales: 0
+                        });
+                    }
+                    
+                    // Update the Google metrics for this date
+                    const metrics = metricsByDate.get(date);
+                    metrics.googleSpend = value.googleSpend;
+                    metrics.googleROAS = value.googleROAS;
+                    metrics.googleSales = value.googleSales;
+                });
 
                 // Process Facebook data and merge with other sources
                 for (const account of fbData) {
@@ -632,20 +664,42 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                         (acc, roas) => acc + (parseFloat(roas?.value) || 0),
                         0
                     );
-
-                    // Merge Google data if available
-                    const googleMetrics = googleDataMap.get(date);
-                    if (googleMetrics) {
-                        metrics.googleSpend = googleMetrics.googleSpend;
-                        metrics.googleROAS = googleMetrics.googleROAS;
-                        metrics.googleSales = googleMetrics.googleSales;
-                    }
                 }
+
+                // If no dates are available from any source, add at least today's date
+                if (metricsByDate.size === 0) {
+                    const today = moment().format('YYYY-MM-DD');
+                    metricsByDate.set(today, {
+                        totalMetaSpend: 0,
+                        totalMetaROAS: 0,
+                        googleSpend: 0,
+                        googleROAS: 0,
+                        googleSales: 0
+                    });
+                }
+
+                // Helper function to get default Shopify data
+                const getDefaultShopifyData = () => ({
+                    totalSales: 0,
+                    refundAmount: 0,
+                    shopifySales: 0
+                });
 
                 // Save metrics for each date
                 const savePromises = Array.from(metricsByDate.entries()).map(async ([date, metrics]) => {
                     try {
                         const shopifyData = shopifySalesMap.get(date) || getDefaultShopifyData();
+                        console.log(`Creating metrics entry for date ${date} with data:`, {
+                            shopifyData,
+                            metrics
+                        });
+                        
+                        // Make sure createMetricsEntry function exists
+                        if (typeof createMetricsEntry !== 'function') {
+                            console.error('createMetricsEntry function is not defined');
+                            return null;
+                        }
+                        
                         const metricsEntry = createMetricsEntry(brandId, date, metrics, shopifyData);
 
                         await metricsEntry.save();
@@ -662,6 +716,8 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
 
                 if (validEntries.length === 0) {
                     console.warn(`No valid entries saved for chunk ${formattedStart} to ${formattedEnd}`);
+                } else {
+                    console.log(`Saved ${validEntries.length} entries for chunk ${formattedStart} to ${formattedEnd}`);
                 }
 
                 results.push({

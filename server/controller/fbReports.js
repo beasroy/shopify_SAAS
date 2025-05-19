@@ -13,57 +13,7 @@ function getDateRange(startDate, endDate) {
     };
 }
 
-async function fetchBrandAndUserData(brandId, userId) {
 
-    const brandsCacheKey = `brand_${brandId}`;
-    const usersCacheKey = `user_${userId}`;
-
-    let brand = dataCache.get(brandsCacheKey);
-    let user = dataCache.get(usersCacheKey);
-
-    const fetchPromises = [];
-
-    if (!brand) {
-        fetchPromises.push(
-            Brand.findById(brandId)
-                .select('fbAdAccounts')
-                .lean()
-                .then(brandData => {
-                    if (brandData) {
-                        dataCache.set(brandsCacheKey, brandData);
-                        brand = brandData;
-                    }
-                })
-        );
-    }
-
-    if (!user) {
-        fetchPromises.push(
-            User.findById(userId)
-                .select('fbAccessToken')
-                .lean()
-                .then(userData => {
-                    if (userData) {
-                        dataCache.set(usersCacheKey, userData);
-                        user = userData;
-                    }
-                })
-        );
-    }
-
-    if (fetchPromises.length > 0) {
-        await Promise.all(fetchPromises);
-    }
-
-    if (!brand?.fbAdAccounts?.length || !user?.fbAccessToken) {
-        throw new Error(
-            !brand?.fbAdAccounts?.length
-                ? 'No Facebook Ads accounts found for this brand.'
-                : 'No Facebook accesstoken found for this user.'
-        );
-    }
-    return { brand, user };
-};
 const calculateBlendedAgeSummary = (accountsData) => {
     // Initialize data structure for blended metrics
     const blendedData = new Map();
@@ -127,13 +77,54 @@ const calculateBlendedAgeSummary = (accountsData) => {
 };
 
 export const fetchFbAgeReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate } = req.body;
     const { brandId } = req.params;
+    const userId = req.user.id;
 
     try {
 
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopAge(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -354,12 +345,53 @@ const calculateBlendedGenderSummary = (accountsData) => {
 }
 
 export const fetchFbGenderReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate} = req.body;
     const { brandId } = req.params;
+    const userId = req.user.id;
 
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopGeders(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -580,13 +612,54 @@ const calculateBlendedDeviceSummary = (accountsData) => {
 }
 
 export const fetchFbDeviceReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate} = req.body;
     const { brandId } = req.params;
+    const userId = req.user.id;
 
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopDevices(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -809,13 +882,54 @@ const calculateBlendedCountrySummary = (accountsData) => {
 }
 
 export const fetchFbCountryReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate } = req.body;
     const { brandId } = req.params;
+    const userId = req.user.id;
 
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopCountriesForAccount(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -1037,13 +1151,55 @@ const calculateBlendedAudienceSummary = (accountsData) => {
 }
 
 export const fetchFbAudienceReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate} = req.body;
     const { brandId } = req.params;
 
+    const userId = req.user.id;
+
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopAudiencesForAccount(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -1264,12 +1420,55 @@ const calculateBlendedPlatformSummary = (accountsData) => {
 }
 
 export const fetchFbPlatformReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate } = req.body;
     const { brandId } = req.params;
 
+    const userId = req.user.id;
+
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
+
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopPlatformsForAccount(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');
@@ -1491,12 +1690,55 @@ const calculateBlendedPlacementSummary = (accountsData) => {
 }
 
 export const fetchFbPlacementReports = async (req, res) => {
-    const { startDate, endDate, userId } = req.body;
+    const { startDate, endDate} = req.body;
     const { brandId } = req.params;
 
+    const userId = req.user.id;
+
     try {
-        const { brand, user } = await fetchBrandAndUserData(brandId, userId);
+
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+
+        if (!brandId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Brand ID and User ID are required.'
+            });
+        }
+
+        // Fetch brand and user data in parallel
+        const [brand, user] = await Promise.all([
+            Brand.findById(brandId).lean(),
+            User.findById(userId).lean()
+        ]);
+
+        if (!brand || !user) {
+            return res.status(404).json({
+                success: false,
+                message: !brand ? 'Brand not found.' : 'User not found'
+            });
+        }
+
+        const adAccountIds = brand.fbAdAccounts;
+        const accessToken = user.fbAccessToken;
+
+        if (!adAccountIds || adAccountIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No Facebook Ads accounts found for this brand.',
+            });
+        }
+
+        if (!accessToken) {
+            return res.status(403).json({
+                success: false,
+                message: 'User does not have a valid Facebook access token.',
+            });
+        }
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
 
         async function fetchTopPlacementsForAccount(accountId) {
             const cleanedAccountId = accountId.replace(/^act_/, '');

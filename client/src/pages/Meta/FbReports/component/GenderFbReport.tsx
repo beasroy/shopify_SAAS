@@ -64,8 +64,6 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
 
-
-    const user = useSelector((state: RootState) => state.user.user);
     const { brandId } = useParams();
     const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
@@ -80,7 +78,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
         try {
 
             const response = await axiosInstance.post(`/api/meta/report/gender/${brandId}`, {
-                userId: user?.id, startDate: startDate, endDate: endDate,
+             startDate: startDate, endDate: endDate,
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];

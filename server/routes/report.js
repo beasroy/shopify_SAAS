@@ -382,7 +382,7 @@ router.post('/monthly', async (req, res) => {
 });
 
 // New route for async metrics calculation
-router.post('/calculate-metrics/:brandId', verifyAuth, async (req, res) => {
+router.post('/calculate-metrics/:brandId',  async (req, res) => {
     try {
         const { brandId } = req.params;
         const { userId } = req.body;

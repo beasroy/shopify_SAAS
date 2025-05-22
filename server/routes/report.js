@@ -381,32 +381,5 @@ router.post('/monthly', async (req, res) => {
   }
 });
 
-// New route for async metrics calculation
-router.post('/calculate-metrics/:brandId',  async (req, res) => {
-    try {
-        const { brandId } = req.params;
-        const { userId } = req.body;
-
-        calculateMetricsForSingleBrand(brandId, userId)
-            .then(result => {
-                console.log(`Metrics calculation completed for brand ${brandId}:`, result);
-            })
-            .catch(error => {
-                console.error(`Metrics calculation failed for brand ${brandId}:`, error);
-            });
-
-        res.json({
-            success: true,
-            message: 'Metrics calculation started in background'
-        });
-    } catch (error) {
-        console.error('Error initiating metrics calculation:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error initiating metrics calculation',
-            error: error.message
-        });
-    }
-});
 
 export default router;

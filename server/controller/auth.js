@@ -617,7 +617,6 @@ export const handleShopifyCallback = async (req, res) => {
             console.error(`Failed to initiate metrics calculation for brand ${brand._id}:`, metricsError);
         }
 
-        // Step 8: Generate JWT token and set cookie
         const token = jwt.sign(
             {
                 id: user._id,

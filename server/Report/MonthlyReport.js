@@ -685,54 +685,40 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                     shopifySales: 0
                 });
 
-                // Save metrics for each date
-                const savePromises = Array.from(metricsByDate.entries()).map(async ([date, metrics]) => {
-                    try {
-                        const shopifyData = shopifySalesMap.get(date) || getDefaultShopifyData();
-                        console.log(`Creating metrics entry for date ${date} with data:`, {
-                            shopifyData,
-                            metrics
-                        });
-                        
-                        // Make sure createMetricsEntry function exists
-                        if (typeof createMetricsEntry !== 'function') {
-                            console.error('createMetricsEntry function is not defined');
-                            return null;
-                        }
-                        
-                        const metricsEntry = createMetricsEntry(brandId, date, metrics, shopifyData);
-
-                        await metricsEntry.save();
-                        console.log(`Metrics entry saved for date: ${date}`);
-                        return metricsEntry;
-                    } catch (err) {
-                        console.error(`Failed to save metrics for date ${date}:`, err);
-                        return null;
-                    }
+                // Collect all entries
+                const entries = Array.from(metricsByDate.entries()).map(([date, metrics]) => {
+                    const shopifyData = shopifySalesMap.get(date) || getDefaultShopifyData();
+                    return createMetricsEntry(brandId, date, metrics, shopifyData).toObject();
                 });
 
-                const savedEntries = await Promise.all(savePromises);
-                const validEntries = savedEntries.filter(entry => entry !== null);
+                // Use bulkWrite for upsert (update if exists, insert if not)
+                const bulkOps = entries.map(entry => ({
+                    updateOne: {
+                        filter: { brandId: entry.brandId, date: entry.date },
+                        update: { $set: entry },
+                        upsert: true
+                    }
+                }));
 
-                if (validEntries.length === 0) {
-                    console.warn(`No valid entries saved for chunk ${formattedStart} to ${formattedEnd}`);
+                if (bulkOps.length > 0) {
+                    await AdMetrics.bulkWrite(bulkOps, { ordered: false });
+                    console.log(`Bulk upserted ${bulkOps.length} metrics entries for chunk ${formattedStart} to ${formattedEnd}`);
                 } else {
-                    console.log(`Saved ${validEntries.length} entries for chunk ${formattedStart} to ${formattedEnd}`);
+                    console.warn(`No entries to upsert for chunk ${formattedStart} to ${formattedEnd}`);
                 }
 
                 results.push({
                     startDate: formattedStart,
                     endDate: formattedEnd,
                     metrics: Object.fromEntries(metricsByDate),
-                    savedCount: validEntries.length
+                    savedCount: bulkOps.length
                 });
 
             } catch (chunkError) {
                 console.error(`Error processing chunk ${formattedStart} to ${formattedEnd}:`, chunkError);
-                continue; // Continue with the next chunk instead of failing completely
+                continue; 
             }
 
-            // Move chunkStart forward to next period
             chunkStart = chunkEnd.clone();
         }
 
@@ -762,12 +748,6 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
     }
 };
 
-// Helper functions
-const getDefaultShopifyData = () => ({
-    totalSales: 0,
-    refundAmount: 0,
-    shopifySales: 0
-});
 
 const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     const { totalMetaSpend, totalMetaROAS, googleSpend, googleROAS, googleSales } = metrics;

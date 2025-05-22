@@ -27,6 +27,8 @@ import { calculateMetricsForSingleBrand} from "./Report/MonthlyReport.js"
 
 
 
+
+
 const app = express();
 dotenv.config();
              
@@ -71,6 +73,7 @@ dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 
+
 if (process.env.NODE_ENV === 'production') {
   setupCronJobs();
   console.log('Cron jobs initialized in production environment');
@@ -79,6 +82,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // calculateMetricsForSingleBrand("6825bf86e9237bbfe8fa4d8c","6825bf86e9237bbfe8fa4d89")
+
 
 const PORT = process.env.PORT || 5000;
 

@@ -39,18 +39,17 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        source: "client/dist/*"
+        target: "/tmp/client-build/"
         script: |
-          # Navigate to project directory
+          # Navigate to project directory and pull latest changes
           cd ~/shopify_SAAS
-          
-          # Pull latest changes
           git pull origin main
           
           # Deploy server
           echo "=== Deploying Server ==="
           cd ~/shopify_SAAS/server
           
-          # Always run npm install for server (or check if package.json exists)
           if [ -f package.json ]; then
             echo "Installing server dependencies..."
             npm install --production
@@ -58,47 +57,23 @@ jobs:
             echo "No package.json found in server directory"
           fi
           
-          # Restart server with PM2 (ecosystem.config.js is in root directory)
-          cd ~
-          pm2 restart ecosystem.config.js
-          
-          # Deploy client
+          # Deploy pre-built client files
           echo "=== Deploying Client ==="
-          echo "Contents of shopify_SAAS directory:"
-          ls -la ~/shopify_SAAS/
+          echo "Copying pre-built client files to nginx..."
+          sudo rm -rf /usr/share/nginx/html/shopify_client/*
+          sudo cp -rf /tmp/client-build/* /usr/share/nginx/html/shopify_client/
+          sudo chown -R nginx:nginx /usr/share/nginx/html/shopify_client/
           
-          # Check if client directory exists
-          if [ -d ~/shopify_SAAS/client ]; then
-            cd ~/shopify_SAAS/client
-            # Install dependencies and build
-            if [ -f package.json ]; then
-              echo "Installing client dependencies..."
-              npm install
-              echo "Building client..."
-              npm run build
-              
-              # Copy built files to nginx directory
-              if [ -d "dist" ]; then
-                echo "Copying built files to nginx..."
-                sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
-                sudo systemctl reload nginx
-                echo "Client deployment completed successfully!"
-              else
-                echo "ERROR: dist directory not found after build"
-                exit 1
-              fi
-            else
-              echo "No package.json found in client directory"
-            fi
-          else
-            echo "Client directory does not exist in ~/shopify_SAAS/"
-            echo "Available directories:"
-            ls -la ~/shopify_SAAS/
-          fi
-          
-          # Final PM2 restart (ecosystem.config.js is in root directory)
+          # Restart services
+          echo "=== Restarting Services ==="
           cd ~
           pm2 restart ecosystem.config.js
+          sudo systemctl reload nginx
+          
+          # Cleanup
+          rm -rf /tmp/client-build/
+          
+          echo "=== Deployment Complete ==="
           
     - name: Notify on Success
       if: success()

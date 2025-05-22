@@ -57,7 +57,7 @@ function TooltipHeader({
               {title}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="mb-3">
+          <TooltipContent className="mb-3 z-20">
             <div className="text-gray-700 bg-white p-2 rounded-md text-sm border shadow-lg max-w-xs">
               {isImportant && <div className="font-semibold text-blue-600 mb-1">Key Metric</div>}
               {tooltip}

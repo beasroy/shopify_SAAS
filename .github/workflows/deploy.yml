@@ -78,10 +78,3 @@ jobs:
       if: failure()
       run: |
         echo "Deployment failed!"
-
-    - name: Upload npm log
-      if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: npm-log
-        path: /home/runner/.npm/_logs/ 

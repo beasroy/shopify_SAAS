@@ -59,7 +59,7 @@ jobs:
             echo "No package.json found in server directory"
           fi
           
-          # Restart server with PM2 (ecosystem.config.js is in root directory)
+          # Restart server with PM2 
           cd ~
           pm2 restart ecosystem.config.js
           

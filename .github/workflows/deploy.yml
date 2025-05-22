@@ -64,10 +64,12 @@ jobs:
           
           # Deploy client
           echo "=== Deploying Client ==="
-          cd ~/shopify_SAAS/client
+          echo "Contents of shopify_SAAS directory:"
+          ls -la ~/shopify_SAAS/
           
           # Check if client directory exists
-          if [ -d "~/shopify_SAAS/client" ]; then
+          if [ -d ~/shopify_SAAS/client ]; then
+            cd ~/shopify_SAAS/client
             # Install dependencies and build
             if [ -f package.json ]; then
               echo "Installing client dependencies..."
@@ -89,7 +91,9 @@ jobs:
               echo "No package.json found in client directory"
             fi
           else
-            echo "Client directory does not exist"
+            echo "Client directory does not exist in ~/shopify_SAAS/"
+            echo "Available directories:"
+            ls -la ~/shopify_SAAS/
           fi
           
           # Final PM2 restart (ecosystem.config.js is in root directory)

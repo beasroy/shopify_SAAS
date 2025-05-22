@@ -58,7 +58,9 @@ jobs:
             else
               echo "No package.json found in client directory"
             fi
+            # Copy the pre-built dist files
             sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
+            # Reload nginx
             sudo systemctl reload nginx
             sudo systemctl restart nginx
              cd ~

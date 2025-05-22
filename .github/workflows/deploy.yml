@@ -16,23 +16,6 @@ jobs:
       with:
         node-version: '20'
         
-    - name: Install Server Dependencies
-      run: |
-        cd server
-        npm install
-        cd ..
-        
-    - name: Install Client Dependencies
-      run: |
-        cd client
-        npm install
-        cd ..
-        
-    - name: Build Client
-      run: |
-        cd client
-        npm run build
-        cd ..
         
     - name: Deploy to EC2
       uses: appleboy/ssh-action@master
@@ -69,65 +52,23 @@ jobs:
           # Check if client directory exists
           if [ -d ~/shopify_SAAS/client ]; then
             cd ~/shopify_SAAS/client
-            # Only install dependencies, no build needed
             if [ -f package.json ]; then
               echo "Installing client dependencies..."
               npm install --production
             else
               echo "No package.json found in client directory"
             fi
+            sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
+            sudo systemctl reload nginx
+            sudo systemctl restart nginx
+             cd ~
+          pm2 restart ecosystem.config.js
           else
             echo "Client directory does not exist in ~/shopify_SAAS/"
             echo "Available directories:"
             ls -la ~/shopify_SAAS/
           fi
-      
-    - name: Upload Built Client Files
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          # Create a temporary directory
-          mkdir -p /tmp/shopify_client
-          # Set proper permissions
-          sudo chown -R $USER:$USER /tmp/shopify_client
-          
-    - name: Upload Files
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "client/dist/*"
-        target: "/tmp/shopify_client/"
-        strip_components: 1
-        overwrite: true
-        
-    - name: Move Files to Nginx and Reload
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          # Move files to nginx directory with sudo
-          sudo rm -rf /usr/share/nginx/html/shopify_client/*
-          sudo cp -rf /tmp/shopify_client/* /usr/share/nginx/html/shopify_client/
-          sudo chown -R nginx:nginx /usr/share/nginx/html/shopify_client
-          sudo chmod -R 755 /usr/share/nginx/html/shopify_client
-          
-          # Clean up temporary directory
-          rm -rf /tmp/shopify_client
-          
-          # Reload nginx
-          sudo systemctl reload nginx
-          sudo systemctl restart nginx
-          
-          # Final PM2 restart
-          cd ~
-          pm2 restart ecosystem.config.js
+    
           
     - name: Notify on Success
       if: success()

@@ -68,7 +68,7 @@ export default function CollapsibleSidebar() {
     } catch (error) {
       console.error("Error fetching brands:", error)
     }
-  }, [user?.brands, dispatch, selectedBrandId, isInitialLoad, navigate]) // Added isInitialLoad and navigate
+  }, [user?.brands, dispatch, selectedBrandId, isInitialLoad, navigate])
 
   useEffect(() => {
     fetchBrands()
@@ -82,7 +82,7 @@ export default function CollapsibleSidebar() {
       if (response.status === 200) {
         dispatch(clearUser())
         dispatch(resetBrand())
-        navigate("/")
+        navigate("/login")
         // Reset initial load state for next login
         setIsInitialLoad(true)
       }

@@ -1,5 +1,5 @@
 import Brand from "../models/Brands.js";
-import { calculateMetricsForSingleBrand } from "../Report/MonthlyReport.js";
+import { calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js";
 
 export const addBrands = async (req, res) => {
     const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount} = req.body;
@@ -63,24 +63,49 @@ export const updateBrands = async (req, res) => {
     try {
         const { brandid } = req.params;
         const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+        const userId = req.user?.id;
 
         if (!brandid) {
             return res.status(400).json({ error: 'Brand ID is required.' });
         }
 
+        // Get current brand data to compare changes
+        const currentBrand = await Brand.findById(brandid);
+        if (!currentBrand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+
         const updateData = {};
+        let hasNewAdAccounts = false;
 
         if (name) updateData.name = name;
-        if (fbAdAccounts) updateData.fbAdAccounts = fbAdAccounts;
         if (ga4Account) updateData.ga4Account = ga4Account;
         if (shopifyAccount) updateData.shopifyAccount = shopifyAccount;
 
-        // Properly handle googleAdAccount as an array of objects
+        // Check for new Facebook ad accounts
+        if (fbAdAccounts) {
+            const newFbAccounts = fbAdAccounts.filter(account => 
+                !currentBrand.fbAdAccounts?.includes(account)
+            );
+            if (newFbAccounts.length > 0) {
+                hasNewAdAccounts = true;
+            }
+            updateData.fbAdAccounts = fbAdAccounts;
+        }
+
+        // Check for new Google ad accounts
         if (googleAdAccount) {
-            // Make sure googleAdAccount is treated as an array of objects
+            const newGoogleAccounts = googleAdAccount.filter(newAccount => 
+                !currentBrand.googleAdAccount?.some(existingAccount => 
+                    existingAccount.clientId === newAccount.clientId
+                )
+            );
+            if (newGoogleAccounts.length > 0) {
+                hasNewAdAccounts = true;
+            }
             updateData.googleAdAccount = Array.isArray(googleAdAccount) 
                 ? googleAdAccount 
-                : [googleAdAccount]; // Convert single object to array if needed
+                : [googleAdAccount];
         }
 
         const updatedBrand = await Brand.findByIdAndUpdate(

@@ -40,33 +40,60 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          # Navigate to project directory
           cd ~/shopify_SAAS
+          
+          # Pull latest changes
           git pull origin main
           
           # Deploy server
-          cd server
-          if git diff --name-only HEAD@{1} HEAD | grep -E 'package(-lock)?\.json'; then
-            echo "package.json or package-lock.json changed, running npm install..."
-            npm install
+          echo "=== Deploying Server ==="
+          cd ~/shopify_SAAS/server
+          
+          # Always run npm install for server (or check if package.json exists)
+          if [ -f package.json ]; then
+            echo "Installing server dependencies..."
+            npm install --production
           else
-            echo "No change in package.json or package-lock.json, skipping npm install."
+            echo "No package.json found in server directory"
           fi
-          cd 
+          
+          # Restart server with PM2 (ecosystem.config.js is in root directory)
+          cd ~
           pm2 restart ecosystem.config.js
           
           # Deploy client
-          cd client
-          if git diff --name-only HEAD@{1} HEAD | grep -E 'package(-lock)?\.json'; then
-            echo "package.json or package-lock.json changed, running npm install..."
-            npm install
+          echo "=== Deploying Client ==="
+          cd ~/shopify_SAAS/client
+          
+          # Check if client directory exists
+          if [ -d "~/shopify_SAAS/client" ]; then
+            # Install dependencies and build
+            if [ -f package.json ]; then
+              echo "Installing client dependencies..."
+              npm install
+              echo "Building client..."
+              npm run build
+              
+              # Copy built files to nginx directory
+              if [ -d "dist" ]; then
+                echo "Copying built files to nginx..."
+                sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
+                sudo systemctl reload nginx
+                echo "Client deployment completed successfully!"
+              else
+                echo "ERROR: dist directory not found after build"
+                exit 1
+              fi
+            else
+              echo "No package.json found in client directory"
+            fi
           else
-            echo "No change in package.json or package-lock.json, skipping npm install."
+            echo "Client directory does not exist"
           fi
-          npm run build
-          sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
-          sudo systemctl reload nginx
-          sudo systemctl restart nginx
-          cd 
+          
+          # Final PM2 restart (ecosystem.config.js is in root directory)
+          cd ~
           pm2 restart ecosystem.config.js
           
     - name: Notify on Success

@@ -127,7 +127,7 @@ function TicketForm({ onClose }: TicketFormProps) {
     } catch (error) {
       console.error("Error submitting ticket:", error)
       setErrors({
-        form: "There was an error submitting your ticket. Please try again.",
+        form: "There was an error submitting your tickets. Please try again.",
       })
     } finally {
       setSubmitting(false)

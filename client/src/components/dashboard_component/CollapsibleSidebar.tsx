@@ -82,7 +82,7 @@ export default function CollapsibleSidebar() {
       if (response.status === 200) {
         dispatch(clearUser())
         dispatch(resetBrand())
-        navigate("/login")
+        navigate("/")
         // Reset initial load state for next login
         setIsInitialLoad(true)
       }

@@ -5,14 +5,20 @@ import BrandSetupDashboard from "./BrandSetUpDashboard";
 import SummaryDashboard from "./dashboard";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
 import { RootState } from "@/store";
-
+import { useNavigate } from "react-router-dom";
 
 const GeneralDashboard: React.FC = () => {
     const user = useSelector((state: RootState) => state.user.user);
+    const navigate = useNavigate();
+
+    if (!user) {
+        navigate('/');
+        return null;
+    }
 
     return (
         <>
-          {user?.brands?.length === 0 ? (
+          {user.brands?.length === 0 ? (
             <BrandSetupDashboard />
           ) : (
             <div className="flex h-screen relative">
@@ -25,7 +31,6 @@ const GeneralDashboard: React.FC = () => {
           )}
         </>
       );
-      
 }
 
 export default GeneralDashboard;

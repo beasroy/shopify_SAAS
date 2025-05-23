@@ -8,7 +8,9 @@ export const redisConfig = {
   port: Number(process.env.REDIS_PORT || 6380),
   username: 'default',
   password: process.env.REDIS_PASSWORD,
-  tls: {}
+  tls: isDevelopment ? undefined : {
+    rejectUnauthorized: false // Set to true if you have valid SSL certificates
+  }
 }
 
 export const metricsQueue = new Queue('metrics-calculation', {

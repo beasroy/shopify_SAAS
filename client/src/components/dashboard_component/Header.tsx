@@ -2,7 +2,7 @@ import { Settings, RefreshCw} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "./DatePickerWithRange";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import HeaderTutorialButton from "../Tutorial/HeaderTutorialButton";
+// import HeaderTutorialButton from "../Tutorial/HeaderTutorialButton";
 import { useDispatch, useSelector } from "react-redux";
 import { setLocale } from "@/store/slices/LocalSlice";
 import { RootState } from "@/store";
@@ -103,7 +103,7 @@ export default function Header({
               </PopoverContent>
             </Popover>
           )}
-          <HeaderTutorialButton />
+          {/* <HeaderTutorialButton /> */}
         </div>
       </div>
     </header>

@@ -1,8 +1,10 @@
+"use client"
+
 import React, { useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
-import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar"
+import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar"
 import { CalendarRange, ChevronDown, Download, Maximize, Minimize } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import { Card, CardContent } from "@/components/ui/card"
@@ -18,7 +20,6 @@ import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
 
-
 function TooltipHeader({
   title,
   tooltip,
@@ -26,7 +27,8 @@ function TooltipHeader({
   rowSpan,
   isSubHeader = false,
   isImportant = false,
-}: Readonly<ITooltipHeaderProps & { isImportant?: boolean }>) {
+  isFirstInSection = false, // Add this new prop
+}: Readonly<ITooltipHeaderProps & { isImportant?: boolean; isFirstInSection?: boolean }>) {
   return (
     <th
       className={`
@@ -37,6 +39,7 @@ function TooltipHeader({
         relative overflow-hidden
         ${!isSubHeader ? "sticky top-0 z-10" : ""}
         font-inter border-b border-r border-slate-300
+        ${isFirstInSection ? "border-l-2 border-l-slate-300 shadow-sm" : ""}
       `}
       colSpan={colSpan}
       rowSpan={rowSpan}
@@ -54,7 +57,7 @@ function TooltipHeader({
               {title}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="mb-3">
+          <TooltipContent className="mb-3 z-20">
             <div className="text-gray-700 bg-white p-2 rounded-md text-sm border shadow-lg max-w-xs">
               {isImportant && <div className="font-semibold text-blue-600 mb-1">Key Metric</div>}
               {tooltip}
@@ -74,6 +77,7 @@ function Cell({
   isSticky = false,
   isExpanded = false,
   isImportant = false,
+  isFirstInSection = false, // Add this new prop
   className = "",
 }: {
   children?: React.ReactNode
@@ -82,6 +86,7 @@ function Cell({
   isSticky?: boolean
   isExpanded?: boolean
   isImportant?: boolean
+  isFirstInSection?: boolean
   className?: string
 }) {
   return (
@@ -94,6 +99,7 @@ function Cell({
         ${isExpanded ? "bg-blue-50/30" : "bg-white hover:bg-slate-50/80"}
         ${isSticky && isExpanded ? "bg-blue-50/30" : ""}
         ${isImportant ? "font-semibold text-blue-700" : ""}
+        ${isFirstInSection ? "border-l-2 border-l-slate-300 shadow-sm" : ""}
         transition-colors
         ${className}
       `}
@@ -124,7 +130,6 @@ export const ExcelMetricsPage: React.FC = () => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
 
-
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen)
   }
@@ -151,13 +156,11 @@ export const ExcelMetricsPage: React.FC = () => {
           withCredentials: true,
         })
         const metricsData: IMonthlyAggregate[] = reportResponse.data.data
-        setMetricsData(metricsData);
+        setMetricsData(metricsData)
       } catch (err) {
         console.error(err)
         const message =
-          axios.isAxiosError(err) && err.response?.data?.message
-            ? err.response.data.message
-            : 'Something went wrong'
+          axios.isAxiosError(err) && err.response?.data?.message ? err.response.data.message : "Something went wrong"
         setError(message)
       } finally {
         setLoading(false)
@@ -239,7 +242,6 @@ export const ExcelMetricsPage: React.FC = () => {
     }
   }, [processedData])
 
-
   const renderTable = (): React.ReactNode => {
     if (error) {
       return <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200">{error}</div>
@@ -253,18 +255,33 @@ export const ExcelMetricsPage: React.FC = () => {
               <tr>
                 <th className="w-10 sticky left-0 z-30 bg-slate-200 border-b border-r border-slate-300" rowSpan={2} />
                 <th
-                  className="sticky left-[40px] z-20 text-center whitespace-nowrap p-2 font-semibold text-sm bg-slate-200 border-b border-r border-slate-300"
+                  className="sticky left-[40px] z-20 text-center whitespace-nowrap p-2 font-semibold text-sm bg-slate-200 border-b border-r border-slate-300 border-l-2 border-l-slate-300 "
                   rowSpan={2}
                 >
                   Date
                 </th>
-                <TooltipHeader title="Shopify (Actual Sales Data)" tooltip="Shopify Metrics" colSpan={5} />
-                <TooltipHeader title="Meta + Google" tooltip="Meta + Google" colSpan={3} />
-                <TooltipHeader title="Meta (Facebook & Instagram Ads)" tooltip="Meta Metrics" colSpan={3} />
-                <TooltipHeader title="Google Ads" tooltip="Google Metrics" colSpan={3} />
+                <TooltipHeader
+                  title="Shopify (Actual Sales Data)"
+                  tooltip="Shopify Metrics"
+                  colSpan={5}
+                  isFirstInSection={true}
+                />
+                <TooltipHeader title="Meta + Google" tooltip="Meta + Google" colSpan={3} isFirstInSection={true} />
+                <TooltipHeader
+                  title="Meta (Facebook & Instagram Ads)"
+                  tooltip="Meta Metrics"
+                  colSpan={3}
+                  isFirstInSection={true}
+                />
+                <TooltipHeader title="Google Ads" tooltip="Google Metrics" colSpan={3} isFirstInSection={true} />
               </tr>
               <tr>
-                <TooltipHeader title="Net Sales" tooltip="Net Sales = Gross Sales - Discount" isSubHeader />
+                <TooltipHeader
+                  title="Net Sales"
+                  tooltip="Net Sales = Gross Sales - Discount"
+                  isSubHeader
+                  isFirstInSection={true}
+                />
                 <TooltipHeader
                   title="Net ROI"
                   tooltip="Net ROI = Net Sales / Total Spend"
@@ -279,13 +296,23 @@ export const ExcelMetricsPage: React.FC = () => {
                   isSubHeader
                   isImportant={true}
                 />
-                <TooltipHeader title="Spend" tooltip="Total Spent = Meta Spent + Google Spent" isSubHeader />
+                <TooltipHeader
+                  title="Spend"
+                  tooltip="Total Spent = Meta Spent + Google Spent"
+                  isSubHeader
+                  isFirstInSection={true}
+                />
                 <TooltipHeader title="Sales" tooltip="Sales = (MetaSales + GoogleSales)" isSubHeader />
-                <TooltipHeader title="ROI" tooltip="ROI = (MetaSales + GoogleSales)/ Total Spent" isSubHeader isImportant={true} />
-                <TooltipHeader title="Spend" tooltip="Meta Spent" isSubHeader />
+                <TooltipHeader
+                  title="ROI"
+                  tooltip="ROI = (MetaSales + GoogleSales)/ Total Spent"
+                  isSubHeader
+                  isImportant={true}
+                />
+                <TooltipHeader title="Spend" tooltip="Meta Spent" isSubHeader isFirstInSection={true} />
                 <TooltipHeader title="Sales" tooltip="Meta Sales = Meta Spent * Meta ROAS" isSubHeader />
                 <TooltipHeader title="ROAS" tooltip="Meta ROAS" isSubHeader isImportant={true} />
-                <TooltipHeader title="Spend" tooltip="Google Spent" isSubHeader />
+                <TooltipHeader title="Spend" tooltip="Google Spent" isSubHeader isFirstInSection={true} />
                 <TooltipHeader title="Sales" tooltip="Google Sales = Google Spent * Google ROAS" isSubHeader />
                 <TooltipHeader title="ROAS" tooltip="Google ROAS" isSubHeader isImportant={true} />
               </tr>
@@ -299,7 +326,7 @@ export const ExcelMetricsPage: React.FC = () => {
                     <tr
                       className={`
                         ${isExpanded ? "bg-blue-50/30" : "bg-white hover:bg-slate-50/80"} 
-                        cursor-pointer transition-colors
+                        cursor-pointer transition-colors 
                       `}
                       onClick={() => toggleMonth(monthYear)}
                     >
@@ -318,15 +345,20 @@ export const ExcelMetricsPage: React.FC = () => {
                         isHeader
                         isSticky
                         isExpanded={isExpanded}
-                        className="sticky left-[40px] px-3 py-2.5 whitespace-nowrap bg-slate-50/80 text-sm"
+                        className="sticky left-[40px] px-3 py-2.5 whitespace-nowrap bg-slate-50/80 text-sm border-l-2 border-l-slate-300 "
                       >
                         {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm">
+                      <Cell
+                        isNumeric
+                        isExpanded={isExpanded}
+                        className="px-3 py-2.5 font-medium text-sm"
+                        isFirstInSection={true}
+                      >
                         {formatCurrency(monthData.shopifySales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
-                         {formatPercentage(monthData.netROI)}
+                        {formatPercentage(monthData.netROI)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
                         {formatCurrency(monthData.refundAmount)}
@@ -335,9 +367,9 @@ export const ExcelMetricsPage: React.FC = () => {
                         {formatCurrency(monthData.totalSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
-                      {formatPercentage(monthData.ROI)}
+                        {formatPercentage(monthData.ROI)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
                         {formatCurrency(monthData.totalSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
@@ -346,7 +378,7 @@ export const ExcelMetricsPage: React.FC = () => {
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.grossROI)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
                         {formatCurrency(monthData.metaSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
@@ -355,7 +387,7 @@ export const ExcelMetricsPage: React.FC = () => {
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.metaROAS)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
                         {formatCurrency(monthData.googleSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
@@ -371,15 +403,15 @@ export const ExcelMetricsPage: React.FC = () => {
                           <Cell isSticky className="w-10 px-2 py-1.5 sticky left-0 bg-slate-50/50" />
                           <Cell
                             isSticky
-                            className="sticky left-[40px] px-3 py-1.5 text-xs text-gray-600 bg-slate-50/80"
+                            className="sticky left-[40px] px-3 py-1.5 text-xs text-gray-600 bg-slate-50/80 border-l-2 border-l-slate-300 "
                           >
                             {format(new Date(daily.date), "dd/MM/yyyy")}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.shopifySales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
-                              {formatPercentage(daily.netROI)}
+                            {formatPercentage(daily.netROI)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
                             {formatCurrency(daily.refundAmount)}
@@ -388,9 +420,9 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatCurrency(daily.totalSales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
-                          {formatPercentage(daily.ROI)}
+                            {formatPercentage(daily.ROI)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.totalSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
@@ -399,7 +431,7 @@ export const ExcelMetricsPage: React.FC = () => {
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.grossROI)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.metaSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
@@ -408,7 +440,7 @@ export const ExcelMetricsPage: React.FC = () => {
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.metaROAS)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.googleSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
@@ -431,7 +463,7 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const renderContent = () => {
     if (loading) return <Loader isLoading={loading} />
-    if (error === 'No metrics data available yet. Please try again later.') return <DataBuilding />
+    if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
     return (
       <div className="flex-1 h-screen overflow-hidden bg-slate-100">
         <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
@@ -479,11 +511,8 @@ export const ExcelMetricsPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">
-        {renderContent()}
-      </div>
+      <div className="flex-1 h-screen overflow-hidden flex flex-col">{renderContent()}</div>
       <HelpDeskModal />
     </div>
   )
 }
-

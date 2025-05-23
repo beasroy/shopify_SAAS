@@ -1,5 +1,5 @@
 import React, { useState,useMemo } from 'react';
-import CollapsibleSidebar from '../Dashboard/CollapsibleSidebar';
+import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { useParams } from 'react-router-dom';
 import { ChartBar, Radar } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';

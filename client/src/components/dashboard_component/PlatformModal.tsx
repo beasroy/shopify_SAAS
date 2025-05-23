@@ -110,7 +110,7 @@ export default function PlatformModal({
           throw new Error('Invalid platform');
         }
         const response = await axios.post(
-          `${baseURL}${endpoint}`,
+          `${baseURL}${endpoint}`,{},
           { withCredentials: true }
         );
 

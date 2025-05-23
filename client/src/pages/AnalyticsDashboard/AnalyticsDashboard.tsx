@@ -1,5 +1,5 @@
 import React from "react";
-import CollapsibleSidebar from "@/pages/Dashboard/CollapsibleSidebar.tsx";
+import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar.tsx";
 import Dashboard from "./dashboard.tsx";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal.tsx";
 

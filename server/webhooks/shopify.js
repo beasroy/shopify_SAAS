@@ -267,7 +267,7 @@ export const subscriptionUpdate = async (req, res) => {
       return;
     }
 
-    const planName = mapPlanName(fullDetails.name);
+    const planName = fullDetails.name;
     const status = mapStatus(fullDetails.status);
     const price = parseFloat(fullDetails.lineItems?.[0]?.plan?.pricingDetails?.price?.amount || 0);
     const billingOn = fullDetails.currentPeriodEnd ? new Date(fullDetails.currentPeriodEnd) : null;
@@ -311,6 +311,59 @@ export const subscriptionUpdate = async (req, res) => {
   }
 };
 
+export const app_uninstalled = async (req, res) => {
+  try {
+    const { shop_domain } = req.body;
+    console.log(`Shop redact request received for ${shop_domain}`);
+
+    const brandsToDelete = await Brand.find({
+      'shopifyAccount.shopName': shop_domain
+    });
+
+    if (brandsToDelete.length > 0) {
+      console.log(`Found ${brandsToDelete.length} brands to delete for shop ${shop_domain}`);
+
+
+      const brandIds = brandsToDelete.map(brand => brand._id);
+
+      const usersToUpdate = await User.find({
+        brands: { $in: brandIds },
+        method: 'shopify'
+      });
+
+      console.log(`Found ${usersToUpdate.length} Shopify users associated with these brands`);
+
+      for (const user of usersToUpdate) {
+        user.brands = user.brands.filter(brandId =>
+          !brandIds.some(id => id.equals(brandId))
+        );
+
+        if (user.brands.length === 0 && user.method === 'shopify') {
+          console.log(`Deleting Shopify user: ${user.email}`);
+          await User.deleteOne({ _id: user._id });
+        } else {
+          await user.save();
+          console.log(`Updated brands for user: ${user.email}`);
+        }
+      }
+
+      // 5. Delete the brands associated with this shop
+      await Brand.deleteMany({
+        'shopifyAccount.shopName': shop_domain
+      });
+
+      console.log(`Successfully deleted brands for shop ${shop_domain}`);
+    } else {
+      console.log(`No brands found for shop ${shop_domain}`);
+    }
+
+    res.status(200).send();
+  } catch (error) {
+    console.error('Error processing shop redact:', error);
+    res.status(200).send();
+  }
+}
+
 export async function registerWebhooks(shop, accessToken) {
 
   const apiVersion = '2024-04';
@@ -321,6 +374,11 @@ export async function registerWebhooks(shop, accessToken) {
       address: `https://parallels.messold.com/api/shopify/webhooks/app_subscriptions/update`,
       format: 'json'
     },
+    {
+      topic: 'app/uninstalled',
+      address: `https://parallels.messold.com/api/shopify/webhooks/app_uninstalled`,
+      format: 'json'
+    }
   ];
 
   const results = [];

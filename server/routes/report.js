@@ -1,14 +1,15 @@
 import express from 'express';
 import { getMetricsbyID } from '../controller/report.js';
 import AdMetrics from '../models/AdMetrics.js';
-import {monthlyFetchTotalSales} from "../Report/MonthlyReport.js"
+import {calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js"
 import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
+import { verifyAuth } from '../middleware/verifyAuth.js';
 
 const router = express.Router();
 
-router.get('/:brandId', getMetricsbyID);
+router.get('/:brandId',verifyAuth, getMetricsbyID);
 
 router.delete('/delete/byDate', async (req, res) => {
     try {
@@ -67,7 +68,6 @@ router.delete('/delete/:brandId', async (req, res) => {
     try {
         const { brandId } = req.params;
         
-        // Delete all records associated with the given brandId
         const result = await AdMetrics.deleteMany({ brandId });
         
         if (result.deletedCount === 0) {

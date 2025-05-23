@@ -9,6 +9,7 @@ import axios from "axios";
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
 import { registerWebhooks } from "../webhooks/shopify.js";
+import { metricsQueue } from "../config/redis.js";
 
 config();
 
@@ -115,13 +116,11 @@ export const handleGoogleCallback = async (req, res) => {
     }
   } catch (error) {
     console.error("Error during Google OAuth callback:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Google OAuth failed",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Google OAuth failed",
+      error: error.message,
+    });
   }
 };
 
@@ -384,13 +383,11 @@ export const handleFbCallback = async (req, res) => {
     return res.redirect(clientURL + `?fbToken=${longLivedAccessToken}`);
   } catch (err) {
     console.error("Error during Facebook OAuth callback:", err);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to handle Facebook callback",
-        error: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to handle Facebook callback",
+      error: err.message,
+    });
   }
 };
 
@@ -415,7 +412,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 
     const userId = user._id;
 
-    if (type === "facebook") {
+    if (type === "fbToken") {
       const { fbToken } = req.query;
 
       if (!fbToken) {
@@ -523,14 +520,13 @@ export const getShopifyAuthUrl = (req, res) => {
 
   res.json({ success: true, authUrl });
 };
-export const handleShopifyCallback = async (request, res) => {
-  const absoluteUrl = `${request.protocol}://${request.get("host")}${
-    request.originalUrl
-  }`;
+export const handleShopifyCallback = async (req, res) => {
+  const absoluteUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
   const url = new URL(absoluteUrl);
 
   const code = url.searchParams.get("code");
   const shop = url.searchParams.get("shop");
+
   const clientId = process.env.SHOPIFY_CLIENT_ID;
   const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
@@ -541,7 +537,7 @@ export const handleShopifyCallback = async (request, res) => {
   }
 
   try {
-    // Get access token from Shopify
+    // Step 1: Exchange code for access token
     const tokenResponse = await axios.post(
       `https://${shop}/admin/oauth/access_token`,
       {
@@ -551,130 +547,142 @@ export const handleShopifyCallback = async (request, res) => {
       }
     );
 
-    if (tokenResponse.data && tokenResponse.data.access_token) {
-      const accessToken = tokenResponse.data.access_token;
+    const accessToken = tokenResponse.data?.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: "Failed to obtain access token" });
+    }
 
-      // Get shop details
-      const shopResponse = await axios.get(
-        `https://${shop}/admin/api/2024-04/shop.json`,
-        {
-          headers: {
-            "X-Shopify-Access-Token": accessToken,
-          },
-        }
-      );
-
-      const shopData = shopResponse.data.shop;
-      const shopId = shopData.id;
-      const shopName = shopData.name;
-      const ownerEmail = shopData.email;
-      const ownerName = shopData.shop_owner;
-
-      let user = await User.findOne({
-        email: ownerEmail || `${shopName}@${shop}`,
-      });
-
-      if (!user) {
-        user = new User({
-          username: ownerName || shopName,
-          email: ownerEmail || `${shopName}@${shop}`,
-          method: "shopify",
-          brands: [],
-        });
-
-        await user.save();
+    // Step 2: Fetch shop details
+    const shopResponse = await axios.get(
+      `https://${shop}/admin/api/2024-04/shop.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+        },
       }
+    );
 
-      // Find or create brand
-      let brand = await Brand.findOne({ "shopifyAccount.shopName": shop });
+    const shopData = shopResponse.data.shop;
+    const shopId = shopData.id;
+    const shopName = shopData.name;
+    const ownerEmail = shopData.email;
+    const ownerName = shopData.shop_owner;
 
-      if (brand) {
-        brand.shopifyAccount.shopifyAccessToken = accessToken;
-        brand.shopifyAccount.shopId = shopId;
-        await brand.save();
+    // Step 3: Find or create user
+    const emailToUse = ownerEmail || `${shopName}@${shop}`;
+    let user = await User.findOne({ email: emailToUse });
 
-        if (!user.brands.includes(brand._id.toString())) {
-          user.brands.push(brand._id);
-          await user.save();
-        }
-      } else {
-        // Create a new brand
-        brand = new Brand({
-          name: shopName,
-          shopifyAccount: {
-            shopName: shop,
-            shopifyAccessToken: accessToken,
-            shopId: shopId,
-          },
-        });
+    if (!user) {
+      user = new User({
+        username: ownerName || shopName,
+        email: emailToUse,
+        method: "shopify",
+        brands: [],
+      });
+      await user.save();
+    }
 
-        await brand.save();
+    // Step 4: Find or create brand
+    let brand = await Brand.findOne({ "shopifyAccount.shopName": shop });
+
+    if (brand) {
+      brand.shopifyAccount.shopifyAccessToken = accessToken;
+      brand.shopifyAccount.shopId = shopId;
+      await brand.save();
+
+      if (!user.brands.includes(brand._id.toString())) {
         user.brands.push(brand._id);
         await user.save();
       }
+    } else {
+      brand = new Brand({
+        name: shopName,
+        shopifyAccount: {
+          shopName: shop,
+          shopifyAccessToken: accessToken,
+          shopId: shopId,
+        },
+      });
+      await brand.save();
 
-      let subscription = await Subscription.findOne({
+      user.brands.push(brand._id);
+      await user.save();
+    }
+
+    // Step 5: Create subscription if not exists
+    let subscription = await Subscription.findOne({
+      brandId: brand._id.toString(),
+      shopId: shopId,
+    });
+
+    if (!subscription) {
+      subscription = new Subscription({
         brandId: brand._id.toString(),
         shopId: shopId,
+        planName: "Free Plan",
+        price: 0,
+        status: "active",
+        billingOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       });
-      if (!subscription) {
-        subscription = new Subscription({
-          brandId: brand._id.toString(),
-          shopId: shopId,
-          planName: "Free Plan",
-          price: 0,
-          status: "active",
-          billingOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        });
+      await subscription.save();
+    }
 
-        await subscription.save();
-      }
-      console.log("webhook registraton started");
-      await registerWebhooks(shop, accessToken);
+    await registerWebhooks(shop, accessToken);
 
-      // Generate JWT token
-      const token = jwt.sign(
+    try {
+      await metricsQueue.add(
+        "calculate-metrics",
         {
-          id: user._id,
-          email: user.email,
+          brandId: brand._id.toString(),
+          userId: user._id.toString(),
         },
-        process.env.JWT_SECRET,
-        { expiresIn: "30d" }
+        {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000,
+          },
+        }
       );
+      console.log(`Metrics calculation queued for brand ${brand._id}`);
+    } catch (metricsError) {
+      console.error(
+        `Failed to queue metrics calculation for brand ${brand._id}:`,
+        metricsError
+      );
+    }
 
-      // Set HTTP-only cookie
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-      // Redirect to client with user ID and token
-      const isProduction = process.env.NODE_ENV === "production";
-      const clientURL = isProduction
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    // Step 9: Redirect to frontend
+    const clientURL =
+      process.env.NODE_ENV === "production"
         ? "https://parallels.messold.com/callback"
         : "http://localhost:5173/callback";
 
-      return res.redirect(
-        `${clientURL}?shopify_token=${token}&userId=${user._id}`
-      );
-    } else {
-      return res
-        .status(500)
-        .json({
-          error: "Unable to get access token",
-          details: tokenResponse.data,
-        });
-    }
+    return res.redirect(
+      `${clientURL}?shopify_token=${token}&userId=${user._id}`
+    );
   } catch (error) {
-    console.error("Error in Shopify callback:", error);
-    return res
-      .status(500)
-      .json({
-        error: "Error occurred while processing callback",
-        details: error.response?.data || error.message,
-      });
+    console.error("Shopify OAuth callback error:", error);
+    return res.status(500).json({
+      error: "Something went wrong during Shopify callback",
+      details: error.response?.data || error.message,
+    });
   }
 };
 

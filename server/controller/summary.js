@@ -245,7 +245,7 @@ export async function getAnalyticsSummary(req, res) {
 
     // Validate Google Analytics access
     if (!propertyId) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: 'GA4 Property ID is missing for this brand.'
       });
@@ -778,6 +778,14 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
+    if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
+      return res.status(404).json({
+        success: false,
+        periodData: {},
+        message: "No Google ads account found for this brand"
+      });
+    }
+
     const refreshToken = user.googleAdsRefreshToken;
     if (!refreshToken) {
       return res.status(403).json({
@@ -786,14 +794,6 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    // Check if googleAdAccount is available and has at least one account
-    if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
-      return res.json({
-        success: true,
-        periodData: {},
-        message: "No Google ads account found for this brand"
-      });
-    }
 
     const today = new Date();
 

@@ -11,7 +11,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import Header from '@/components/dashboard_component/Header';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
-import CollapsibleSidebar from '@/pages/Dashboard/CollapsibleSidebar';
+import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
 import { CustomTabs } from '@/pages/ConversionReportPage/components/CustomTabs';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 

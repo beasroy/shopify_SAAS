@@ -49,7 +49,7 @@ const Brand: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) =>
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/segment/brand/${brandId}`, {
+      const response = await axiosInstance.post(`/api/google/brand/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate, 
       }, { withCredentials: true })
 

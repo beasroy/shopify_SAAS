@@ -1,130 +1,211 @@
 "use client"
 
-import type React from "react"
-import { MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useRef, useState, useEffect } from "react"
+import { ChevronLeft, ChevronRight, Search, ChevronsUpDown, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-interface TabProps {
-  label: string
-  value: string
-  isActive: boolean
-  onClick: (value: string) => void
-}
-
-const Tab: React.FC<TabProps> = ({ label, value, isActive, onClick }) => (
-  <button
-    className={cn(
-      "px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-200 border-b-2",
-      isActive
-        ? "border-blue-500 text-blue-600"
-        : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300",
-    )}
-    onClick={() => onClick(value)}
-    aria-selected={isActive}
-    role="tab"
-  >
-    {label}
-  </button>
-)
-
-interface FixedTabsWithMoreProps {
-  tabs: { label: string; value: string }[]
+interface HorizontalTabsProps {
+  tabs: {
+    label: string
+    value: string
+  }[]
   activeTab: string
   onTabChange: (value: string) => void
-  visibleTabCount?: number
 }
 
-export const CustomTabs: React.FC<FixedTabsWithMoreProps> = ({
-  tabs,
-  activeTab,
-  onTabChange,
-  visibleTabCount = 7, // Default to showing 7 tabs
-}) => {
-  const visibleTabs = tabs.slice(0, visibleTabCount)
-  const hiddenTabs = tabs.slice(visibleTabCount)
+export function CustomTabs({ tabs, activeTab, onTabChange }: HorizontalTabsProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
-  const activeTabIndex = tabs.findIndex((tab) => tab.value === activeTab)
-  if (activeTabIndex >= visibleTabCount && visibleTabs.length > 0) {
-    const activeHiddenTab = hiddenTabs.find((tab) => tab.value === activeTab)
+  const filteredTabs = tabs.filter((tab) => tab.label.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    if (activeHiddenTab) {
-      // Modified logic: Remove from the first visible tab instead of the last
-      const newHiddenTabs = hiddenTabs.filter((tab) => tab.value !== activeHiddenTab.value)
-      // Add the first visible tab to the hidden tabs
-      newHiddenTabs.unshift(visibleTabs[0])
-      // Create new visible tabs by removing the first one and adding the active tab to the end
-      const newVisibleTabs = [...visibleTabs.slice(1), activeHiddenTab]
 
-      return (
-        <div className="relative flex justify-center items-center border-b border-gray-200 w-full">
-          <div className="flex justify-center items-center overflow-x-hidden">
-            {newVisibleTabs.map((tab) => (
-              <Tab
-                key={tab.value}
-                label={tab.label}
-                value={tab.value}
-                isActive={tab.value === activeTab}
-                onClick={onTabChange}
-              />
-            ))}
-          </div>
+  const checkScrollPosition = () => {
+    if (!scrollContainerRef.current) return
 
-          {newHiddenTabs.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 px-2 ml-1">
-                  <MoreHorizontal className="h-4 w-4 mr-1" />
-                  <span className="text-xs font-medium">More</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {newHiddenTabs.map((tab) => (
-                  <DropdownMenuItem
-                    key={tab.value}
-                    className={cn("cursor-pointer", tab.value === activeTab && "bg-blue-50 text-blue-600")}
-                    onClick={() => onTabChange(tab.value)}
-                  >
-                    {tab.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      )
-    }
+    const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+    setShowLeftArrow(scrollLeft > 0)
+    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 5) 
   }
 
-  // Default rendering when active tab is visible or no swapping needed
-  return (
-    <div className="relative flex justify-center items-center border-b border-gray-200 w-full">
-      <div className="flex justify-center items-center overflow-x-hidden">
-        {visibleTabs.map((tab) => (
-          <Tab
-            key={tab.value}
-            label={tab.label}
-            value={tab.value}
-            isActive={tab.value === activeTab}
-            onClick={onTabChange}
-          />
-        ))}
-      </div>
 
-      {hiddenTabs.length > 0 && (
+  useEffect(() => {
+    if (!scrollContainerRef.current) return
+
+    const activeTabElement = scrollContainerRef.current.querySelector(`[data-value="${activeTab}"]`) as HTMLElement
+    if (activeTabElement) {
+      const container = scrollContainerRef.current
+      const containerRect = container.getBoundingClientRect()
+      const tabRect = activeTabElement.getBoundingClientRect()
+
+      const scrollLeft =
+        tabRect.left - containerRect.left - containerRect.width / 2 + tabRect.width / 2 + container.scrollLeft
+
+      container.scrollTo({
+        left: scrollLeft,
+        behavior: "smooth",
+      })
+    }
+
+    checkScrollPosition()
+  }, [activeTab])
+
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener("scroll", checkScrollPosition)
+ 
+      checkScrollPosition()
+
+      return () => {
+        container.removeEventListener("scroll", checkScrollPosition)
+      }
+    }
+  }, [])
+
+
+  const handleScroll = (direction: "left" | "right") => {
+    if (!scrollContainerRef.current) return
+
+    const container = scrollContainerRef.current
+    const scrollAmount = container.clientWidth * 0.8
+
+    container.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    })
+  }
+
+  return (
+    <div className="relative w-full">
+      <div className="flex items-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "flex-shrink-0 rounded-full h-8 w-8 bg-white shadow-sm transition-opacity",
+            showLeftArrow ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+          onClick={() => handleScroll("left")}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Scroll left</span>
+        </Button>
+
+
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-x-auto scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          <div className="flex items-center justify-center gap-1 p-1 min-w-max">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                data-value={tab.value}
+                className={cn(
+                  "px-4 py-2 text-sm rounded-md whitespace-nowrap transition-colors",
+                  tab.value === activeTab ? "bg-blue-100 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-100",
+                )}
+                onClick={() => onTabChange(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right scroll button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "flex-shrink-0 rounded-full h-8 w-8 bg-white shadow-sm transition-opacity",
+            showRightArrow ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+          onClick={() => handleScroll("right")}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Scroll right</span>
+        </Button>
+
+        {/* Search popover */}
+        <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="ml-2 flex-shrink-0">
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search tabs</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0" align="end">
+            <div className="p-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search tabs..."
+                  className="pl-9 pr-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear search</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto border-t">
+              {filteredTabs.length > 0 ? (
+                filteredTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm transition-colors",
+                      tab.value === activeTab ? "bg-blue-50 text-blue-600 font-medium" : "hover:bg-gray-50",
+                    )}
+                    onClick={() => {
+                      onTabChange(tab.value)
+                      setIsSearchOpen(false)
+                      setSearchQuery("")
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))
+              ) : (
+                <div className="py-4 px-2 text-center text-sm text-gray-500">No tabs match your search</div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Dropdown for all tabs */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-9 px-2 ml-1">
-              <MoreHorizontal className="h-4 w-4 mr-1" />
-              <span className="text-xs font-medium">More</span>
+            <Button variant="outline" size="icon" className="ml-2 flex-shrink-0">
+              <ChevronsUpDown className="h-4 w-4" />
+              <span className="sr-only">All tabs</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {hiddenTabs.map((tab) => (
+          <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
+            {tabs.map((tab) => (
               <DropdownMenuItem
                 key={tab.value}
-                className={cn("cursor-pointer", tab.value === activeTab && "bg-blue-50 text-blue-600")}
+                className={cn(tab.value === activeTab && "bg-blue-50 text-blue-600 font-medium")}
                 onClick={() => onTabChange(tab.value)}
               >
                 {tab.label}
@@ -132,8 +213,7 @@ export const CustomTabs: React.FC<FixedTabsWithMoreProps> = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
+      </div>
     </div>
   )
 }
-

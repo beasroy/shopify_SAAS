@@ -4,7 +4,7 @@ import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Maximize, Minimize, RefreshCw } from "lucide-react";
+import { Maximize, Minimize, RefreshCw, Target } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { GoogleLogo } from "@/data/logo";
@@ -14,6 +14,8 @@ import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
 import { setDate } from "@/store/slices/DateSlice";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import Loader from "@/components/dashboard_component/loader";
+import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
+import { selectGoogleAdsTokenError } from "@/store/slices/TokenSllice";
 
 type AdAccountData = {
   accountId: string;
@@ -85,7 +87,7 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
     setLoading(true);
     try {
 
-      const response = await axiosInstance.post(`/api/segment/keyword/${brandId}`, {
+      const response = await axiosInstance.post(`/api/google/keyword/${brandId}`, {
         userId: user?.id, startDate: startDate, endDate: endDate, ...transformedFilters
       }, { withCredentials: true })
 
@@ -136,10 +138,26 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) 
   const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
   const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
   const locale = useSelector((state:RootState)=>state.locale.locale)
+  const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
+  console.log(googleAdsTokenError);
+
 
   return (
     <>
-    {loading ? (
+     {googleAdsTokenError ? (
+           <NoAccessPage
+           platform="Google Ads"
+           message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
+           icon={<Target className="w-8 h-8 text-red-500" />}
+           loginOptions={[
+             {
+               label: "Connect Google Ads",
+               context: "googleAdSetup",
+               provider: "google"
+             }
+           ]}
+         />
+        ) : loading ? (
       <Loader isLoading={loading}/>
     ) : (
       apiResponse?.data && apiResponse.data.map((account, _) => (

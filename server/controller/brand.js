@@ -1,15 +1,12 @@
 import Brand from "../models/Brands.js";
-import { calculateMetricsForSingleBrand } from "../Report/MonthlyReport.js";
+import { metricsQueue } from "../config/redis.js";
 
-export const addBrands = async(req, res) => {
-    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount, logoUrl } = req.body;
-    const sanitizedLogoUrl = typeof logoUrl === 'string' ? logoUrl : '';
-    
+export const addBrands = async (req, res) => {
+    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount} = req.body;
+
     try {
-        // Create the brand as before
         const newBrand = new Brand({
             name,
-            logoUrl: sanitizedLogoUrl,
             fbAdAccounts,
             googleAdAccount,
             ga4Account,
@@ -17,17 +14,25 @@ export const addBrands = async(req, res) => {
         });
 
         await newBrand.save();
-        
+
         const userId = req.user?.id || 'system-brand-creation';
         const brandId = newBrand._id.toString();
-        
-        calculateMetricsForSingleBrand(brandId, userId)
-            .then(result => {
-                console.log(`Initial historical metrics calculation for brand ${brandId} completed:`, result);
-            })
-            .catch(error => {
-                console.error(`Error calculating initial metrics for brand ${brandId}:`, error);
+
+        try {
+            await metricsQueue.add('calculate-metrics', {
+                brandId: brandId,
+                userId: userId
+            }, {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000
+                }
             });
+            console.log(`Metrics calculation queued for brand ${brandId}`);
+        } catch (metricsError) {
+            console.error(`Failed to queue metrics calculation for brand ${brandId}:`, metricsError);
+        }
 
         res.status(201).json({ message: "Brand created successfully", brand: newBrand });
     } catch (error) {
@@ -35,6 +40,7 @@ export const addBrands = async(req, res) => {
         res.status(500).json({ message: 'Error creating brand', error: error.message });
     }
 }
+
 
 export const getBrands = async(req,res) =>{
     try{
@@ -66,24 +72,49 @@ export const updateBrands = async (req, res) => {
     try {
         const { brandid } = req.params;
         const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+        const userId = req.user?.id;
 
         if (!brandid) {
             return res.status(400).json({ error: 'Brand ID is required.' });
         }
 
+        // Get current brand data to compare changes
+        const currentBrand = await Brand.findById(brandid);
+        if (!currentBrand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+
         const updateData = {};
+        let hasNewAdAccounts = false;
 
         if (name) updateData.name = name;
-        if (fbAdAccounts) updateData.fbAdAccounts = fbAdAccounts;
         if (ga4Account) updateData.ga4Account = ga4Account;
         if (shopifyAccount) updateData.shopifyAccount = shopifyAccount;
 
-        // Properly handle googleAdAccount as an array of objects
+        // Check for new Facebook ad accounts
+        if (fbAdAccounts) {
+            const newFbAccounts = fbAdAccounts.filter(account => 
+                !currentBrand.fbAdAccounts?.includes(account)
+            );
+            if (newFbAccounts.length > 0) {
+                hasNewAdAccounts = true;
+            }
+            updateData.fbAdAccounts = fbAdAccounts;
+        }
+
+        // Check for new Google ad accounts
         if (googleAdAccount) {
-            // Make sure googleAdAccount is treated as an array of objects
+            const newGoogleAccounts = googleAdAccount.filter(newAccount => 
+                !currentBrand.googleAdAccount?.some(existingAccount => 
+                    existingAccount.clientId === newAccount.clientId
+                )
+            );
+            if (newGoogleAccounts.length > 0) {
+                hasNewAdAccounts = true;
+            }
             updateData.googleAdAccount = Array.isArray(googleAdAccount) 
                 ? googleAdAccount 
-                : [googleAdAccount]; // Convert single object to array if needed
+                : [googleAdAccount];
         }
 
         const updatedBrand = await Brand.findByIdAndUpdate(

@@ -40,8 +40,9 @@ export default function DataBuilding() {
           </div>
 
           <p className="text-sm md:text-base text-gray-700 max-w-4xl mx-auto mb-2">
-            We're pulling your analytics data from the past two years.
+            We're loading data from the past two years up to yesterday. Going forward, new data will update daily.
           </p>
+
           <p className="text-sm md:text-base text-gray-500 max-w-4xl mx-auto mb-8">
             This process may take <span className="font-medium">1-2 hours</span> to complete.
           </p>

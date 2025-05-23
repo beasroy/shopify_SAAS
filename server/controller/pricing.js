@@ -23,11 +23,10 @@ export const handlePricingCallback = async (req, res) => {
 
         console.log(`Subscription initiated for shop ${shop} with charge ID ${chargeId}`);
 
-        // Find if subscription already exists by chargeId
         const existingSubscription = await Subscription.findOne({ shopId: shopId });
 
         if (existingSubscription) {
-            // Update the existing subscription
+
             existingSubscription.status = 'pending';
             existingSubscription.planName = 'Free Plan';
             existingSubscription.price = 0;
@@ -64,3 +63,59 @@ export const handlePricingCallback = async (req, res) => {
         });
     }
 };
+
+
+export const getPricingDetails = async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        const subscription = await Subscription.findOne({
+            brandId: brandId
+        });
+
+        if (!subscription) {
+            return res.status(404).json({ message: 'No active subscription found' });
+        }
+
+        // Calculate trial remaining days if in trial period
+        let trialDaysRemaining = null;
+        if (subscription.trialEndsOn) {
+            const trialEndDate = new Date(subscription.trialEndsOn);
+            const currentDate = new Date();
+
+            if (trialEndDate > currentDate) {
+                const diffTime = Math.abs(trialEndDate - currentDate);
+                trialDaysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+        }
+
+        // Calculate days until next billing
+        let daysUntilBilling = null;
+        if (subscription.billingOn) {
+            const billingDate = new Date(subscription.billingOn);
+            const currentDate = new Date();
+
+            const diffTime = Math.abs(billingDate - currentDate);
+            daysUntilBilling = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // Format the response
+        const subscriptionDetails = {
+            id: subscription._id,
+            planName: subscription.planName,
+            price: subscription.price,
+            status: subscription.status,
+            chargeId: subscription.chargeId,
+            trialEndsOn: subscription.trialEndsOn,
+            trialDaysRemaining,
+            billingOn: subscription.billingOn,
+            daysUntilBilling,
+            createdAt: subscription.createdAt
+        };
+
+        res.json(subscriptionDetails);
+    } catch (err) {
+        console.error('Error fetching subscription details:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+
+}

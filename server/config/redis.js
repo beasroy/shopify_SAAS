@@ -24,7 +24,6 @@ const createRedisConnection = () => {
   const redis = new Redis(redisUrl, {
     username: 'default',
     password: process.env.REDIS_PASSWORD,
-    tls: "RedisCloudFixed",
     retryStrategy: (times) => {
       const delay = Math.min(times * 50, 2000);
       return delay;

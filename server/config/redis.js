@@ -1,38 +1,42 @@
 import { config } from 'dotenv';
 import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 config();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Base configuration
-const baseConfig = {
-  host: process.env.REDIS_HOST,
-  port: Number(process.env.REDIS_PORT || 6379), // Changed default to 6379
-  username: 'default',
-  password: process.env.REDIS_PASSWORD,
-  enableReadyCheck: false,
-  maxRetriesPerRequest: 3,
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
+// Create Redis connection
+const createRedisConnection = () => {
+  if (isDevelopment) {
+    return new Redis({
+      host: 'localhost',
+      port: 6379
+    });
   }
+
+  // Production Redis Cloud configuration
+  return new Redis({
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT || 6380),
+    username: 'default',
+    password: process.env.REDIS_PASSWORD,
+    tls: {
+      rejectUnauthorized: false,
+      servername: process.env.REDIS_HOST
+    },
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: false
+  });
 };
 
-// Development uses local Redis
-const devConfig = {
-  host: 'localhost',
-  port: 6379
-};
+// Create Redis connection
+const connection = createRedisConnection();
 
-// Production configuration
-const prodConfig = {
-  ...baseConfig,
-  tls: undefined // Explicitly disable TLS
-};
-
-// Use appropriate config based on environment
-const connection = isDevelopment ? devConfig : prodConfig;
-
+// Create BullMQ queue with the Redis connection
 export const metricsQueue = new Queue('metrics-calculation', {
     connection,
     defaultJobOptions: {

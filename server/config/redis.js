@@ -18,7 +18,6 @@ const createRedisConnection = () => {
       host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT || '13509'),
       password: process.env.REDIS_PASSWORD,
-      tls: {} // Important for Redis Cloud TLS
     });
   
     redis.on('connect', () => {

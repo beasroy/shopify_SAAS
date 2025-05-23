@@ -22,12 +22,6 @@ import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
-import { calculateMetricsForSingleBrand} from "./Report/MonthlyReport.js"
-
-
-
-
-
 
 const app = express();
 dotenv.config();
@@ -80,9 +74,6 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   console.log('Running in development mode - cron jobs not initialized');
 }
-
-// calculateMetricsForSingleBrand("6825bf86e9237bbfe8fa4d8c","6825bf86e9237bbfe8fa4d89")
-
 
 const PORT = process.env.PORT || 5000;
 

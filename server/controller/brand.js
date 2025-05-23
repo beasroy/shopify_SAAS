@@ -1,5 +1,5 @@
 import Brand from "../models/Brands.js";
-import { calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js";
+import { metricsQueue } from "../config/redis.js";
 
 export const addBrands = async (req, res) => {
     const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount} = req.body;
@@ -19,10 +19,19 @@ export const addBrands = async (req, res) => {
         const brandId = newBrand._id.toString();
 
         try {
-            const result = await calculateMetricsForSingleBrand(brandId, userId);
-            console.log(`Initial historical metrics calculation for brand ${brandId} completed:`, result);
+            await metricsQueue.add('calculate-metrics', {
+                brandId: brandId,
+                userId: userId
+            }, {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000
+                }
+            });
+            console.log(`Metrics calculation queued for brand ${brandId}`);
         } catch (metricsError) {
-            console.error(`Error calculating initial metrics for brand ${brandId}:`, metricsError);
+            console.error(`Failed to queue metrics calculation for brand ${brandId}:`, metricsError);
         }
 
         res.status(201).json({ message: "Brand created successfully", brand: newBrand });

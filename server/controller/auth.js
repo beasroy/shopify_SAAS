@@ -9,8 +9,7 @@ import axios from 'axios';
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
 import { registerWebhooks } from '../webhooks/shopify.js';
-import { calculateMetricsForSingleBrand } from "../Report/MonthlyReport.js";
-
+import { metricsQueue } from "../config/redis.js";
 
 config();
 
@@ -607,14 +606,19 @@ export const handleShopifyCallback = async (req, res) => {
         await registerWebhooks(shop, accessToken);
 
         try {
-            await axios.post(
-                `https://${req.get('host')}/api/report/calculate-metrics/${brand._id}`,
-                { userId: user._id.toString() },
-                { withCredentials: true }
-            );
-            console.log(`Metrics calculation initiated for brand ${brand._id}`);
+            await metricsQueue.add('calculate-metrics', {
+                brandId: brand._id.toString(),
+                userId: user._id.toString()
+            }, {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000
+                }
+            });
+            console.log(`Metrics calculation queued for brand ${brand._id}`);
         } catch (metricsError) {
-            console.error(`Failed to initiate metrics calculation for brand ${brand._id}:`, metricsError);
+            console.error(`Failed to queue metrics calculation for brand ${brand._id}:`, metricsError);
         }
 
         const token = jwt.sign(

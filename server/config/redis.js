@@ -3,31 +3,44 @@ import { Queue } from 'bullmq';
 config();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
-export const redisConfig = {
+
+// Base configuration
+const baseConfig = {
   host: process.env.REDIS_HOST,
-  port: Number(process.env.REDIS_PORT || 6380),
+  port: Number(process.env.REDIS_PORT || 6379), // Changed default to 6379
   username: 'default',
   password: process.env.REDIS_PASSWORD,
-  tls: isDevelopment ? undefined : {
-    rejectUnauthorized: false,
-    servername: process.env.REDIS_HOST
+  enableReadyCheck: false,
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times) => {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
   }
-}
+};
 
-// Create a connection object that works in both development and production
-const connection = isDevelopment 
-  ? { host: 'localhost', port: 6379 }
-  : {
-      ...redisConfig,
-      enableReadyCheck: false,
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      }
-    };
+// Development uses local Redis
+const devConfig = {
+  host: 'localhost',
+  port: 6379
+};
+
+// Production configuration
+const prodConfig = {
+  ...baseConfig,
+  tls: undefined // Explicitly disable TLS
+};
+
+// Use appropriate config based on environment
+const connection = isDevelopment ? devConfig : prodConfig;
 
 export const metricsQueue = new Queue('metrics-calculation', {
-    connection
+    connection,
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+            type: 'exponential',
+            delay: 1000
+        }
+    }
 });
 

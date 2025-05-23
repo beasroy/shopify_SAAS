@@ -15,22 +15,40 @@ const createRedisConnection = () => {
   }
 
   // Production Redis Cloud configuration
-  return new Redis({
-    host: process.env.REDIS_HOST,
-    port: Number(process.env.REDIS_PORT || 6380),
+  const redisUrl = `rediss://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6380}`;
+  
+  console.log('Redis URL:', redisUrl);
+  console.log('Redis Host:', process.env.REDIS_HOST);
+  console.log('Redis Port:', process.env.REDIS_PORT);
+  
+  const redis = new Redis(redisUrl, {
     username: 'default',
     password: process.env.REDIS_PASSWORD,
     tls: {
       rejectUnauthorized: false,
-      servername: process.env.REDIS_HOST
+      servername: process.env.REDIS_HOST,
+      minVersion: 'TLSv1.2'
     },
     retryStrategy: (times) => {
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
     maxRetriesPerRequest: 3,
-    enableReadyCheck: false
+    enableReadyCheck: false,
+    connectTimeout: 10000,
+    disconnectTimeout: 2000
   });
+
+  // Add connection event listeners
+  redis.on('connect', () => {
+    console.log('Redis connected successfully');
+  });
+
+  redis.on('error', (err) => {
+    console.error('Redis connection error:', err);
+  });
+
+  return redis;
 };
 
 // Create Redis connection

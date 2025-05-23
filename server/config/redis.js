@@ -21,18 +21,7 @@ const createRedisConnection = () => {
   console.log('Redis Host:', process.env.REDIS_HOST);
   console.log('Redis Port:', process.env.REDIS_PORT);
   
-  const redis = new Redis(redisUrl, {
-    username: 'default',
-    password: process.env.REDIS_PASSWORD,
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
-    maxRetriesPerRequest: 3,
-    enableReadyCheck: false,
-    connectTimeout: 10000,
-    disconnectTimeout: 2000
-  });
+  const redis = new Redis(redisUrl);
 
   // Add connection event listeners
   redis.on('connect', () => {

@@ -49,7 +49,14 @@ export const handleGoogleCallback = async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    const context = state || "default";
+    console.log(state);
+
+    // fetching context and modal value from url
+    const [context, platform] = (state || "default|unknown").split("|");
+    // const context = state || "default";
+
+    console.log(context, platform);
+
     const isProduction = process.env.NODE_ENV === "production";
 
     if (context === "googleAdSetup") {
@@ -60,7 +67,8 @@ export const handleGoogleCallback = async (req, res) => {
         : "http://localhost:5173/callback";
 
       return res.redirect(
-        clientURL + `?googleadRefreshToken=${googleadRefreshToken}`
+        clientURL +
+          `?googleadRefreshToken=${googleadRefreshToken}&platform=${platform}`
       );
     } else if (context === "googleAnalyticsSetup") {
       const googleanalyticsRefreshToken = tokens.refresh_token;
@@ -71,7 +79,7 @@ export const handleGoogleCallback = async (req, res) => {
 
       return res.redirect(
         clientURL +
-          `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}`
+          `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}&platform=${platform}`
       );
     } else if (context === "userLogin") {
       const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });

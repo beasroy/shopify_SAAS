@@ -1,12 +1,8 @@
-<<<<<<< HEAD
+import { LayoutDashboard, Settings } from "lucide-react";
+
 export const baseURL = import.meta.env.PROD
   ? import.meta.env.VITE_API_URL
   : import.meta.env.VITE_LOCAL_API_URL;
-=======
-import { LayoutDashboard, Settings } from "lucide-react";
-
-export const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
->>>>>>> 0246dc44a04ed111c8cee5e339777b0c2e8a02b7
 
 export const apphandle = import.meta.env.VITE_APP_HANDLE;
 
@@ -103,10 +99,7 @@ export const pricingPlans = [
     ],
     buttonText: "Subscribe Now",
   },
-<<<<<<< HEAD
 ];
-=======
-]
 
 export const setupSteps = [
   {
@@ -120,15 +113,5 @@ export const setupSteps = [
     title: "Connect Platforms",
     description: "Link your marketing and analytics accounts",
     icon: LayoutDashboard,
-  }
-]
-
-
-
-
-  
-  
-  
-  
-
->>>>>>> 0246dc44a04ed111c8cee5e339777b0c2e8a02b7
+  },
+];

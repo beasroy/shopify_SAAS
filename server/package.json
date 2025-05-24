@@ -45,6 +45,7 @@
     "node-cache": "^5.1.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
+    "redis": "^5.1.0",
     "shopify-api-node": "^3.14.0",
     "winston": "^3.0.0",
     "ws": "^8.18.0"

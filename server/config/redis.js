@@ -46,4 +46,3 @@ export const metricsQueue = new Queue('metrics-calculation', {
         }
     }
 });
-

@@ -1,132 +1,141 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import axios from "axios"
-import { Eye, EyeOff, Mail, Lock, User, Store } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { useToast } from "../hooks/use-toast"
-import { FcGoogle } from "react-icons/fc"
-import { useDispatch, useSelector } from "react-redux"
-import type { RootState } from "@/store"
-import { setUser } from "@/store/slices/UserSlice"
-import { baseURL } from "@/data/constant"
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { Eye, EyeOff, Mail, Lock, User, Store } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useToast } from "../hooks/use-toast";
+import { FcGoogle } from "react-icons/fc";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import { setUser } from "@/store/slices/UserSlice";
+import { baseURL } from "@/data/constant";
 
 export default function AuthForm() {
-  const [isLogin, setIsLogin] = useState(true)
-  const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [shop, setShop] = useState("")
-  const [isShopifyLogin, setIsShopifyLogin] = useState(false)
-  const { toast } = useToast()
-  const navigate = useNavigate()
-  const [errors, setErrors] = useState({ username: "", email: "", password: "", shop: "" })
-  const user = useSelector((state: RootState) => state.user.user)
-  const dispatch = useDispatch()
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [shop, setShop] = useState("");
+  const [isShopifyLogin, setIsShopifyLogin] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [errors, setErrors] = useState({
+    username: "",
+    email: "",
+    password: "",
+    shop: "",
+  });
+  const user = useSelector((state: RootState) => state.user.user);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard")
+      navigate("/dashboard");
     }
-  }, [user, navigate])
+  }, [user, navigate]);
 
   const toggleForm = () => {
-    setIsLogin(!isLogin)
-    setIsShopifyLogin(false)
-  }
+    setIsLogin(!isLogin);
+    setIsShopifyLogin(false);
+  };
 
   const toggleShopifyLogin = () => {
-    setIsShopifyLogin(!isShopifyLogin)
-  }
+    setIsShopifyLogin(!isShopifyLogin);
+  };
 
   const validateForm = () => {
-    const newErrors = { username: "", email: "", password: "", shop: "" }
-    let isValid = true
+    const newErrors = { username: "", email: "", password: "", shop: "" };
+    let isValid = true;
 
     if (isShopifyLogin) {
       if (!shop.trim()) {
-        newErrors.shop = "Shop name is required"
-        isValid = false
+        newErrors.shop = "Shop name is required";
+        isValid = false;
       }
-      return isValid
+      return isValid;
     }
 
     if (!isLogin && !username.trim()) {
-      newErrors.username = "Username is required"
-      isValid = false
+      newErrors.username = "Username is required";
+      isValid = false;
     }
 
     if (!email.trim()) {
-      newErrors.email = "Email is required"
-      isValid = false
+      newErrors.email = "Email is required";
+      isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email is invalid"
-      isValid = false
+      newErrors.email = "Email is invalid";
+      isValid = false;
     }
 
     if (!password) {
-      newErrors.password = "Password is required"
-      isValid = false
+      newErrors.password = "Password is required";
+      isValid = false;
     } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters"
-      isValid = false
+      newErrors.password = "Password must be at least 8 characters";
+      isValid = false;
     }
 
-    setErrors(newErrors)
-    return isValid
-  }
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
     if (isShopifyLogin) {
-      handleShopifyLogin()
-      return
+      handleShopifyLogin();
+      return;
     }
 
     try {
-      let response
+      let response;
 
       if (isLogin) {
-        response = await axios.post(`${baseURL}/api/auth/login/normal`, { email, password }, { withCredentials: true })
+        response = await axios.post(
+          `${baseURL}/api/auth/login/normal`,
+          { email, password },
+          { withCredentials: true }
+        );
 
         if (response.data.success) {
           // Set the user in the context with hasSeenLandingSlides flag
           const userData = {
             ...response.data.user,
-          }
-          dispatch(setUser(userData))
+          };
+          dispatch(setUser(userData));
 
           toast({
             title: "Login successful!",
             description: "Welcome! Redirecting to your dashboard.",
             variant: "default",
-          })
-          navigate("/dashboard")
+          });
+          navigate("/dashboard");
         }
       } else {
         response = await axios.post(
           `${baseURL}/api/auth/signup`,
           { username, email, password },
-          { withCredentials: true },
-        )
+          { withCredentials: true }
+        );
 
         if (response.data.success) {
           toast({
             title: "Registration successful!",
             description: "Please log in with your new account.",
             variant: "default",
-          })
-          setIsLogin(true)
+          });
+          setIsLogin(true);
         }
       }
     } catch (error) {
@@ -135,47 +144,51 @@ export default function AuthForm() {
           title: "Error",
           description: error.response.data.message || "An error occurred",
           variant: "destructive",
-        })
+        });
       } else {
         toast({
           title: "Unexpected Error",
           description: "An unexpected error occurred",
           variant: "destructive",
-        })
+        });
       }
     }
-  }
+  };
 
   const handleGoogleLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/google?context=userLogin`)
-      const { authUrl } = response.data
+      const response = await axios.get(
+        `${baseURL}/api/auth/google?context=userLogin`
+      );
+      const { authUrl } = response.data;
 
-      window.location.href = authUrl
+      window.location.href = authUrl;
     } catch (error) {
-      console.error("Error getting Google Auth URL:", error)
+      console.error("Error getting Google Auth URL:", error);
     }
-  }
+  };
 
   const handleShopifyLogin = async () => {
     try {
       if (!shop.trim()) {
-        setErrors((prev) => ({ ...prev, shop: "Shop name is required" }))
-        return
+        setErrors((prev) => ({ ...prev, shop: "Shop name is required" }));
+        return;
       }
 
-      const response = await axios.post(`${baseURL}/api/auth/shopify`, { shop })
-      const { authUrl } = response.data
-      window.location.href = authUrl
+      const response = await axios.post(`${baseURL}/api/auth/shopify`, {
+        shop,
+      });
+      const { authUrl } = response.data;
+      window.location.href = authUrl;
     } catch (error) {
-      console.error("Error getting Shopify Auth URL:", error)
+      console.error("Error getting Shopify Auth URL:", error);
       toast({
         title: "Error",
         description: "Failed to connect to Shopify",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <div className="flex h-screen">
@@ -188,22 +201,30 @@ export default function AuthForm() {
       >
         <div className="flex items-center justify-center w-full h-full bg-black bg-opacity-40">
           <div className="text-white text-center p-8">
-            <h3 className="text-4xl font-bold mb-6">Unified Marketing Analytics</h3>
-            <p className="text-xl">View your Shopify, Facebook, and Google Ads data all in one place.</p>
+            <h3 className="text-4xl font-bold mb-6">
+              Unified Marketing Analytics
+            </h3>
+            <p className="text-xl">
+              View your Shopify, Facebook, and Google Ads data all in one place.
+            </p>
           </div>
         </div>
       </div>
       <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-8">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold mb-3">
-            {isShopifyLogin ? "Connect Your Shopify Store" : isLogin ? "Welcome Back" : "Create an Account"}
+            {isShopifyLogin
+              ? "Connect Your Shopify Store"
+              : isLogin
+              ? "Welcome Back"
+              : "Create an Account"}
           </h2>
           <p className="mb-8">
             {isShopifyLogin
               ? "Enter your Shopify store name to connect"
               : isLogin
-                ? "Sign in to access your marketing dashboard"
-                : "Join us to view all your marketing data in one place"}
+              ? "Sign in to access your marketing dashboard"
+              : "Join us to view all your marketing data in one place"}
           </p>
           <form onSubmit={handleSubmit} className="space-y-6">
             {isShopifyLogin ? (
@@ -221,8 +242,12 @@ export default function AuthForm() {
                     className="pl-10 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-                {errors.shop && <p className="text-red-500 text-sm">{errors.shop}</p>}
-                <p className="text-sm text-gray-500 mt-1">Enter only the store name without .myshopify.com</p>
+                {errors.shop && (
+                  <p className="text-red-500 text-sm">{errors.shop}</p>
+                )}
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter only the store name without .myshopify.com
+                </p>
               </div>
             ) : (
               <>
@@ -241,7 +266,9 @@ export default function AuthForm() {
                         className="pl-10 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
-                    {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
+                    {errors.username && (
+                      <p className="text-red-500 text-sm">{errors.username}</p>
+                    )}
                   </div>
                 )}
                 <div className="space-y-2">
@@ -258,7 +285,9 @@ export default function AuthForm() {
                       className="pl-10 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+                  {errors.email && (
+                    <p className="text-red-500 text-sm">{errors.email}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
@@ -278,15 +307,25 @@ export default function AuthForm() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-3"
                     >
-                      {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                      {showPassword ? (
+                        <Eye className="h-5 w-5" />
+                      ) : (
+                        <EyeOff className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
-                  {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+                  {errors.password && (
+                    <p className="text-red-500 text-sm">{errors.password}</p>
+                  )}
                 </div>
               </>
             )}
             <Button type="submit" className="w-full text-white">
-              {isShopifyLogin ? "Connect Shopify Store" : isLogin ? "Sign In" : "Sign Up"}
+              {isShopifyLogin
+                ? "Connect Shopify Store"
+                : isLogin
+                ? "Sign In"
+                : "Sign Up"}
             </Button>
           </form>
 
@@ -318,14 +357,22 @@ export default function AuthForm() {
           <p className="mt-6 text-center text-sm">
             {isShopifyLogin ? (
               <>
-                <button onClick={toggleShopifyLogin} className="font-semibold hover:underline">
+                <button
+                  onClick={toggleShopifyLogin}
+                  className="font-semibold hover:underline"
+                >
                   Back to {isLogin ? "Sign In" : "Sign Up"}
                 </button>
               </>
             ) : (
               <>
-                {isLogin ? "Don't have an account? " : "Already have an account? "}
-                <button onClick={toggleForm} className="font-semibold hover:underline">
+                {isLogin
+                  ? "Don't have an account? "
+                  : "Already have an account? "}
+                <button
+                  onClick={toggleForm}
+                  className="font-semibold hover:underline"
+                >
                   {isLogin ? "Sign Up" : "Sign In"}
                 </button>
               </>
@@ -334,5 +381,5 @@ export default function AuthForm() {
         </div>
       </div>
     </div>
-  )
+  );
 }

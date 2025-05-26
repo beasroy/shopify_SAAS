@@ -5,6 +5,12 @@ config();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+const host = process.env.REDIS_HOST || '127.0.0.1';
+const port = process.env.REDIS_PORT || 6379;
+const password = process.env.REDIS_PASSWORD || null;
+
+console.log(host, port, password, isDevelopment);
+
 // Create Redis connection
 export const createRedisConnection = () => {
   if (isDevelopment) {

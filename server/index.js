@@ -30,12 +30,14 @@ connectDB();
 
 //monthlyCalculateMetricsForAllBrands("2024-08-01","2024-12-31","67eb85f2f583a37ca251622a");
  
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
-  origin: ['http://13.203.31.8', 'http://localhost:5173','https://parallels.messold.com'],  
+  origin: isDevelopment 
+    ? ['http://13.203.31.8', 'http://localhost:5173']
+    : ['https://parallels.messold.com'],
   credentials: true  
 }));
-
 
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -43,7 +45,6 @@ app.use(express.json({
   }
 }));
 app.use(cookieParser());
-
 
 const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);
@@ -67,12 +68,11 @@ dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 
-
-if (process.env.NODE_ENV === 'production') {
+if (isDevelopment) {
+  console.log('Running in development mode - cron jobs not initialized');
+} else {
   setupCronJobs();
   console.log('Cron jobs initialized in production environment');
-} else {
-  console.log('Running in development mode - cron jobs not initialized');
 }
 
 const PORT = process.env.PORT || 5000;
@@ -81,7 +81,12 @@ app.get('/', (req, res) => {
   res.send('Hello, World!'); 
 });
 
+// Trust proxy in production
+if (!isDevelopment) {
+  app.set('trust proxy', 1);
+}
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on http://0.0.0.0:${PORT}`);
+  console.log(`Server is running on ${isDevelopment ? 'http' : 'https'}://0.0.0.0:${PORT}`);
 });
 

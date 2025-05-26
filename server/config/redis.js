@@ -13,22 +13,24 @@ console.log(host, port, password, isDevelopment);
 
 // Create Redis connection
 export const createRedisConnection = () => {
-  if (isDevelopment) {
-    return new Redis({
-      host: 'localhost',
-      port: 6379,
-      maxRetriesPerRequest: null, // ✅ required for BullMQ Worker
-    });
+  const host = process.env.REDIS_HOST || '127.0.0.1';
+  const port = parseInt(process.env.REDIS_PORT || '6379');
+  const password = process.env.REDIS_PASSWORD || null;
+
+  const redisOptions = {
+    host,
+    port,
+    maxRetriesPerRequest: null,
+  };
+
+  if (password) {
+    redisOptions.password = password;
   }
 
-  const redis = new Redis({
-    host: process.env.REDIS_HOST,
-    port: parseInt(process.env.REDIS_PORT || '13509'),
-    password: process.env.REDIS_PASSWORD,
-    maxRetriesPerRequest: null, // ✅ already here
-  });
+  const redis = new Redis(redisOptions);
 
   redis.on('connect', () => {
+    console.log(`${host} ${port} ${password} ${isDevelopment}`);
     console.log('Redis connected successfully');
   });
 
@@ -39,7 +41,6 @@ export const createRedisConnection = () => {
   return redis;
 };
 
-// Create Redis connection
 export const connection = createRedisConnection();
 
 // Create BullMQ queue with the Redis connection

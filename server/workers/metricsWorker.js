@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { calculateMetricsForSingleBrand } from '../Report/MonthlyReport.js';
-import { redisConfig } from '../config/redis.js';
+import { createRedisConnection } from '../config/redis.js';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -16,7 +16,7 @@ const worker = new Worker('metrics-calculation', async (job) => {
         throw error;
     }
 }, {
-    connection: isDevelopment ? { host: 'localhost', port: 6379 } : redisConfig,
+    connection: createRedisConnection(),
     concurrency: isDevelopment ? 2 : 5, 
     limiter: isDevelopment ? {
         max: 5, 
@@ -30,7 +30,6 @@ const worker = new Worker('metrics-calculation', async (job) => {
         stalledInterval: isDevelopment ? 5000 : 30000, 
     }
 });
-
 
 worker.on('active', (job) => {
     if (isDevelopment) {
@@ -60,15 +59,7 @@ worker.on('completed', (job) => {
 });
 
 worker.on('failed', (job, error) => {
-    if (isDevelopment) {
-        console.error(`[DEV] Job ${job.id} failed for brand ${job.data.brandId}:`, error);
-    } else {
-        console.error(`[PROD] Metrics calculation failed for brand ${job.data.brandId}:`, {
-            error: error.message,
-            stack: error.stack,
-            jobId: job.id
-        });
-    }
+    console.error(`Job ${job?.id} failed for brand ${job?.data?.brandId}:`, error);
 });
 
 worker.on('error', (error) => {

@@ -1,13 +1,30 @@
 import { Worker } from 'bullmq';
 import { calculateMetricsForSingleBrand } from '../Report/MonthlyReport.js';
 import { createRedisConnection } from '../config/redis.js';
+import { connectDB, getConnectionStatus } from '../config/db.js';
+import mongoose from 'mongoose';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Ensure MongoDB connection before processing jobs
+const ensureMongoConnection = async () => {
+    const { isConnected, cachedConnection } = getConnectionStatus();
+    
+    if (!isConnected || !cachedConnection) {
+        console.log('Establishing new MongoDB connection...');
+        await connectDB();
+    } else {
+        console.log('Using cached MongoDB connection');
+    }
+};
 
 const worker = new Worker('metrics-calculation', async (job) => {
     const { brandId, userId } = job.data;
     
     try {
+        // Ensure MongoDB connection before processing
+        await ensureMongoConnection();
+        
         console.log(`Processing metrics calculation for brand ${brandId}`);
         await calculateMetricsForSingleBrand(brandId, userId);
         console.log(`Successfully calculated metrics for brand ${brandId}`);
@@ -78,6 +95,7 @@ worker.on('error', (error) => {
 const shutdown = async () => {
     console.log('Shutting down worker...');
     await worker.close();
+    await mongoose.connection.close();
     process.exit(0);
 };
 
@@ -88,8 +106,14 @@ process.on('SIGINT', shutdown);
 // Check if this file is being run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
     console.log('Starting metrics worker...');
-    worker.on('ready', () => {
-        console.log('Metrics worker is ready to process jobs');
+    // Ensure MongoDB connection before starting worker
+    connectDB().then(() => {
+        worker.on('ready', () => {
+            console.log('Metrics worker is ready to process jobs');
+        });
+    }).catch(error => {
+        console.error('Failed to connect to MongoDB:', error);
+        process.exit(1);
     });
 }
 

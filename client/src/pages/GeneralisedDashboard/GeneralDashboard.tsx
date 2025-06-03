@@ -12,7 +12,7 @@ const GeneralDashboard: React.FC = () => {
     const navigate = useNavigate();
 
     if (!user) {
-        navigate('/');
+        navigate('/login');
         return null;
     }
 

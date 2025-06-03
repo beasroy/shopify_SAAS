@@ -543,6 +543,7 @@ export const handleShopifyCallback = async (req, res) => {
         const shopName = shopData.name;
         const ownerEmail = shopData.email;
         const ownerName = shopData.shop_owner;
+        const storeCurrency = shopData.currency || 'USD';
 
         // Step 3: Find or create user
         const emailToUse = ownerEmail || `${shopName}@${shop}`;
@@ -564,6 +565,7 @@ export const handleShopifyCallback = async (req, res) => {
         if (brand) {
             brand.shopifyAccount.shopifyAccessToken = accessToken;
             brand.shopifyAccount.shopId = shopId;
+            brand.shopifyAccount.currency = storeCurrency;
             await brand.save();
 
             if (!user.brands.includes(brand._id.toString())) {
@@ -576,7 +578,8 @@ export const handleShopifyCallback = async (req, res) => {
                 shopifyAccount: {
                     shopName: shop,
                     shopifyAccessToken: accessToken,
-                    shopId: shopId
+                    shopId: shopId,
+                    currency: storeCurrency
                 }
             });
             await brand.save();

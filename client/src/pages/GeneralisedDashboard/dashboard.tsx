@@ -140,7 +140,7 @@ function MetricCard({
 }
 
 // Component to display a card for connecting platforms
-function ConnectPlatformCard({ 
+export function ConnectPlatformCard({ 
   platform, 
   onClick 
 }: { 
@@ -218,14 +218,6 @@ function PerformanceCard({
     "last7Days": "Last 7 Days",
     "last30Days": "Last 30 Days"
   };
-
-  // if (Object.keys(combinedMetrics).length === 0) {
-  //   return (
-  //     <div className="bg-white border rounded-lg shadow-md p-6 text-center text-slate-500">
-  //       No data available for {periodLabels[period]}
-  //     </div>
-  //   );
-  // }
 
   // Create cards for each data source, showing "No Data Found" for failed ones
   const renderSourceCards = () => {

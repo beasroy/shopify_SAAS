@@ -27,6 +27,10 @@ const brandSchema = new mongoose.Schema({
     },
     shopId:{
       type: Number
+    },
+    currency: {
+      type: String,
+      default: 'INR'
     }
   },
 }, {

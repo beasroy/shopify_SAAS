@@ -34,7 +34,7 @@ const createAxiosInstance = (): AxiosInstance => {
     },
     (error: AxiosError) => {
       if (error.response?.status === 401) {
-        navigate('/');
+        navigate('/login');
       } else if (error.response?.status === 403) {
         if (error.config?.url?.includes('/meta')) {
           dispatch(setFbTokenError(true));

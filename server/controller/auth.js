@@ -500,7 +500,7 @@ export const getShopifyAuthUrl = (req, res) => {
 
     const SCOPES = "read_analytics, write_returns, read_returns, write_orders, read_orders, write_products, read_products"
 
-    const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
+    const authUrl = `https://${shop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
 
     res.json({ success: true, authUrl });
 }

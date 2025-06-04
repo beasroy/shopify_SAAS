@@ -126,24 +126,21 @@ function InterestPage() {
     });
   }, [metaInterest]);
 
-  // Calculate height based on number of tables
+
   const tableHeight = useMemo(() => {
-    // Base height for single table
+
     const baseHeight = 'max-h-[calc(100vh-210px)]';
-    
-    // If no data or only one account, use base height
+  
     if (!metaInterest?.resultsByAccount) return baseHeight;
     
     const accountCount = Object.keys(metaInterest.resultsByAccount).length;
     
-    // Adjust height based on number of accounts
     if (accountCount <= 1) return baseHeight;
     
-    // For multiple accounts, reduce height per table
     return 'max-h-[calc(100vh-400px)]';
   }, [metaInterest]);
 
-  // Check if we have any data to display
+
   const hasBlendedData = metaInterest?.blendedSummary && metaInterest.blendedSummary.length > 0;
   console.log("Has blended data:", hasBlendedData, metaInterest?.blendedSummary?.length);
   

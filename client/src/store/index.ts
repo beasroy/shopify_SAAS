@@ -10,6 +10,7 @@ import campaignLabelsReducer from './slices/campaignLabelsSlice.ts';
 import tutorialsReducer from "./slices/TutorialSlice.ts"
 import localReducer from "./slices/LocalSlice.ts"
 import tokenReducer from "./slices/TokenSllice.ts"
+import interestFilterReducer from './slices/interestFilterSlice';
 
 
 const rootReducer = combineReducers({
@@ -21,14 +22,15 @@ const rootReducer = combineReducers({
   campaignLabels: campaignLabelsReducer,
   tutorials: tutorialsReducer,
   locale: localReducer,
-  tokenError: tokenReducer
+  tokenError: tokenReducer,
+  interestFilter: interestFilterReducer,
 });
 
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale"], // Persist both conversionFilters & brand
+  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter"], // Persist both conversionFilters & brand
 };
 
 

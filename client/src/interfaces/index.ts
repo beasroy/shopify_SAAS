@@ -117,6 +117,7 @@ export interface PerformanceSummaryProps {
 }
 
 interface Campaign {
+    campaignId: string;
     campaignName: string;
     Status: string;
     "Amount spend": number;

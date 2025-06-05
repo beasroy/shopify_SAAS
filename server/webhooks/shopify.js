@@ -315,16 +315,16 @@ export const subscriptionUpdate = async (req, res) => {
 
 export const app_uninstalled = async (req, res) => {
   try {
-    const { shop_domain } = req.body;
-    console.log(`app uninstalled request received for ${shop_domain}`);
+    const shopDomain = req.headers['x-shopify-shop-domain'];
+    console.log(`app uninstalled request received for ${shopDomain}`);
 
     const brandsToDelete = await Brand.find({
-      'shopifyAccount.shopName': shop_domain
+      'shopifyAccount.shopName': shopDomain
     });
 
     if (brandsToDelete.length > 0) {
-      console.log(`Found ${brandsToDelete.length} brands to delete for shop ${shop_domain}`);
-
+      console.log(`Found ${brandsToDelete.length} brands to delete for shop ${shopDomain}`);
+    
 
       const brandIds = brandsToDelete.map(brand => brand._id);
 
@@ -351,12 +351,12 @@ export const app_uninstalled = async (req, res) => {
 
       // 5. Delete the brands associated with this shop
       await Brand.deleteMany({
-        'shopifyAccount.shopName': shop_domain
+        'shopifyAccount.shopName': shopDomain
       });
 
-      console.log(`Successfully deleted brands for shop ${shop_domain}`);
+      console.log(`Successfully deleted brands for shop ${shopDomain}`);
     } else {
-      console.log(`No brands found for shop ${shop_domain}`);
+      console.log(`No brands found for shop ${shopDomain}`);
     }
 
     res.status(200).send();

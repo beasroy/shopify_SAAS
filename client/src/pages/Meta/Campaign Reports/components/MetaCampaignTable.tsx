@@ -48,6 +48,7 @@ const DEFAULT_COLUMN_WIDTH = "85px"
 
 interface Campaign {
   campaignName: string
+  campaignId: string
   [key: string]: string | number
 }
 
@@ -137,13 +138,13 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
     if (data.campaigns.length > 0) {
       const columns = Object.keys(data.campaigns[0])
       // Always include Labels column
-      const initialColumns = columns.filter((col) => col !== "Labels")
+      const initialColumns = columns.filter((col) => col !== "Labels" && col !== "campaignId" && col !== "accountId" && col !== "accountName")
       const initialVisibleColumns = [...initialColumns, "Labels"]
       setVisibleColumns(initialVisibleColumns)
 
       // Create column order with Campaign first, then Labels, then others
       const baseColumns = [...initialColumns].filter((col) => col !== "Campaign" && col !== "campaignName")
-      const orderedColumns = ["Campaign", "Labels", ...baseColumns, "campaignName"]
+      const orderedColumns = ["Campaign", "Labels", ...baseColumns]
       setColumnOrder(orderedColumns)
     }
   }, [data.campaigns])
@@ -164,11 +165,11 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
       const unGrouped: Campaign[] = []
 
       filteredCampaigns.forEach((campaign) => {
-        const campaignLabels = accountLabels[campaign.Campaign] || []
+        const currentCampaignLabels = accountLabels[campaign.campaignId] || []
 
-        if (campaignLabels.length > 0) {
+        if (currentCampaignLabels.length > 0) {
           // Add campaign to each of its label groups
-          campaignLabels.forEach((label) => {
+          currentCampaignLabels.forEach((label) => {
             labelMap[label].push(campaign)
           })
         } else {
@@ -231,7 +232,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
       dispatch(
         addLabelToCampaign({
           accountId: data.account_id,
-          campaignId,
+          campaignId: campaignId,
           label,
         }),
       )
@@ -243,7 +244,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
     dispatch(
       removeLabelFromCampaign({
         accountId: data.account_id,
-        campaignId,
+        campaignId: campaignId,
         label,
       }),
     )
@@ -444,7 +445,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
   }
 
   const renderLabelDropdown = (campaign: Campaign) => {
-    const campaignLabels = accountLabels[campaign.Campaign] || []
+    const campaignLabels = accountLabels[campaign.campaignId] || []
 
     return (
       <DropdownMenu>
@@ -472,9 +473,9 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => {
                     if (isSelected) {
-                      handleRemoveLabel(campaign.campaignName, label)
+                      handleRemoveLabel(campaign.campaignId, label)
                     } else {
-                      handleAddLabel(campaign.campaignName, label)
+                      handleAddLabel(campaign.campaignId, label)
                     }
                   }}
                 >
@@ -501,9 +502,9 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                         className="flex items-center gap-2 cursor-pointer"
                         onClick={() => {
                           if (isSelected) {
-                            handleRemoveLabel(campaign.campaignName, label)
+                            handleRemoveLabel(campaign.campaignId, label)
                           } else {
-                            handleAddLabel(campaign.campaignName, label)
+                            handleAddLabel(campaign.campaignId, label)
                           }
                         }}
                       >
@@ -516,7 +517,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
 
             <DropdownMenuSeparator />
 
-            {editingLabel === campaign.Campaign ? (
+            {editingLabel === campaign.campaignId ? (
               <div className="flex items-center gap-1 px-2 py-1">
                 <Input
                   ref={newLabelInputRef}
@@ -527,14 +528,14 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handleCreateNewLabel(campaign.campaignName)
+                      handleCreateNewLabel(campaign.campaignId)
                     } else if (e.key === "Escape") {
                       setEditingLabel(null)
                       setEditLabelValue("")
                     }
                   }}
                 />
-                <Button size="sm" className="h-7 px-2" onClick={() => handleCreateNewLabel(campaign.campaignName)}>
+                <Button size="sm" className="h-7 px-2" onClick={() => handleCreateNewLabel(campaign.campaignId)}>
                   <Check className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -543,7 +544,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                 className="flex items-center gap-2 cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault()
-                  setEditingLabel(campaign.campaignName)
+                  setEditingLabel(campaign.campaignId)
                   setEditLabelValue("")
                   setTimeout(() => {
                     newLabelInputRef.current?.focus()
@@ -783,7 +784,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                         onClick={() => {
                                           // Remove this label from all campaigns in this group
                                           group.campaigns.forEach((campaign) => {
-                                            handleRemoveLabel(campaign.campaignName, group.label)
+                                            handleRemoveLabel(campaign.campaignId, group.label)
                                           })
                                         }}
                                       >
@@ -817,7 +818,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                       {group.isExpanded &&
                         group.campaigns.map((campaign, index) => (
                           <tr
-                            key={`group-${group.label}-campaign-${campaign.Campaign}-${index}`}
+                            key={`group-${group.label}-campaign-${campaign.campaignId}-${index}`}
                             className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                               }`}
                             draggable
@@ -846,7 +847,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                       }}
                                     >
                                       <div className="flex items-center justify-between gap-2">
-                                        <span className="font-medium">{campaign.Campaign}</span>
+                                        <span className="font-medium">{campaign.campaignName}</span>
                                         {type === "blended-summary" && campaign.accountName && (
                                           <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
                                             {campaign.accountName}
@@ -879,7 +880,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                             variant="ghost"
                                             size="sm"
                                             className="h-6 w-6 p-0 rounded-full hover:bg-red-50"
-                                            onClick={() => handleRemoveLabel(campaign.campaignName, group.label)}
+                                            onClick={() => handleRemoveLabel(campaign.campaignId, group.label)}
                                           >
                                             <X className="h-3.5 w-3.5 text-red-500" />
                                           </Button>
@@ -898,8 +899,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                                       key={label}
                                                       className="flex items-center gap-2 cursor-pointer"
                                                       onClick={() => {
-                                                        handleRemoveLabel(campaign.campaignName, group.label)
-                                                        handleAddLabel(campaign.campaignName, label)
+                                                        handleRemoveLabel(campaign.campaignId, group.label)
+                                                        handleAddLabel(campaign.campaignId, label)
                                                       }}
                                                     >
                                                       <Badge
@@ -914,7 +915,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                                   className="flex items-center gap-2 cursor-pointer"
                                                   onClick={(e) => {
                                                     e.preventDefault()
-                                                    setEditingLabel(campaign.campaignName)
+                                                    setEditingLabel(campaign.campaignId)
                                                     setEditLabelValue("")
                                                     setTimeout(() => {
                                                       newLabelInputRef.current?.focus()
@@ -924,7 +925,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                                   <Plus className="h-3.5 w-3.5 text-slate-500" />
                                                   <span className="text-sm">Create new label</span>
                                                 </DropdownMenuItem>
-                                                {editingLabel === campaign.Campaign && (
+                                                {editingLabel === campaign.campaignName && (
                                                   <div className="flex items-center gap-1 px-2 py-1 mt-2">
                                                     <Input
                                                       ref={newLabelInputRef}
@@ -935,8 +936,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                                       autoFocus
                                                       onKeyDown={(e) => {
                                                         if (e.key === "Enter") {
-                                                          handleCreateNewLabel(campaign.campaignName)
-                                                          handleRemoveLabel(campaign.campaignName, group.label)
+                                                          handleCreateNewLabel(campaign.campaignId)
+                                                          handleRemoveLabel(campaign.campaignId, group.label)
                                                         } else if (e.key === "Escape") {
                                                           setEditingLabel(null)
                                                           setEditLabelValue("")
@@ -947,8 +948,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                                       size="sm"
                                                       className="h-7 px-2"
                                                       onClick={() => {
-                                                        handleCreateNewLabel(campaign.campaignName)
-                                                        handleRemoveLabel(campaign.campaignName, group.label)
+                                                        handleCreateNewLabel(campaign.campaignId)
+                                                        handleRemoveLabel(campaign.campaignId, group.label)
                                                       }}
                                                     >
                                                       <Check className="h-3.5 w-3.5" />
@@ -1053,7 +1054,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                 {/* Render ungrouped campaigns or all campaigns when grouping is disabled */}
                 {(isGroupingEnabled ? ungroupedCampaigns : filteredCampaigns).map((campaign, index) => (
                   <tr
-                    key={`${isGroupingEnabled ? 'ungrouped' : 'all'}-${campaign.Campaign}-${index}`}
+                    key={`${isGroupingEnabled ? 'ungrouped' : 'all'}-${campaign.campaignName}-${index}`}
                     className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                       }`}
                     draggable
@@ -1080,7 +1081,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                               }}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="font-medium">{campaign.Campaign}</span>
+                                <span className="font-medium">{campaign.campaignName}</span>
                                 {type === "blended-summary" && campaign.accountName && (
                                   <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
                                     {campaign.accountName}

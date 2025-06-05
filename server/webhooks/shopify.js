@@ -422,7 +422,7 @@ export const orderCancelled = async (req, res) => {
     const brand = await Brand.findOne({ 'shopifyAccount.shopName': shop_domain });
     if (!brand) {
       console.error(`Brand not found for shop: ${shop_domain}`);
-      return res.status(200).send(); // Still return 200 to acknowledge receipt
+      return res.status(200).send(); 
     }
 
     // Get the order date in the store's timezone

@@ -146,7 +146,7 @@ export const fetchFbAgeReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -178,7 +178,7 @@ export const fetchFbAgeReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -413,7 +413,7 @@ export const fetchFbGenderReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -445,7 +445,7 @@ export const fetchFbGenderReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -681,7 +681,7 @@ export const fetchFbDeviceReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -713,7 +713,7 @@ export const fetchFbDeviceReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -951,7 +951,7 @@ export const fetchFbCountryReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -983,7 +983,7 @@ export const fetchFbCountryReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -1221,7 +1221,7 @@ export const fetchFbAudienceReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -1253,7 +1253,7 @@ export const fetchFbAudienceReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -1490,7 +1490,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                 });
 
                 const aggregateResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${aggregateParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`
                 );
 
                 // 2. Get top platforms by spend
@@ -1522,7 +1522,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                 });
 
                 const monthlyResponse = await axios.get(
-                    `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${monthlyParams}`
+                    `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`
                 );
 
                 // Process monthly data
@@ -1765,7 +1765,7 @@ export const fetchFbPlacementReports = async (req, res) => {
                     if (after) params.append('after', after);
 
                     const response = await axios.get(
-                        `https://graph.facebook.com/v21.0/act_${cleanedAccountId}/insights?${params}`
+                        `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${params}`
                     );
 
                     if (!response.data.data?.length) break;

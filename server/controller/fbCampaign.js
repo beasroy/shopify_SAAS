@@ -3,29 +3,6 @@ import moment from 'moment';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 
-export const divideDateRange = (startDate, endDate, chunks = 4) => {
-  const start = moment(startDate);
-  const end = moment(endDate);
-  const totalDays = end.diff(start, 'days');
-  const chunkSize = Math.ceil(totalDays / chunks);
-
-  const dateRanges = [];
-  for (let i = 0; i < chunks; i++) {
-    const chunkStart = moment(start).add((i * chunkSize), 'days');
-    const chunkEnd = i === chunks - 1
-      ? moment(end)
-      : moment(start).add((i + 1) * chunkSize - 1, 'days');
-
-    dateRanges.push({
-      startDate: chunkStart.format('YYYY-MM-DD'),
-      endDate: chunkEnd.format('YYYY-MM-DD')
-    });
-  }
-
-  console.log(`Date ranges created:`, dateRanges);
-  return dateRanges;
-};
-
 const recalculateDerivedMetrics = (campaign) => {
   const spend = campaign["Amount spend"] || 0;
   const reach = campaign["Reach"] || 0;
@@ -82,135 +59,6 @@ const recalculateDerivedMetrics = (campaign) => {
   const outboundCTR = campaign["Outbound CTR"];
   campaign["Audience Saturation Score"] = outboundCTR > 0 ? 
     parseFloat(((frequency / outboundCTR) * 100).toFixed(2)) : 0;
-};
-
-export const mergeChunkResults = (chunkResults, adAccountIds) => {
-  const accountMap = {};
-  
-  // Initialize account structure
-  const mergedAccountData = adAccountIds.map(accountId => {
-    const accountIdWithoutPrefix = accountId.replace('act_', '');
-    const accountData = {
-      account_id: accountId,  
-      account_name: '',
-      campaigns: []
-    };
-    accountMap[accountIdWithoutPrefix] = accountData;
-    return accountData;
-  });
-
-  // Use a Map to track unique campaigns by their ID across all chunks
-  const globalCampaignMap = new Map();
-
-  chunkResults.forEach((chunkResult, chunkIndex) => {
-    console.log(`Processing chunk ${chunkIndex + 1} with ${chunkResult.length} accounts...`);
-    
-    chunkResult.forEach(accountData => {
-      const account = accountMap[accountData.account_id];
-      if (!account) {
-        console.log(`⚠️ Account map entry not found for ${accountData.account_id}`);
-        return;
-      }
-
-      // Set account name if not already set
-      if (!account.account_name && accountData.account_name) {
-        account.account_name = accountData.account_name;
-      }
-
-      if (accountData.campaigns && accountData.campaigns.length > 0) {
-        accountData.campaigns.forEach(campaign => {
-          const campaignKey = `${accountData.account_id}_${campaign.campaignId}`;
-          
-          if (!globalCampaignMap.has(campaignKey)) {
-            // First time seeing this campaign - add it to both map and account
-            const campaignCopy = { ...campaign };
-            globalCampaignMap.set(campaignKey, campaignCopy);
-            account.campaigns.push(campaignCopy);
-            console.log(`Added new campaign: ${campaign.campaignName} (${campaign.campaignId})`);
-          } else {
-            // Campaign exists - aggregate the metrics
-            const existingCampaign = globalCampaignMap.get(campaignKey);
-            
-            console.log(`Aggregating data for campaign: ${campaign.campaignName}`);
-            console.log(`Previous spend: ${existingCampaign["Amount spend"]}, Current spend: ${campaign["Amount spend"]}`);
-            
-            // Store original values for ROAS calculation
-            const originalSpend = existingCampaign["Amount spend"] || 0;
-            const originalROAS = existingCampaign["ROAS"] || 0;
-            const newSpend = campaign["Amount spend"] || 0;
-            const newROAS = campaign["ROAS"] || 0;
-            
-            // Aggregate raw metrics (these are additive)
-            const additiveMetrics = [
-              "Amount spend", "Link Click", "Content View (CV)", 
-              "Add To Cart (ATC)", "Checkout Initiate (CI)", "Purchases", 
-              "Unique Link Click", "Landing Page View", "Three Seconds View", "Impressions" , "Reach"
-            ];
-            
-            additiveMetrics.forEach(metric => {
-              existingCampaign[metric] = (existingCampaign[metric] || 0) + (campaign[metric] || 0);
-            });
-
-            // For Reach, take the maximum (reach doesn't add up across time periods)
-            // existingCampaign["Reach"] = Math.max(`
-            //   existingCampaign["Reach"] || 0, 
-            //   campaign["Reach"] || 0
-            // );
-
-            // For ROAS, calculate weighted average based on spend
-            const totalSpend = existingCampaign["Amount spend"];
-            if (totalSpend > 0) {
-              const weightedROAS = ((originalSpend * originalROAS) + (newSpend * newROAS)) / totalSpend;
-              existingCampaign["ROAS"] = parseFloat(weightedROAS.toFixed(2));
-            }
-
-            // For CPM, calculate weighted average
-            const originalCPM = campaign["CPM"] || 0;
-            const existingCPM = existingCampaign["CPM"] || 0;
-            const existingImpressions = existingCampaign["Impressions"] - (campaign["Impressions"] || 0);
-            const totalImpressions = existingCampaign["Impressions"];
-            
-            if (totalImpressions > 0) {
-              const weightedCPM = ((existingImpressions * existingCPM) + ((campaign["Impressions"] || 0) * originalCPM)) / totalImpressions;
-              existingCampaign["CPM"] = parseFloat(weightedCPM.toFixed(2));
-            }
-
-            // For Outbound CTR, calculate weighted average based on impressions
-            const originalOutboundCTR = campaign["Outbound CTR"] || 0;
-            const existingOutboundCTR = existingCampaign["Outbound CTR"] || 0;
-            
-            if (totalImpressions > 0) {
-              const weightedCTR = ((existingImpressions * existingOutboundCTR) + ((campaign["Impressions"] || 0) * originalOutboundCTR)) / totalImpressions;
-              existingCampaign["Outbound CTR"] = parseFloat(weightedCTR.toFixed(6));
-            }
-
-            // For Hook Rate and Hold Rate, calculate weighted average based on impressions
-            const originalHookRate = campaign["Hook Rate"] || 0;
-            const existingHookRate = existingCampaign["Hook Rate"] || 0;
-            const originalHoldRate = campaign["Hold Rate"] || 0;
-            const existingHoldRate = existingCampaign["Hold Rate"] || 0;
-            
-            if (totalImpressions > 0) {
-              const weightedHookRate = ((existingImpressions * existingHookRate) + ((campaign["Impressions"] || 0) * originalHookRate)) / totalImpressions;
-              const weightedHoldRate = ((existingImpressions * existingHoldRate) + ((campaign["Impressions"] || 0) * originalHoldRate)) / totalImpressions;
-              
-              existingCampaign["Hook Rate"] = parseFloat(weightedHookRate.toFixed(2));
-              existingCampaign["Hold Rate"] = parseFloat(weightedHoldRate.toFixed(2));
-            }
-
-            // Recalculate all derived metrics
-            recalculateDerivedMetrics(existingCampaign);
-            
-            console.log(`After aggregation - Total spend: ${existingCampaign["Amount spend"]}, Aggregated ROAS: ${existingCampaign["ROAS"]}`);
-          }
-        });
-      } else {
-        console.log(`No campaigns found for account ${accountData.account_id}`);
-      }
-    });
-  });
-
-  return mergedAccountData;
 };
 
 const processCampaignInsights = (campaign, insights) => {
@@ -418,19 +266,6 @@ export const createBlendedSummary = (accountData) => {
   return blendedCampaigns;
 };
 
-// Add debugging function to help track data flow
-export const debugCampaignData = (campaignData, label = "Campaign Data") => {
-  console.log(`\n=== ${label} ===`);
-  campaignData.forEach((account, accountIndex) => {
-    console.log(`Account ${accountIndex + 1}: ID=${account.account_id}, Name=${account.account_name}`);
-    account.campaigns.forEach((campaign, campaignIndex) => {
-      console.log(`  Campaign ${campaignIndex + 1}: ${campaign.campaignName}`);
-      console.log(`    Spend: ${campaign["Amount spend"]}, Reach: ${campaign["Reach"]}, ROAS: ${campaign["ROAS"]}`);
-      console.log(`    Frequency: ${campaign["Frequency"]}, Impressions: ${campaign["Impressions"]}`);
-    });
-  });
-  console.log("=".repeat(50));
-};
 
 export const fetchCampaignDataForLongPeriod = async (adAccountIds, accessToken, startDate, endDate) => {
   try {
@@ -446,7 +281,7 @@ export const fetchCampaignDataForLongPeriod = async (adAccountIds, accessToken, 
     const makeRequest = async (retryCount = 0) => {
       try {
         const response = await axios.post(
-          `https://graph.facebook.com/v21.0/`,
+          `https://graph.facebook.com/v22.0/`,
           { batch: batchRequests },
           {
             headers: { 'Content-Type': 'application/json' },
@@ -475,8 +310,6 @@ export const fetchCampaignDataForLongPeriod = async (adAccountIds, accessToken, 
 
     const results = await makeRequest();
     
-    // Debug results
-    debugCampaignData(results, "Final Results");
 
     let blendedSummary = [];
     if (adAccountIds.length > 1) {
@@ -546,14 +379,9 @@ export const handleCampaignData = async (req, res) => {
     const end = moment(endDate);
     const daysRange = end.diff(start, 'days');
 
-    let chunks = 1;
-    if (daysRange > 90) {
-      chunks = Math.ceil(daysRange / 90);
-    }
+    console.log(`[REQUEST] Date range spans ${daysRange} days`);
 
-    console.log(`[REQUEST] Date range spans ${daysRange} days, using ${chunks} chunks`);
-
-    const result = await fetchCampaignDataForLongPeriod(adAccountIds, accessToken, startDate, endDate, chunks);
+    const result = await fetchCampaignDataForLongPeriod(adAccountIds, accessToken, startDate, endDate);
 
     console.log(`[SUCCESS] Request completed successfully`);
     res.json(result);

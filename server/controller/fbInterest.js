@@ -5,7 +5,7 @@ import User from '../models/User.js';
 
 
 const fbApi = axios.create({
-  baseURL: 'https://graph.facebook.com/v19.0',
+  baseURL: 'https://graph.facebook.com/v22.0',
   timeout: 30000
 });
 

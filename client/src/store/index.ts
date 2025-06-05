@@ -2,15 +2,16 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import conversionFiltersReducer from "./slices/ConversionFilterSlice";
-import brandReducer from "./slices/BrandSlice.ts";
-import userReducer from "./slices/UserSlice.ts";
-import dateReducer from "./slices/DateSlice.ts";
-import campaignGroupsReducer from "./slices/CampaignGroupSlice.ts";
-import campaignLabelsReducer from "./slices/campaignLabelsSlice.ts";
-import tutorialsReducer from "./slices/TutorialSlice.ts";
-import localReducer from "./slices/LocalSlice.ts";
-import tokenReducer from "./slices/TokenSllice.ts";
-import brandNameReducer from "./slices/BrandNameSlice.ts";
+import brandReducer from "./slices/BrandSlice.ts"
+import userReducer from "./slices/UserSlice.ts"
+import dateReducer from "./slices/DateSlice.ts"
+import campaignGroupsReducer from './slices/CampaignGroupSlice.ts';
+import campaignLabelsReducer from './slices/campaignLabelsSlice.ts';
+import tutorialsReducer from "./slices/TutorialSlice.ts"
+import localReducer from "./slices/LocalSlice.ts"
+import tokenReducer from "./slices/TokenSllice.ts"
+import interestFilterReducer from './slices/interestFilterSlice';
+
 
 const rootReducer = combineReducers({
   conversionFilters: conversionFiltersReducer,
@@ -22,24 +23,13 @@ const rootReducer = combineReducers({
   tutorials: tutorialsReducer,
   locale: localReducer,
   tokenError: tokenReducer,
-  brandName: brandNameReducer,
+  interestFilter: interestFilterReducer,
 });
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: [
-    "tokenError",
-    "conversionFilters",
-    "brand",
-    "user",
-    "date",
-    "campaignGroups",
-    "campaignLabels",
-    "tutorials",
-    "locale",
-    "brandName",
-  ], // Persist both conversionFilters & brand
+  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter"], // Persist both conversionFilters & brand
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

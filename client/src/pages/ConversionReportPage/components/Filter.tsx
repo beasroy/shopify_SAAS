@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Filter } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { clearFilters, setFilter } from "@/store/slices/ConversionFilterSlice";
@@ -86,11 +86,14 @@ export default function FilterConversions({
       <Tooltip open={isFilterApplied}>
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            <TooltipTrigger>
-              <Button variant="outline" size="icon">
-                <Filter className={`h-4 w-4 ${isFilterApplied ? 'text-blue-500' : ''}`} />
-              </Button>
-            </TooltipTrigger>
+            <Button variant="outline" size="icon" className="relative">
+              <Filter className={`h-4 w-4 ${isFilterApplied ? 'text-blue-500' : ''}`} />
+              {Object.values(filters).filter(Boolean).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {Object.values(filters).filter(Boolean).length}
+                </span>
+              )}
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80 p-4 flex flex-col gap-4">
             <Select 
@@ -139,6 +142,22 @@ export default function FilterConversions({
                 Clear
               </Button>
             </div>
+
+            {Object.entries(filters).filter(([_, filter]) => filter !== null).length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium mb-2">Active Filters:</h4>
+                <div className="space-y-2">
+                  {Object.entries(filters)
+                    .filter(([_, filter]) => filter !== null)
+                    .map(([column, filter]) => (
+                      <div key={column} className="flex items-center justify-between text-sm bg-slate-50 p-2 rounded">
+                        <span>{column}</span>
+                        <span className="text-slate-600">{filter?.operator} {filter?.value}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 

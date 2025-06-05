@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, Minus } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
 import { COLORS } from "@/data/constant"
 
@@ -277,16 +277,6 @@ export default function ConversionTable({
     }
   }
 
-  const renderIndicator = (direction: string) => {
-    switch (direction) {
-      case "up":
-        return <ArrowUp className="h-3 w-3" style={{ color: COLORS.success.main }} />
-      case "down":
-        return <ArrowDown className="h-3 w-3" style={{ color: COLORS.danger.main }} />
-      default:
-        return <Minus className="h-3 w-3" style={{ color: COLORS.text.muted }} />
-    }
-  }
 
   const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions") => {
     if (typeof value === "number") {
@@ -318,7 +308,6 @@ export default function ConversionTable({
 
     const value = monthData[metric]
     let colorStyle = { bg: "white", text: COLORS.text.primary, indicator: "" }
-    let directionIndicator = ""
 
     if (
       (metric === "Sessions" || metric === "Conv. Rate") &&
@@ -369,7 +358,6 @@ export default function ConversionTable({
         }}
       >
         <div className="flex items-center justify-end gap-1.5">
-          {directionIndicator && renderIndicator(directionIndicator)}
           <span>
             {renderCell(
               value,
@@ -427,7 +415,6 @@ export default function ConversionTable({
     }
 
     let colorStyle = { bg: "white", text: COLORS.text.primary, indicator: "" }
-    let directionIndicator = ""
 
     // Check if the current metric and column match specific conditions for color
     if (currentMetric && column) {
@@ -436,12 +423,6 @@ export default function ConversionTable({
         const convRate = row["Avg Conv. Rate"] as number
         const metricStyle = getMetricColor({ sessions, convRate })
         colorStyle = metricStyle
-
-        if (currentMetric.toLowerCase() === "sessions") {
-          directionIndicator = metricStyle.sessionIndicator || ""
-        } else if (currentMetric.toLowerCase() === "conv. rate") {
-          directionIndicator = metricStyle.conversionIndicator || ""
-        }
       }
     }
 
@@ -451,12 +432,6 @@ export default function ConversionTable({
         const purchaseROAS = row["Total Purchase ROAS"] as number
         const metricStyle = getMetricColor({ spend, purchaseROAS })
         colorStyle = metricStyle
-
-        if (currentMetric.toLowerCase() === "spend") {
-          directionIndicator = metricStyle.spendIndicator || ""
-        } else if (currentMetric.toLowerCase() === "purchase roas") {
-          directionIndicator = metricStyle.roasIndicator || ""
-        }
       }
     }
 
@@ -466,12 +441,6 @@ export default function ConversionTable({
         const convValuePerCost = row["Conv. Value / Cost"] as number
         const metricStyle = getMetricColor({ cost, convValuePerCost })
         colorStyle = metricStyle
-
-        if (currentMetric.toLowerCase() === "cost") {
-          directionIndicator = metricStyle.costIndicator || ""
-        } else if (currentMetric.toLowerCase() === "conv. value/ cost") {
-          directionIndicator = metricStyle.valueIndicator || ""
-        }
       }
     }
 
@@ -492,14 +461,12 @@ export default function ConversionTable({
        {currentMetric.toLowerCase() === "cost" && column === "Total Cost" ? (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value, "spend")}</span>
             </div>
           </div>
         ) : currentMetric.toLowerCase() === "conv. value/ cost" && column === "Conv. Value / Cost" ? (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              {directionIndicator && renderIndicator(directionIndicator)}
               <span>{renderCell(value)}</span>
             </div>
             {totalConvValue && (
@@ -510,13 +477,12 @@ export default function ConversionTable({
           </div>
         ) : currentMetric.toLowerCase() === "sessions" && column.includes("Sessions") ? (
           <div className="flex items-center gap-1.5">
-            {directionIndicator && renderIndicator(directionIndicator)}
             <span>{renderCell(value, "sessions")}</span>
           </div>
         ) : currentMetric.toLowerCase() === "conv. rate" && column.includes("Rate") ? (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              {directionIndicator && renderIndicator(directionIndicator)}
+       
               <span>{renderCell(value, "percentage")}</span>
             </div>
             {totalPurchases && (
@@ -527,13 +493,13 @@ export default function ConversionTable({
           </div>
         ) : currentMetric.toLowerCase() === "spend" && column.includes("Total Spend") ? (
           <div className="flex items-center gap-1.5">
-            {directionIndicator && renderIndicator(directionIndicator)}
+        
             <span>{renderCell(value, "spend")}</span>
           </div>
         ) : currentMetric.toLowerCase() === "purchase roas" && column.includes("Total Purchase ROAS") ? (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              {directionIndicator && renderIndicator(directionIndicator)}
+         
               <span>{renderCell(value)}</span>
             </div>
             {totalPCV && (
@@ -554,7 +520,6 @@ export default function ConversionTable({
 
     // Determine the background color for both primary and metric columns
     let colorStyle = { bg: "white", text: COLORS.text.primary, indicator: "" }
-    let directionIndicator = ""
 
     if (secondaryColumns) {
       const sessions = row["Total Sessions"] as number
@@ -567,30 +532,13 @@ export default function ConversionTable({
       if (metric === "Sessions" || metric === "Conv. Rate") {
         const metricStyle = getMetricColor({ sessions, convRate })
         colorStyle = metricStyle
-
-        if (metric === "Sessions") {
-          directionIndicator = metricStyle.sessionIndicator || ""
-        } else if (metric === "Conv. Rate") {
-          directionIndicator = metricStyle.conversionIndicator || ""
-        }
       } else if (metric === "Spend" || metric === "Purchase ROAS") {
         const metricStyle = getMetricColor({ spend, purchaseROAS })
         colorStyle = metricStyle
 
-        if (metric === "Spend") {
-          directionIndicator = metricStyle.spendIndicator || ""
-        } else if (metric === "Purchase ROAS") {
-          directionIndicator = metricStyle.roasIndicator || ""
-        }
       } else if (metric === "Cost" || metric === "Conv. Value/ Cost") {
         const metricStyle = getMetricColor({ cost, convValuePerCost })
         colorStyle = metricStyle
-
-        if (metric === "Cost") {
-          directionIndicator = metricStyle.costIndicator || ""
-        } else if (metric === "Conv. Value/ Cost") {
-          directionIndicator = metricStyle.valueIndicator || ""
-        }
       }
     }
 
@@ -620,7 +568,6 @@ export default function ConversionTable({
           }}
         >
           <div className="flex items-center gap-1.5">
-            {directionIndicator && renderIndicator(directionIndicator)}
             <span>{metric}</span>
           </div>
         </td>

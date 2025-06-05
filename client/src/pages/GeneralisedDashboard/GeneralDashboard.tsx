@@ -13,10 +13,10 @@ const GeneralDashboard: React.FC = () => {
   const location = useLocation();
   const newOpenModalVal = (location.state as string) || "";
 
-  if (!user) {
-    navigate("/");
-    return null;
-  }
+    if (!user) {
+        navigate('/login');
+        return null;
+    }
 
   return (
     <>

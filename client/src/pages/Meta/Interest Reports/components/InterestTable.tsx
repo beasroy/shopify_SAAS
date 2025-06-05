@@ -9,10 +9,12 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import ColumnManagementSheet from "../../../AnalyticsDashboard/Components/ColumnManagementSheet"
+import InterestFilter from "./InterestFilter"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store"
 
 const DEFAULT_COLUMN_WIDTH = "100px"
 
-// Update props interface to match the new data structure
 interface InterestData {
   Interest: string;
   InterestId: string;
@@ -44,6 +46,8 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
 
+  const filters = useSelector((state: RootState) => state.interestFilter.filters[accountName || 'blended'] || [])
+
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
     showAccounts 
       ? ["Interest", "Spend", "Revenue", "Roas", "accounts"]
@@ -59,10 +63,38 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
   const tableRef = useRef<HTMLDivElement>(null)
   const columnRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({})
 
+  // Apply filters to the data
+  const applyFilters = (data: InterestData[]) => {
+    return data.filter(interest => {
+      return filters.every(filter => {
+        const value = interest[filter.column as keyof InterestData];
+        const filterValue = filter.value;
+
+        switch (filter.operator) {
+          case '>':
+            return Number(value) > Number(filterValue);
+          case '<':
+            return Number(value) < Number(filterValue);
+          case '=':
+            return String(value).toLowerCase() === String(filterValue).toLowerCase();
+          case '>=':
+            return Number(value) >= Number(filterValue);
+          case '<=':
+            return Number(value) <= Number(filterValue);
+          default:
+            return true;
+        }
+      });
+    });
+  };
+
   // Determine which data to display based on accountName prop
   const interestData = accountName 
     ? data.resultsByAccount[accountName]?.interestMetrics || []
     : data.blendedSummary || []
+
+  // Apply filters to the data
+  const filteredInterestData = applyFilters(interestData)
 
   // Get display name for the table header
   const displayName = accountName || "All Accounts"
@@ -235,12 +267,22 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
+                <InterestFilter 
+                  columns={visibleColumns} 
+                  tableId={accountName || 'blended'} 
+                />
+              </TooltipTrigger>
+              <TooltipContent>Apply Filter</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" onClick={toggleFullScreen} className="font-medium">
                   {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</TooltipContent>
             </Tooltip>
+
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -261,9 +303,10 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
         </div>
 
         <div className="p-3">
+
           <div
             ref={tableRef}
-            className={`overflow-auto ${getTableHeight()} bg-white rounded-lg border border-slate-200 shadow-sm`}
+            className={`overflow-auto ${getTableHeight()} bg-white rounded-lg border border-slate-200 shadow-sm `}
           >
             <table className="w-full border-collapse text-xs relative">
               <thead className="bg-slate-50 sticky top-0 z-20">
@@ -302,7 +345,7 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
                 </tr>
               </thead>
               <tbody>
-                {interestData.map((interest) => (
+                {filteredInterestData.map((interest) => (
                   <tr 
                     key={interest.InterestId} 
                     className={`border-b hover:bg-slate-50 transition-colors ${

@@ -517,14 +517,17 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 export const getShopifyAuthUrl = (req, res) => {
   const { shop } = req.body;
 
-  if (!shop) {
-    return res.status(400).json({ error: "Shop name is required" });
-  }
+    if (!shop) {
+        return res.status(400).json({ error: 'Shop name is required' });
+    }
+
+    // Remove .myshopify.com if present
+    const cleanShop = shop.replace('.myshopify.com', '');
 
   const SCOPES =
     "read_analytics, write_returns, read_returns, write_orders, read_orders, write_products, read_products";
 
-  const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
+    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
 
   res.json({ success: true, authUrl });
 };
@@ -570,11 +573,12 @@ export const handleShopifyCallback = async (req, res) => {
       }
     );
 
-    const shopData = shopResponse.data.shop;
-    const shopId = shopData.id;
-    const shopName = shopData.name;
-    const ownerEmail = shopData.email;
-    const ownerName = shopData.shop_owner;
+        const shopData = shopResponse.data.shop;
+        const shopId = shopData.id;
+        const shopName = shopData.name;
+        const ownerEmail = shopData.email;
+        const ownerName = shopData.shop_owner;
+        const storeCurrency = shopData.currency || 'USD';
 
     // Step 3: Find or create user
     const emailToUse = ownerEmail || `${shopName}@${shop}`;
@@ -593,25 +597,27 @@ export const handleShopifyCallback = async (req, res) => {
     // Step 4: Find or create brand
     let brand = await Brand.findOne({ "shopifyAccount.shopName": shop });
 
-    if (brand) {
-      brand.shopifyAccount.shopifyAccessToken = accessToken;
-      brand.shopifyAccount.shopId = shopId;
-      await brand.save();
+        if (brand) {
+            brand.shopifyAccount.shopifyAccessToken = accessToken;
+            brand.shopifyAccount.shopId = shopId;
+            brand.shopifyAccount.currency = storeCurrency;
+            await brand.save();
 
-      if (!user.brands.includes(brand._id.toString())) {
-        user.brands.push(brand._id);
-        await user.save();
-      }
-    } else {
-      brand = new Brand({
-        name: shopName,
-        shopifyAccount: {
-          shopName: shop,
-          shopifyAccessToken: accessToken,
-          shopId: shopId,
-        },
-      });
-      await brand.save();
+            if (!user.brands.includes(brand._id.toString())) {
+                user.brands.push(brand._id);
+                await user.save();
+            }
+        } else {
+            brand = new Brand({
+                name: shopName,
+                shopifyAccount: {
+                    shopName: shop,
+                    shopifyAccessToken: accessToken,
+                    shopId: shopId,
+                    currency: storeCurrency
+                }
+            });
+            await brand.save();
 
       user.brands.push(brand._id);
       await user.save();

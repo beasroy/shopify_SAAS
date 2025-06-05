@@ -22,14 +22,13 @@ import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
-
+import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+import { monthlyAddReportData } from "./Report/MonthlyReport.js";
 const app = express();
 dotenv.config();
              
 connectDB(); 
 
-//monthlyCalculateMetricsForAllBrands("2024-08-01","2024-12-31","67eb85f2f583a37ca251622a");
- 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 app.use(cors({

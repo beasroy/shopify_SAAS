@@ -143,10 +143,12 @@ export const fetchShopifySales = async (req, res) => {
       accessToken: access_token
     });
 
-    // Get shop data to determine timezone
+    // Get shop data to determine timezone and currency
     const shopData = await shopify.shop.get();
     const storeTimezone = shopData.iana_timezone || 'UTC';
+    const storeCurrency = shopData.currency || 'USD';
     console.log('Store timezone:', storeTimezone);
+    console.log('Store currency:', storeCurrency);
     
     let orders = [];
     let queryParams = {
@@ -234,6 +236,7 @@ export const fetchShopifySales = async (req, res) => {
       totalDiscounts, 
       grossSales, 
       totalTaxes,
+      currency: storeCurrency,
       dateRange: {
         start: startDateTime.format('YYYY-MM-DD'),
         end: endDateTime.format('YYYY-MM-DD'),

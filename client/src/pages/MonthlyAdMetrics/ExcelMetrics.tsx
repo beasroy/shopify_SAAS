@@ -20,6 +20,13 @@ import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
 
+export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amount);
+};
+
 function TooltipHeader({
   title,
   tooltip,

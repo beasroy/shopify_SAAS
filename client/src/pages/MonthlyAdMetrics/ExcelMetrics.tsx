@@ -19,12 +19,10 @@ import type { ITooltipHeaderProps, IMonthlyAggregate } from "@/interfaces/index"
 import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
+import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
 
 export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
+  return formatCurrencyUtil(amount, currencyCode);
 };
 
 function TooltipHeader({
@@ -121,6 +119,7 @@ export const ExcelMetricsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false)
+  const [currency, setCurrency] = useState<string>('USD')
   const dateFrom = useSelector((state: RootState) => state.date.from)
   const dateTo = useSelector((state: RootState) => state.date.to)
   const [expandedMonths, setExpandedMonths] = useState<string[]>([])
@@ -158,6 +157,13 @@ export const ExcelMetricsPage: React.FC = () => {
         if (startDate) queryParams.startDate = startDate
         if (endDate) queryParams.endDate = endDate
 
+        // Fetch currency first
+        const currencyResponse = await axios.get(`${baseURL}/api/brands/currency/${brandId}`, {
+          withCredentials: true,
+        })
+        setCurrency(currencyResponse.data)
+
+        // Then fetch metrics data
         const reportResponse = await axios.get(`${baseURL}/api/report/${brandId}`, {
           params: queryParams,
           withCredentials: true,
@@ -181,11 +187,7 @@ export const ExcelMetricsPage: React.FC = () => {
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(value)
+    return formatCurrencyUtil(value, currency);
   }
 
   const formatPercentage = (value: number) => {

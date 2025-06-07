@@ -30,13 +30,16 @@ function NoAccessPage({
       
       if (provider === 'google') {
         response = await axios.get(
-          `${baseURL}/api/auth/google${context ? `?context=${context}` : ''}`, 
+          `${baseURL}/api/auth/google${context ? `?context=${context}` : ''}&source=${encodeURIComponent(window.location.pathname)}`, 
           { withCredentials: true }
         );
         const { authUrl } = response.data;
         window.location.href = authUrl;
       } else if (provider === 'facebook') {
-        response = await axios.get(`${baseURL}/api/auth/facebook`, { withCredentials: true });
+        response = await axios.get(
+          `${baseURL}/api/auth/facebook?source=${encodeURIComponent(window.location.pathname)}`, 
+          { withCredentials: true }
+        );
         if (response.data.success) {
           window.location.href = response.data.authURL;
         }

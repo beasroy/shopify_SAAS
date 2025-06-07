@@ -21,14 +21,16 @@ function ProfilePage() {
 
     const handleZohoLogin = async () => {
         try {
-          const response = await axios.get(`${baseURL}/api/auth/zoho`);
+          const response = await axios.get(
+            `${baseURL}/api/auth/zoho?source=${encodeURIComponent(window.location.pathname)}`
+          );
           const { authUrl } = response.data;
     
           window.location.href = authUrl;
         } catch (error) {
           console.error('Error getting Zoho Auth URL:', error);
         }
-      }
+    }
 
     return (
         <div className="flex h-screen"> 

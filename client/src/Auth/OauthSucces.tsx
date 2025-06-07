@@ -31,7 +31,7 @@ const GoogleCallback = () => {
                 const updateToken = async (url: string, token: string, type: string) => {
                     try {
                         const response = await axios.put(
-                            `${baseURL}${url}/${type}`, 
+                            `${baseURL}${url}/${type}`,
                             {}, // Empty body since we're using query params
                             { 
                                 params: { [type]: token },
@@ -45,8 +45,18 @@ const GoogleCallback = () => {
                                 console.log("Zoho token updated, redirecting to /profile");
                                 navigate('/profile');
                             } else {
-                                console.log(`${type} token updated, redirecting to /dashboard`);
-                                navigate('/dashboard');
+                                const sourcePage = queryParams.get('source') || '/dashboard';
+                            
+                                // Show success toast
+                                toast({
+                                    title: 'Success',
+                                    description: `${type} token updated successfully.`,
+                                    variant: 'default',
+                                });
+                                
+                                // Redirect to the source page
+                                navigate(sourcePage);
+                                return true;
                             }
                             return true;
                         } else {
@@ -83,7 +93,7 @@ const GoogleCallback = () => {
 
                         if (!user.brands || user.brands.length === 0) {
                             console.log('No brands found, redirecting to /brand-setup');
-                            navigate('/brand-setup');
+                            navigate('/first-time-brand-setup');
                         } else {
                             console.log('Brands found, redirecting to /dashboard');
                             navigate('/dashboard');

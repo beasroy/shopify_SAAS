@@ -52,6 +52,17 @@ export const getBrands = async(req,res) =>{
     }
 }
 
+export const getCurrency= async (req,res)=>{
+    try{
+        const {brandId} = req.params;
+        const brand = await Brand.findById(brandId);
+        res.json(brand.shopifyAccount.currency);
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching currency', error: error.message });
+    }
+}
+
 export const getBrandbyId = async(req,res)=>{
     try {
         const {brandId} = req.params;

@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { FacebookLogo } from "@/data/logo"
 import {
@@ -84,10 +84,22 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
   const [columnOrder, setColumnOrder] = useState<string[]>([])
   const [frozenColumns, setFrozenColumns] = useState<string[]>(["Campaign", "Labels"])
 
+
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Ensure Campaign and Labels are always frozen in correct order
+  useEffect(() => {
+    setFrozenColumns((prev) => {
+      const newFrozen = prev.filter((col) => col !== "Campaign" && col !== "Labels")
+      return ["Campaign", "Labels", ...newFrozen]
+    })
+  }, [])
+
   const [isGroupingEnabled, setIsGroupingEnabled] = useState(true)
   const [groupedCampaigns, setGroupedCampaigns] = useState<GroupedCampaign[]>([])
   const [ungroupedCampaigns, setUngroupedCampaigns] = useState<Campaign[]>([])
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused'>('all')
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all")
 
   const tableRef = useRef<HTMLDivElement>(null)
   const columnRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({})
@@ -96,7 +108,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
   const { labels } = useSelector((state: RootState) => state.campaignLabels)
 
   const accountLabels = useMemo(() => {
-    return data.account_id ? labels[data.account_id] || {} : {};
+    return data.account_id ? labels[data.account_id] || {} : {}
   }, [labels, data.account_id])
 
   const PREDEFINED_LABELS = ["TOFU", "MOFU", "BOFU", "TOFU+MOFU"]
@@ -118,37 +130,40 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
 
   // Filter campaigns by status
   const filterCampaignsByStatus = (campaigns: Campaign[]) => {
-    if (statusFilter === 'all') return campaigns;
-    return campaigns.filter(campaign => {
+    if (statusFilter === "all") return campaigns
+    return campaigns.filter((campaign) => {
       // Check all possible status property names and formats
-      const statusValue = campaign.status || campaign.Status || '';
-      const status = String(statusValue).toLowerCase();
+      const statusValue = campaign.status || campaign.Status || ""
+      const status = String(statusValue).toLowerCase()
 
-      return statusFilter === 'active' ? status === 'active' : status === 'paused';
-    });
-  };
+      return statusFilter === "active" ? status === "active" : status === "paused"
+    })
+  }
 
   // Filter campaigns before processing
   const filteredCampaigns = useMemo(() => {
-    return filterCampaignsByStatus(data.campaigns);
-  }, [data.campaigns, statusFilter]);
+    return filterCampaignsByStatus(data.campaigns)
+  }, [data.campaigns, statusFilter])
 
   // Initialize column state
   useEffect(() => {
     if (data.campaigns.length > 0) {
       const columns = Object.keys(data.campaigns[0])
       // Always include Labels column
-      const initialColumns = columns.filter((col) => col !== "Labels" && col !== "campaignId" && col !== "accountId" && col !== "accountName")
+      const initialColumns = columns.filter(
+        (col) => col !== "Labels" && col !== "campaignId" && col !== "accountId" && col !== "accountName",
+      )
       const initialVisibleColumns = [...initialColumns, "Labels"]
       setVisibleColumns(initialVisibleColumns)
 
       // Create column order with Campaign first, then Labels, then others
-      const baseColumns = [...initialColumns].filter((col) => col !== "Campaign" && col !== "campaignName")
+      const baseColumns = [...initialColumns].filter(
+        (col) => col !== "Campaign" && col !== "campaignName" && col !== "Labels",
+      )
       const orderedColumns = ["Campaign", "Labels", ...baseColumns]
       setColumnOrder(orderedColumns)
     }
   }, [data.campaigns])
-
 
   // Group campaigns by labels
   useEffect(() => {
@@ -227,6 +242,24 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
     return position
   }
 
+  const shouldShowSeparator = (column: string): boolean => {
+    if (scrollLeft <= 0) return false;
+
+    const visibleOrderedColumns = columnOrder.filter((col) => visibleColumns.includes(col));
+    const frozenVisibleColumns = visibleOrderedColumns.filter((col) => frozenColumns.includes(col));
+
+    if (frozenVisibleColumns.length === 0) return false;
+
+    const lastFrozenColumn = frozenVisibleColumns[frozenVisibleColumns.length - 1];
+    return column === lastFrozenColumn;
+  };
+
+  // Add a function to get the separator class
+  const getSeparatorClass = (column: string) => {
+    if (!shouldShowSeparator(column)) return "";
+    return "relative after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-[3px] after:bg-gradient-to-r after:from-slate-400 after:to-transparent after:shadow-lg before:content-[''] before:absolute before:right-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-300";
+  };
+
   const handleAddLabel = (campaignId: string, label: string) => {
     if (label) {
       dispatch(
@@ -238,7 +271,6 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
       )
     }
   }
-
 
   const handleRemoveLabel = (campaignId: string, label: string) => {
     dispatch(
@@ -561,6 +593,13 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
     )
   }
 
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <TooltipProvider>
@@ -578,29 +617,28 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                 <Button
                   variant="outline"
                   size="sm"
-                  className={`gap-1 font-medium ${statusFilter !== 'all' ? "bg-blue-50 text-blue-600 border-blue-200" : ""}`}
+                  className={`gap-1 font-medium ${statusFilter !== "all" ? "bg-blue-50 text-blue-600 border-blue-200" : ""}`}
                 >
-                  <Filter className={`h-4 w-4 ${statusFilter !== 'all' ? "text-blue-600" : "text-slate-500"}`} />
-                  {statusFilter === 'all' ? 'All Status' :
-                    statusFilter === 'active' ? 'Active' : 'Paused'}
+                  <Filter className={`h-4 w-4 ${statusFilter !== "all" ? "text-blue-600" : "text-slate-500"}`} />
+                  {statusFilter === "all" ? "All Status" : statusFilter === "active" ? "Active" : "Paused"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-32">
                 <DropdownMenuItem
-                  onClick={() => setStatusFilter('all')}
-                  className={statusFilter === 'all' ? "bg-blue-50" : ""}
+                  onClick={() => setStatusFilter("all")}
+                  className={statusFilter === "all" ? "bg-blue-50" : ""}
                 >
                   All Status
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setStatusFilter('active')}
-                  className={statusFilter === 'active' ? "bg-blue-50" : ""}
+                  onClick={() => setStatusFilter("active")}
+                  className={statusFilter === "active" ? "bg-blue-50" : ""}
                 >
                   Active
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setStatusFilter('paused')}
-                  className={statusFilter === 'paused' ? "bg-blue-50" : ""}
+                  onClick={() => setStatusFilter("paused")}
+                  className={statusFilter === "paused" ? "bg-blue-50" : ""}
                 >
                   Paused
                 </DropdownMenuItem>
@@ -666,8 +704,6 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
               </TooltipTrigger>
               <TooltipContent>{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</TooltipContent>
             </Tooltip>
-
-
           </div>
         </div>
 
@@ -675,6 +711,17 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
           <div
             ref={tableRef}
             className={`overflow-auto ${getTableHeight()} bg-white rounded-lg border border-slate-200 shadow-sm`}
+            onScroll={(e) => {
+              const target = e.target as HTMLDivElement
+              const currentScrollLeft = target.scrollLeft
+
+              setScrollLeft(currentScrollLeft)
+              if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current)
+              }
+
+             
+            }}
           >
             <table className="w-full border-collapse text-xs relative">
               <thead className="bg-slate-50 sticky top-0 z-20">
@@ -691,8 +738,9 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                         <th
                           key={column}
                           ref={(el) => (columnRefs.current[column] = el)}
-                          className={`text-left p-2 font-medium text-slate-700 border-b border-r ${isFrozen ? "sticky z-20 bg-slate-50" : ""
-                            } ${dragOverColumn === column ? "bg-blue-50" : ""}`}
+                          className={`text-left p-2 font-medium text-slate-700 border-b border-r ${
+                            isFrozen ? "sticky z-20 bg-slate-50" : ""
+                          } ${dragOverColumn === column ? "bg-blue-50" : ""} ${getSeparatorClass(column)}`}
                           style={{
                             left: leftPos,
                             ...columnStyle,
@@ -732,7 +780,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                               return (
                                 <td
                                   key={column}
-                                  className={`p-2 border-r sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50`}
+                                  className={`p-2 border-r sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50 ${getSeparatorClass(column)}`}
                                   style={{
                                     left: leftPos,
                                     ...columnStyle,
@@ -761,10 +809,11 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                               return (
                                 <td
                                   key={column}
-                                  className={`p-2 border-r ${isFrozen
+                                  className={`p-2 border-r ${
+                                    isFrozen
                                       ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
                                       : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                    }`}
+                                  } ${getSeparatorClass(column)}`}
                                   style={{
                                     left: leftPos,
                                     ...columnStyle,
@@ -799,10 +848,11 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                             return (
                               <td
                                 key={column}
-                                className={`p-2 border-r ${isFrozen
+                                className={`p-2 border-r ${
+                                  isFrozen
                                     ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
                                     : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                  } font-semibold`}
+                                } font-semibold`}
                                 style={{
                                   left: leftPos,
                                   ...columnStyle,
@@ -819,8 +869,9 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                         group.campaigns.map((campaign, index) => (
                           <tr
                             key={`group-${group.label}-campaign-${campaign.campaignId}-${index}`}
-                            className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
-                              }`}
+                            className={`border-b border-2 hover:bg-slate-50 transition-colors ${
+                              dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                            }`}
                             draggable
                             onDragStart={() => handleDragStart(campaign.campaignName)}
                             onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
@@ -839,7 +890,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                   return (
                                     <td
                                       key={column}
-                                      className={`p-2 border-r sticky bg-white z-10`}
+                                      className={`p-2 border-r sticky bg-white z-10 ${getSeparatorClass(column)}`}
                                       style={{
                                         left: leftPos,
                                         paddingLeft: "30px",
@@ -853,7 +904,6 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                             {campaign.accountName}
                                           </span>
                                         )}
-
                                       </div>
                                     </td>
                                   )
@@ -863,7 +913,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                   return (
                                     <td
                                       key={column}
-                                      className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""}`}
+                                      className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""} ${getSeparatorClass(column)}`}
                                       style={{
                                         left: leftPos,
                                         ...columnStyle,
@@ -970,7 +1020,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                 return (
                                   <td
                                     key={column}
-                                    className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""}`}
+                                    className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""} ${getSeparatorClass(column)}`}
                                     style={{
                                       left: leftPos,
                                       ...columnStyle,
@@ -1000,7 +1050,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50`}
+                              className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50 ${getSeparatorClass(column)}`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
@@ -1018,7 +1068,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50" : ""}`}
+                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50" : ""} ${getSeparatorClass(column)}`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
@@ -1035,10 +1085,11 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                         return (
                           <td
                             key={column}
-                            className={`p-2 border-r ${isFrozen
+                            className={`p-2 border-r ${
+                              isFrozen
                                 ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
                                 : "bg-gradient-to-r from-gray-100 to-gray-50"
-                              } font-semibold`}
+                            } font-semibold`}
                             style={{
                               left: leftPos,
                               ...columnStyle,
@@ -1054,9 +1105,10 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                 {/* Render ungrouped campaigns or all campaigns when grouping is disabled */}
                 {(isGroupingEnabled ? ungroupedCampaigns : filteredCampaigns).map((campaign, index) => (
                   <tr
-                    key={`${isGroupingEnabled ? 'ungrouped' : 'all'}-${campaign.campaignName}-${index}`}
-                    className={`border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
-                      }`}
+                    key={`${isGroupingEnabled ? "ungrouped" : "all"}-${campaign.campaignName}-${index}`}
+                    className={`border-b border-2 hover:bg-slate-50 transition-colors ${
+                      dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                    }`}
                     draggable
                     onDragStart={() => handleDragStart(campaign.campaignName)}
                     onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
@@ -1074,7 +1126,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r sticky z-10 bg-white`}
+                              className={`p-2 border-r sticky z-10 bg-white ${getSeparatorClass(column)}`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
@@ -1087,7 +1139,6 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                                     {campaign.accountName}
                                   </span>
                                 )}
-
                               </div>
                             </td>
                           )
@@ -1097,7 +1148,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                           return (
                             <td
                               key={column}
-                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""}`}
+                              className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""} ${getSeparatorClass(column)}`}
                               style={{
                                 left: leftPos,
                                 ...columnStyle,
@@ -1111,7 +1162,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
                         return (
                           <td
                             key={column}
-                            className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""}`}
+                            className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white" : ""} ${getSeparatorClass(column)}`}
                             style={{
                               left: leftPos,
                               ...columnStyle,
@@ -1133,4 +1184,3 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, height, typ
 }
 
 export default MetaCampaignTable
-

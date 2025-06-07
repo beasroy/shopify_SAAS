@@ -7,6 +7,7 @@ export const formatCurrency = (amount: number, currencyCode: string = 'USD'): st
   }).format(amount);
 };
 
+
 export const formatPercentage = (value: number): string => {
   return `${value.toFixed(2)}%`;
 }; 

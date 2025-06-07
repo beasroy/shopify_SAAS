@@ -230,7 +230,10 @@ export default function PlatformModal({
 
   const handleGoogleAdLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAdSetup`, { withCredentials: true });
+      const response = await axios.get(
+        `${baseURL}/api/auth/google?context=googleAdSetup&source=${encodeURIComponent(window.location.pathname)}`, 
+        { withCredentials: true }
+      );
       const { authUrl } = response.data;
       window.location.href = authUrl;
     } catch (error) {
@@ -240,7 +243,10 @@ export default function PlatformModal({
 
   const handleGoogleAnalyticsLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/google?context=googleAnalyticsSetup`, { withCredentials: true });
+      const response = await axios.get(
+        `${baseURL}/api/auth/google?context=googleAnalyticsSetup&source=${encodeURIComponent(window.location.pathname)}`, 
+        { withCredentials: true }
+      );
       const { authUrl } = response.data;
       window.location.href = authUrl;
     } catch (error) {
@@ -250,7 +256,10 @@ export default function PlatformModal({
 
   const handleFbLogin = async () => {
     try {
-      const response = await axios.get(`${baseURL}/api/auth/facebook`, { withCredentials: true });
+      const response = await axios.get(
+        `${baseURL}/api/auth/facebook?source=${encodeURIComponent(window.location.pathname)}`, 
+        { withCredentials: true }
+      );
       if (response.data.success) {
         window.location.href = response.data.authURL;
       }

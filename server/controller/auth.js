@@ -21,7 +21,7 @@ export const oauth2Client = new OAuth2Client(
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
 export const getGoogleAuthURL = (req, res) => {
-    const { context } = req.query;
+    const { context, source } = req.query;
 
     const scopes = [
         'https://www.googleapis.com/auth/adwords',
@@ -35,7 +35,7 @@ export const getGoogleAuthURL = (req, res) => {
         access_type: 'offline',
         scope: scopes,
         prompt: 'consent',
-        state: context || 'default',
+        state: JSON.stringify({ context: context || 'default', source: source || '/dashboard' }),
     });
 
     res.status(200).json({ authUrl: url });
@@ -49,7 +49,15 @@ export const handleGoogleCallback = async (req, res) => {
         const { tokens } = await oauth2Client.getToken(code);
         oauth2Client.setCredentials(tokens);
 
-        const context = state || 'default';
+        let stateObj;
+        try {
+            stateObj = JSON.parse(state);
+        } catch (e) {
+            stateObj = { context: 'default', source: '/dashboard' };
+        }
+
+        const context = stateObj.context || 'default';
+        const sourcePage = stateObj.source || '/dashboard';
         const isProduction = process.env.NODE_ENV === 'production';
 
         if (context === 'googleAdSetup') {
@@ -59,7 +67,7 @@ export const handleGoogleCallback = async (req, res) => {
                 ? 'https://parallels.messold.com/callback'
                 : 'http://localhost:5173/callback';
 
-            return res.redirect(clientURL + `?googleadRefreshToken=${googleadRefreshToken}`);
+            return res.redirect(clientURL + `?googleadRefreshToken=${googleadRefreshToken}&source=${encodeURIComponent(sourcePage)}`);
         } else if (context === 'googleAnalyticsSetup') {
             const googleanalyticsRefreshToken = tokens.refresh_token;
 
@@ -67,9 +75,8 @@ export const handleGoogleCallback = async (req, res) => {
                 ? 'https://parallels.messold.com/callback'
                 : 'http://localhost:5173/callback';
 
-            return res.redirect(clientURL + `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}`);
-        }else if (context === 'userLogin') {
-
+            return res.redirect(clientURL + `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}&source=${encodeURIComponent(sourcePage)}`);
+        } else if (context === 'userLogin') {
             const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
             const userInfo = await oauth2.userinfo.get();
             const { email, name, id } = userInfo.data;
@@ -106,7 +113,7 @@ export const handleGoogleCallback = async (req, res) => {
                 ? 'https://parallels.messold.com/callback'
                 : 'http://localhost:5173/callback';
 
-            return res.redirect(clientURL + `?token=${jwtToken}`);
+            return res.redirect(clientURL + `?token=${jwtToken}&source=${encodeURIComponent(sourcePage)}`);
         } else {
             return res.status(400).send('Invalid context in Google callback.');
         }
@@ -316,8 +323,12 @@ export const userLogout = (req, res) => {
 };
 
 export const getFbAuthURL = (req, res) => {
+    const { source } = req.query;
     const state = crypto.randomBytes(16).toString('hex'); // Generate a random state
-    res.cookie('fb_state', state, { httpOnly: true, secure: true }); // Store in a secure cookie
+    
+    // Store both state and source in the cookie
+    const stateData = JSON.stringify({ state, source: source || '/dashboard' });
+    res.cookie('fb_state', stateData, { httpOnly: true, secure: true }); // Store in a secure cookie
 
     const authURL = `https://www.facebook.com/v21.0/dialog/oauth?` +
         `client_id=${process.env.FACEBOOK_APP_ID}` +
@@ -331,15 +342,25 @@ export const getFbAuthURL = (req, res) => {
 export const handleFbCallback = async (req, res) => {
     try {
         const { code, state: receivedState } = req.query;
-        const storedState = req.cookies.fb_state; // Retrieve the state from cookies
+        const storedStateData = req.cookies.fb_state;
+        let sourcePage = '/dashboard';
 
-        // Validate the state
-        if (!storedState || storedState !== receivedState) {
-            return res.status(400).send('Invalid state parameter');
+        // Parse the stored state data
+        try {
+            const stateData = JSON.parse(storedStateData);
+            if (stateData.state !== receivedState) {
+                return res.status(400).send('Invalid state parameter');
+            }
+            sourcePage = stateData.source;
+        } catch (e) {
+            console.error('Error parsing state data:', e);
+            return res.status(400).send('Invalid state data');
         }
+
         if (!code) {
             return res.status(400).send('Authorization code not provided');
         }
+
         const tokenResponse = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
             params: {
                 client_id: process.env.FACEBOOK_APP_ID,
@@ -367,7 +388,7 @@ export const handleFbCallback = async (req, res) => {
             ? 'https://parallels.messold.com/callback'
             : 'http://localhost:5173/callback';
 
-        return res.redirect(clientURL + `?fbToken=${longLivedAccessToken}`);
+        return res.redirect(clientURL + `?fbToken=${longLivedAccessToken}&source=${encodeURIComponent(sourcePage)}`);
     } catch (err) {
         console.error('Error during Facebook OAuth callback:', err);
         return res.status(500).json({ success: false, message: 'Failed to handle Facebook callback', error: err.message });
@@ -700,6 +721,7 @@ export const getZohoAuthURL = (req, res) => {
 
 export const handleZohoCallback = async (req, res) => {
     const { code } = req.query;
+    const sourcePage = req.query.source || '/dashboard';
 
     if (!code) {
         return res.status(400).send('Authorization code is missing');
@@ -723,7 +745,7 @@ export const handleZohoCallback = async (req, res) => {
             ? 'https://parallels.messold.com/callback'
             : 'http://localhost:5173/callback';
 
-        return res.redirect(clientURL + `?zohoToken=${refresh_token}`);
+        return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}`);
     } catch (error) {
         console.error('Token exchange error:', error.response?.data || error.message);
         res.status(500).send('Authentication failed');

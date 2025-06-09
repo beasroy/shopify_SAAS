@@ -16,8 +16,7 @@ import { BrandCards } from './components/BrandCard';
 function ProfilePage() {
     const [activeTab, setActiveTab] = useState('brands');
     const user = useSelector((state: RootState) => state.user.user);
-    const userbrands = user?.brands;
-    
+    const userbrands = user?.brands;    
 
     const handleZohoLogin = async () => {
         try {
@@ -25,7 +24,7 @@ function ProfilePage() {
             `${baseURL}/api/auth/zoho?source=${encodeURIComponent(window.location.pathname)}`
           );
           const { authUrl } = response.data;
-    
+     
           window.location.href = authUrl;
         } catch (error) {
           console.error('Error getting Zoho Auth URL:', error);

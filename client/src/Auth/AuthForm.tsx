@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -30,8 +28,10 @@ export default function AuthForm() {
   const dispatch = useDispatch()
 
   useEffect(() => {
-    if (user) {
+    if (user?.brands && user.brands.length > 0) {
       navigate("/dashboard")
+    }else if (user?.brands && user.brands.length === 0) {
+      navigate("/first-time-brand-setup")
     }
   }, [user, navigate])
 
@@ -111,7 +111,12 @@ export default function AuthForm() {
             description: "Welcome! Redirecting to your dashboard.",
             variant: "default",
           })
-          navigate("/dashboard")
+          console.log(user)
+          if (user?.brands && user.brands.length > 0) {
+            navigate("/dashboard")
+          }else if (user?.brands && user.brands.length === 0) {
+            navigate("/first-time-brand-setup")
+          }
         }
       } else {
         response = await axios.post(

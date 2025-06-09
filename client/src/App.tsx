@@ -61,6 +61,7 @@ function App() {
                   <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
                   <Route path = "/meta-interest/:brandId" element={<InterestPage />} />
                   <Route path = "/pricing_callback" element={<PricingCallback />} />
+                  <Route path = "/first-time-brand-setup" element={<BrandSetupDashboard />} />
                 </Routes>
                 </TutorialManager>
               </Router>

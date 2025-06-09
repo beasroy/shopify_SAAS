@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import DailyEcommerceMetrics from '@/pages/ReportPage/component/EcommerceMetricsPage';
+import React, { useEffect, useMemo, useState } from 'react';
+import EcommerceMetricsPage from '@/pages/ReportPage/component/EcommerceMetricsPage';
 import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
 import { useParams } from 'react-router-dom';
@@ -14,6 +14,8 @@ import { CustomTabs } from '../ConversionReportPage/components/CustomTabs';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
+import { resetAllTokenErrors } from '@/store/slices/TokenSllice';
+import { useDispatch } from 'react-redux';
 
 const ReportsPage: React.FC = () => {
   const isLoading = false;
@@ -45,6 +47,14 @@ const ReportsPage: React.FC = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
+
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (hasGA4Account) {
+      googleAnalyticsTokenError && dispatch(resetAllTokenErrors());
+    }
+  }, [hasGA4Account]);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -86,7 +96,7 @@ const ReportsPage: React.FC = () => {
             ) : (
               <section className="my-3">
                 {activeTab === 'daily' && (
-                  <DailyEcommerceMetrics dateRange={dateRange} />
+                  <EcommerceMetricsPage dateRange={dateRange} />
                 )}
                 {activeTab === 'day wise' && (
                   <DaywiseMetricsPage dateRange={dateRange} />

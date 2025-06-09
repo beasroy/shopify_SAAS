@@ -5,6 +5,7 @@ import { useToast } from '../hooks/use-toast';
 import { useDispatch } from 'react-redux';
 import { setUser } from '@/store/slices/UserSlice'
 import { setBrands , setSelectedBrandId } from '@/store/slices/BrandSlice'
+import { resetAllTokenErrors } from '@/store/slices/TokenSllice'
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
@@ -41,12 +42,29 @@ const GoogleCallback = () => {
                         
                         if (response.data.success) {
                             console.log(`${type} token updated successfully`);
+                            // Reset all token errors when a token is successfully updated
+                            dispatch(resetAllTokenErrors());
+                            
                             if (type === "zohoToken") {
                                 console.log("Zoho token updated, redirecting to /profile");
                                 navigate('/profile');
                             } else {
                                 const sourcePage = queryParams.get('source') || '/dashboard';
-                            
+                                let modalToOpen = '';
+                                
+                                // Determine which modal to open based on token type
+                                switch(type) {
+                                    case 'googleadRefreshToken':
+                                        modalToOpen = 'googleAds';
+                                        break;
+                                    case 'googleanalyticsRefreshToken':
+                                        modalToOpen = 'googleAnalytics';
+                                        break;
+                                    case 'fbToken':
+                                        modalToOpen = 'facebook';
+                                        break;
+                                }
+                                
                                 // Show success toast
                                 toast({
                                     title: 'Success',
@@ -54,8 +72,12 @@ const GoogleCallback = () => {
                                     variant: 'default',
                                 });
                                 
-                                // Redirect to the source page
-                                navigate(sourcePage);
+                                // Redirect to the source page with modal parameter if applicable
+                                if (modalToOpen) {
+                                    navigate(`${sourcePage}?openModal=${modalToOpen}`);
+                                } else {
+                                    navigate(sourcePage);
+                                }
                                 return true;
                             }
                             return true;
@@ -92,7 +114,7 @@ const GoogleCallback = () => {
                         dispatch(setUser(user));
 
                         if (!user.brands || user.brands.length === 0) {
-                            console.log('No brands found, redirecting to /brand-setup');
+                            console.log('No brands found, redirecting to /first-time-brand-setup');
                             navigate('/first-time-brand-setup');
                         } else {
                             console.log('Brands found, redirecting to /dashboard');

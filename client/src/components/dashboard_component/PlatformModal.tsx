@@ -57,6 +57,37 @@ export default function PlatformModal({
   const dispatch = useDispatch();
   const brands = useSelector((state: RootState) => state.brand.brands);
 
+  // Check URL parameters for modal opening
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modalToOpen = params.get('openModal');
+    
+    if (modalToOpen && onOpenChange) {
+      switch (modalToOpen.toLowerCase()) {
+        case 'googleads':
+          if (platform.toLowerCase() === 'google ads') {
+            onOpenChange(true);
+          }
+          break;
+        case 'googleanalytics':
+          if (platform.toLowerCase() === 'google analytics') {
+            onOpenChange(true);
+          }
+          break;
+        case 'facebook':
+          if (platform.toLowerCase() === 'facebook') {
+            onOpenChange(true);
+          }
+          break;
+      }
+      
+      // Remove the modal parameter from URL
+      params.delete('openModal');
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [platform, onOpenChange]);
+
   useEffect(() => {
     const fetchConnectedAccounts = async () => {
       try {

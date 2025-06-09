@@ -7,9 +7,6 @@ import { Ga4Logo, FacebookLogo, GoogleLogo } from '@/data/logo'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 
-
-
-
 interface OtherPlatformModalContentProps {
   platform: string;
   onConnect: (
@@ -20,6 +17,7 @@ interface OtherPlatformModalContentProps {
   ) => void;
   onRemove?: (platform: string, accountId: string, managerId?: string) => void;
   connectedId: string;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface GoogleAdsAccount {
@@ -43,7 +41,8 @@ export default function OtherPlatformModalContent({
   platform,
   onConnect,
   connectedId,
-  onRemove
+  onRemove,
+  onOpenChange
 }: OtherPlatformModalContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
@@ -54,6 +53,37 @@ export default function OtherPlatformModalContent({
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
 
   const user = useSelector((state: RootState) => state.user.user);
+
+  // Check URL parameters for modal opening
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modalToOpen = params.get('openModal');
+    
+    if (modalToOpen && onOpenChange) {
+      switch (modalToOpen.toLowerCase()) {
+        case 'googleads':
+          if (platform.toLowerCase() === 'google ads') {
+            onOpenChange(true);
+          }
+          break;
+        case 'googleanalytics':
+          if (platform.toLowerCase() === 'google analytics') {
+            onOpenChange(true);
+          }
+          break;
+        case 'facebook':
+          if (platform.toLowerCase() === 'facebook') {
+            onOpenChange(true);
+          }
+          break;
+      }
+      
+      // Remove the modal parameter from URL
+      params.delete('openModal');
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [platform, onOpenChange]);
 
   useEffect(() => {
     const fetchGoogleAdsAccounts = async () => {

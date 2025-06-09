@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Check, ArrowRight, Building2, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,6 +22,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { RootState } from "@/store"
 import { useNavigate } from "react-router-dom"
 import { setUser } from "@/store/slices/UserSlice"
+import { setBrandFormData, clearBrandFormData } from "@/store/slices/BrandFormSlice"
 
 const platforms = [
   {
@@ -62,23 +61,25 @@ const platforms = [
 
 export default function BrandSetup() {
   const [openModal, setOpenModal] = useState<string | null>(null)
-  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>({})
-  const [brandName, setBrandName] = useState("")
-  const [googleAdsConnections, setGoogleAdsConnections] = useState<
-    {
-      clientId: string
-      managerId?: string
-    }[]
-  >([])
-  const [ga4Id, setGa4Id] = useState<string>("")
-  const [fbAdId, setFBAdId] = useState<string[]>([])
-  const [shop, setShop] = useState<string>("")
-  const [shopifyAccessToken, setShopifyAccessToken] = useState("")
-  const user = useSelector((state: RootState) => state.user.user)
-  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { toast } = useToast()
+  const user = useSelector((state: RootState) => state.user.user)
+  
+  // Get form data from Redux state
+  const formData = useSelector((state: RootState) => state.brandForm)
+  const [brandName, setBrandName] = useState(formData.brandName || "")
+  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>(formData.connectedAccounts || {})
+  const [googleAdsConnections, setGoogleAdsConnections] = useState<{
+    clientId: string
+    managerId?: string
+  }[]>(formData.googleAdsConnections || [])
+  const [ga4Id, setGa4Id] = useState<string>(formData.ga4Id || "")
+  const [fbAdId, setFBAdId] = useState<string[]>(formData.fbAdId || [])
+  const [shop, setShop] = useState<string>(formData.shop || "")
+  const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
 
+  // Handle Shopify authentication callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const accessToken = params.get("access_token")
@@ -93,6 +94,44 @@ export default function BrandSetup() {
       }))
     }
   }, [])
+
+  // Update Redux state when form data changes
+  useEffect(() => {
+    dispatch(setBrandFormData({
+      brandName,
+      connectedAccounts,
+      googleAdsConnections,
+      ga4Id,
+      fbAdId,
+      shop,
+      shopifyAccessToken
+    }))
+  }, [brandName, connectedAccounts, googleAdsConnections, ga4Id, fbAdId, shop, shopifyAccessToken, dispatch])
+
+  // Check URL parameters for modal opening
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modalToOpen = params.get('openModal');
+    
+    if (modalToOpen) {
+      switch (modalToOpen.toLowerCase()) {
+        case 'googleads':
+          setOpenModal('Google Ads');
+          break;
+        case 'googleanalytics':
+          setOpenModal('Google Analytics');
+          break;
+        case 'facebook':
+          setOpenModal('Facebook');
+          break;
+      }
+      
+      // Remove the modal parameter from URL
+      params.delete('openModal');
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const handleConnect = (platform: string, account: string, accountId: string, managerId?: string) => {
     // Update connected accounts
@@ -185,9 +224,9 @@ export default function BrandSetup() {
       } : null;
 
       if (updatedUser) {
-        console.log(updatedUser);
         dispatch(setUser(updatedUser));
-        console.log("after updating the state",user);
+        // Clear form data from Redux after successful submission
+        dispatch(clearBrandFormData());
         navigate('/dashboard');
       }
 

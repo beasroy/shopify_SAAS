@@ -321,6 +321,38 @@ const SummaryDashboard: React.FC = () => {
   const [platformModalOpen, setPlatformModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
 
+  // Check URL parameters for modal opening
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modalToOpen = params.get('openModal');
+    
+    if (modalToOpen && brandId) {
+      let platformToOpen: Platform | null = null;
+      
+      switch (modalToOpen.toLowerCase()) {
+        case 'googleads':
+          platformToOpen = 'Google Ads';
+          break;
+        case 'googleanalytics':
+          platformToOpen = 'Google Analytics';
+          break;
+        case 'facebook':
+          platformToOpen = 'Facebook';
+          break;
+      }
+      
+      if (platformToOpen) {
+        setSelectedPlatform(platformToOpen);
+        setPlatformModalOpen(true);
+        
+        // Remove the modal parameter from URL
+        params.delete('openModal');
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [brandId]);
+
   const axiosInstance = createAxiosInstance();
 
   const fetchPerformanceData = useCallback(async () => {

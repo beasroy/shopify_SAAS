@@ -19,13 +19,20 @@ const createGoogleAdsClient = (refreshToken) => {
 
 export const getGoogleAdAccounts = async (req, res) => {
     try {
-        const userId  = req.user._id;
+        const userId = req.user._id;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
         }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        if (user.method !== 'google' && !user.googleAdsRefreshToken) {
+            return res.status(403).json({ message: 'This user is not using Google authentication.' });
+        }
 
         const cacheKey = `google_ads_accounts_${userId}`;
-        
+
         // Check cache
         const cachedAdAccounts = cache.get(cacheKey);
         if (cachedAdAccounts) {
@@ -33,15 +40,6 @@ export const getGoogleAdAccounts = async (req, res) => {
             return res.status(200).json({ clientAccounts: cachedAdAccounts, fromCache: true });
         } else {
             console.log('No cached data found for key:', cacheKey);
-        }
-
-        // Retrieve user
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
-        }
-        if (user.method !== 'google' && !user.googleAdsRefreshToken) {
-            return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
         const client = createGoogleAdsClient(user.googleAdsRefreshToken);
@@ -84,7 +82,7 @@ export const getGoogleAdAccounts = async (req, res) => {
                     clientId: row.customer_client.client_customer?.split('/')[1] || null,
                     hidden: row.customer_client.hidden,
                     managerId: customerId
-                })).filter(account => account.clientId); 
+                })).filter(account => account.clientId);
 
                 clientAccounts.push(...accounts);
             } catch (error) {
@@ -92,7 +90,7 @@ export const getGoogleAdAccounts = async (req, res) => {
             }
         }
 
-        cache.set(cacheKey, clientAccounts, 604800); 
+        cache.set(cacheKey, clientAccounts, 604800);
 
         res.status(200).json({ clientAccounts });
 
@@ -127,9 +125,17 @@ export const getGoogleAdAccounts = async (req, res) => {
 
 export const getGa4PropertyIds = async (req, res) => {
     try {
-        const userId  = req.user._id;
+        const userId = req.user._id;
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
+        }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        if (user.method !== 'google' && user.googleAnalyticsRefreshToken == null) {
+            return res.status(403).json({ message: 'This user is not using Google authentication.' });
         }
 
         const cacheKey = `ga4_properties_${userId}`;
@@ -140,14 +146,7 @@ export const getGa4PropertyIds = async (req, res) => {
             return res.status(200).json({ propertiesList: cachedProperties, fromCache: true });
         }
 
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
-        }
-
-        if (user.method !== 'google' && user.googleAnalyticsRefreshToken == null) {
-            return res.status(403).json({ message: 'This user is not using Google authentication.' });
-        }
+   
 
         // Initialize OAuth client with the refresh token only
         const oauth2Client = new google.auth.OAuth2(
@@ -207,7 +206,7 @@ export const getGa4PropertyIds = async (req, res) => {
 
 export const getFbAdAccountIds = async (req, res) => {
     try {
-        const userId  = req.user._id;
+        const userId = req.user._id;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required.' });
@@ -243,7 +242,7 @@ export const getFbAdAccountIds = async (req, res) => {
             }));
 
             cache.set(cacheKey, adAccounts, 604800); // 7 days TTL
-            return res.status(200).json({ adAccounts: adAccounts, fromCache: false});
+            return res.status(200).json({ adAccounts: adAccounts, fromCache: false });
         } else {
             return res.status(404).json({ message: 'No ad accounts found for the user.' });
         }

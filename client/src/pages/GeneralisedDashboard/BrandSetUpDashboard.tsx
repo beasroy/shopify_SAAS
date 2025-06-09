@@ -12,8 +12,6 @@ export default function BrandSetupDashboard() {
   const user = useSelector((state: RootState) => state.user.user)
   const name = user?.username || "user"
 
-
-
   return (
     <div className="flex h-screen bg-gray-50">
       <CollapsibleSidebar />

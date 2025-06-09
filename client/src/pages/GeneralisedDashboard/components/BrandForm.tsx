@@ -66,7 +66,6 @@ export default function BrandSetup() {
   const { toast } = useToast()
   const user = useSelector((state: RootState) => state.user.user)
   
-  // Get form data from Redux state
   const formData = useSelector((state: RootState) => state.brandForm)
   const [brandName, setBrandName] = useState(formData.brandName || "")
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>(formData.connectedAccounts || {})
@@ -79,7 +78,6 @@ export default function BrandSetup() {
   const [shop, setShop] = useState<string>(formData.shop || "")
   const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
 
-  // Handle Shopify authentication callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const accessToken = params.get("access_token")
@@ -95,7 +93,7 @@ export default function BrandSetup() {
     }
   }, [])
 
-  // Update Redux state when form data changes
+  
   useEffect(() => {
     dispatch(setBrandFormData({
       brandName,
@@ -108,7 +106,6 @@ export default function BrandSetup() {
     }))
   }, [brandName, connectedAccounts, googleAdsConnections, ga4Id, fbAdId, shop, shopifyAccessToken, dispatch])
 
-  // Check URL parameters for modal opening
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const modalToOpen = params.get('openModal');
@@ -126,7 +123,6 @@ export default function BrandSetup() {
           break;
       }
       
-      // Remove the modal parameter from URL
       params.delete('openModal');
       const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
       window.history.replaceState({}, '', newUrl);
@@ -134,15 +130,12 @@ export default function BrandSetup() {
   }, []);
 
   const handleConnect = (platform: string, account: string, accountId: string, managerId?: string) => {
-    // Update connected accounts
     setConnectedAccounts((prev) => ({
       ...prev,
       [platform]: [...(prev[platform] || []), account],
     }))
 
-    // Handle platform-specific connection logic
     if (platform.toLowerCase() === "google ads") {
-      // Store comprehensive Google Ads connection details
       setGoogleAdsConnections((prev) => [
         ...prev,
         {

@@ -297,7 +297,7 @@ export const ExcelMetricsPage: React.FC = () => {
                   isSubHeader
                   isImportant={true}
                 />
-                <TooltipHeader title="Returns" tooltip="Returns" isSubHeader />
+                <TooltipHeader title="Total Returns" tooltip="Net Returns + Shipping Returned + Return Fees + Taxes Returned" isSubHeader />
                 <TooltipHeader title="Total Sales" tooltip="Total Sales = Net Sales - Returns" isSubHeader />
                 <TooltipHeader
                   title="Final ROI"

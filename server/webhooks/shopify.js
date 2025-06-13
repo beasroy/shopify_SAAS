@@ -413,51 +413,51 @@ export async function registerWebhooks(shop, accessToken) {
   return results;
 }
 
-export const orderCancelled = async (req, res) => {
-  try {
-    const { id: orderId, shop_domain } = req.body;
-    console.log(`Order cancellation received for order ${orderId} from ${shop_domain}`);
+// export const orderCancelled = async (req, res) => {
+//   try {
+//     const { id: orderId, shop_domain } = req.body;
+//     console.log(`Order cancellation received for order ${orderId} from ${shop_domain}`);
 
-    // Find the brand associated with this shop
-    const brand = await Brand.findOne({ 'shopifyAccount.shopName': shop_domain });
-    if (!brand) {
-      console.error(`Brand not found for shop: ${shop_domain}`);
-      return res.status(200).send(); 
-    }
+//     // Find the brand associated with this shop
+//     const brand = await Brand.findOne({ 'shopifyAccount.shopName': shop_domain });
+//     if (!brand) {
+//       console.error(`Brand not found for shop: ${shop_domain}`);
+//       return res.status(200).send(); 
+//     }
 
-    // Get the order date in the store's timezone
-    const orderDate = moment.tz(req.body.created_at, brand.shopifyAccount.timezone || 'UTC').format('YYYY-MM-DD');
+//     // Get the order date in the store's timezone
+//     const orderDate = moment.tz(req.body.created_at, brand.shopifyAccount.timezone || 'UTC').format('YYYY-MM-DD');
 
-    // Find the metrics entry for this date
-    const metrics = await AdMetrics.findOne({
-      brandId: brand._id,
-      date: {
-        $gte: moment.tz(orderDate, brand.shopifyAccount.timezone || 'UTC').startOf('day').toDate(),
-        $lte: moment.tz(orderDate, brand.shopifyAccount.timezone || 'UTC').endOf('day').toDate()
-      }
-    });
+//     // Find the metrics entry for this date
+//     const metrics = await AdMetrics.findOne({
+//       brandId: brand._id,
+//       date: {
+//         $gte: moment.tz(orderDate, brand.shopifyAccount.timezone || 'UTC').startOf('day').toDate(),
+//         $lte: moment.tz(orderDate, brand.shopifyAccount.timezone || 'UTC').endOf('day').toDate()
+//       }
+//     });
 
-    if (metrics) {
-      // Calculate the order's total value
-      const orderTotal = Number(req.body.total_price || 0);
-      const orderDiscount = Number(req.body.total_discounts || 0);
-      const orderGrossSales = orderTotal + orderDiscount;
+//     if (metrics) {
+//       // Calculate the order's total value
+//       const orderTotal = Number(req.body.total_price || 0);
+//       const orderDiscount = Number(req.body.total_discounts || 0);
+//       const orderGrossSales = orderTotal + orderDiscount;
 
-      // Update the metrics
-      metrics.totalSales = Math.max(0, metrics.totalSales - orderTotal);
-      metrics.shopifySales = Math.max(0, metrics.shopifySales - orderGrossSales);
-      metrics.orderCount = Math.max(0, metrics.orderCount - 1);
-      metrics.cancelledOrderCount = (metrics.cancelledOrderCount || 0) + 1;
+//       // Update the metrics
+//       metrics.totalSales = Math.max(0, metrics.totalSales - orderTotal);
+//       metrics.shopifySales = Math.max(0, metrics.shopifySales - orderGrossSales);
+//       metrics.orderCount = Math.max(0, metrics.orderCount - 1);
+//       metrics.cancelledOrderCount = (metrics.cancelledOrderCount || 0) + 1;
 
-      await metrics.save();
-      console.log(`Updated metrics for ${orderDate} after order cancellation`);
-    } else {
-      console.log(`No metrics found for date ${orderDate}`);
-    }
+//       await metrics.save();
+//       console.log(`Updated metrics for ${orderDate} after order cancellation`);
+//     } else {
+//       console.log(`No metrics found for date ${orderDate}`);
+//     }
 
-    res.status(200).send();
-  } catch (error) {
-    console.error('Error processing order cancellation:', error);
-    res.status(200).send(); // Still return 200 to acknowledge receipt
-  }
-};
+//     res.status(200).send();
+//   } catch (error) {
+//     console.error('Error processing order cancellation:', error);
+//     res.status(200).send(); // Still return 200 to acknowledge receipt
+//   }
+// };

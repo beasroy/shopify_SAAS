@@ -6,46 +6,190 @@ import axios from "axios";
 import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
 import moment from 'moment-timezone';
-import { subYears, startOfDay } from 'date-fns';
 config();
 
+function getRefundAmount(refund) {
+    let lineItemsTotal = 0;
+    let adjustmentsTotal = 0;
+    if (refund?.refund_line_items) {
+        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+    }
+    if (refund?.order_adjustments) {
+        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+    }
+    return lineItemsTotal - adjustmentsTotal;
+}
+
+function isInTargetDateRange(dateStr, originalStartDate, originalEndDate, storeTimezone) {
+    const dateMoment = moment.tz(dateStr, storeTimezone);
+    return dateMoment.isBetween(originalStartDate, originalEndDate, 'day', '[]');
+}
+
+function processOrderForDay(order, acc, storeTimezone, isInTargetDateRange, originalStartDate, originalEndDate) {
+    const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+    if (isInTargetDateRange(orderDate, originalStartDate, originalEndDate, storeTimezone) && acc[orderDate]) {
+        const totalPrice = Number(order.total_price || 0);
+        const subtotalPrice = Number(order.subtotal_price || 0);
+        const discountAmount = Number(order.total_discounts || 0);
+        let grossSales = 0;
+        if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+            grossSales = order.line_items.reduce((sum, item) => {
+                const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
+                return sum + unitPrice * Number(item.quantity);
+            }, 0);
+        } else {
+            grossSales = subtotalPrice + discountAmount;
+        }
+        acc[orderDate].grossSales += grossSales;
+        acc[orderDate].subtotalPrice += subtotalPrice;
+        acc[orderDate].totalPrice += totalPrice;
+        acc[orderDate].discountAmount += discountAmount;
+        acc[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
+    }
+    if (order.refunds && Array.isArray(order.refunds)) {
+        order.refunds.forEach(refund => {
+            const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+            if (isInTargetDateRange(refundDate, originalStartDate, originalEndDate, storeTimezone) && acc[refundDate]) {
+                const refundAmount = getRefundAmount(refund);
+                acc[refundDate].refundAmount += refundAmount;
+            }
+        });
+    }
+}
+
+// Helper: Chunked order fetching with fallback
+async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate, storeTimezone, isTestOrder) {
+    const CHUNK_SIZE_DAYS = 7;
+    const SUB_CHUNK_SIZE_DAYS = 3;
+    let allOrders = [];
+    let currentStart = extendedStartDate.clone();
+    const finalEnd = originalEndDate.clone();
+    while (currentStart.isSameOrBefore(finalEnd)) {
+        const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
+        const startTime = currentStart.startOf('day').toISOString();
+        const endTime = chunkEnd.endOf('day').toISOString();
+        let chunkOrders = [];
+        let pageInfo = null;
+        let pageCount = 0;
+        const fetchChunkWithRetries = async (params, maxRetries = 5) => {
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    return await shopify.order.list(params);
+                } catch (error) {
+                    attempt++;
+                    if (attempt >= maxRetries) throw error;
+                    const wait = 2000 * attempt;
+                    await new Promise(resolve => setTimeout(resolve, wait));
+                }
+            }
+        };
+        let chunkFailed = false;
+        try {
+            do {
+                const params = {
+                    status: 'any',
+                    limit: 250,
+                    fields: 'id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at'
+                };
+                if (pageInfo) {
+                    params.page_info = pageInfo;
+                } else {
+                    params.created_at_min = startTime;
+                    params.created_at_max = endTime;
+                }
+                const response = await fetchChunkWithRetries(params, 7);
+                if (!response || response.length === 0) break;
+                const validOrders = response.filter(order => !isTestOrder(order));
+                chunkOrders = chunkOrders.concat(validOrders);
+                pageCount++;
+                if (response.length === 250) {
+                    pageInfo = Buffer.from(response[response.length - 1].id.toString()).toString('base64');
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } else {
+                    pageInfo = null;
+                }
+            } while (pageInfo);
+        } catch (error) {
+            chunkFailed = true;
+        }
+        if (chunkFailed) {
+            let subStart = currentStart.clone();
+            while (subStart.isSameOrBefore(chunkEnd)) {
+                const subEnd = moment.min(subStart.clone().add(SUB_CHUNK_SIZE_DAYS - 1, 'days'), chunkEnd);
+                const subStartTime = subStart.startOf('day').toISOString();
+                const subEndTime = subEnd.endOf('day').toISOString();
+                let subChunkOrders = [];
+                let subPageInfo = null;
+                try {
+                    do {
+                        const params = {
+                            status: 'any',
+                            limit: 250,
+                            fields: 'id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at'
+                        };
+                        if (subPageInfo) {
+                            params.page_info = subPageInfo;
+                        } else {
+                            params.created_at_min = subStartTime;
+                            params.created_at_max = subEndTime;
+                        }
+                        const response = await fetchChunkWithRetries(params, 7);
+                        if (!response || response.length === 0) break;
+                        const validOrders = response.filter(order => !isTestOrder(order));
+                        subChunkOrders = subChunkOrders.concat(validOrders);
+                        if (response.length === 250) {
+                            subPageInfo = Buffer.from(response[response.length - 1].id.toString()).toString('base64');
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                        } else {
+                            subPageInfo = null;
+                        }
+                    } while (subPageInfo);
+                } catch (subError) {
+                    // log and skip
+                }
+                allOrders = allOrders.concat(subChunkOrders);
+                subStart = subEnd.clone().add(1, 'day');
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        } else {
+            allOrders = allOrders.concat(chunkOrders);
+        }
+        currentStart = chunkEnd.clone().add(1, 'day');
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return allOrders;
+}
 
 export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
         console.log('Fetching orders...');
-
         const brand = await Brand.findById(brandId);
-        if (!brand) {
-            throw new Error('Brand not found.');
-        }
-
+        if (!brand) throw new Error('Brand not found.');
         const access_token = brand.shopifyAccount?.shopifyAccessToken;
-        if (!access_token) {
-            throw new Error('Access token is missing or invalid.');
-        }
-
+        if (!access_token) throw new Error('Access token is missing or invalid.');
         const shopify = new Shopify({
             shopName: brand.shopifyAccount?.shopName,
             accessToken: access_token,
             apiVersion: '2024-04'
         });
-
         const shopData = await shopify.shop.get();
         const storeTimezone = shopData.iana_timezone || 'UTC';
         const storeCurrency = shopData.currency || 'USD';
-        console.log('Store timezone:', storeTimezone);
-        console.log('Store currency:', storeCurrency);
-
-        // Initialize daily sales data structure
+        const REFUND_LOOKBACK_DAYS = 180;
+        const originalStartDate = moment.tz(startDate, storeTimezone);
+        const originalEndDate = moment.tz(endDate, storeTimezone);
+        const extendedStartDate = originalStartDate.clone().subtract(REFUND_LOOKBACK_DAYS, 'days');
+        // Initialize daily sales map for ORIGINAL date range only
         const dailySalesMap = {};
-        let currentDay = moment.tz(startDate, storeTimezone).startOf('day');
-        const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
-
+        let currentDay = originalStartDate.clone().startOf('day');
+        const endMoment = originalEndDate.clone().endOf('day');
         while (currentDay.isSameOrBefore(endMoment)) {
             const dateStr = currentDay.format('YYYY-MM-DD');
             dailySalesMap[dateStr] = {
                 date: dateStr,
                 grossSales: 0,
+                subtotalPrice: 0,
                 totalPrice: 0,
                 refundAmount: 0,
                 discountAmount: 0,
@@ -54,172 +198,51 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
             };
             currentDay.add(1, 'day');
         }
-
-        // Reset for fetching
-        currentDay = moment.tz(startDate, storeTimezone).startOf('day');
-
-        const fetchOrdersForTimeRange = async (startTime, endTime) => {
-            let orders = [];
-            let pageInfo = null;
-            let retryCount = 0;
-            const MAX_RETRIES = 5;
-            const RETRY_DELAY = 10000; // Increased to 10 seconds
-            const RATE_LIMIT_DELAY = 20000; // 20 seconds for rate limits
-
-            do {
-                try {
-                    // Add mandatory delay between requests
-                    await new Promise(resolve => setTimeout(resolve, 2000)); // Increased to 2 seconds
-
-                    const params = {
-                        status: 'any',
-                        created_at_min: startTime,
-                        created_at_max: endTime,
-                        limit: 50, // Reduced limit for better stability
-                    };
-
-                    if (pageInfo) {
-                        params.page_info = pageInfo;
-                    }
-
-                    const response = await shopify.order.list(params);
-
-                    if (!response || !Array.isArray(response)) {
-                        console.warn('Unexpected response format:', response);
-                        break;
-                    }
-
-                    orders = orders.concat(response);
-                    console.log(`Fetched ${response.length} orders, total: ${orders.length}`);
-
-                    // Extract pagination info from headers
-                    const linkHeader = response.headers?.link;
-                    if (linkHeader) {
-                        const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
-                        pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
-                    } else {
-                        pageInfo = null;
-                    }
-
-                    retryCount = 0; // Reset retry count on successful request
-
-                } catch (error) {
-                    console.error('Error fetching orders:', error);
-
-                    if (error.statusCode === 429) {
-                        console.log(`Rate limited by Shopify, waiting ${RATE_LIMIT_DELAY/1000} seconds...`);
-                        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
-                        continue;
-                    }
-
-                    if (error.statusCode === 400 && pageInfo) {
-                        console.log('Bad request with page_info, restarting chunk');
-                        pageInfo = null;
-                        retryCount++;
-
-                        if (retryCount >= MAX_RETRIES) {
-                            console.error('Max retries reached for time range');
-                            break;
-                        }
-
-                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                        continue;
-                    }
-
-                    throw error;
-                }
-            } while (pageInfo);
-
-            return orders;
-        };
-
-        // Process in smaller time chunks (3 days at a time)
-        while (currentDay.isSameOrBefore(endMoment)) {
-            const dateStr = currentDay.format('YYYY-MM-DD');
-            console.log(`Processing date: ${dateStr}`);
-
-            // Split day into 8-hour chunks for better handling
-            const timeChunks = Array.from({ length: 3 }, (_, i) => ({
-                start: currentDay.clone().add(i * 8, 'hours').toISOString(),
-                end: currentDay.clone().add((i + 1) * 8, 'hours').toISOString()
-            }));
-
-            for (const chunk of timeChunks) {
-                const orders = await fetchOrdersForTimeRange(chunk.start, chunk.end);
-
-                orders.forEach(order => {
-                    const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-
-                    const totalPrice = Number(order.total_price || 0);
-                    const discountAmount = Number(order.total_discounts || 0);
-
-                    // Calculate true gross sales from line items (before discounts)
-                    let lineItemTotal = 0;
-                    if (order.line_items && Array.isArray(order.line_items)) {
-                        lineItemTotal = order.line_items.reduce((sum, item) => {
-                            const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
-                            return sum + itemTotal;
-                        }, 0);
-                    }
-
-                    const grossSales = lineItemTotal > 0 ?
-                        lineItemTotal :
-                        (Number(order.subtotal_price || 0) + discountAmount);
-
-                    if (dailySalesMap[orderDate]) {
-                        dailySalesMap[orderDate].grossSales += grossSales;
-                        dailySalesMap[orderDate].totalPrice += totalPrice;
-                        dailySalesMap[orderDate].discountAmount += discountAmount;
-                        dailySalesMap[orderDate].orderCount += 1;
-                    }
-
-                    // Process refunds
-                    if (order.refunds?.length > 0) {
-                        order.refunds.forEach(refund => {
-                            const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-                            const refundAmount = calculateRefundAmount(refund);
-
-                            if (dailySalesMap[refundDate]) {
-                                dailySalesMap[refundDate].refundAmount += refundAmount;
-                            }
-                        });
-                    }
-                });
-
-                // Add delay between time chunks
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-
-            // Add delay between days
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            currentDay.add(1, 'day');
-        }
-
-        return Object.values(dailySalesMap).map(day => ({
-            ...day,
-            shopifySales: Number((day.grossSales - day.discountAmount).toFixed(2)),
-            totalSales: Number((day.totalPrice - day.refundAmount).toFixed(2)),
-            refundAmount: Number(day.refundAmount.toFixed(2)),
-            discountAmount: Number(day.discountAmount.toFixed(2)),
-            currency: storeCurrency
-        }));
-
+        // Test order check (optimized)
+        const isTestOrder = (order) => order.test;
+        // Fetch all orders (with chunked approach to avoid 500 errors)
+        const orders = await fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate, storeTimezone, isTestOrder);
+        // Process orders
+        orders.forEach(order => {
+            processOrderForDay(order, dailySalesMap, storeTimezone, isInTargetDateRange, originalStartDate, originalEndDate);
+        });
+        // Log summary of data processing
+        const ordersInRange = orders.filter(order => {
+            const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+            return isInTargetDateRange(orderDate, originalStartDate, originalEndDate, storeTimezone);
+        }).length;
+        const totalRefundsInRange = orders.reduce((total, order) => {
+            if (!order.refunds) return total;
+            return total + order.refunds.filter(refund => {
+                const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                return isInTargetDateRange(refundDate, originalStartDate, originalEndDate, storeTimezone);
+            }).length;
+        }, 0);
+        console.log(`Orders in target range: ${ordersInRange}/${orders.length}`);
+        console.log(`Refunds processed in target range: ${totalRefundsInRange}`);
+        return Object.values(dailySalesMap).map(day => {
+            const grossSales = Number(day.grossSales);
+            const discountAmount = Number(day.discountAmount);
+            const refundAmount = Number(day.refundAmount);
+            const totalPrice = Number(day.totalPrice);
+            const subtotalPrice = Number(day.subtotalPrice);
+            return {
+                date: day.date,
+                grossSales: grossSales.toFixed(2),
+                shopifySales: (grossSales - discountAmount - refundAmount).toFixed(2),
+                totalSales: (totalPrice - refundAmount).toFixed(2),
+                subtotalSales: subtotalPrice.toFixed(2),
+                refundAmount: refundAmount.toFixed(2),
+                discountAmount: discountAmount.toFixed(2),
+                orderCount: day.orderCount,
+                cancelledOrderCount: day.cancelledOrderCount,
+                currency: storeCurrency
+            };
+        });
     } catch (error) {
         console.error('Error in fetchTotalSales:', error);
         throw new Error(`Failed to fetch total sales: ${error.message}`);
     }
-};
-
-const calculateRefundAmount = (refund) => {
-    const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
-        return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
-    }, 0) || 0;
-
-    const transactionAmount = refund.transactions?.reduce((sum, trans) => {
-        return sum + Number(trans.amount || 0);
-    }, 0) || 0;
-
-    return Math.max(lineItemAmount, transactionAmount);
 };
 
 export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate) => {
@@ -526,7 +549,6 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
     }
 };
 
-
 export const monthlyAddReportData = async (brandId, startDate, endDate, userId) => {
     try {
         if (!brandId || !startDate || !endDate || !userId) {
@@ -668,7 +690,9 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
                             refundAmount: 0,
                             shopifySales: 0
                         };
-                        return createMetricsEntry(brandId, date, metrics, shopifyData).toObject();
+                        const entryObj = createMetricsEntry(brandId, date, metrics, shopifyData).toObject();
+                        delete entryObj._id;
+                        return entryObj;
                     });
 
                     // Perform bulk write
@@ -733,7 +757,6 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId) 
     }
 };
 
-
 const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     console.log('Creating metrics entry with data:', {
         brandId,
@@ -774,8 +797,6 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     return entry;
 };
 
-
-
 export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, userId) => {
     try {
         const brands = await Brand.find({});
@@ -806,7 +827,6 @@ export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, us
         console.error('Error processing metrics for all brands:', error);
     }
 };
-
 
 export const calculateMetricsForSingleBrand = async (brandId, userId) => {
     try {

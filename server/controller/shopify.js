@@ -1,4 +1,3 @@
-
 import { config } from 'dotenv';
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
@@ -120,7 +119,30 @@ export const fetchShopifyData = async (req, res) => {
   }
 };
 
+// Helper for detailed refund calculation
+function getRefundAmount(refund) {
+    let lineItemsTotal = 0;
+    let adjustmentsTotal = 0;
 
+    // Sum all refund line items
+    if (refund?.refund_line_items) {
+        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => {
+            // Prefer subtotal_set.shop_money.amount if available, else fallback to subtotal
+            const subtotal = item.subtotal_set?.shop_money?.amount ?? item.subtotal ?? 0;
+            return sum + Number(subtotal);
+        }, 0);
+    }
+
+    // Sum all order adjustments (positive or negative)
+    if (refund?.order_adjustments) {
+        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => {
+            return sum + Number(adjustment.amount || 0);
+        }, 0);
+    }
+
+    // Subtract adjustments from line items total
+    return lineItemsTotal - adjustmentsTotal;
+}
 
 export const fetchShopifySales = async (req, res) => {
   try {
@@ -149,93 +171,162 @@ export const fetchShopifySales = async (req, res) => {
     const storeCurrency = shopData.currency || 'USD';
     console.log('Store timezone:', storeTimezone);
     console.log('Store currency:', storeCurrency);
-    
-    let orders = [];
-    let queryParams = {
-      status: 'any',
-      limit: 250, // Fetch 250 orders per request
-    };
 
     // Use provided date range or default to first day of current month
     let startDateTime, endDateTime;
-    
     if (startDate && endDate) {
-      // Convert provided dates to store's timezone and set to start/end of day
       startDateTime = moment.tz(startDate, storeTimezone).startOf('day');
       endDateTime = moment.tz(endDate, storeTimezone).endOf('day');
     } else {
-      // Get first day of current month in store's timezone
       const now = moment().tz(storeTimezone);
       startDateTime = moment(now).startOf('month');
       endDateTime = moment(now);
     }
-    
-    // Format for Shopify API (ISO string)
-    queryParams.created_at_min = startDateTime.toISOString();
-    queryParams.created_at_max = endDateTime.toISOString();
 
-    console.log('Date range in store timezone:', {
-      timezone: storeTimezone,
-      start: startDateTime.format('YYYY-MM-DD HH:mm:ss'),
-      end: endDateTime.format('YYYY-MM-DD HH:mm:ss'),
-      startISO: queryParams.created_at_min,
-      endISO: queryParams.created_at_max
-    });
-
-    // Rest of your existing pagination logic and order fetching
-    let hasNextPage = true;
-    let pageInfo;
-
-    while (hasNextPage) {
-      // Add page_info to queryParams if it exists, otherwise remove it
-      if (pageInfo) {
-        // When using page_info, we need to ensure we don't lose our date filters
-        const currentParams = { ...queryParams };
-        // Page info needs to be the only parameter according to Shopify API docs
-        queryParams = { page_info: pageInfo };
-        
-        // Log what's happening for debugging
-        console.log('Using page_info for pagination. Original params:', currentParams);
-        console.log('New params with page_info:', queryParams);
-      }
-      
-      console.log('Query Parameters for this page:', queryParams);
-
-      try {
-        const response = await shopify.order.list(queryParams);
-
-        // If response is empty, no need to continue
-        if (!response || response.length === 0) {
-          console.log('No more orders found.');
-          break; // Exit the loop if no orders are found
+    // Chunked order fetching for reliability
+    const CHUNK_SIZE_DAYS = 7;
+    let allOrders = [];
+    let currentStart = startDateTime.clone();
+    const finalEnd = endDateTime.clone();
+    while (currentStart.isSameOrBefore(finalEnd)) {
+      const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
+      const startTime = currentStart.startOf('day').toISOString();
+      const endTime = chunkEnd.endOf('day').toISOString();
+      let chunkOrders = [];
+      let pageInfo = null;
+      let pageCount = 0;
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
+      do {
+        try {
+          let params = {
+            status: 'any',
+            limit: 250,
+            fields: 'id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at'
+          };
+          if (pageInfo) {
+            params.page_info = pageInfo;
+          } else {
+            params.created_at_min = startTime;
+            params.created_at_max = endTime;
+          }
+          const response = await shopify.order.list(params);
+          if (!response || response.length === 0) break;
+          const validOrders = response.filter(order => !order.test);
+          chunkOrders = chunkOrders.concat(validOrders);
+          pageCount++;
+          if (response.length === 250) {
+            pageInfo = Buffer.from(response[response.length - 1].id.toString()).toString('base64');
+            await new Promise(resolve => setTimeout(resolve, 300));
+          } else {
+            pageInfo = null;
+          }
+          retryCount = 0;
+        } catch (error) {
+          if (error.statusCode === 429) {
+            console.log('  Rate limited, waiting 2 seconds...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          } else if (error.statusCode === 500 && retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`  500 error, retry ${retryCount}/${MAX_RETRIES} after 3 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          } else {
+            console.error(`  Error fetching chunk (${currentStart.format('YYYY-MM-DD')} to ${chunkEnd.format('YYYY-MM-DD')}):`, error.message);
+            break;
+          }
         }
-
-        orders = orders.concat(response);
-        console.log(`Fetched ${response.length} orders from this page`);
-
-        // Check if there is a next page
-        pageInfo = response.nextPageParameters?.page_info || null;
-        hasNextPage = !!pageInfo; // No more pages to fetch if no page_info
-      } catch (error) {
-        console.error('Error while fetching orders:', error);
-        hasNextPage = false;
-        return res.status(500).json({ error: `Error fetching orders: ${error.message}` });
-      }
+      } while (pageInfo);
+      allOrders = allOrders.concat(chunkOrders);
+      currentStart = chunkEnd.clone().add(1, 'day');
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    console.log(`Successfully fetched a total of ${allOrders.length} valid orders`);
 
-    console.log(`Successfully fetched a total of ${orders.length} orders`);
-
-    // Update calculateTotalSales to use timezone-aware dates
-    const { totalSales, totalRefunds, totalDiscounts, grossSales, totalTaxes } = 
-      calculateTotalSales(orders, queryParams.created_at_min, queryParams.created_at_max, storeTimezone);
-
-    // Respond with data including returns and date range info
+    // Detailed sales/refund calculation per day
+    const dailySalesMap = {};
+    let currentDay = startDateTime.clone().startOf('day');
+    while (currentDay.isSameOrBefore(endDateTime)) {
+      const dateStr = currentDay.format('YYYY-MM-DD');
+      dailySalesMap[dateStr] = {
+        date: dateStr,
+        grossSales: 0,
+        subtotalPrice: 0,
+        totalPrice: 0,
+        refundAmount: 0,
+        discountAmount: 0,
+        orderCount: 0,
+        cancelledOrderCount: 0
+      };
+      currentDay.add(1, 'day');
+    }
+    // Helper to check if date is in range
+    const isInTargetDateRange = (dateStr) => {
+      const dateMoment = moment.tz(dateStr, storeTimezone);
+      return dateMoment.isBetween(startDateTime, endDateTime, 'day', '[]');
+    };
+    // Process orders
+    allOrders.forEach(order => {
+      const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+      if (isInTargetDateRange(orderDate) && dailySalesMap[orderDate]) {
+        const totalPrice = Number(order.total_price || 0);
+        const subtotalPrice = Number(order.subtotal_price || 0);
+        const discountAmount = Number(order.total_discounts || 0);
+        let grossSales = 0;
+        if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+          grossSales = order.line_items.reduce((sum, item) => {
+            const unitPrice = item.price_set
+              ? Number(item.price_set.shop_money?.amount)
+              : Number(item.original_price ?? item.price);
+            return sum + unitPrice * Number(item.quantity);
+          }, 0);
+        } else {
+          grossSales = subtotalPrice + discountAmount;
+        }
+        dailySalesMap[orderDate].grossSales += grossSales;
+        dailySalesMap[orderDate].subtotalPrice += subtotalPrice;
+        dailySalesMap[orderDate].totalPrice += totalPrice;
+        dailySalesMap[orderDate].discountAmount += discountAmount;
+        dailySalesMap[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
+      }
+      // Process refunds for this order
+      if (order.refunds && Array.isArray(order.refunds)) {
+        order.refunds.forEach(refund => {
+          const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+          if (isInTargetDateRange(refundDate) && dailySalesMap[refundDate]) {
+            const refundAmount = getRefundAmount(refund);
+            dailySalesMap[refundDate].refundAmount += refundAmount;
+            // Detailed logging
+            console.log(`REFUND: Order ${order.id} (${orderDate}) -> Refund ${refundAmount} on ${refundDate}`);
+          }
+        });
+      }
+    });
+    // Prepare response
+    const dailyResults = Object.values(dailySalesMap).map(day => {
+      const grossSales = Number(day.grossSales);
+      const discountAmount = Number(day.discountAmount);
+      const refundAmount = Number(day.refundAmount);
+      const totalPrice = Number(day.totalPrice);
+      const subtotalPrice = Number(day.subtotalPrice);
+      return {
+        date: day.date,
+        grossSales: grossSales.toFixed(2),
+        shopifySales: (grossSales - discountAmount - refundAmount).toFixed(2),
+        totalSales: (totalPrice - refundAmount).toFixed(2),
+        subtotalSales: subtotalPrice.toFixed(2),
+        refundAmount: refundAmount.toFixed(2),
+        discountAmount: discountAmount.toFixed(2),
+        orderCount: day.orderCount,
+        cancelledOrderCount: day.cancelledOrderCount,
+        currency: storeCurrency
+      };
+    });
     res.json({
-      totalSales, 
-      totalRefunds,
-      totalDiscounts, 
-      grossSales, 
-      totalTaxes,
+      orders: allOrders,
+      totalOrders: allOrders.length,
+      dailyResults,
       currency: storeCurrency,
       dateRange: {
         start: startDateTime.format('YYYY-MM-DD'),
@@ -244,10 +335,8 @@ export const fetchShopifySales = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error in fetchShopifyData:', error);
-    let errorMessage = 'Failed to fetch Shopify data';
-
-    // Improved error handling
+    console.error('Error in fetchShopifySales:', error);
+    let errorMessage = 'Failed to fetch Shopify sales data';
     if (error.code === 'ECONNREFUSED') {
       errorMessage = 'Connection to Shopify API refused. Please check your network connection and Shopify store URL.';
     } else if (error.message.includes('Failed to fetch orders')) {
@@ -255,7 +344,6 @@ export const fetchShopifySales = async (req, res) => {
     } else if (error.response && error.response.body) {
       errorMessage = `Shopify API error: ${error.response.body.errors}`;
     }
-
     res.status(500).json({ error: errorMessage });
   }
 };
@@ -265,7 +353,7 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
   // Parse dates using moment.tz to respect timezone
   const startMoment = moment(startDate).tz(timezone);
   const endMoment = moment(endDate).tz(timezone);
-  
+
   console.log(`Calculating sales between ${startMoment.format('YYYY-MM-DD HH:mm:ss')} and ${endMoment.format('YYYY-MM-DD HH:mm:ss')} (${timezone})`);
 
   let totalRefunds = 0;
@@ -282,12 +370,16 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
     const totalDiscount = Number(order.total_discounts || 0);
     const totalTax = Number(order.total_tax || 0);
 
+    const isTestOrder = (order) => {
+      return order.test
+    };
+
     // Calculate gross sales only for orders within date range
     if (orderMoment.isSameOrAfter(startMoment) && orderMoment.isSameOrBefore(endMoment)) {
       grossSales += totalPrice;
       totalDiscounts += totalDiscount;
       totalTaxes += totalTax;
-      
+
       console.log(`Order ${order.id} (${orderMoment.format('YYYY-MM-DD HH:mm:ss')}) - Amount: ${totalPrice}`);
     } else {
       console.log(`Order ${order.id} (${orderMoment.format('YYYY-MM-DD HH:mm:ss')}) - Outside date range`);
@@ -393,4 +485,3 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
 
 //   return monthlyAverageOrderValue;
 // }
-

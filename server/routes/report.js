@@ -7,15 +7,15 @@ import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 
+
 const router = express.Router();
 
 router.get('/:brandId',verifyAuth, getMetricsbyID);
 
-router.delete('/delete/byDate', async (req, res) => {
+router.delete('/delete/byDate', verifyAuth, async (req, res) => {
     try {
-        // Get the date range from query parameters
-        // Example: /api/metrics/delete/byDate?startDate=2025-02-21&endDate=2025-02-21
         const { startDate, endDate } = req.query;
+        const userId = req.user._id;
 
         if (!startDate) {
             return res.status(400).json({ message: 'startDate is required' });
@@ -23,7 +23,7 @@ router.delete('/delete/byDate', async (req, res) => {
 
         // Create date objects
         const start = new Date(startDate);
-        const end = new Date(endDate || startDate); // If no endDate, use startDate
+        const end = new Date(endDate || startDate);
         
         // Set time to start of day for startDate and end of day for endDate
         start.setHours(0, 0, 0, 0);
@@ -34,6 +34,16 @@ router.delete('/delete/byDate', async (req, res) => {
             return res.status(400).json({ message: 'Invalid date format' });
         }
 
+        // Log the deletion attempt
+        console.log('\n=== AdMetrics Delete Operation ===');
+        console.log('Type: Delete by Date Range');
+        console.log('User ID:', userId);
+        console.log('Date Range:', {
+            start: start.toISOString(),
+            end: end.toISOString()
+        });
+        console.log('Timestamp:', new Date().toISOString());
+
         // Delete records within the date range
         const result = await AdMetrics.deleteMany({
             date: {
@@ -43,10 +53,16 @@ router.delete('/delete/byDate', async (req, res) => {
         });
 
         if (result.deletedCount === 0) {
+            console.log('Result: No records found for deletion');
             return res.status(404).json({ 
                 message: 'No records found for the specified date range' 
             });
         }
+
+        // Log the deletion result
+        console.log('Result: Success');
+        console.log('Records Deleted:', result.deletedCount);
+        console.log('===============================\n');
 
         res.status(200).json({ 
             message: 'AdMetrics data deleted successfully', 
@@ -58,25 +74,76 @@ router.delete('/delete/byDate', async (req, res) => {
         });
 
     } catch (error) {
+        console.error('\n=== Delete Operation Error ===');
+        console.error('Error:', error.message);
+        console.error('Timestamp:', new Date().toISOString());
+        console.error('===============================\n');
+        
         res.status(500).json({ 
             message: 'Server error', 
             error: error.message 
         });
     }
 });
-router.delete('/delete/:brandId', async (req, res) => {
+
+router.delete('/delete/:brandId', verifyAuth, async (req, res) => {
     try {
         const { brandId } = req.params;
+        const userId = req.user._id;
+        
+        // Log the deletion attempt
+        console.log('\n=== AdMetrics Delete Operation ===');
+        console.log('Type: Delete by Brand');
+        console.log('User ID:', userId);
+        console.log('Brand ID:', brandId);
+        console.log('Timestamp:', new Date().toISOString());
         
         const result = await AdMetrics.deleteMany({ brandId });
         
         if (result.deletedCount === 0) {
+            console.log('Result: No records found for deletion');
             return res.status(404).json({ message: 'No records found for this brand' });
         }
+
+        // Log the deletion result
+        console.log('Result: Success');
+        console.log('Records Deleted:', result.deletedCount);
+        console.log('===============================\n');
         
-        res.status(200).json({ message: 'AdMetrics data deleted successfully', deletedCount: result.deletedCount });
+        res.status(200).json({ 
+            message: 'AdMetrics data deleted successfully', 
+            deletedCount: result.deletedCount 
+        });
     } catch (error) {
+        console.error('\n=== Delete Operation Error ===');
+        console.error('Error:', error.message);
+        console.error('Timestamp:', new Date().toISOString());
+        console.error('===============================\n');
+        
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Add a new endpoint to get delete logs
+router.get('/delete-logs/:brandId', verifyAuth, async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        const logs = await DeleteLog.find({ brandId })
+            .sort({ timestamp: -1 })
+            .populate('performedBy', 'email name')
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            logs: logs
+        });
+    } catch (error) {
+        console.error('Error fetching delete logs:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error', 
+            error: error.message 
+        });
     }
 });
 

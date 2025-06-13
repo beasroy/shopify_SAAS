@@ -30,7 +30,7 @@ export const fetchTotalSales = async (brandId) => {
     const shopify = new Shopify({
       shopName: brand.shopifyAccount?.shopName,
       accessToken: access_token,
-      apiVersion: '2023-07' // Added API version to match the monthly function
+      apiVersion: '2023-07'
     });
 
     // Get store timezone from Shopify shop data
@@ -60,7 +60,7 @@ export const fetchTotalSales = async (brandId) => {
       cancelledOrderCount: 0
     };
 
-    // Function to calculate refund amount (matching the monthly function)
+    // Function to calculate refund amount
     const calculateRefundAmount = (refund) => {
       if (!refund) return 0;
 
@@ -91,8 +91,7 @@ export const fetchTotalSales = async (brandId) => {
             status: 'any',
             created_at_min: startTime,
             created_at_max: endTime,
-            limit: 150, // Reduced limit for better stability
-
+            limit: 150
           };
 
           if (pageInfo) {
@@ -106,18 +105,18 @@ export const fetchTotalSales = async (brandId) => {
             break;
           }
 
-          // Process orders immediately
-          for (const order of response) {
+          // Filter out test orders immediately
+          const validOrders = response.filter(order => !order.test);
+          console.log(`Fetched ${validOrders.length} valid orders (${response.length - validOrders.length} test orders skipped)`);
+
+          // Process valid orders
+          for (const order of validOrders) {
             const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-            const isCancelled = (order.cancelled_at || order.cancel_reason) && order.test === true;
+            
             // Only process orders from yesterday
             if (orderDate === yesterday.format('YYYY-MM-DD')) {
-
-              if (isCancelled) {
-                // Only increment cancelled order count, don't add to sales metrics
-                if (yesterdaySales) {
-                  yesterdaySales.cancelledOrderCount += 1;
-                }
+              if (order.cancelled_at || order.cancel_reason) {
+                yesterdaySales.cancelledOrderCount += 1;
               } else {
                 const totalPrice = Number(order.total_price || 0);
                 const discountAmount = Number(order.total_discounts || 0);
@@ -126,7 +125,6 @@ export const fetchTotalSales = async (brandId) => {
                 let lineItemTotal = 0;
                 if (order.line_items && Array.isArray(order.line_items)) {
                   for (const item of order.line_items) {
-                    // Calculate pre-discount price: price × quantity
                     const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
                     lineItemTotal += itemTotal;
                   }
@@ -141,24 +139,20 @@ export const fetchTotalSales = async (brandId) => {
                 yesterdaySales.totalPrice += totalPrice;
                 yesterdaySales.discountAmount += discountAmount;
                 yesterdaySales.orderCount += 1;
-              }
 
-              // Process refunds
-              if (order.refunds?.length > 0) {
-                for (const refund of order.refunds) {
-                  const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-
-                  // Only process refunds from yesterday
-                  if (refundDate === yesterday.format('YYYY-MM-DD')) {
-                    const refundAmount = calculateRefundAmount(refund);
-                    yesterdaySales.refundAmount += refundAmount;
+                // Process refunds
+                if (order.refunds?.length > 0) {
+                  for (const refund of order.refunds) {
+                    const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
+                    if (refundDate === yesterday.format('YYYY-MM-DD')) {
+                      const refundAmount = calculateRefundAmount(refund);
+                      yesterdaySales.refundAmount += refundAmount;
+                    }
                   }
                 }
               }
             }
           }
-
-          console.log(`Processed ${response.length} orders`);
 
           // Extract pagination info from headers
           const linkHeader = response.headers?.link;
@@ -208,12 +202,10 @@ export const fetchTotalSales = async (brandId) => {
       await processOrdersForTimeRange(chunk.start, chunk.end);
     }
 
-    // Calculate final amounts using the same formulas as in monthlyFetchTotalSales
+    // Calculate final amounts
     const dailySales = [{
       date: yesterdaySales.date,
-      // Net product sales (excluding shipping, taxes, etc.)
       shopifySales: Number((yesterdaySales.grossSales - yesterdaySales.discountAmount).toFixed(2)),
-      // Total customer payments including all charges, minus refunds
       totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
       refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
       discountAmount: Number(yesterdaySales.discountAmount.toFixed(2)),

@@ -40,12 +40,16 @@ export const fetchTotalSales = async (brandId) => {
 
     // Calculate yesterday's start and end in store's timezone
     const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
-    const startOfYesterday = yesterday.clone().startOf('day').toISOString();
-    const endOfYesterday = yesterday.clone().endOf('day').toISOString();
+    const startOfYesterday = yesterday.clone().startOf('day');
+    const endOfYesterday = yesterday.clone().endOf('day');
+
+    // 180-day lookback for refunds
+    const REFUND_LOOKBACK_DAYS = 180;
+    const extendedStartDate = startOfYesterday.clone().subtract(REFUND_LOOKBACK_DAYS, 'days');
 
     console.log('Fetching data for:', {
-      startOfYesterday,
-      endOfYesterday,
+      extendedStartDate: extendedStartDate.toISOString(),
+      endOfYesterday: endOfYesterday.toISOString(),
       storeTimezone
     });
 
@@ -60,19 +64,17 @@ export const fetchTotalSales = async (brandId) => {
       cancelledOrderCount: 0
     };
 
-    // Function to calculate refund amount
-    const calculateRefundAmount = (refund) => {
-      if (!refund) return 0;
-
-      const lineItemAmount = refund.refund_line_items?.reduce((sum, item) => {
-        return sum + Number(item.subtotal_set?.shop_money?.amount || 0);
-      }, 0) || 0;
-
-      const transactionAmount = refund.transactions?.reduce((sum, trans) => {
-        return sum + Number(trans.amount || 0);
-      }, 0) || 0;
-
-      return Math.max(lineItemAmount, transactionAmount);
+    // Refund calculation logic (same as MonthlyReport.js)
+    const getRefundAmount = (refund) => {
+      let lineItemsTotal = 0;
+      let adjustmentsTotal = 0;
+      if (refund?.refund_line_items) {
+        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+      }
+      if (refund?.order_adjustments) {
+        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+      }
+      return lineItemsTotal - adjustmentsTotal;
     };
 
     // Process orders using a similar chunking approach as monthly function
@@ -84,44 +86,31 @@ export const fetchTotalSales = async (brandId) => {
 
       do {
         try {
-          // Add mandatory delay between requests
           await new Promise(resolve => setTimeout(resolve, 1000));
-
           const params = {
             status: 'any',
             created_at_min: startTime,
             created_at_max: endTime,
             limit: 150
           };
-
           if (pageInfo) {
             params.page_info = pageInfo;
           }
-
           const response = await shopify.order.list(params);
-
           if (!response || !Array.isArray(response)) {
             console.warn('Unexpected response format:', response);
             break;
           }
-
-          // Filter out test orders immediately
           const validOrders = response.filter(order => !order.test);
           console.log(`Fetched ${validOrders.length} valid orders (${response.length - validOrders.length} test orders skipped)`);
-
-          // Process valid orders
           for (const order of validOrders) {
             const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-            
-            // Only process orders from yesterday
             if (orderDate === yesterday.format('YYYY-MM-DD')) {
               if (order.cancelled_at || order.cancel_reason) {
                 yesterdaySales.cancelledOrderCount += 1;
               } else {
                 const totalPrice = Number(order.total_price || 0);
                 const discountAmount = Number(order.total_discounts || 0);
-
-                // Calculate true gross sales from line items (before discounts)
                 let lineItemTotal = 0;
                 if (order.line_items && Array.isArray(order.line_items)) {
                   for (const item of order.line_items) {
@@ -129,23 +118,17 @@ export const fetchTotalSales = async (brandId) => {
                     lineItemTotal += itemTotal;
                   }
                 }
-
-                // Fallback to subtotal_price + discounts if line items calculation is not available
-                const grossSales = lineItemTotal > 0 ?
-                  lineItemTotal :
-                  (Number(order.subtotal_price || 0) + discountAmount);
-
+                const grossSales = lineItemTotal > 0 ? lineItemTotal : (Number(order.subtotal_price || 0) + discountAmount);
                 yesterdaySales.grossSales += grossSales;
                 yesterdaySales.totalPrice += totalPrice;
                 yesterdaySales.discountAmount += discountAmount;
                 yesterdaySales.orderCount += 1;
-
-                // Process refunds
+                // Process refunds (only those whose created_at is within yesterday)
                 if (order.refunds?.length > 0) {
                   for (const refund of order.refunds) {
-                    const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-                    if (refundDate === yesterday.format('YYYY-MM-DD')) {
-                      const refundAmount = calculateRefundAmount(refund);
+                    const refundDate = moment.tz(refund.created_at, storeTimezone);
+                    if (refundDate.isBetween(startOfYesterday, endOfYesterday, 'day', '[]')) {
+                      const refundAmount = getRefundAmount(refund);
                       yesterdaySales.refundAmount += refundAmount;
                     }
                   }
@@ -153,8 +136,6 @@ export const fetchTotalSales = async (brandId) => {
               }
             }
           }
-
-          // Extract pagination info from headers
           const linkHeader = response.headers?.link;
           if (linkHeader) {
             const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
@@ -162,41 +143,38 @@ export const fetchTotalSales = async (brandId) => {
           } else {
             pageInfo = null;
           }
-
-          retryCount = 0; // Reset retry count on successful request
-
+          retryCount = 0;
         } catch (error) {
           console.error('Error fetching orders:', error);
-
           if (error.statusCode === 429) {
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             continue;
           }
-
           if (error.statusCode === 400 && pageInfo) {
             console.log('Bad request with page_info, restarting chunk');
             pageInfo = null;
             retryCount++;
-
             if (retryCount >= MAX_RETRIES) {
               console.error('Max retries reached for time range');
               break;
             }
-
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             continue;
           }
-
           throw error;
         }
       } while (pageInfo);
     };
 
-    // Split day into 4 chunks as in the monthly function
-    const timeChunks = Array.from({ length: 4 }, (_, i) => ({
-      start: yesterday.clone().startOf('day').add(i * 6, 'hours').toISOString(),
-      end: yesterday.clone().startOf('day').add((i + 1) * 6, 'hours').toISOString()
-    }));
+    // Split extended range into 4-hour chunks for reliability
+    const chunkHours = 4;
+    const totalHours = endOfYesterday.diff(extendedStartDate, 'hours');
+    const numChunks = Math.ceil(totalHours / chunkHours);
+    const timeChunks = Array.from({ length: numChunks }, (_, i) => {
+      const start = extendedStartDate.clone().add(i * chunkHours, 'hours');
+      const end = moment.min(start.clone().add(chunkHours, 'hours'), endOfYesterday);
+      return { start: start.toISOString(), end: end.toISOString() };
+    });
 
     for (const chunk of timeChunks) {
       await processOrdersForTimeRange(chunk.start, chunk.end);
@@ -209,7 +187,8 @@ export const fetchTotalSales = async (brandId) => {
       totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
       refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
       discountAmount: Number(yesterdaySales.discountAmount.toFixed(2)),
-      orderCount: yesterdaySales.orderCount
+      orderCount: yesterdaySales.orderCount,
+      cancelledOrderCount: yesterdaySales.cancelledOrderCount
     }];
 
     console.log('Yesterday\'s sales summary:', dailySales[0]);

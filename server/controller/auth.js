@@ -522,7 +522,7 @@ export const getShopifyAuthUrl = (req, res) => {
     // Remove .myshopify.com if present
     const cleanShop = shop.replace('.myshopify.com', '');
 
-    const SCOPES = "read_analytics, write_returns, read_returns, write_orders, read_orders, write_products, read_products"
+    const SCOPES = "read_analytics, write_returns, read_returns, write_reports, read_reports, write_orders, read_orders, write_customers, read_customers, write_products, read_products"
 
     const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
 

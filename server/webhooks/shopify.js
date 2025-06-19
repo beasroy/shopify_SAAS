@@ -380,11 +380,6 @@ export async function registerWebhooks(shop, accessToken) {
       topic: 'app/uninstalled',
       address: `https://parallels.messold.com/api/shopify/webhooks/app_uninstalled`,
       format: 'json'
-    },
-    {
-      topic: 'orders/cancelled',
-      address: `https://parallels.messold.com/api/shopify/webhooks/orders/cancelled`,
-      format: 'json'
     }
   ];
 

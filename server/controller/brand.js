@@ -164,3 +164,21 @@ export const filterBrands = async (req, res) => {
         res.status(500).json({ message: 'Error fetching brands.', error: error.message });
     }
 };
+
+export const deleteBrand = async (req, res) => {
+    try {
+        const { brandId } = req.params;
+
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+
+        await Brand.findByIdAndDelete(brandId);
+
+        res.status(200).json({ message: 'Brand deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting brand:', error);
+        res.status(500).json({ message: 'Error deleting brand.', error: error.message });
+    }
+};

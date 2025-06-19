@@ -16,6 +16,13 @@ const brandSlice = createSlice({
     setBrands: (state, action: PayloadAction<IBrand[]>) => {
       state.brands = action.payload;
     },
+    deleteBrand: (state, action: PayloadAction<string>) => {
+      state.brands = state.brands.filter(brand => brand._id !== action.payload);
+      // If the deleted brand was selected, clear the selection
+      if (state.selectedBrandId === action.payload) {
+        state.selectedBrandId = null;
+      }
+    },
     resetBrand: (state) => {
       state.selectedBrandId = null;
       state.brands = [];
@@ -23,5 +30,5 @@ const brandSlice = createSlice({
   },
 });
 
-export const { setSelectedBrandId, setBrands, resetBrand } = brandSlice.actions;
+export const { setSelectedBrandId, setBrands, deleteBrand, resetBrand } = brandSlice.actions;
 export default brandSlice.reducer;

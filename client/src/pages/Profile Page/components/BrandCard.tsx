@@ -4,11 +4,12 @@ import { Building2, Plus, Settings, Trash2, ShoppingBag, BarChart3, LineChart, F
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BrandIntegrationModal } from "./BrandIntegrationModal"
-import { useSelector } from "react-redux"
+import { useSelector , useDispatch } from "react-redux"
 import { RootState } from "@/store"
 import axios from "axios"
 import { baseURL } from "@/data/constant"
 import { BrandDetail , FullBrandData } from "@/interfaces"
+import { deleteBrand } from "@/store/slices/BrandSlice"
 
 const platformIcons = {
     shopify: { 
@@ -38,6 +39,7 @@ export function BrandCards({
   const [selectedBrand, setSelectedBrand] = useState<{id: string, name: string} | null>(null)
   const [selectedBrandData, setSelectedBrandData] = useState<FullBrandData | null>(null)
   const brands = useSelector((state: RootState) => state.brand.brands);
+  const dispatch = useDispatch();
 
   const userBrandDetails: BrandDetail[] = userBrands?.map((brandId: string) => {
     const brand = brands.find((b) => b._id === brandId);
@@ -68,6 +70,16 @@ export function BrandCards({
   const handleCloseModal = () => {
     setSelectedBrand(null)
     setSelectedBrandData(null)
+  }
+
+  const handleDeleteBrand = async (brandId: string) => {
+    try {
+      await axios.delete(`${baseURL}/api/brands/delete/${brandId}`, { withCredentials: true });
+      dispatch(deleteBrand(brandId));
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting brand:', error);
+    }
   }
 
   return (
@@ -129,7 +141,7 @@ export function BrandCards({
                   className="text-red-600 hover:text-red-700"
                   onClick={(e) => {
                     e.stopPropagation()
-                    // Handle delete click
+                    handleDeleteBrand(brand._id)
                   }}
                 >
                   <Trash2 className="h-4 w-4" />

@@ -23,7 +23,7 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
-import { monthlyAddReportData } from "./Report/MonthlyReport.js";
+
 const app = express();
 dotenv.config();
              
@@ -76,7 +76,9 @@ if (isDevelopment) {
 
 const PORT = process.env.PORT || 5000;
 
-//calculateMetricsForSingleBrand("684fba9322b520043b071eb2","684fba9322b520043b071eaf")
+//calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
+
+
 
 app.get('/', (req, res) => {
   res.send('Hello, World!'); 

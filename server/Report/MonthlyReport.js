@@ -9,15 +9,22 @@ import moment from 'moment-timezone';
 config();
 
 function getRefundAmount(refund) {
-    let lineItemsTotal = 0;
+    // Product-only refund (for net sales)
+    const productReturn = refund?.refund_line_items
+        ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+        : 0;
+
+    // Total return (product + adjustments, for total returns)
     let adjustmentsTotal = 0;
-    if (refund?.refund_line_items) {
-        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-    }
     if (refund?.order_adjustments) {
         adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
     }
-    return lineItemsTotal - adjustmentsTotal;
+    const totalReturn = productReturn - adjustmentsTotal;
+
+    return {
+        productReturn, // for net sales
+        totalReturn    // for total returns
+    };
 }
 
 function isInTargetDateRange(dateStr, originalStartDate, originalEndDate, storeTimezone) {
@@ -27,31 +34,48 @@ function isInTargetDateRange(dateStr, originalStartDate, originalEndDate, storeT
 
 function processOrderForDay(order, acc, storeTimezone, isInTargetDateRange, originalStartDate, originalEndDate) {
     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+    
     if (isInTargetDateRange(orderDate, originalStartDate, originalEndDate, storeTimezone) && acc[orderDate]) {
         const totalPrice = Number(order.total_price || 0);
         const subtotalPrice = Number(order.subtotal_price || 0);
-        const discountAmount = Number(order.total_discounts || 0);
+        let discountAmount = 0;
+        if (order.line_items && Array.isArray(order.line_items)) {
+            discountAmount = order.line_items.reduce((sum, item) => {
+                if (item.discount_allocations && Array.isArray(item.discount_allocations)) {
+                    return sum + item.discount_allocations.reduce((dSum, alloc) => dSum + Number(alloc.amount || 0), 0);
+                }
+                return sum;
+            }, 0);
+        }
         let grossSales = 0;
         if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
             grossSales = order.line_items.reduce((sum, item) => {
                 const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
-                return sum + unitPrice * Number(item.quantity);
+                const unitTotal = unitPrice * Number(item.quantity);
+                let taxTotal = 0;
+                if (item.tax_lines && Array.isArray(item.tax_lines)) {
+                    taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
+                }
+                const netItemTotal = unitTotal - taxTotal;
+                return sum + netItemTotal;
             }, 0);
         } else {
             grossSales = subtotalPrice + discountAmount;
         }
         acc[orderDate].grossSales += grossSales;
+        acc[orderDate].discountAmount += discountAmount;
         acc[orderDate].subtotalPrice += subtotalPrice;
         acc[orderDate].totalPrice += totalPrice;
-        acc[orderDate].discountAmount += discountAmount;
         acc[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
     }
+    
     if (order.refunds && Array.isArray(order.refunds)) {
         order.refunds.forEach(refund => {
             const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
             if (isInTargetDateRange(refundDate, originalStartDate, originalEndDate, storeTimezone) && acc[refundDate]) {
-                const refundAmount = getRefundAmount(refund);
-                acc[refundDate].refundAmount += refundAmount;
+                const { productReturn, totalReturn } = getRefundAmount(refund);
+                acc[refundDate].productReturn = (acc[refundDate].productReturn || 0) + productReturn;
+                acc[refundDate].refundAmount += totalReturn;
             }
         });
     }
@@ -66,8 +90,8 @@ async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate
     const finalEnd = originalEndDate.clone();
     while (currentStart.isSameOrBefore(finalEnd)) {
         const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
-        const startTime = currentStart.startOf('day').toISOString();
-        const endTime = chunkEnd.endOf('day').toISOString();
+        const startTime = currentStart.clone().startOf('day').tz(storeTimezone).utc().format();
+        const endTime = chunkEnd.clone().endOf('day').tz(storeTimezone).utc().format();
         let chunkOrders = [];
         let pageInfo = null;
         let pageCount = 0;
@@ -117,8 +141,8 @@ async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate
             let subStart = currentStart.clone();
             while (subStart.isSameOrBefore(chunkEnd)) {
                 const subEnd = moment.min(subStart.clone().add(SUB_CHUNK_SIZE_DAYS - 1, 'days'), chunkEnd);
-                const subStartTime = subStart.startOf('day').toISOString();
-                const subEndTime = subEnd.endOf('day').toISOString();
+                const subStartTime = subStart.clone().startOf('day').tz(storeTimezone).utc().format();
+                const subEndTime = subEnd.clone().endOf('day').tz(storeTimezone).utc().format();
                 let subChunkOrders = [];
                 let subPageInfo = null;
                 try {
@@ -164,6 +188,8 @@ async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate
 export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
         console.log('Fetching orders...');
+        console.log('Date range:', { startDate, endDate });
+        
         const brand = await Brand.findById(brandId);
         if (!brand) throw new Error('Brand not found.');
         const access_token = brand.shopifyAccount?.shopifyAccessToken;
@@ -176,10 +202,24 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
         const shopData = await shopify.shop.get();
         const storeTimezone = shopData.iana_timezone || 'UTC';
         const storeCurrency = shopData.currency || 'USD';
+        
+        console.log('Store info:', {
+            shopName: brand.shopifyAccount?.shopName,
+            timezone: storeTimezone,
+            currency: storeCurrency
+        });
+        
         const REFUND_LOOKBACK_DAYS = 180;
         const originalStartDate = moment.tz(startDate, storeTimezone);
         const originalEndDate = moment.tz(endDate, storeTimezone);
         const extendedStartDate = originalStartDate.clone().subtract(REFUND_LOOKBACK_DAYS, 'days');
+        
+        console.log('Date processing:', {
+            originalStartDate: originalStartDate.format('YYYY-MM-DD'),
+            originalEndDate: originalEndDate.format('YYYY-MM-DD'),
+            extendedStartDate: extendedStartDate.format('YYYY-MM-DD')
+        });
+        
         // Initialize daily sales map for ORIGINAL date range only
         const dailySalesMap = {};
         let currentDay = originalStartDate.clone().startOf('day');
@@ -194,18 +234,34 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
                 refundAmount: 0,
                 discountAmount: 0,
                 orderCount: 0,
-                cancelledOrderCount: 0
+                cancelledOrderCount: 0,
+                productReturn: 0 // Track product-only returns for net sales
             };
             currentDay.add(1, 'day');
         }
+        
         // Test order check (optimized)
         const isTestOrder = (order) => order.test;
         // Fetch all orders (with chunked approach to avoid 500 errors)
         const orders = await fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate, storeTimezone, isTestOrder);
+        
+        console.log('Total orders fetched:', orders.length);
+        console.log('Test orders filtered out:', orders.filter(order => order.test).length);
+        
         // Process orders
         orders.forEach(order => {
+            const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
+            // Log discount_allocations for June 8th, 2025
+            if (orderDate === '2025-06-08' && order.line_items && Array.isArray(order.line_items)) {
+                order.line_items.forEach((item, idx) => {
+                    if (item.discount_allocations && item.discount_allocations.length > 0) {
+                        console.log(`[LOG] Order ${order.id} Line Item ${idx} discount_allocations:`, JSON.stringify(item.discount_allocations, null, 2));
+                    }
+                });
+            }
             processOrderForDay(order, dailySalesMap, storeTimezone, isInTargetDateRange, originalStartDate, originalEndDate);
         });
+        
         // Log summary of data processing
         const ordersInRange = orders.filter(order => {
             const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
@@ -220,20 +276,28 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
         }, 0);
         console.log(`Orders in target range: ${ordersInRange}/${orders.length}`);
         console.log(`Refunds processed in target range: ${totalRefundsInRange}`);
+        
         return Object.values(dailySalesMap).map(day => {
             const grossSales = Number(day.grossSales);
             const discountAmount = Number(day.discountAmount);
             const refundAmount = Number(day.refundAmount);
             const totalPrice = Number(day.totalPrice);
             const subtotalPrice = Number(day.subtotalPrice);
+            const productReturn = Number(day.productReturn || 0);
+            const shopifySales = grossSales - discountAmount - productReturn;
+            // Log for June 8th
+            if (day.date === '2025-06-08') {
+                console.log(`[LOG] June 8th - discountAmount: ${discountAmount}, shopifySales: ${shopifySales}, grossSales: ${grossSales}`);
+            }
             return {
                 date: day.date,
                 grossSales: grossSales.toFixed(2),
-                shopifySales: (grossSales - discountAmount - refundAmount).toFixed(2),
+                shopifySales: shopifySales.toFixed(2), // Net sales
                 totalSales: (totalPrice - refundAmount).toFixed(2),
                 subtotalSales: subtotalPrice.toFixed(2),
                 refundAmount: refundAmount.toFixed(2),
                 discountAmount: discountAmount.toFixed(2),
+                productReturn: productReturn.toFixed(2),
                 orderCount: day.orderCount,
                 cancelledOrderCount: day.cancelledOrderCount,
                 currency: storeCurrency

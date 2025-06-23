@@ -13,14 +13,14 @@ export const initializeSocket = (server) => {
     io = new Server(server, {
         cors: {
             origin: process.env.NODE_ENV === 'production' 
-                ? ["https://parallels.messold.com", "https://www.parallels.messold.com"] 
+                ? "https://parallels.messold.com"
                 : ["http://localhost:5173", "http://localhost:3000", "http://13.203.31.8"],
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             credentials: true,
             allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
         },
         allowEIO3: true,
-        transports: ['websocket', 'polling']
+        transports: ['polling', 'websocket']
     });
 
     // Authentication middleware

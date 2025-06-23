@@ -30,11 +30,17 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
   }
 
   console.log('Creating new socket connection to:', baseURL);
+  console.log('Connection options:', {
+    withCredentials: true,
+    transports: ['polling'],
+    timeout: 20000,
+    forceNew: true
+  });
   isConnecting = true;
 
   socket = io(baseURL, {
     withCredentials: true,
-    transports: ['websocket', 'polling'],
+    transports: ['polling'],
     timeout: 20000,
     forceNew: true
   });
@@ -75,6 +81,11 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
       // Redirect to login if authentication fails
       window.location.href = '/login';
       return;
+    }
+    
+    // Check if it's a transport error
+    if (error.message?.includes('websocket error') || error.message?.includes('transport error')) {
+      console.error('Transport error detected, this might be due to proxy/load balancer configuration');
     }
     
     isConnecting = false;

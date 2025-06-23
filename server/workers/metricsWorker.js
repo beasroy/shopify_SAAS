@@ -3,22 +3,10 @@ import { calculateMetricsForSingleBrand } from '../Report/MonthlyReport.js';
 import { createRedisConnection } from '../config/redis.js';
 import { connectDB, getConnectionStatus } from '../config/db.js';
 import mongoose from 'mongoose';
-import { createServer } from 'http';
-import { initializeSocket } from '../config/socket.js';
+
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Initialize Socket.IO for the worker process
-const initializeWorkerSocket = () => {
-    try {
-        // Create a minimal HTTP server for Socket.IO
-        const server = createServer();
-        initializeSocket(server);
-        console.log('Socket.IO initialized in metrics worker');
-    } catch (error) {
-        console.error('Failed to initialize Socket.IO in worker:', error);
-    }
-};
 
 // Ensure MongoDB connection before processing jobs
 const ensureMongoConnection = async () => {

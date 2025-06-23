@@ -12,6 +12,13 @@ const baseURL = import.meta.env.PROD
   ? import.meta.env.VITE_API_URL 
   : import.meta.env.VITE_LOCAL_API_URL;
 
+console.log('Environment variables:', {
+  PROD: import.meta.env.PROD,
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  VITE_LOCAL_API_URL: import.meta.env.VITE_LOCAL_API_URL,
+  baseURL: baseURL
+});
+
 // Initialize socket connection
 export const initializeSocket = (userId?: string, brandId?: string) => {
   console.log('initializeSocket called with:', { userId, brandId });
@@ -33,16 +40,28 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
   console.log('Connection options:', {
     withCredentials: true,
     transports: ['polling'],
-    timeout: 20000,
-    forceNew: true
+    timeout: 20000
   });
+  
+  // Test if server is reachable
+  console.log('Testing socket server reachability...');
+  fetch(`${baseURL}/socket.io/`, {
+    method: 'GET',
+    credentials: 'include'
+  }).then(response => {
+    console.log('✅ Socket server test response:', response.status, response.statusText);
+    console.log('✅ Server is reachable, proceeding with socket connection');
+  }).catch(error => {
+    console.error('❌ Socket server test failed:', error);
+    console.error('❌ This means the socket server endpoint is not accessible');
+  });
+  
   isConnecting = true;
 
   socket = io(baseURL, {
     withCredentials: true,
     transports: ['polling'],
-    timeout: 20000,
-    forceNew: true
+    timeout: 20000
   });
 
   socket.on('connect', () => {

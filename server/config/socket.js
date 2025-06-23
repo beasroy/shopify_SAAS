@@ -53,8 +53,20 @@ export const initializeSocket = (server) => {
                 hasAuthToken: !!socket.handshake.auth?.token,
                 hasAuthHeader: !!socket.handshake.headers?.authorization,
                 origin: socket.handshake.headers.origin,
-                userAgent: socket.handshake.headers['user-agent']
+                userAgent: socket.handshake.headers['user-agent'],
+                workerType: socket.handshake.headers['x-worker-type'],
+                workerId: socket.handshake.headers['x-worker-id']
             });
+            
+            // Check if this is a worker connection
+            const isWorker = socket.handshake.headers['x-worker-type'] === 'metrics-worker';
+            
+            if (isWorker) {
+                console.log('🔧 Worker connection detected:', socket.handshake.headers['x-worker-id']);
+                socket.isWorker = true;
+                socket.workerId = socket.handshake.headers['x-worker-id'] || 'metrics-worker';
+                return next();
+            }
             
             // In development, allow connections without authentication for testing
             if (process.env.NODE_ENV !== 'production') {
@@ -97,82 +109,25 @@ export const initializeSocket = (server) => {
             id: socket.id,
             origin: socket.handshake.headers.origin,
             transport: socket.conn.transport.name,
-            userAgent: socket.handshake.headers['user-agent']
+            userAgent: socket.handshake.headers['user-agent'],
+            isWorker: socket.isWorker,
+            workerId: socket.workerId
         });
         
-        // Join user to their personal room for notifications
-        socket.on('join-user-room', (userId) => {
-            try {
-                if (!userId) {
-                    console.warn('⚠️ Invalid userId provided for room join');
-                    return;
-                }
-                
-                socket.join(`user-${userId}`);
-                console.log(`✅ User ${userId} joined their notification room`);
-                
-                // Confirm room join
-                socket.emit('room-joined', { 
-                    type: 'user', 
-                    roomId: `user-${userId}`,
-                    timestamp: new Date().toISOString()
-                });
-            } catch (error) {
-                console.error('❌ Error joining user room:', error);
-                socket.emit('error', { message: 'Failed to join user room' });
-            }
-        });
-        
-        // Handle brand-specific notifications
-        socket.on('join-brand-room', (brandId) => {
-            try {
-                if (!brandId) {
-                    console.warn('⚠️ Invalid brandId provided for room join');
-                    return;
-                }
-                
-                socket.join(`brand-${brandId}`);
-                console.log(`✅ Client joined brand room: ${brandId}`);
-                
-                // Confirm room join
-                socket.emit('room-joined', { 
-                    type: 'brand', 
-                    roomId: `brand-${brandId}`,
-                    timestamp: new Date().toISOString()
-                });
-            } catch (error) {
-                console.error('❌ Error joining brand room:', error);
-                socket.emit('error', { message: 'Failed to join brand room' });
-            }
-        });
-
-        // Handle leaving brand room
-        socket.on('leave-brand-room', (brandId) => {
-            try {
-                if (!brandId) {
-                    console.warn('⚠️ Invalid brandId provided for room leave');
-                    return;
-                }
-                
-                socket.leave(`brand-${brandId}`);
-                console.log(`✅ Client left brand room: ${brandId}`);
-                
-                // Confirm room leave
-                socket.emit('room-left', { 
-                    type: 'brand', 
-                    roomId: `brand-${brandId}`,
-                    timestamp: new Date().toISOString()
-                });
-            } catch (error) {
-                console.error('❌ Error leaving brand room:', error);
-            }
-        });
+        // Handle worker-specific events
+        if (socket.isWorker) {
+            setupWorkerEventHandlers(socket);
+        } else {
+            setupClientEventHandlers(socket);
+        }
 
         // Handle disconnect
         socket.on('disconnect', (reason) => {
             console.log('🔌 Client disconnected:', {
                 id: socket.id,
                 reason: reason,
+                isWorker: socket.isWorker,
+                workerId: socket.workerId,
                 timestamp: new Date().toISOString()
             });
         });

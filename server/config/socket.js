@@ -11,25 +11,20 @@ let io;
 export const initializeSocket = (server) => {
     console.log('Initializing Socket.IO server...');
     console.log('Environment:', process.env.NODE_ENV);
-    console.log('CORS origin:', process.env.NODE_ENV === 'production' ? "https://parallels.messold.com" : ["http://localhost:5173", "http://localhost:3000", "http://13.203.31.8"]);
     
     io = new Server(server, {
         cors: {
-            origin: process.env.NODE_ENV === 'production' 
-                ? "https://parallels.messold.com"  // Single string instead of array
-                : ["http://localhost:5173", "http://localhost:3000", "http://13.203.31.8"],
-            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            credentials: true,
-            allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+            origin: true, // Allow all origins temporarily for debugging
+            credentials: true
         },
-        allowEIO3: true,
-        transports: ['polling', 'websocket'] // Server supports both, client will use polling
+        transports: ['polling', 'websocket']
     });
 
- 
+    console.log('Socket.IO server created successfully');
+
     // Socket.IO connection handling
     io.on('connection', (socket) => {
-        console.log('Client connected:', socket.id, 'from:', socket.handshake.headers.origin);
+        console.log('✅ Client connected successfully:', socket.id, 'from:', socket.handshake.headers.origin);
         
         // Join user to their personal room for notifications
         socket.on('join-user-room', (userId) => {
@@ -56,7 +51,7 @@ export const initializeSocket = (server) => {
 
     // Add error handling
     io.engine.on('connection_error', (err) => {
-        console.error('Socket.IO connection error:', err);
+        console.error('❌ Socket.IO connection error:', err);
         console.error('Connection error details:', {
             message: err.message,
             code: err.code,
@@ -64,15 +59,7 @@ export const initializeSocket = (server) => {
         });
     });
 
-    io.engine.on('initial_headers', (headers, req) => {
-        console.log('Socket.IO initial headers:', headers);
-    });
-
-    io.engine.on('headers', (headers, req) => {
-        console.log('Socket.IO headers:', headers);
-    });
-
-    console.log('Socket.IO server created successfully');
+    console.log('Socket.IO server initialized successfully');
     return io;
 };
 

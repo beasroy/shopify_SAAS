@@ -14,19 +14,37 @@ export const useSocketConnection = () => {
   const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
   const previousBrandId = useRef<string | null>(null);
 
+  // Debug logging
+  console.log('useSocketConnection - Current state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    selectedBrandId,
+    previousBrandId: previousBrandId.current
+  });
+
   useEffect(() => {
     // Initialize socket when user is available
     if (user?.id) {
-      console.log('Initializing socket connection for user:', user.id, 'brand:', selectedBrandId);
-      initializeSocket(user.id, selectedBrandId || undefined);
+      try {
+        console.log('Initializing socket connection for user:', user.id, 'brand:', selectedBrandId);
+        initializeSocket(user.id, selectedBrandId || undefined);
+      } catch (error) {
+        console.error('Error initializing socket connection:', error);
+      }
+    } else {
+      console.log('No user ID available, skipping socket initialization');
     }
 
     // Cleanup on unmount
     return () => {
-      console.log('Disconnecting socket');
-      disconnectSocket();
+      try {
+        console.log('Disconnecting socket');
+        disconnectSocket();
+      } catch (error) {
+        console.error('Error disconnecting socket:', error);
+      }
     };
-  }, [user?.id]);
+  }, [user?.id, selectedBrandId]);
 
   useEffect(() => {
     // Handle brand changes

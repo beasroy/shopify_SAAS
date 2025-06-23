@@ -55,6 +55,14 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
 
 const createSocketConnection = () => {
   console.log('🔌 Creating new socket connection to:', baseURL);
+  console.log('🔍 Connection details:', {
+    withCredentials: true,
+    transports: ['polling', 'websocket'],
+    timeout: 20000,
+    autoConnect: true,
+    reconnection: false,
+    forceNew: true
+  });
   
   isConnecting = true;
   reconnectAttempts++;
@@ -71,7 +79,11 @@ const createSocketConnection = () => {
     timeout: 20000,
     autoConnect: true,
     reconnection: false, // Handle reconnection manually
-    forceNew: true // Force new connection
+    forceNew: true, // Force new connection
+    extraHeaders: {
+      // Ensure cookies are sent with the connection
+      'X-Requested-With': 'XMLHttpRequest'
+    }
   });
 
   // Connection successful
@@ -128,6 +140,14 @@ const handleConnectionError = (error: any) => {
   // Check for authentication errors
   if (error.message?.includes('Authentication') || error.message?.includes('Unauthorized')) {
     console.error('🔐 Authentication failed for socket connection');
+    
+    // Show user-friendly notification
+    store.dispatch(addNotification({
+      type: 'error',
+      title: 'Connection Error',
+      message: 'Authentication failed. Please log in again.'
+    }));
+    
     // Don't attempt reconnection for auth errors
     return;
   }
@@ -135,6 +155,11 @@ const handleConnectionError = (error: any) => {
   // Check for server errors
   if (error.message?.includes('server error')) {
     console.error('🔥 Server error detected - check server logs');
+  }
+  
+  // Check for network errors
+  if (error.message?.includes('Network Error') || error.message?.includes('timeout')) {
+    console.error('🌐 Network error detected');
   }
   
   attemptReconnection();

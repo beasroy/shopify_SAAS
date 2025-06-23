@@ -3,6 +3,23 @@ import jwt from 'jsonwebtoken';
 let io;
 
 /**
+ * Parse cookies from cookie string
+ * @param {string} cookieString - The cookie string from headers
+ * @returns {Object} - Parsed cookies object
+ */
+const parseCookies = (cookieString) => {
+    if (!cookieString) return {};
+    
+    return cookieString.split(';').reduce((cookies, cookie) => {
+        const [name, value] = cookie.trim().split('=');
+        if (name && value) {
+            cookies[name] = decodeURIComponent(value);
+        }
+        return cookies;
+    }, {});
+};
+
+/**
  * Initialize Socket.IO server
  * @param {Object} server - HTTP server instance
  * @returns {Object} Socket.IO server instance
@@ -30,9 +47,30 @@ export const initializeSocket = (server) => {
     // Add middleware for authentication (if needed)
     io.use((socket, next) => {
         try {
-            // Add your authentication logic here
-            // For example, verify JWT token from handshake
-            const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+            console.log('🔐 Socket authentication attempt:', {
+                hasCookies: !!socket.handshake.headers.cookie,
+                cookieLength: socket.handshake.headers.cookie?.length || 0,
+                hasAuthToken: !!socket.handshake.auth?.token,
+                hasAuthHeader: !!socket.handshake.headers?.authorization,
+                origin: socket.handshake.headers.origin,
+                userAgent: socket.handshake.headers['user-agent']
+            });
+            
+            // In development, allow connections without authentication for testing
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('🔧 Development mode: Allowing connection without authentication');
+                socket.userId = 'dev-user';
+                return next();
+            }
+            
+            // Read token from cookies instead of handshake auth
+            const cookies = parseCookies(socket.handshake.headers.cookie);
+            let token = cookies.token;
+            
+            // Fallback to handshake auth if cookie not found
+            if (!token) {
+                token = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+            }
             
             if (!token && process.env.NODE_ENV === 'production') {
                 console.log('❌ No authentication token provided');
@@ -40,10 +78,12 @@ export const initializeSocket = (server) => {
             }
             
             // If you have token verification logic, add it here
-             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-             socket.userId = decoded.userId;
+            if (token) {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-default-secret");
+                socket.userId = decoded.id || decoded.userId; // Handle both id and userId fields
+                console.log('✅ Socket authentication successful for user:', socket.userId);
+            }
             
-            console.log('✅ Socket authentication successful');
             next();
         } catch (error) {
             console.error('❌ Socket authentication failed:', error.message);

@@ -5,133 +5,194 @@ import { addNotification } from '../store/slices/NotificationSlice';
 // Singleton socket instance
 let socket: Socket | null = null;
 let isConnecting = false;
+let isConnected = false;
 let currentUserId: string | null = null;
 let currentBrandId: string | null = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+let reconnectTimer: NodeJS.Timeout | null = null;
 
 const baseURL = import.meta.env.PROD 
   ? import.meta.env.VITE_API_URL 
   : import.meta.env.VITE_LOCAL_API_URL;
 
-console.log('Environment variables:', {
+console.log('Socket Service Environment:', {
   PROD: import.meta.env.PROD,
-  VITE_API_URL: import.meta.env.VITE_API_URL,
-  VITE_LOCAL_API_URL: import.meta.env.VITE_LOCAL_API_URL,
   baseURL: baseURL
 });
 
 // Initialize socket connection
 export const initializeSocket = (userId?: string, brandId?: string) => {
-  console.log('initializeSocket called with:', { userId, brandId });
+  console.log('🔄 initializeSocket called with:', { userId, brandId, isConnecting, isConnected });
   
+  // Prevent multiple simultaneous connections
+  if (isConnecting) {
+    console.log('⏳ Connection already in progress, skipping...');
+    return;
+  }
+
   // Update current user and brand
   if (userId) currentUserId = userId;
   if (brandId) currentBrandId = brandId;
   
-  if (socket?.connected || isConnecting) {
-    console.log('Socket already connected or connecting, skipping initialization');
-    // If already connected but brand changed, join the new brand room
-    if (brandId && brandId !== currentBrandId) {
-      joinBrandRoom(brandId);
-    }
+  // If already connected, just handle room changes
+  if (socket?.connected && isConnected) {
+    console.log('✅ Socket already connected, handling room changes...');
+    handleRoomChanges();
     return;
   }
 
-  console.log('Creating new socket connection to:', baseURL);
-  console.log('Connection options:', {
-    withCredentials: true,
-    transports: ['polling'],
-    timeout: 20000
-  });
-  
-  // Test if server is reachable
-  console.log('Testing socket server reachability...');
-  fetch(`${baseURL}/socket.io/`, {
-    method: 'GET',
-    credentials: 'include'
-  }).then(response => {
-    console.log('✅ Socket server test response:', response.status, response.statusText);
-    console.log('✅ Server is reachable, proceeding with socket connection');
-  }).catch(error => {
-    console.error('❌ Socket server test failed:', error);
-    console.error('❌ This means the socket server endpoint is not accessible');
-  });
+  // Clean up existing socket if any
+  if (socket && !socket.connected) {
+    console.log('🧹 Cleaning up disconnected socket...');
+    socket.removeAllListeners();
+    socket = null;
+    isConnected = false;
+  }
+
+  createSocketConnection();
+};
+
+const createSocketConnection = () => {
+  console.log('🔌 Creating new socket connection to:', baseURL);
   
   isConnecting = true;
+  reconnectAttempts++;
+
+  // Clear any existing reconnect timer
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
 
   socket = io(baseURL, {
     withCredentials: true,
-    transports: ['polling'],
-    timeout: 20000
+    transports: ['polling', 'websocket'], // Match server configuration
+    timeout: 20000,
+    autoConnect: true,
+    reconnection: false, // Handle reconnection manually
+    forceNew: true // Force new connection
   });
 
+  // Connection successful
   socket.on('connect', () => {
-    console.log('Socket connected successfully:', socket?.id);
+    console.log('✅ Socket connected successfully:', socket?.id);
     isConnecting = false;
+    isConnected = true;
+    reconnectAttempts = 0;
     
-    // Join user room if userId is provided
-    if (currentUserId) {
-      console.log('Joining user room:', currentUserId);
-      socket?.emit('join-user-room', currentUserId);
-    }
-    
-    // Join brand room if brandId is provided
-    if (currentBrandId) {
-      console.log('Joining brand room:', currentBrandId);
-      socket?.emit('join-brand-room', currentBrandId);
-    }
+    handleRoomChanges();
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected, reason:', reason);
-    isConnecting = false;
-  });
-
+  // Connection failed
   socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
-    });
+    console.error('❌ Socket connection error:', error);
+    isConnecting = false;
+    isConnected = false;
     
-    // Check if it's an authentication error
-    if (error.message?.includes('Authentication error')) {
-      console.error('Authentication failed for socket connection');
-      // Redirect to login if authentication fails
-      window.location.href = '/login';
+    handleConnectionError(error);
+  });
+
+  // Disconnected
+  socket.on('disconnect', (reason) => {
+    console.log('🔌 Socket disconnected, reason:', reason);
+    isConnecting = false;
+    isConnected = false;
+    
+    // Only attempt reconnection for certain disconnect reasons
+    if (reason === 'io server disconnect') {
+      console.log('Server initiated disconnect, not reconnecting');
       return;
     }
     
-    // Check if it's a transport error
-    if (error.message?.includes('websocket error') || error.message?.includes('transport error')) {
-      console.error('Transport error detected, this might be due to proxy/load balancer configuration');
-    }
-    
-    isConnecting = false;
-    
-    // Retry connection after 5 seconds for non-auth errors
-    setTimeout(() => {
-      if (!socket?.connected && !isConnecting) {
-        console.log('Retrying socket connection...');
-        initializeSocket(currentUserId || undefined, currentBrandId || undefined);
-      }
-    }, 5000);
+    attemptReconnection();
   });
 
+  // Socket errors
   socket.on('error', (error) => {
-    console.error('Socket error:', error);
+    console.error('🚨 Socket error:', error);
   });
+
+  // Setup event listeners
+  setupEventListeners();
+};
+
+const handleConnectionError = (error: any) => {
+  console.error('Connection error details:', {
+    message: error.message,
+    name: error.name,
+    type: error.type,
+    code: error.code
+  });
+  
+  // Check for authentication errors
+  if (error.message?.includes('Authentication') || error.message?.includes('Unauthorized')) {
+    console.error('🔐 Authentication failed for socket connection');
+    // Don't attempt reconnection for auth errors
+    return;
+  }
+  
+  // Check for server errors
+  if (error.message?.includes('server error')) {
+    console.error('🔥 Server error detected - check server logs');
+  }
+  
+  attemptReconnection();
+};
+
+const attemptReconnection = () => {
+  if (reconnectAttempts >= maxReconnectAttempts) {
+    console.error('🔄 Max reconnection attempts reached, giving up');
+    return;
+  }
+  
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff
+  console.log(`🔄 Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+  
+  reconnectTimer = setTimeout(() => {
+    if (!isConnected && !isConnecting) {
+      createSocketConnection();
+    }
+  }, delay);
+};
+
+const handleRoomChanges = () => {
+  if (!socket?.connected) {
+    console.warn('⚠️ Socket not connected, cannot handle room changes');
+    return;
+  }
+
+  // Join user room if userId is provided
+  if (currentUserId) {
+    console.log('🏠 Joining user room:', currentUserId);
+    socket.emit('join-user-room', currentUserId);
+  }
+  
+  // Join brand room if brandId is provided
+  if (currentBrandId) {
+    console.log('🏢 Joining brand room:', currentBrandId);
+    socket.emit('join-brand-room', currentBrandId);
+  }
+};
+
+const setupEventListeners = () => {
+  if (!socket) return;
 
   // Listen for brand-specific notifications
   socket.on('brand-notification', (data) => {
-    console.log('Brand notification received:', data);
+    console.log('📢 Brand notification received:', data);
     handleNotification(data);
   });
 
-  // Listen for user-specific notifications (if you keep them)
+  // Listen for user-specific notifications
   socket.on('notification', (data) => {
-    console.log('User notification received:', data);
+    console.log('📬 User notification received:', data);
     handleNotification(data);
+  });
+
+  // Ping-pong for connection health
+  socket.on('pong', (data) => {
+    console.log('🏓 Pong received:', data);
   });
 };
 
@@ -183,7 +244,6 @@ const playNotificationSound = () => {
   
   if (isSoundEnabled) {
     try {
-      // Create a simple notification sound
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
@@ -200,52 +260,80 @@ const playNotificationSound = () => {
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.2);
     } catch (error) {
-      console.warn('Could not play notification sound:', error);
+      console.warn('🔇 Could not play notification sound:', error);
     }
   }
 };
 
 // Join brand room
 export const joinBrandRoom = (brandId: string) => {
-  console.log('joinBrandRoom called with:', brandId);
-  console.log('Socket connected:', socket?.connected);
+  console.log('🏢 joinBrandRoom called with:', brandId);
   
   currentBrandId = brandId;
   
-  if (socket?.connected) {
-    console.log(`Emitting join-brand-room for brand: ${brandId}`);
+  if (socket?.connected && isConnected) {
+    console.log(`🏢 Emitting join-brand-room for brand: ${brandId}`);
     socket.emit('join-brand-room', brandId);
-    console.log(`Joined brand room: ${brandId}`);
   } else {
-    console.warn('Socket not connected, cannot join brand room:', brandId);
+    console.warn('⚠️ Socket not connected, will join brand room after connection');
   }
 };
 
 // Leave brand room
 export const leaveBrandRoom = (brandId: string) => {
-  if (socket?.connected) {
+  if (socket?.connected && isConnected) {
     socket.emit('leave-brand-room', brandId);
-    console.log(`Left brand room: ${brandId}`);
+    console.log(`🚪 Left brand room: ${brandId}`);
   }
 };
 
 // Disconnect socket
 export const disconnectSocket = () => {
+  console.log('🔌 Disconnecting socket...');
+  
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  
   if (socket) {
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
-    isConnecting = false;
-    currentUserId = null;
-    currentBrandId = null;
   }
+  
+  isConnecting = false;
+  isConnected = false;
+  currentUserId = null;
+  currentBrandId = null;
+  reconnectAttempts = 0;
 };
 
 // Check if socket is connected
 export const isSocketConnected = (): boolean => {
-  return socket?.connected || false;
+  return !!(socket?.connected && isConnected);
+};
+
+// Send ping to test connection
+export const pingSocket = () => {
+  if (socket?.connected && isConnected) {
+    socket.emit('ping');
+  }
 };
 
 // Get socket instance (for advanced usage)
 export const getSocket = (): Socket | null => {
   return socket;
-}; 
+};
+
+// Get connection status
+export const getConnectionStatus = () => {
+  return {
+    isConnected: isConnected,
+    isConnecting: isConnecting,
+    socketId: socket?.id || null,
+    currentUserId: currentUserId,
+    currentBrandId: currentBrandId,
+    reconnectAttempts: reconnectAttempts
+  };
+};

@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
+import { createServer } from 'http';
+import { initializeSocket } from './config/socket.js';
 import authRoutes from "./routes/auth.js"
 import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"  
@@ -25,9 +27,14 @@ import pricingRoutes from "./routes/pricing.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 const app = express();
+const server = createServer(app);
+
+// Initialize Socket.IO
+initializeSocket(server);
+
 dotenv.config();
              
-connectDB(); 
+connectDB();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -67,6 +74,7 @@ dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 
+
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');
 } else {
@@ -76,9 +84,7 @@ if (isDevelopment) {
 
 const PORT = process.env.PORT || 5000;
 
-//calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
-
-
+calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
 
 app.get('/', (req, res) => {
   res.send('Hello, World!'); 
@@ -89,7 +95,8 @@ if (!isDevelopment) {
   app.set('trust proxy', 1);
 }
 
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on ${isDevelopment ? 'http' : 'https'}://0.0.0.0:${PORT}`);
+  console.log(`Socket.IO server is ready for real-time notifications`);
 });
 

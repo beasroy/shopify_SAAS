@@ -7,6 +7,7 @@ import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
 import User from "../models/User.js";
+import RefundCache from '../models/RefundCache.js';
 
 
 
@@ -43,12 +44,8 @@ export const fetchTotalSales = async (brandId) => {
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
 
-    // 180-day lookback for refunds
-    const REFUND_LOOKBACK_DAYS = 180;
-    const extendedStartDate = startOfYesterday.clone().subtract(REFUND_LOOKBACK_DAYS, 'days');
-
-    console.log('Fetching data for:', {
-      extendedStartDate: extendedStartDate.toISOString(),
+    console.log('Fetching data for yesterday:', {
+      startOfYesterday: startOfYesterday.toISOString(),
       endOfYesterday: endOfYesterday.toISOString(),
       storeTimezone
     });
@@ -64,20 +61,7 @@ export const fetchTotalSales = async (brandId) => {
       cancelledOrderCount: 0
     };
 
-    // Refund calculation logic (same as MonthlyReport.js)
-    const getRefundAmount = (refund) => {
-      let lineItemsTotal = 0;
-      let adjustmentsTotal = 0;
-      if (refund?.refund_line_items) {
-        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-      }
-      if (refund?.order_adjustments) {
-        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
-      }
-      return lineItemsTotal - adjustmentsTotal;
-    };
-
-    // Process orders using a similar chunking approach as monthly function
+    // Process orders for yesterday only
     const processOrdersForTimeRange = async (startTime, endTime) => {
       let pageInfo = null;
       let retryCount = 0;
@@ -103,6 +87,54 @@ export const fetchTotalSales = async (brandId) => {
           }
           const validOrders = response.filter(order => !order.test);
           console.log(`Fetched ${validOrders.length} valid orders (${response.length - validOrders.length} test orders skipped)`);
+          
+          // Process refunds for each order
+          for (const order of validOrders) {
+            if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
+              for (const refund of order.refunds) {
+                try {
+                  // Check if refund already exists in cache
+                  const existingRefund = await RefundCache.findOne({ 
+                    refundId: refund.id,
+                    brandId: brandId 
+                  });
+                  
+                  if (!existingRefund) {
+                    // Calculate refund amounts
+                    let productReturn = 0;
+                    let totalReturn = 0;
+                    
+                    if (refund.refund_line_items) {
+                      productReturn = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+                    }
+                    
+                    let adjustmentsTotal = 0;
+                    if (refund.order_adjustments) {
+                      adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+                    }
+                    totalReturn = productReturn - adjustmentsTotal;
+                    
+                    const refundCache = new RefundCache({
+                      refundId: refund.id,
+                      orderId: order.id,
+                      refundCreatedAt: new Date(refund.created_at),
+                      orderCreatedAt: new Date(order.created_at),
+                      productReturn: productReturn,
+                      totalReturn: totalReturn,
+                      rawData: JSON.stringify(refund),
+                      brandId: brandId
+                    });
+                    
+                    await refundCache.save();
+                    console.log(`Cached refund ${refund.id} for order ${order.id}`);
+                  }
+                } catch (error) {
+                  console.error(`Error caching refund ${refund.id}:`, error);
+                }
+              }
+            }
+          }
+          
           for (const order of validOrders) {
             const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
             if (orderDate === yesterday.format('YYYY-MM-DD')) {
@@ -123,16 +155,6 @@ export const fetchTotalSales = async (brandId) => {
                 yesterdaySales.totalPrice += totalPrice;
                 yesterdaySales.discountAmount += discountAmount;
                 yesterdaySales.orderCount += 1;
-                // Process refunds (only those whose created_at is within yesterday)
-                if (order.refunds?.length > 0) {
-                  for (const refund of order.refunds) {
-                    const refundDate = moment.tz(refund.created_at, storeTimezone);
-                    if (refundDate.isBetween(startOfYesterday, endOfYesterday, 'day', '[]')) {
-                      const refundAmount = getRefundAmount(refund);
-                      yesterdaySales.refundAmount += refundAmount;
-                    }
-                  }
-                }
               }
             }
           }
@@ -166,19 +188,24 @@ export const fetchTotalSales = async (brandId) => {
       } while (pageInfo);
     };
 
-    // Split extended range into 4-hour chunks for reliability
-    const chunkHours = 4;
-    const totalHours = endOfYesterday.diff(extendedStartDate, 'hours');
-    const numChunks = Math.ceil(totalHours / chunkHours);
-    const timeChunks = Array.from({ length: numChunks }, (_, i) => {
-      const start = extendedStartDate.clone().add(i * chunkHours, 'hours');
-      const end = moment.min(start.clone().add(chunkHours, 'hours'), endOfYesterday);
-      return { start: start.toISOString(), end: end.toISOString() };
+    // Process orders for yesterday
+    await processOrdersForTimeRange(startOfYesterday.toISOString(), endOfYesterday.toISOString());
+
+    // Get refund amounts from cache for yesterday
+    const refundCacheData = await RefundCache.find({
+      brandId: brandId,
+      refundCreatedAt: {
+        $gte: startOfYesterday.toDate(),
+        $lte: endOfYesterday.toDate()
+      }
     });
 
-    for (const chunk of timeChunks) {
-      await processOrdersForTimeRange(chunk.start, chunk.end);
-    }
+    // Calculate total refund amount from cache
+    const totalRefundAmount = refundCacheData.reduce((sum, refund) => {
+      return sum + (refund.totalReturn || 0);
+    }, 0);
+
+    yesterdaySales.refundAmount = totalRefundAmount;
 
     // Calculate final amounts
     const dailySales = [{
@@ -192,8 +219,9 @@ export const fetchTotalSales = async (brandId) => {
     }];
 
     console.log('Yesterday\'s sales summary:', dailySales[0]);
-    return dailySales;
+    console.log(`Refund cache entries for yesterday: ${refundCacheData.length}`);
 
+    return dailySales;
   } catch (error) {
     console.error('Error in fetchTotalSales:', error);
     throw new Error(`Failed to fetch total sales: ${error.message}`);

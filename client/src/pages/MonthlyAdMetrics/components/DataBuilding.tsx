@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, BarChart3, LineChart, PieChart } from "lucide-react"
-
+import { ArrowRight, BarChart3, CalendarRange, LineChart, PieChart } from "lucide-react"
+import Header from "@/components/dashboard_component/Header"
 
 export default function DataBuilding() {
   const { brandId } = useParams<{ brandId: string }>()
@@ -30,7 +30,8 @@ export default function DataBuilding() {
 
   return (
     <div className="bg-slate-50 flex flex-col w-full min-h-screen">
-      <main className="container max-w-6xl mx-auto px-4 py-8 flex flex-col h-screen justify-center">
+        <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
+        <main className="container max-w-6xl mx-auto px-4 py-8 flex flex-col h-screen justify-center">
         <div className="w-full text-center mb-12">
           <h1 className="text-xl md:text-4xl font-bold text-primary mb-3">Preparing your dashboard...</h1>
 

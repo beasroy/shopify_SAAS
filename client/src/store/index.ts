@@ -12,6 +12,8 @@ import localReducer from "./slices/LocalSlice.ts"
 import tokenReducer from "./slices/TokenSllice.ts"
 import interestFilterReducer from './slices/interestFilterSlice';
 import brandFormReducer from './slices/BrandFormSlice';
+import notificationReducer from './slices/NotificationSlice';
+
 
 
 const rootReducer = combineReducers({
@@ -26,13 +28,14 @@ const rootReducer = combineReducers({
   tokenError: tokenReducer,
   interestFilter: interestFilterReducer,
   brandForm: brandFormReducer,
+  notifications: notificationReducer,
 });
 
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter", "brandForm"], // Persist both conversionFilters & brand
+  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter", "brandForm"], // Don't persist notifications
 };
 
 

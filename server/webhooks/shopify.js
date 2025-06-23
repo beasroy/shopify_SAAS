@@ -1,22 +1,39 @@
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import Subscription from '../models/Subscription.js';
+import RefundCache from '../models/RefundCache.js';
+
 import crypto from 'crypto';
 import axios from 'axios';
+
 import { config } from "dotenv";
-import moment from 'moment-timezone';
-import AdMetrics from '../models/AdMetrics.js';
+
 
 config();
 
-const mapPlanName = (shopifyPlanName) => {
-  if (!shopifyPlanName) return 'Free Plan';
+function getRefundAmount(refund) {
+  const productReturn = Array.isArray(refund.refund_line_items)
+    ? refund.refund_line_items.reduce(
+        (sum, item) => sum + Number(item.subtotal || 0),
+        0
+      )
+    : 0;
 
-  if (shopifyPlanName.includes('Startup')) return 'Startup Plan';
-  if (shopifyPlanName.includes('Growth')) return 'Growth Plan';
+  let adjustmentsTotal = 0;
+  if (Array.isArray(refund.order_adjustments)) {
+    adjustmentsTotal = refund.order_adjustments.reduce(
+      (sum, adjustment) => sum + Number(adjustment.amount || 0),
+      0
+    );
+  }
 
-  return 'Free Plan';
-};
+  const totalReturn = productReturn - adjustmentsTotal;
+
+  return {
+    productReturn,
+    totalReturn
+  };
+}
 
 const mapStatus = (shopifyStatus) => {
   if (!shopifyStatus) return 'pending';
@@ -45,7 +62,6 @@ const extractShopDomain = async (shopId) => {
   }
 };
 
-
 export function verifyWebhook(req, res, next) {
   try {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
@@ -73,7 +89,6 @@ export function verifyWebhook(req, res, next) {
     return res.status(401).send('HMAC validation failed');
   }
 }
-
 
 export const customersDataRequest = async (req, res) => {
   try {
@@ -366,6 +381,36 @@ export const app_uninstalled = async (req, res) => {
   }
 }
 
+export const refundsCreated = async (req, res) => {
+  try {
+    const refund = req.body;
+    const { productReturn, totalReturn } = getRefundAmount(refund);
+    const shopDomain = req.headers['x-shopify-shop-domain'];
+    const brand = await Brand.findOne({ 'shopifyAccount.shopName': shopDomain });
+    const brandId = brand ? brand._id : null;
+
+    // Get order information from the refund
+    const orderId = refund.order_id;
+    const orderCreatedAt = refund.order_created_at || refund.created_at; // Fallback to refund date if order date not available
+
+    const refundCache = new RefundCache({
+      refundId: refund.id,
+      orderId: orderId,
+      refundCreatedAt: new Date(refund.created_at),
+      orderCreatedAt: new Date(orderCreatedAt),
+      productReturn: productReturn,
+      totalReturn: totalReturn,
+      rawData: JSON.stringify(refund),
+      brandId: brandId
+    });
+    await refundCache.save();
+    res.status(200).send('Refund cached');
+  } catch (error) {
+    console.error('Error in refundsCreated webhook:', error);
+    res.status(500).send('Error');
+  }
+}
+
 export async function registerWebhooks(shop, accessToken) {
 
   const apiVersion = '2024-04';
@@ -379,6 +424,11 @@ export async function registerWebhooks(shop, accessToken) {
     {
       topic: 'app/uninstalled',
       address: `https://parallels.messold.com/api/shopify/webhooks/app_uninstalled`,
+      format: 'json'
+    },
+    {
+      topic: 'refunds/create',
+      address: `https://parallels.messold.com/api/shopify/webhooks/refunds/create`,
       format: 'json'
     }
   ];
@@ -407,6 +457,8 @@ export async function registerWebhooks(shop, accessToken) {
 
   return results;
 }
+
+
 
 // export const orderCancelled = async (req, res) => {
 //   try {

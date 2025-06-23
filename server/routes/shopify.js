@@ -8,4 +8,5 @@ router.get('/data/:brandId',verifyAuth,fetchShopifyData);
 router.get('/dailysales/:brandId',verifyAuth,fetchShopifySales)
 
 
+
 export default router;

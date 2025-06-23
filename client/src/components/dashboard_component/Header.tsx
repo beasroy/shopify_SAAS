@@ -6,6 +6,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { useDispatch, useSelector } from "react-redux";
 import { setLocale } from "@/store/slices/LocalSlice";
 import { RootState } from "@/store";
+import HeaderNotificationDropdown from "./HeaderNotificationDropdown";
+import { useSocketConnection } from "../../hooks/useSocketConnection";
 
 interface HeaderProps {
   title: string;
@@ -29,6 +31,9 @@ export default function Header({
 
   const dispatch = useDispatch();
   const locale = useSelector((state: RootState) => state.locale.locale);
+
+  // Initialize socket connection for notifications
+  useSocketConnection();
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b px-6 py-3 transition-all duration-300">
@@ -63,6 +68,10 @@ export default function Header({
               </Button>
             </div>
           )}
+
+          {/* Notification Dropdown */}
+          <HeaderNotificationDropdown />
+
 
           {/* Rest of the component remains the same */}
           {showSettings && (

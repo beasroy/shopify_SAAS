@@ -1,4 +1,6 @@
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 let io;
 
@@ -11,16 +13,46 @@ export const initializeSocket = (server) => {
     io = new Server(server, {
         cors: {
             origin: process.env.NODE_ENV === 'production' 
-                ? "https://parallels.messold.com" 
+                ? ["https://parallels.messold.com", "https://www.parallels.messold.com"] 
                 : ["http://localhost:5173", "http://localhost:3000", "http://13.203.31.8"],
-            methods: ["GET", "POST"],
-            credentials: true
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            credentials: true,
+            allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+        },
+        allowEIO3: true,
+        transports: ['websocket', 'polling']
+    });
+
+    // Authentication middleware
+    io.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.auth.token || socket.handshake.headers.cookie?.split('token=')[1]?.split(';')[0];
+            
+            if (!token) {
+                console.log('No token provided for socket connection');
+                return next(new Error('Authentication error: No token provided'));
+            }
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id);
+            
+            if (!user) {
+                console.log('User not found for socket connection');
+                return next(new Error('Authentication error: User not found'));
+            }
+
+            socket.user = user;
+            console.log(`Socket authenticated for user: ${user.email}`);
+            next();
+        } catch (error) {
+            console.error('Socket authentication error:', error.message);
+            return next(new Error('Authentication error: Invalid token'));
         }
     });
 
     // Socket.IO connection handling
     io.on('connection', (socket) => {
-        console.log('Client connected:', socket.id);
+        console.log('Client connected:', socket.id, 'from:', socket.handshake.headers.origin, 'user:', socket.user?.email);
         
         // Join user to their personal room for notifications
         socket.on('join-user-room', (userId) => {
@@ -43,6 +75,11 @@ export const initializeSocket = (server) => {
         socket.on('ping', () => {
             socket.emit('pong', { timestamp: new Date().toISOString() });
         });
+    });
+
+    // Add error handling
+    io.engine.on('connection_error', (err) => {
+        console.error('Socket.IO connection error:', err);
     });
 
     console.log('Socket.IO server initialized');

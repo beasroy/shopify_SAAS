@@ -84,7 +84,7 @@ if (isDevelopment) {
 
 const PORT = process.env.PORT || 5000;
 
-//calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
+calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
 
 app.get('/', (req, res) => {
   res.send('Hello, World!'); 

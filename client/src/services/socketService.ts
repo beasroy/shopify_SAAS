@@ -34,6 +34,9 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
 
   socket = io(baseURL, {
     withCredentials: true,
+    transports: ['websocket', 'polling'],
+    timeout: 20000,
+    forceNew: true
   });
 
   socket.on('connect', () => {
@@ -53,9 +56,40 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected');
+  socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected, reason:', reason);
     isConnecting = false;
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Check if it's an authentication error
+    if (error.message?.includes('Authentication error')) {
+      console.error('Authentication failed for socket connection');
+      // Redirect to login if authentication fails
+      window.location.href = '/login';
+      return;
+    }
+    
+    isConnecting = false;
+    
+    // Retry connection after 5 seconds for non-auth errors
+    setTimeout(() => {
+      if (!socket?.connected && !isConnecting) {
+        console.log('Retrying socket connection...');
+        initializeSocket(currentUserId || undefined, currentBrandId || undefined);
+      }
+    }, 5000);
+  });
+
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
   });
 
   // Listen for brand-specific notifications
@@ -68,11 +102,6 @@ export const initializeSocket = (userId?: string, brandId?: string) => {
   socket.on('notification', (data) => {
     console.log('User notification received:', data);
     handleNotification(data);
-  });
-
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    isConnecting = false;
   });
 };
 

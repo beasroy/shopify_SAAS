@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
-import { sendToUser, sendToBrand } from './socket.js';
+import { sendToBrand } from './socket.js';
 
 config();
 
@@ -62,25 +62,6 @@ const redisSubscriber = new Redis(redisConfig);
 // Initialize Redis notification subscriber
 export const initializeNotificationSubscriber = () => {
     console.log('🔄 Initializing Redis notification subscriber...');
-    
-    // Subscribe to user notifications channel
-    redisSubscriber.subscribe('user-notifications', (err) => {
-        if (err) {
-            console.error('❌ Error subscribing to user-notifications channel:', err);
-        } else {
-            console.log('✅ Subscribed to user-notifications channel');
-        }
-    });
-    
-    // Subscribe to brand notifications channel
-    redisSubscriber.subscribe('brand-notifications', (err) => {
-        if (err) {
-            console.error('❌ Error subscribing to brand-notifications channel:', err);
-        } else {
-            console.log('✅ Subscribed to brand-notifications channel');
-        }
-    });
-    
     // Subscribe to metrics completion notifications
     redisSubscriber.subscribe('metrics-completion', (err) => {
         if (err) {
@@ -105,13 +86,7 @@ export const initializeNotificationSubscriber = () => {
             const data = JSON.parse(message);
             console.log(`📨 Received notification from Redis channel '${channel}':`, data);
             
-            if (channel === 'user-notifications') {
-                const { userId, data: notificationData } = data;
-                sendToUser(userId, 'notification', notificationData);
-            } else if (channel === 'brand-notifications') {
-                const { brandId, data: notificationData } = data;
-                sendToBrand(brandId, 'brand-notification', notificationData);
-            } else if (channel === 'metrics-completion') {
+            if (channel === 'metrics-completion') {
                 // Handle metrics completion notification
                 const notificationData = {
                     type: 'metrics-calculation-complete',
@@ -124,10 +99,7 @@ export const initializeNotificationSubscriber = () => {
                     }
                 };
                 
-                // Send to specific user if userId is provided
-                if (data.userId) {
-                    sendToUser(data.userId, 'notification', notificationData);
-                }
+           
                 
                 // Send to brand room if brandId is provided
                 if (data.brandId) {
@@ -145,11 +117,6 @@ export const initializeNotificationSubscriber = () => {
                         timestamp: new Date().toISOString()
                     }
                 };
-                
-                // Send to specific user if userId is provided
-                if (data.userId) {
-                    sendToUser(data.userId, 'notification', notificationData);
-                }
                 
                 // Send to brand room if brandId is provided
                 if (data.brandId) {
@@ -178,4 +145,6 @@ export const closeNotificationSubscriber = async () => {
         console.error('❌ Error closing Redis notification subscriber:', error);
     }
 };
+
+
 

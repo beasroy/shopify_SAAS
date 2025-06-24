@@ -20,50 +20,6 @@ const parseCookies = (cookieString) => {
 };
 
 /**
- * Setup event handlers for worker connections
- * @param {Object} socket - Socket instance
- */
-const setupWorkerEventHandlers = (socket) => {
-    console.log('🔧 Setting up worker event handlers for:', socket.workerId);
-    
-    // Handle worker room join
-    socket.on('join-worker-room', (workerType) => {
-        try {
-            socket.join(`worker-${workerType}`);
-            console.log(`✅ Worker ${socket.workerId} joined worker room: ${workerType}`);
-            
-            socket.emit('room-joined', { 
-                type: 'worker', 
-                roomId: `worker-${workerType}`,
-                timestamp: new Date().toISOString()
-            });
-        } catch (error) {
-            console.error('❌ Error joining worker room:', error);
-        }
-    });
-    
-    // Handle send-user-notification from worker
-    socket.on('send-user-notification', ({ userId, data }) => {
-        try {
-            console.log(`🔧 Worker ${socket.workerId} requesting user notification for ${userId}`);
-            sendToUser(userId, 'notification', data);
-        } catch (error) {
-            console.error('❌ Error handling worker user notification:', error);
-        }
-    });
-    
-    // Handle send-brand-notification from worker
-    socket.on('send-brand-notification', ({ brandId, data }) => {
-        try {
-            console.log(`🔧 Worker ${socket.workerId} requesting brand notification for ${brandId}`);
-            sendToBrand(brandId, 'brand-notification', data);
-        } catch (error) {
-            console.error('❌ Error handling worker brand notification:', error);
-        }
-    });
-};
-
-/**
  * Setup event handlers for client connections
  * @param {Object} socket - Socket instance
  */
@@ -167,26 +123,6 @@ export const initializeSocket = (server) => {
     // Add middleware for authentication (if needed)
     io.use((socket, next) => {
         try {
-            console.log('🔐 Socket authentication attempt:', {
-                hasCookies: !!socket.handshake.headers.cookie,
-                cookieLength: socket.handshake.headers.cookie?.length || 0,
-                hasAuthToken: !!socket.handshake.auth?.token,
-                hasAuthHeader: !!socket.handshake.headers?.authorization,
-                origin: socket.handshake.headers.origin,
-                userAgent: socket.handshake.headers['user-agent'],
-                workerType: socket.handshake.headers['x-worker-type'],
-                workerId: socket.handshake.headers['x-worker-id']
-            });
-            
-            // Check if this is a worker connection
-            const isWorker = socket.handshake.headers['x-worker-type'] === 'metrics-worker';
-            
-            if (isWorker) {
-                console.log('🔧 Worker connection detected:', socket.handshake.headers['x-worker-id']);
-                socket.isWorker = true;
-                socket.workerId = socket.handshake.headers['x-worker-id'] || 'metrics-worker';
-                return next();
-            }
             
             // In development, allow connections without authentication for testing
             if (process.env.NODE_ENV !== 'production') {
@@ -229,25 +165,17 @@ export const initializeSocket = (server) => {
             id: socket.id,
             origin: socket.handshake.headers.origin,
             transport: socket.conn.transport.name,
-            userAgent: socket.handshake.headers['user-agent'],
-            isWorker: socket.isWorker,
-            workerId: socket.workerId
+            userAgent: socket.handshake.headers['user-agent']
         });
         
-        // Handle worker-specific events
-        if (socket.isWorker) {
-            setupWorkerEventHandlers(socket);
-        } else {
-            setupClientEventHandlers(socket);
-        }
+        // Setup client event handlers
+        setupClientEventHandlers(socket);
 
         // Handle disconnect
         socket.on('disconnect', (reason) => {
             console.log('🔌 Client disconnected:', {
                 id: socket.id,
                 reason: reason,
-                isWorker: socket.isWorker,
-                workerId: socket.workerId,
                 timestamp: new Date().toISOString()
             });
         });

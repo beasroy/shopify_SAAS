@@ -35,7 +35,34 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter", "brandForm"], // Don't persist notifications
+  whitelist: ["tokenError", "conversionFilters", "brand", "user", "date" , "campaignGroups", "campaignLabels", "tutorials","locale","interestFilter", "brandForm", "notifications"], // Added notifications to persist
+  transforms: [
+    // Custom transform for notifications to limit storage size
+    {
+      in: (state: any) => {
+        if (state.notifications && state.notifications.notifications) {
+          // Keep only last 50 notifications and filter out old ones (older than 7 days)
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          
+          const filteredNotifications = state.notifications.notifications
+            .filter((notification: any) => new Date(notification.timestamp) > oneWeekAgo)
+            .slice(0, 50);
+          
+          return {
+            ...state,
+            notifications: {
+              ...state.notifications,
+              notifications: filteredNotifications,
+              unreadCount: filteredNotifications.filter((n: any) => !n.isRead).length
+            }
+          };
+        }
+        return state;
+      },
+      out: (state: any) => state
+    }
+  ]
 };
 
 

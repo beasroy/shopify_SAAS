@@ -3,9 +3,11 @@ import { calculateMetricsForSingleBrand } from '../Report/MonthlyReport.js';
 import { createRedisConnection } from '../config/redis.js';
 import { connectDB, getConnectionStatus } from '../config/db.js';
 import mongoose from 'mongoose';
-import { sendToUser, sendToBrand } from '../config/socket.js';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Redis publisher for notifications
+const redisPublisher = createRedisConnection();
 
 // Ensure MongoDB connection before processing jobs
 const ensureMongoConnection = async () => {
@@ -16,6 +18,18 @@ const ensureMongoConnection = async () => {
         await connectDB();
     } else {
         console.log('Using cached MongoDB connection');
+    }
+};
+
+// Publish notification to Redis channel
+const publishNotification = (channel, data) => {
+    try {
+        redisPublisher.publish(channel, JSON.stringify(data));
+        console.log(`✅ Worker published notification to Redis channel '${channel}':`, data);
+        return true;
+    } catch (error) {
+        console.error('❌ Error publishing notification to Redis:', error);
+        return false;
     }
 };
 
@@ -30,7 +44,7 @@ const worker = new Worker('metrics-calculation', async (job) => {
         await calculateMetricsForSingleBrand(brandId, userId);
         console.log(`Successfully calculated metrics for brand ${brandId}`);
         
-        // Send success notification using existing socket functions
+        // Send success notification via Redis pub/sub
         const successNotification = {
             type: 'metrics-calculation-complete',
             data: {
@@ -43,14 +57,14 @@ const worker = new Worker('metrics-calculation', async (job) => {
             }
         };
         
-        // Send to both user and brand
-        sendToUser(userId, 'notification', successNotification);
-        sendToBrand(brandId, 'brand-notification', successNotification);
+        // Publish to Redis channels
+        publishNotification('user-notifications', { userId, data: successNotification });
+        publishNotification('brand-notifications', { brandId, data: successNotification });
         
     } catch (error) {
         console.error(`Error calculating metrics for brand ${brandId}:`, error);
         
-        // Send error notification using existing socket functions
+        // Send error notification via Redis pub/sub
         const errorNotification = {
             type: 'metrics-calculation-error',
             data: {
@@ -65,9 +79,9 @@ const worker = new Worker('metrics-calculation', async (job) => {
             }
         };
         
-        // Send to both user and brand
-        sendToUser(userId, 'notification', errorNotification);
-        sendToBrand(brandId, 'brand-notification', errorNotification);
+        // Publish to Redis channels
+        publishNotification('user-notifications', { userId, data: errorNotification });
+        publishNotification('brand-notifications', { brandId, data: errorNotification });
         
         throw error;
     }
@@ -135,6 +149,10 @@ const shutdown = async () => {
     console.log('Shutting down worker...');
     await worker.close();
     await mongoose.connection.close();
+    
+    // Close Redis publisher
+    await redisPublisher.quit();
+    
     process.exit(0);
 };
 

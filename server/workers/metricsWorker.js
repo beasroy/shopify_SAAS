@@ -60,6 +60,7 @@ const worker = new Worker('metrics-calculation', async (job) => {
         // Publish to Redis channels
         publishNotification('user-notifications', { userId, data: successNotification });
         publishNotification('brand-notifications', { brandId, data: successNotification });
+        publishNotification('metrics-completion', { success: true, message: 'Metrics calculation completed successfully!', brandId, userId });
         
     } catch (error) {
         console.error(`Error calculating metrics for brand ${brandId}:`, error);
@@ -82,6 +83,7 @@ const worker = new Worker('metrics-calculation', async (job) => {
         // Publish to Redis channels
         publishNotification('user-notifications', { userId, data: errorNotification });
         publishNotification('brand-notifications', { brandId, data: errorNotification });
+        publishNotification('metrics-error', { brandId, userId, message: `Metrics calculation failed: ${error.message}` });
         
         throw error;
     }

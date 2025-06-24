@@ -20,6 +20,126 @@ const parseCookies = (cookieString) => {
 };
 
 /**
+ * Setup event handlers for worker connections
+ * @param {Object} socket - Socket instance
+ */
+const setupWorkerEventHandlers = (socket) => {
+    console.log('🔧 Setting up worker event handlers for:', socket.workerId);
+    
+    // Handle worker room join
+    socket.on('join-worker-room', (workerType) => {
+        try {
+            socket.join(`worker-${workerType}`);
+            console.log(`✅ Worker ${socket.workerId} joined worker room: ${workerType}`);
+            
+            socket.emit('room-joined', { 
+                type: 'worker', 
+                roomId: `worker-${workerType}`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Error joining worker room:', error);
+        }
+    });
+    
+    // Handle send-user-notification from worker
+    socket.on('send-user-notification', ({ userId, data }) => {
+        try {
+            console.log(`🔧 Worker ${socket.workerId} requesting user notification for ${userId}`);
+            sendToUser(userId, 'notification', data);
+        } catch (error) {
+            console.error('❌ Error handling worker user notification:', error);
+        }
+    });
+    
+    // Handle send-brand-notification from worker
+    socket.on('send-brand-notification', ({ brandId, data }) => {
+        try {
+            console.log(`🔧 Worker ${socket.workerId} requesting brand notification for ${brandId}`);
+            sendToBrand(brandId, 'brand-notification', data);
+        } catch (error) {
+            console.error('❌ Error handling worker brand notification:', error);
+        }
+    });
+};
+
+/**
+ * Setup event handlers for client connections
+ * @param {Object} socket - Socket instance
+ */
+const setupClientEventHandlers = (socket) => {
+    console.log('👤 Setting up client event handlers for user:', socket.userId);
+    
+    // Join user to their personal room for notifications
+    socket.on('join-user-room', (userId) => {
+        try {
+            if (!userId) {
+                console.warn('⚠️ Invalid userId provided for room join');
+                return;
+            }
+            
+            socket.join(`user-${userId}`);
+            console.log(`✅ User ${userId} joined their notification room`);
+            
+            // Confirm room join
+            socket.emit('room-joined', { 
+                type: 'user', 
+                roomId: `user-${userId}`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Error joining user room:', error);
+            socket.emit('error', { message: 'Failed to join user room' });
+        }
+    });
+    
+    // Handle brand-specific notifications
+    socket.on('join-brand-room', (brandId) => {
+        try {
+            if (!brandId) {
+                console.warn('⚠️ Invalid brandId provided for room join');
+                return;
+            }
+            
+            socket.join(`brand-${brandId}`);
+            console.log(`✅ Client joined brand room: ${brandId}`);
+            
+            // Confirm room join
+            socket.emit('room-joined', { 
+                type: 'brand', 
+                roomId: `brand-${brandId}`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Error joining brand room:', error);
+            socket.emit('error', { message: 'Failed to join brand room' });
+        }
+    });
+
+    // Handle leaving brand room
+    socket.on('leave-brand-room', (brandId) => {
+        try {
+            if (!brandId) {
+                console.warn('⚠️ Invalid brandId provided for room leave');
+                return;
+            }
+            
+            socket.leave(`brand-${brandId}`);
+            console.log(`✅ Client left brand room: ${brandId}`);
+            
+            // Confirm room leave
+            socket.emit('room-left', { 
+                type: 'brand', 
+                roomId: `brand-${brandId}`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Error leaving brand room:', error);
+        }
+    });
+};
+
+/**
  * Initialize Socket.IO server
  * @param {Object} server - HTTP server instance
  * @returns {Object} Socket.IO server instance

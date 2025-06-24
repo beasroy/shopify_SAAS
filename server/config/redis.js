@@ -19,7 +19,7 @@ const redisConfig = {
     port,
     password,
     retryDelayOnFailover: 100,
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
     lazyConnect: true,
     keepAlive: 30000,
     family: 4,
@@ -81,6 +81,24 @@ export const initializeNotificationSubscriber = () => {
         }
     });
     
+    // Subscribe to metrics completion notifications
+    redisSubscriber.subscribe('metrics-completion', (err) => {
+        if (err) {
+            console.error('❌ Error subscribing to metrics-completion channel:', err);
+        } else {
+            console.log('✅ Subscribed to metrics-completion channel');
+        }
+    });
+    
+    // Subscribe to metrics error notifications
+    redisSubscriber.subscribe('metrics-error', (err) => {
+        if (err) {
+            console.error('❌ Error subscribing to metrics-error channel:', err);
+        } else {
+            console.log('✅ Subscribed to metrics-error channel');
+        }
+    });
+    
     // Handle incoming messages
     redisSubscriber.on('message', (channel, message) => {
         try {
@@ -93,6 +111,50 @@ export const initializeNotificationSubscriber = () => {
             } else if (channel === 'brand-notifications') {
                 const { brandId, data: notificationData } = data;
                 sendToBrand(brandId, 'brand-notification', notificationData);
+            } else if (channel === 'metrics-completion') {
+                // Handle metrics completion notification
+                const notificationData = {
+                    type: 'metrics-calculation-complete',
+                    data: {
+                        success: data.success,
+                        message: data.message,
+                        brandId: data.brandId,
+                        userId: data.userId,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+                
+                // Send to specific user if userId is provided
+                if (data.userId) {
+                    sendToUser(data.userId, 'notification', notificationData);
+                }
+                
+                // Send to brand room if brandId is provided
+                if (data.brandId) {
+                    sendToBrand(data.brandId, 'brand-notification', notificationData);
+                }
+            } else if (channel === 'metrics-error') {
+                // Handle metrics error notification
+                const notificationData = {
+                    type: 'metrics-calculation-error',
+                    data: {
+                        success: false,
+                        message: data.message || 'An error occurred during metrics calculation',
+                        brandId: data.brandId,
+                        userId: data.userId,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+                
+                // Send to specific user if userId is provided
+                if (data.userId) {
+                    sendToUser(data.userId, 'notification', notificationData);
+                }
+                
+                // Send to brand room if brandId is provided
+                if (data.brandId) {
+                    sendToBrand(data.brandId, 'brand-notification', notificationData);
+                }
             }
         } catch (error) {
             console.error('❌ Error processing Redis notification:', error);

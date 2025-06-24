@@ -7,11 +7,23 @@ import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
 import moment from 'moment-timezone';
 import RefundCache from '../models/RefundCache.js';
-import { 
-    sendMetricsCompletionNotification, 
-    sendMetricsErrorNotification 
-} from '../utils/notifications.js';
+import { createRedisConnection } from '../config/redis.js';
 config();
+
+// Redis publisher for notifications
+const redisPublisher = createRedisConnection();
+
+// Publish notification to Redis channel
+const publishNotification = (channel, data) => {
+    try {
+        redisPublisher.publish(channel, JSON.stringify(data));
+        console.log(`✅ Published notification to Redis channel '${channel}':`, data);
+        return true;
+    } catch (error) {
+        console.error('❌ Error publishing notification to Redis:', error);
+        return false;
+    }
+};
 
 function getRefundAmount(refund) {
     // Product-only refund (for net sales)
@@ -1008,7 +1020,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         if (!brand) {
             console.error(`Brand not found with ID: ${brandId}`);
             const errorResult = { success: false, message: 'Brand not found' };
-            sendMetricsErrorNotification(userId, brandId, 'Brand not found');
+            publishNotification('metrics-error', { brandId, userId, message: 'Brand not found' });
             return errorResult;
         }
         console.log('Brand found:', brand.name);
@@ -1018,7 +1030,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         if (!user) {
             console.error(`User not found with ID: ${userId}`);
             const errorResult = { success: false, message: 'User not found' };
-            sendMetricsErrorNotification(userId, brandId, 'User not found');
+            publishNotification('metrics-error', { brandId, userId, message: 'User not found' });
             return errorResult;
         }
         console.log('User found:', user.email);
@@ -1037,7 +1049,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         if (existingMetrics) {
             console.log(`Metrics already exist for brand ${brandId} within the date range, skipping calculation`);
             const result = { success: true, message: 'Metrics already exist for this brand within the date range' };
-            sendMetricsCompletionNotification(userId, brandId, result);
+            publishNotification('metrics-completion', { success: true, message: 'Metrics already exist for this brand within the date range', brandId, userId });
             return result;
         }
 
@@ -1052,7 +1064,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
             const successResult = { success: true, message: 'Historical metrics successfully calculated' };
             
             // Send completion notification
-            sendMetricsCompletionNotification(userId, brandId, successResult);
+            publishNotification('metrics-completion', { success: true, message: 'Historical metrics successfully calculated', brandId, userId });
             
             return successResult;
         } else {
@@ -1060,7 +1072,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
             const errorResult = { success: false, message: result.message };
             
             // Send error notification
-            sendMetricsErrorNotification(userId, brandId, result.message);
+            publishNotification('metrics-error', { brandId, userId, message: result.message });
             
             return errorResult;
         }
@@ -1069,7 +1081,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         const errorResult = { success: false, message: error.message };
         
         // Send error notification
-        sendMetricsErrorNotification(userId, brandId, error.message);
+        publishNotification('metrics-error', { brandId, userId, message: error.message });
         
         return errorResult;
     }

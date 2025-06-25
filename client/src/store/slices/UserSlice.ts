@@ -30,8 +30,20 @@ const userSlice = createSlice({
     clearUser: (state) => {
       state.user = null;
     },
+
+    removeBrandFromUser: (state, action: PayloadAction<string>) => {
+      if (state.user) {
+        state.user.brands = state.user.brands.filter(brandId => brandId !== action.payload);
+      }
+    },
+
+    addBrandToUser: (state, action: PayloadAction<string>) => {
+      if (state.user && !state.user.brands.includes(action.payload)) {
+        state.user.brands.push(action.payload);
+      }
+    },
   },
 });
 
-export const { setUser, clearUser } = userSlice.actions;
+export const { setUser, clearUser, removeBrandFromUser, addBrandToUser } = userSlice.actions;
 export default userSlice.reducer;

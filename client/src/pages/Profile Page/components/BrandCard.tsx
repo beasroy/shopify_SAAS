@@ -10,6 +10,7 @@ import axios from "axios"
 import { baseURL } from "@/data/constant"
 import { BrandDetail , FullBrandData } from "@/interfaces"
 import { deleteBrand } from "@/store/slices/BrandSlice"
+import { removeBrandFromUser } from "@/store/slices/UserSlice"
 
 const platformIcons = {
     shopify: { 
@@ -76,6 +77,7 @@ export function BrandCards({
     try {
       await axios.delete(`${baseURL}/api/brands/delete/${brandId}`, { withCredentials: true });
       dispatch(deleteBrand(brandId));
+      dispatch(removeBrandFromUser(brandId));
       window.location.reload();
     } catch (error) {
       console.error('Error deleting brand:', error);

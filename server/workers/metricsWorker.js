@@ -29,15 +29,8 @@ const worker = new Worker('metrics-calculation', async (job) => {
         await calculateMetricsForSingleBrand(brandId, userId);
         console.log(`Successfully calculated metrics for brand ${brandId}`);
         
-        // calculateMetricsForSingleBrand already handles all notifications
-        // No need to publish notifications here
-        
     } catch (error) {
         console.error(`Error calculating metrics for brand ${brandId}:`, error);
-        
-        // calculateMetricsForSingleBrand already handles error notifications
-        // No need to publish notifications here
-        
         throw error;
     }
 }, {

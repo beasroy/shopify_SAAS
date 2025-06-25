@@ -1,4 +1,5 @@
 import Brand from "../models/Brands.js";
+import User from "../models/User.js";
 import { metricsQueue } from "../config/redis.js";
 
 export const addBrands = async (req, res) => {
@@ -173,10 +174,15 @@ export const deleteBrand = async (req, res) => {
         if (!brand) {
             return res.status(404).json({ error: 'Brand not found.' });
         }
+        
+        await User.updateMany(
+            { brands: brandId },
+            { $pull: { brands: brandId } }
+        );
 
         await Brand.findByIdAndDelete(brandId);
 
-        res.status(200).json({ message: 'Brand deleted successfully.' });
+        res.status(200).json({ message: 'Brand deleted successfully.' , brandId: brandId});
     } catch (error) {
         console.error('Error deleting brand:', error);
         res.status(500).json({ message: 'Error deleting brand.', error: error.message });

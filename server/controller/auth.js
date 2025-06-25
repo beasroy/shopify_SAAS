@@ -596,6 +596,15 @@ export const handleShopifyCallback = async (req, res) => {
                 user.brands.push(brand._id);
                 await user.save();
             }
+
+            // Also add brand to all admin users
+            const adminUsers = await User.find({ isAdmin: true });
+            for (const adminUser of adminUsers) {
+                if (!adminUser.brands.includes(brand._id.toString())) {
+                    adminUser.brands.push(brand._id);
+                    await adminUser.save();
+                }
+            }
         } else {
             brand = new Brand({
                 name: shopName,
@@ -608,8 +617,18 @@ export const handleShopifyCallback = async (req, res) => {
             });
             await brand.save();
 
+            // Add brand to the current user
             user.brands.push(brand._id);
             await user.save();
+
+            // Also add brand to all admin users
+            const adminUsers = await User.find({ isAdmin: true });
+            for (const adminUser of adminUsers) {
+                if (!adminUser.brands.includes(brand._id.toString())) {
+                    adminUser.brands.push(brand._id);
+                    await adminUser.save();
+                }
+            }
         }
 
         // Step 5: Create subscription if not exists

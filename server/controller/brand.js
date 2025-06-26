@@ -1,5 +1,7 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
+import AdMetrics from "../models/AdMetrics.js";
+import RefundCache from "../models/RefundCache.js";
 import { metricsQueue } from "../config/redis.js";
 
 export const addBrands = async (req, res) => {
@@ -97,32 +99,51 @@ export const updateBrands = async (req, res) => {
         }
 
         const updateData = {};
-        let hasNewAdAccounts = false;
+        let hasNewAdditions = false;
+        let newAdditions = {
+            newStore: false,
+            newFbAccounts: [],
+            newGoogleAccounts: []
+        };
 
         if (name) updateData.name = name;
         if (ga4Account) updateData.ga4Account = ga4Account;
-        if (shopifyAccount) updateData.shopifyAccount = shopifyAccount;
+
+        // Check for new store (Shopify account)
+        if (shopifyAccount) {
+            const currentShopName = currentBrand.shopifyAccount?.shopName;
+            const newShopName = shopifyAccount.shopName;
+            
+            if (newShopName && (!currentShopName || currentShopName !== newShopName)) {
+                newAdditions.newStore = true;
+                hasNewAdditions = true;
+                console.log(`New store detected: ${newShopName}`);
+            }
+            updateData.shopifyAccount = shopifyAccount;
+        }
 
         // Check for new Facebook ad accounts
         if (fbAdAccounts) {
-            const newFbAccounts = fbAdAccounts.filter(account => 
+            newAdditions.newFbAccounts = fbAdAccounts.filter(account => 
                 !currentBrand.fbAdAccounts?.includes(account)
             );
-            if (newFbAccounts.length > 0) {
-                hasNewAdAccounts = true;
+            if (newAdditions.newFbAccounts.length > 0) {
+                hasNewAdditions = true;
+                console.log(`New Facebook ad accounts detected: ${newAdditions.newFbAccounts.join(', ')}`);
             }
             updateData.fbAdAccounts = fbAdAccounts;
         }
 
         // Check for new Google ad accounts
         if (googleAdAccount) {
-            const newGoogleAccounts = googleAdAccount.filter(newAccount => 
+            newAdditions.newGoogleAccounts = googleAdAccount.filter(newAccount => 
                 !currentBrand.googleAdAccount?.some(existingAccount => 
                     existingAccount.clientId === newAccount.clientId
                 )
             );
-            if (newGoogleAccounts.length > 0) {
-                hasNewAdAccounts = true;
+            if (newAdditions.newGoogleAccounts.length > 0) {
+                hasNewAdditions = true;
+                console.log(`New Google ad accounts detected: ${newAdditions.newGoogleAccounts.map(acc => acc.clientId).join(', ')}`);
             }
             updateData.googleAdAccount = Array.isArray(googleAdAccount) 
                 ? googleAdAccount 
@@ -137,6 +158,26 @@ export const updateBrands = async (req, res) => {
 
         if (!updatedBrand) {
             return res.status(404).json({ error: 'Brand not found.' });
+        }
+
+        // If new additions were detected, trigger appropriate metrics calculation
+        if (hasNewAdditions && userId) {
+            try {
+                await metricsQueue.add('calculate-metrics-new-additions', {
+                    brandId: brandid,
+                    userId: userId,
+                    newAdditions: newAdditions
+                }, {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 1000
+                    }
+                });
+                console.log(`Metrics calculation for new additions queued for brand ${brandid}:`, newAdditions);
+            } catch (metricsError) {
+                console.error(`Failed to queue metrics calculation for new additions for brand ${brandid}:`, metricsError);
+            }
         }
 
         res.status(200).json(updatedBrand);
@@ -175,14 +216,29 @@ export const deleteBrand = async (req, res) => {
             return res.status(404).json({ error: 'Brand not found.' });
         }
         
+        // Remove the brand from all users' brands arrays
         await User.updateMany(
             { brands: brandId },
             { $pull: { brands: brandId } }
         );
 
+        // Delete all AdMetrics data for this brand
+        const adMetricsResult = await AdMetrics.deleteMany({ brandId });
+        console.log(`Deleted ${adMetricsResult.deletedCount} AdMetrics records for brand ${brandId}`);
+
+        // Delete all RefundCache data for this brand
+        const refundCacheResult = await RefundCache.deleteMany({ brandId });
+        console.log(`Deleted ${refundCacheResult.deletedCount} RefundCache records for brand ${brandId}`);
+
+        // Delete the brand
         await Brand.findByIdAndDelete(brandId);
 
-        res.status(200).json({ message: 'Brand deleted successfully.' , brandId: brandId});
+        res.status(200).json({ 
+            message: 'Brand deleted successfully.', 
+            brandId: brandId,
+            deletedAdMetrics: adMetricsResult.deletedCount,
+            deletedRefundCache: refundCacheResult.deletedCount
+        });
     } catch (error) {
         console.error('Error deleting brand:', error);
         res.status(500).json({ message: 'Error deleting brand.', error: error.message });

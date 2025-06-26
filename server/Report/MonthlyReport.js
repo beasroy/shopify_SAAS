@@ -996,6 +996,25 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         console.log(`Starting historical metrics calculation for brand: ${brandId}`);
         console.log(`Using user ID: ${userId}`);
 
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            console.error(`Brand not found with ID: ${brandId}`);
+            const errorResult = { success: false, message: 'Brand not found' };
+            publishNotification('metrics-error', { brandId, userId, message: 'Brand not found' });
+            return errorResult;
+        }
+        console.log('Brand found:', brand.name);
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            console.error(`User not found with ID: ${userId}`);
+            const errorResult = { success: false, message: 'User not found' };
+            publishNotification('metrics-error', { brandId, userId, message: 'User not found' });
+            return errorResult;
+        }
+        console.log('User found:', user.email);
+
         // Calculate dates for the last two years
         const endDate = new Date();
         endDate.setDate(endDate.getDate() - 1); // Set to yesterday
@@ -1016,24 +1035,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         console.log(`Calculating metrics from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
 
         // Check if brand exists
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            console.error(`Brand not found with ID: ${brandId}`);
-            const errorResult = { success: false, message: 'Brand not found' };
-            publishNotification('metrics-error', { brandId, userId, message: 'Brand not found' });
-            return errorResult;
-        }
-        console.log('Brand found:', brand.name);
 
-        // Check if user exists
-        const user = await User.findById(userId);
-        if (!user) {
-            console.error(`User not found with ID: ${userId}`);
-            const errorResult = { success: false, message: 'User not found' };
-            publishNotification('metrics-error', { brandId, userId, message: 'User not found' });
-            return errorResult;
-        }
-        console.log('User found:', user.email);
 
         // Check for existing metrics within the date range
         const existingMetrics = await AdMetrics.findOne({
@@ -1081,6 +1083,377 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         const errorResult = { success: false, message: error.message };
         
         // Send error notification
+        publishNotification('metrics-error', { brandId, userId, message: error.message });
+        
+        return errorResult;
+    }
+};
+
+// Function to handle all types of new additions (stores, Meta accounts, Google accounts)
+export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditions = {}) => {
+    try {
+        console.log(`Starting metrics calculation for new additions for brand: ${brandId}`);
+        console.log('New additions:', newAdditions);
+        console.log(`Using user ID: ${userId}`);
+
+        // Get brand details including creation date
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            console.error(`Brand not found with ID: ${brandId}`);
+            const errorResult = { success: false, message: 'Brand not found' };
+            publishNotification('metrics-error', { brandId, userId, message: 'Brand not found' });
+            return errorResult;
+        }
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            console.error(`User not found with ID: ${userId}`);
+            const errorResult = { success: false, message: 'User not found' };
+            publishNotification('metrics-error', { brandId, userId, message: 'User not found' });
+            return errorResult;
+        }
+
+        const { newStore = false, newFbAccounts = [], newGoogleAccounts = [] } = newAdditions;
+
+        // If no new additions, return early
+        if (!newStore && newFbAccounts.length === 0 && newGoogleAccounts.length === 0) {
+            console.log('No new additions detected, skipping calculation');
+            return { success: true, message: 'No new additions to process' };
+        }
+
+        // Calculate date range based on brand creation date
+        const brandCreatedAt = new Date(brand.createdAt);
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() - 1); // Set to yesterday
+        endDate.setHours(23, 59, 59, 999);
+
+        // Start date is 2 years before brand creation date
+        const startDate = new Date(brandCreatedAt);
+        startDate.setFullYear(startDate.getFullYear() - 2);
+        startDate.setHours(0, 0, 0, 0);
+
+        // Calculate 6 months prior to start date for refund caching (only if new store)
+        const refundOnlyStartDate = newStore ? new Date(startDate) : null;
+        if (refundOnlyStartDate) {
+            refundOnlyStartDate.setMonth(refundOnlyStartDate.getMonth() - 6);
+            refundOnlyStartDate.setHours(0, 0, 0, 0);
+        }
+
+        console.log(`Brand creation date: ${brandCreatedAt.toISOString()}`);
+        console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+        if (newStore) {
+            console.log(`Extended refund caching from: ${refundOnlyStartDate.toISOString()}`);
+        }
+
+        // CASE 1: New Store - Only update Shopify data
+        if (newStore) {
+            console.log('New store detected - updating Shopify data only...');
+            
+            // Check for existing metrics within the date range
+            const existingMetrics = await AdMetrics.find({
+                brandId,
+                date: {
+                    $gte: startDate,
+                    $lte: endDate
+                }
+            }).sort({ date: 1 });
+
+            if (existingMetrics.length === 0) {
+                console.log('No existing metrics found for new store. Triggering full calculation...');
+                // If no existing metrics, trigger full calculation
+                const result = await monthlyAddReportData(brandId, startDate, endDate, userId, refundOnlyStartDate);
+                
+                if (result.success) {
+                    console.log(`Full metrics calculation completed for brand ${brandId} with new store`);
+                    const successResult = { 
+                        success: true, 
+                        message: 'Full metrics calculation completed for new store',
+                        type: 'new-store-full'
+                    };
+                    
+                    publishNotification('metrics-completion', { 
+                        success: true, 
+                        message: 'Full metrics calculation completed for new store', 
+                        brandId, 
+                        userId 
+                    });
+                    
+                    return successResult;
+                } else {
+                    throw new Error(result.message);
+                }
+            }
+
+            console.log(`Found ${existingMetrics.length} existing metrics entries to update with Shopify data`);
+
+            // Fetch new Shopify sales data
+            console.log('Fetching Shopify sales data for new store...');
+            const shopifySalesData = await monthlyFetchTotalSales(brandId, startDate, endDate, refundOnlyStartDate);
+            
+            if (!shopifySalesData || shopifySalesData.length === 0) {
+                console.log('No Shopify sales data returned, skipping update');
+                return { success: true, message: 'No Shopify sales data to update' };
+            }
+
+            // Create a map of Shopify data by date for easy lookup
+            const shopifyDataMap = new Map();
+            shopifySalesData.forEach(sale => {
+                shopifyDataMap.set(sale.date, {
+                    totalSales: parseFloat(sale.totalSales) || 0,
+                    refundAmount: parseFloat(sale.refundAmount) || 0,
+                    shopifySales: parseFloat(sale.shopifySales) || 0
+                });
+            });
+
+            // Update existing metrics with new Shopify data
+            const updatedMetrics = [];
+
+            existingMetrics.forEach(existingMetric => {
+                const dateStr = moment(existingMetric.date).format('YYYY-MM-DD');
+                const shopifyData = shopifyDataMap.get(dateStr);
+
+                if (shopifyData) {
+                    // Update existing metric with new Shopify data
+                    const updatedMetric = {
+                        ...existingMetric.toObject(),
+                        totalSales: shopifyData.totalSales,
+                        refundAmount: shopifyData.refundAmount,
+                        shopifySales: shopifyData.shopifySales
+                    };
+
+                    // Recalculate ROI metrics based on existing ad spend data
+                    const totalSpend = (existingMetric.metaSpend || 0) + (existingMetric.googleSpend || 0);
+                    const metaSales = (existingMetric.metaSpend || 0) * (existingMetric.metaROAS || 0);
+                    const adTotalSales = metaSales + (existingMetric.googleSales || 0);
+                    const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
+                    const netROI = totalSpend > 0 ? shopifyData.shopifySales / totalSpend : 0;
+
+                    updatedMetric.grossROI = grossROI.toFixed(2);
+                    updatedMetric.netROI = netROI.toFixed(2);
+
+                    updatedMetrics.push(updatedMetric);
+                }
+            });
+
+            // Update the database with new Shopify data
+            if (updatedMetrics.length > 0) {
+                const bulkOps = updatedMetrics.map(metric => ({
+                    updateOne: {
+                        filter: { _id: metric._id },
+                        update: { 
+                            $set: {
+                                totalSales: metric.totalSales,
+                                refundAmount: metric.refundAmount,
+                                shopifySales: metric.shopifySales,
+                                grossROI: metric.grossROI,
+                                netROI: metric.netROI
+                            }
+                        }
+                    }
+                }));
+
+                await AdMetrics.bulkWrite(bulkOps, { ordered: false });
+                console.log(`Updated ${bulkOps.length} metrics entries with new Shopify data`);
+            }
+
+            console.log(`Successfully updated Shopify data for new store in brand ${brandId}`);
+            const successResult = { 
+                success: true, 
+                message: 'Shopify data successfully updated for new store',
+                type: 'new-store-update',
+                updatedCount: updatedMetrics.length
+            };
+            
+            publishNotification('metrics-completion', { 
+                success: true, 
+                message: 'Shopify data successfully updated for new store', 
+                brandId, 
+                userId 
+            });
+            
+            return successResult;
+        }
+
+        // CASE 2 & 3: New Ad Accounts Only - Update existing metrics
+        if (newFbAccounts.length > 0 || newGoogleAccounts.length > 0) {
+            console.log('New ad accounts detected - updating existing metrics...');
+            
+            // Get existing metrics for the date range
+            const existingMetrics = await AdMetrics.find({
+                brandId,
+                date: {
+                    $gte: startDate,
+                    $lte: endDate
+                }
+            }).sort({ date: 1 });
+
+            if (existingMetrics.length === 0) {
+                console.log('No existing metrics found for new ad accounts. Triggering full calculation...');
+                // If no existing metrics, trigger full calculation
+                const result = await monthlyAddReportData(brandId, startDate, endDate, userId, refundOnlyStartDate);
+                
+                if (result.success) {
+                    console.log(`Full metrics calculation completed for brand ${brandId} with new ad accounts`);
+                    const successResult = { 
+                        success: true, 
+                        message: 'Full metrics calculation completed for new ad accounts',
+                        type: 'new-ad-accounts-full'
+                    };
+                    
+                    publishNotification('metrics-completion', { 
+                        success: true, 
+                        message: 'Full metrics calculation completed for new ad accounts', 
+                        brandId, 
+                        userId 
+                    });
+                    
+                    return successResult;
+                } else {
+                    throw new Error(result.message);
+                }
+            }
+
+            console.log(`Found ${existingMetrics.length} existing metrics entries to update`);
+
+            // Create a map of existing metrics by date for easy lookup
+            const existingMetricsMap = new Map();
+            existingMetrics.forEach(metric => {
+                const dateStr = moment(metric.date).format('YYYY-MM-DD');
+                existingMetricsMap.set(dateStr, metric);
+            });
+
+            // Process new Facebook ad accounts
+            let fbData = [];
+            if (newFbAccounts.length > 0) {
+                console.log('Fetching data for new Facebook ad accounts...');
+                const fbResult = await monthlyFetchFBAdReport(brandId, userId, startDate, endDate);
+                if (fbResult.success && fbResult.data.length > 0) {
+                    // Filter to only include new accounts
+                    fbData = fbResult.data.filter(entry => 
+                        newFbAccounts.includes(entry.adAccountId)
+                    );
+                    console.log(`Filtered ${fbData.length} Facebook entries for new accounts`);
+                }
+            }
+
+            // Process new Google ad accounts
+            let googleData = [];
+            if (newGoogleAccounts.length > 0) {
+                console.log('Fetching data for new Google ad accounts...');
+                const googleResult = await monthlyGoogleAdData(brandId, userId, startDate, endDate);
+                if (googleResult.success && googleResult.data.length > 0) {
+                    googleData = googleResult.data;
+                    console.log(`Got ${googleData.length} Google entries`);
+                }
+            }
+
+            // Update existing metrics with new ad account data
+            const updatedMetrics = [];
+
+            // Process each date in the range
+            let currentDate = moment(startDate);
+            const endMoment = moment(endDate);
+
+            while (currentDate.isSameOrBefore(endMoment)) {
+                const dateStr = currentDate.format('YYYY-MM-DD');
+                const existingMetric = existingMetricsMap.get(dateStr);
+
+                if (existingMetric) {
+                    // Get Facebook data for this date
+                    const dateFbData = fbData.filter(entry => entry.date === dateStr);
+                    let newMetaSpend = 0;
+                    let newMetaROAS = 0;
+
+                    dateFbData.forEach(entry => {
+                        newMetaSpend += parseFloat(entry.spend) || 0;
+                        newMetaROAS += entry.purchase_roas.reduce(
+                            (acc, roas) => acc + (parseFloat(roas?.value) || 0),
+                            0
+                        );
+                    });
+
+                    // Get Google data for this date
+                    const dateGoogleData = googleData.find(entry => entry.date === dateStr);
+                    const newGoogleSpend = dateGoogleData ? parseFloat(dateGoogleData.googleSpend) || 0 : 0;
+                    const newGoogleROAS = dateGoogleData ? parseFloat(dateGoogleData.googleRoas) || 0 : 0;
+                    const newGoogleSales = dateGoogleData ? parseFloat(dateGoogleData.googleSales) || 0 : 0;
+
+                    // Update existing metric with new ad account data
+                    const updatedMetric = {
+                        ...existingMetric.toObject(),
+                        metaSpend: (existingMetric.metaSpend || 0) + newMetaSpend,
+                        metaROAS: (existingMetric.metaROAS || 0) + newMetaROAS,
+                        googleSpend: (existingMetric.googleSpend || 0) + newGoogleSpend,
+                        googleROAS: (existingMetric.googleROAS || 0) + newGoogleROAS,
+                        googleSales: (existingMetric.googleSales || 0) + newGoogleSales
+                    };
+
+                    // Recalculate totals
+                    const totalSpend = updatedMetric.metaSpend + updatedMetric.googleSpend;
+                    const metaSales = updatedMetric.metaSpend * updatedMetric.metaROAS;
+                    const adTotalSales = metaSales + updatedMetric.googleSales;
+                    const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
+                    const netROI = totalSpend > 0 ? updatedMetric.shopifySales / totalSpend : 0;
+
+                    updatedMetric.totalSpend = totalSpend.toFixed(2);
+                    updatedMetric.grossROI = grossROI.toFixed(2);
+                    updatedMetric.netROI = netROI.toFixed(2);
+
+                    updatedMetrics.push(updatedMetric);
+                }
+
+                currentDate.add(1, 'day');
+            }
+
+            // Update the database with new ad account data
+            if (updatedMetrics.length > 0) {
+                const bulkOps = updatedMetrics.map(metric => ({
+                    updateOne: {
+                        filter: { _id: metric._id },
+                        update: { 
+                            $set: {
+                                metaSpend: metric.metaSpend,
+                                metaROAS: metric.metaROAS,
+                                googleSpend: metric.googleSpend,
+                                googleROAS: metric.googleROAS,
+                                googleSales: metric.googleSales,
+                                totalSpend: metric.totalSpend,
+                                grossROI: metric.grossROI,
+                                netROI: metric.netROI
+                            }
+                        }
+                    }
+                }));
+
+                await AdMetrics.bulkWrite(bulkOps, { ordered: false });
+                console.log(`Updated ${bulkOps.length} metrics entries with new ad account data`);
+            }
+
+            console.log(`Successfully updated metrics for new ad accounts for brand ${brandId}`);
+            const successResult = { 
+                success: true, 
+                message: 'Metrics successfully updated for new ad accounts',
+                type: 'new-ad-accounts-update',
+                updatedCount: updatedMetrics.length
+            };
+            
+            publishNotification('metrics-completion', { 
+                success: true, 
+                message: 'Metrics successfully updated for new ad accounts', 
+                brandId, 
+                userId 
+            });
+            
+            return successResult;
+        }
+
+        return { success: true, message: 'No processing needed' };
+
+    } catch (error) {
+        console.error(`Error processing new additions for brand ${brandId}:`, error);
+        const errorResult = { success: false, message: error.message };
+        
         publishNotification('metrics-error', { brandId, userId, message: error.message });
         
         return errorResult;

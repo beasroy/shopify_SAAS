@@ -601,12 +601,51 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
+        // Debug: Check environment variables
+        console.log('Google Ads API Configuration:');
+        console.log('- Client ID exists:', !!process.env.GOOGLE_CLIENT_ID);
+        console.log('- Client Secret exists:', !!process.env.GOOGLE_CLIENT_SECRET);
+        console.log('- Developer Token exists:', !!process.env.GOOGLE_AD_DEVELOPER_TOKEN);
+        console.log('- Refresh Token exists:', !!refreshToken);
+        console.log('- Google Ad Accounts:', brand.googleAdAccount.length);
+
         const client = new GoogleAdsApi({
             client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
             developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
             refresh_token: refreshToken,
         });
+
+        // Test connection with first account
+        const firstAccount = brand.googleAdAccount[0];
+        if (firstAccount && firstAccount.clientId) {
+            try {
+                console.log('Testing Google Ads API connection...');
+                const testCustomer = client.Customer({
+                    customer_id: firstAccount.clientId,
+                    refresh_token: refreshToken,
+                    login_customer_id: firstAccount.managerId,
+                });
+                
+                // Try a simple query to test connection
+                const testReport = await testCustomer.report({
+                    entity: "customer",
+                    attributes: ["customer.descriptive_name"],
+                    metrics: ["metrics.cost_micros"],
+                    from_date: moment().subtract(1, 'day').format('YYYY-MM-DD'),
+                    to_date: moment().subtract(1, 'day').format('YYYY-MM-DD'),
+                });
+                console.log('✅ Google Ads API connection test successful');
+            } catch (testError) {
+                console.error('❌ Google Ads API connection test failed:', testError);
+                console.error('This indicates an authentication or configuration issue');
+                return {
+                    success: false,
+                    message: 'Google Ads API authentication failed. Please check credentials.',
+                    error: testError.message
+                };
+            }
+        }
 
         // Initialize a map to store metrics by date
         const metricsMap = new Map();
@@ -616,7 +655,12 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             const adAccountId = adAccount.clientId;
             const managerId = adAccount.managerId;
 
-            if (!adAccountId) continue;
+            if (!adAccountId) {
+                console.log('Skipping account with no clientId');
+                continue;
+            }
+
+            console.log(`Processing Google Ad Account: ${adAccountId}, Manager ID: ${managerId}`);
 
             const customer = client.Customer({
                 customer_id: adAccountId,
@@ -631,6 +675,8 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
                 const formattedDate = currentDate.format('YYYY-MM-DD');
 
                 try {
+                    console.log(`Fetching data for account ${adAccountId} on date ${formattedDate}`);
+                    
                     const adsReport = await customer.report({
                         entity: "customer",
                         attributes: ["customer.descriptive_name"],
@@ -668,6 +714,18 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
 
                 } catch (error) {
                     console.error(`Error fetching data for account ${adAccountId} on date ${formattedDate}:`, error);
+                    console.error('Error details:', {
+                        code: error.code,
+                        message: error.message,
+                        details: error.details,
+                        metadata: error.metadata
+                    });
+                    
+                    // If it's an authentication error, break out of the loop for this account
+                    if (error.code === 2 || error.message.includes('invalid_request')) {
+                        console.error(`Authentication error for account ${adAccountId}, skipping remaining dates`);
+                        break;
+                    }
                     // Continue with other dates and accounts if one fails
                 }
 
@@ -692,7 +750,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
         // Sort by date
         metricsByDate.sort((a, b) => moment(a.date).diff(moment(b.date)));
 
-        console.log(metricsByDate);
+        console.log(`Google Ads data processed: ${metricsByDate.length} dates`);
         return {
             success: true,
             data: metricsByDate,
@@ -700,6 +758,12 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
 
     } catch (e) {
         console.error('Error getting Google Ad data:', e);
+        console.error('Full error details:', {
+            message: e.message,
+            code: e.code,
+            details: e.details,
+            stack: e.stack
+        });
         return {
             success: false,
             message: 'An error occurred while fetching Google Ad data.',

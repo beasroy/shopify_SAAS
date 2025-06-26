@@ -26,7 +26,7 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
-
+import { monthlyGoogleAdData } from "./Report/MonthlyReport.js";
 const app = express();
 const server = createServer(app);
 
@@ -87,6 +87,7 @@ if (isDevelopment) {
 }
 
 const PORT = process.env.PORT || 5000;
+monthlyGoogleAdData("685bfedd95ecacbd6b4fab95","685304dd2051ac48a3ddcba8","2025-01-01","2025-01-31")
 
 //calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
 

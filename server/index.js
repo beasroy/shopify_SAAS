@@ -87,7 +87,7 @@ if (isDevelopment) {
 }
 
 const PORT = process.env.PORT || 5000;
-monthlyGoogleAdData("685bfedd95ecacbd6b4fab95","685304dd2051ac48a3ddcba8","2025-01-01","2025-01-31")
+//monthlyGoogleAdData("685bfedd95ecacbd6b4fab95","685304dd2051ac48a3ddcba8","2025-01-01","2025-01-31")
 
 //calculateMetricsForSingleBrand("685304dd2051ac48a3ddcbab","685304dd2051ac48a3ddcba8")
 

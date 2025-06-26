@@ -163,7 +163,7 @@ export const updateBrands = async (req, res) => {
         // If new additions were detected, trigger appropriate metrics calculation
         if (hasNewAdditions && userId) {
             try {
-                await metricsQueue.add('calculate-metrics-new-additions', {
+                await metricsQueue.add('calculate-metrics', {
                     brandId: brandid,
                     userId: userId,
                     newAdditions: newAdditions

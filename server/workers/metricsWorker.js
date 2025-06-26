@@ -18,20 +18,28 @@ const ensureMongoConnection = async () => {
     }
 };
 
-// Create workers for different job types
-const regularMetricsWorker = new Worker('metrics-calculation', async (job) => {
-    const { brandId, userId } = job.data;
+// Create worker for metrics calculation (handles both regular and new additions)
+const metricsWorker = new Worker('metrics-calculation', async (job) => {
+    const { brandId, userId, newAdditions } = job.data;
     
     try {
         // Ensure MongoDB connection before processing
         await ensureMongoConnection();
         
-        console.log(`Processing regular metrics calculation for brand ${brandId}`);
-        await calculateMetricsForSingleBrand(brandId, userId);
-        console.log(`Successfully calculated regular metrics for brand ${brandId}`);
+        if (newAdditions) {
+            // Handle new additions processing
+            console.log(`Processing metrics calculation for new additions for brand ${brandId}`);
+            await calculateMetricsForNewAdditions(brandId, userId, newAdditions);
+            console.log(`Successfully calculated metrics for new additions for brand ${brandId}`);
+        } else {
+            // Handle regular metrics calculation
+            console.log(`Processing regular metrics calculation for brand ${brandId}`);
+            await calculateMetricsForSingleBrand(brandId, userId);
+            console.log(`Successfully calculated regular metrics for brand ${brandId}`);
+        }
         
     } catch (error) {
-        console.error(`Error calculating regular metrics for brand ${brandId}:`, error);
+        console.error(`Error calculating metrics for brand ${brandId}:`, error);
         throw error;
     }
 }, {
@@ -50,107 +58,50 @@ const regularMetricsWorker = new Worker('metrics-calculation', async (job) => {
     }
 });
 
-const newAdditionsWorker = new Worker('calculate-metrics-new-additions', async (job) => {
-    const { brandId, userId, newAdditions = {} } = job.data;
-    
-    try {
-        // Ensure MongoDB connection before processing
-        await ensureMongoConnection();
-        
-        console.log(`Processing metrics calculation for new additions for brand ${brandId}`);
-        await calculateMetricsForNewAdditions(brandId, userId, newAdditions);
-        console.log(`Successfully calculated metrics for new additions for brand ${brandId}`);
-        
-    } catch (error) {
-        console.error(`Error calculating metrics for new additions for brand ${brandId}:`, error);
-        throw error;
-    }
-}, {
-    connection: createRedisConnection(),
-    concurrency: isDevelopment ? 1 : 3, // Lower concurrency for new additions processing
-    limiter: isDevelopment ? {
-        max: 3, 
-        duration: 1000
-    } : {
-        max: 5,
-        duration: 1000
-    },
-    settings: {
-        lockDuration: isDevelopment ? 30000 : 300000, 
-        stalledInterval: isDevelopment ? 5000 : 30000, 
-    }
-});
-
-// Event handlers for regular metrics worker
-regularMetricsWorker.on('active', (job) => {
+// Event handlers for metrics worker
+metricsWorker.on('active', (job) => {
     if (isDevelopment) {
-        console.log(`[DEV] Regular metrics job ${job.id} started processing for brand ${job.data.brandId}`);
+        const jobType = job.data.newAdditions ? 'new additions' : 'regular';
+        console.log(`[DEV] Metrics job ${job.id} started processing for brand ${job.data.brandId} (${jobType})`);
     } else {
-        console.log(`[PROD] Processing regular metrics for brand ${job.data.brandId}`);
+        const jobType = job.data.newAdditions ? 'new additions' : 'regular';
+        console.log(`[PROD] Processing ${jobType} metrics for brand ${job.data.brandId}`);
     }
 });
 
-regularMetricsWorker.on('progress', (job, progress) => {
+metricsWorker.on('progress', (job, progress) => {
     if (isDevelopment) {
-        console.log(`[DEV] Regular metrics job ${job.id} progress: ${progress}%`);
+        console.log(`[DEV] Metrics job ${job.id} progress: ${progress}%`);
     } else {
         // In production, only log significant progress milestones
         if (progress % 25 === 0) {
-            console.log(`[PROD] Regular metrics calculation ${progress}% complete for brand ${job.data.brandId}`);
+            const jobType = job.data.newAdditions ? 'new additions' : 'regular';
+            console.log(`[PROD] ${jobType} metrics calculation ${progress}% complete for brand ${job.data.brandId}`);
         }
     }
 });
 
-regularMetricsWorker.on('completed', (job) => {
+metricsWorker.on('completed', (job) => {
     if (isDevelopment) {
-        console.log(`[DEV] Regular metrics job ${job.id} completed for brand ${job.data.brandId}`);
+        const jobType = job.data.newAdditions ? 'new additions' : 'regular';
+        console.log(`[DEV] Metrics job ${job.id} completed for brand ${job.data.brandId} (${jobType})`);
     } else {
-        console.log(`[PROD] Successfully completed regular metrics calculation for brand ${job.data.brandId}`);
+        const jobType = job.data.newAdditions ? 'new additions' : 'regular';
+        console.log(`[PROD] Successfully completed ${jobType} metrics calculation for brand ${job.data.brandId}`);
     }
 });
 
-regularMetricsWorker.on('failed', (job, error) => {
-    console.error(`Regular metrics job ${job?.id} failed for brand ${job?.data?.brandId}:`, error);
+metricsWorker.on('failed', (job, error) => {
+    const jobType = job?.data?.newAdditions ? 'new additions' : 'regular';
+    console.error(`${jobType} metrics job ${job?.id} failed for brand ${job?.data?.brandId}:`, error);
 });
 
-// Event handlers for new additions worker
-newAdditionsWorker.on('active', (job) => {
+// Error handler
+const handleWorkerError = (error) => {
     if (isDevelopment) {
-        console.log(`[DEV] New additions job ${job.id} started processing for brand ${job.data.brandId}`);
+        console.error(`[DEV] Metrics worker error:`, error);
     } else {
-        console.log(`[PROD] Processing new additions metrics for brand ${job.data.brandId}`);
-    }
-});
-
-newAdditionsWorker.on('progress', (job, progress) => {
-    if (isDevelopment) {
-        console.log(`[DEV] New additions job ${job.id} progress: ${progress}%`);
-    } else {
-        // In production, only log significant progress milestones
-        if (progress % 25 === 0) {
-            console.log(`[PROD] New additions metrics calculation ${progress}% complete for brand ${job.data.brandId}`);
-        }
-    }
-});
-
-newAdditionsWorker.on('completed', (job) => {
-    if (isDevelopment) {
-        console.log(`[DEV] New additions job ${job.id} completed for brand ${job.data.brandId}`);
-    } else {
-        console.log(`[PROD] Successfully completed new additions metrics calculation for brand ${job.data.brandId}`);
-    }
-});
-
-newAdditionsWorker.on('failed', (job, error) => {
-    console.error(`New additions job ${job?.id} failed for brand ${job?.data?.brandId}:`, error);
-});
-
-// Combined error handler
-const handleWorkerError = (workerType, error) => {
-    if (isDevelopment) {
-        console.error(`[DEV] ${workerType} worker error:`, error);
-    } else {
-        console.error(`[PROD] ${workerType} worker error:`, {
+        console.error(`[PROD] Metrics worker error:`, {
             message: error.message,
             stack: error.stack,
             timestamp: new Date().toISOString()
@@ -158,14 +109,12 @@ const handleWorkerError = (workerType, error) => {
     }
 };
 
-regularMetricsWorker.on('error', (error) => handleWorkerError('Regular metrics', error));
-newAdditionsWorker.on('error', (error) => handleWorkerError('New additions', error));
+metricsWorker.on('error', handleWorkerError);
 
 // Graceful shutdown handling
 const shutdown = async () => {
-    console.log('Shutting down workers...');
-    await regularMetricsWorker.close();
-    await newAdditionsWorker.close();
+    console.log('Shutting down metrics worker...');
+    await metricsWorker.close();
     await mongoose.connection.close();
     
     process.exit(0);
@@ -177,15 +126,12 @@ process.on('SIGINT', shutdown);
 
 // Check if this file is being run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-    console.log('Starting metrics workers...');
+    console.log('Starting metrics worker...');
     
-    // Ensure MongoDB connection before starting workers
+    // Ensure MongoDB connection before starting worker
     connectDB().then(() => {
-        regularMetricsWorker.on('ready', () => {
-            console.log('Regular metrics worker is ready to process jobs');
-        });
-        newAdditionsWorker.on('ready', () => {
-            console.log('New additions metrics worker is ready to process jobs');
+        metricsWorker.on('ready', () => {
+            console.log('Metrics worker is ready to process jobs (both regular and new additions)');
         });
     }).catch(error => {
         console.error('Failed to connect to MongoDB:', error);
@@ -193,4 +139,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     });
 }
 
-export { regularMetricsWorker, newAdditionsWorker }; 
+export { metricsWorker }; 

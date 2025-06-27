@@ -601,13 +601,7 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             };
         }
 
-        // Debug: Check environment variables
-        console.log('Google Ads API Configuration:');
-        console.log('- Client ID exists:', !!process.env.GOOGLE_CLIENT_ID);
-        console.log('- Client Secret exists:', !!process.env.GOOGLE_CLIENT_SECRET);
-        console.log('- Developer Token exists:', !!process.env.GOOGLE_AD_DEVELOPER_TOKEN);
-        console.log('- Refresh Token exists:', !!refreshToken);
-        console.log('- Google Ad Accounts:', brand.googleAdAccount.length);
+        // 
 
         const client = new GoogleAdsApi({
             client_id: process.env.GOOGLE_CLIENT_ID,
@@ -615,37 +609,6 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
             developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
             refresh_token: refreshToken,
         });
-
-        // Test connection with first account
-        const firstAccount = brand.googleAdAccount[0];
-        if (firstAccount && firstAccount.clientId) {
-            try {
-                console.log('Testing Google Ads API connection...');
-                const testCustomer = client.Customer({
-                    customer_id: firstAccount.clientId,
-                    refresh_token: refreshToken,
-                    login_customer_id: firstAccount.managerId,
-                });
-                
-                // Try a simple query to test connection
-                const testReport = await testCustomer.report({
-                    entity: "customer",
-                    attributes: ["customer.descriptive_name"],
-                    metrics: ["metrics.cost_micros"],
-                    from_date: moment().subtract(1, 'day').format('YYYY-MM-DD'),
-                    to_date: moment().subtract(1, 'day').format('YYYY-MM-DD'),
-                });
-                console.log('✅ Google Ads API connection test successful');
-            } catch (testError) {
-                console.error('❌ Google Ads API connection test failed:', testError);
-                console.error('This indicates an authentication or configuration issue');
-                return {
-                    success: false,
-                    message: 'Google Ads API authentication failed. Please check credentials.',
-                    error: testError.message
-                };
-            }
-        }
 
         // Initialize a map to store metrics by date
         const metricsMap = new Map();

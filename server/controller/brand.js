@@ -124,30 +124,56 @@ export const updateBrands = async (req, res) => {
 
         // Check for new Facebook ad accounts
         if (fbAdAccounts) {
+            // Get existing Facebook ad accounts
+            const existingFbAccounts = currentBrand.fbAdAccounts || [];
+            
+            // Find new accounts that aren't already connected
             newAdditions.newFbAccounts = fbAdAccounts.filter(account => 
-                !currentBrand.fbAdAccounts?.includes(account)
+                !existingFbAccounts.includes(account)
             );
+            
             if (newAdditions.newFbAccounts.length > 0) {
                 hasNewAdditions = true;
                 console.log(`New Facebook ad accounts detected: ${newAdditions.newFbAccounts.join(', ')}`);
             }
-            updateData.fbAdAccounts = fbAdAccounts;
+            
+            // Merge existing and new accounts, avoiding duplicates
+            const mergedFbAccounts = [...new Set([...existingFbAccounts, ...fbAdAccounts])];
+            updateData.fbAdAccounts = mergedFbAccounts;
         }
 
         // Check for new Google ad accounts
         if (googleAdAccount) {
-            newAdditions.newGoogleAccounts = googleAdAccount.filter(newAccount => 
-                !currentBrand.googleAdAccount?.some(existingAccount => 
+            // Get existing Google ad accounts
+            const existingGoogleAccounts = currentBrand.googleAdAccount || [];
+            
+            // Convert to array if it's not already
+            const newGoogleAccounts = Array.isArray(googleAdAccount) ? googleAdAccount : [googleAdAccount];
+            
+            // Find new accounts that aren't already connected
+            newAdditions.newGoogleAccounts = newGoogleAccounts.filter(newAccount => 
+                !existingGoogleAccounts.some(existingAccount => 
                     existingAccount.clientId === newAccount.clientId
                 )
             );
+            
             if (newAdditions.newGoogleAccounts.length > 0) {
                 hasNewAdditions = true;
                 console.log(`New Google ad accounts detected: ${newAdditions.newGoogleAccounts.map(acc => acc.clientId).join(', ')}`);
             }
-            updateData.googleAdAccount = Array.isArray(googleAdAccount) 
-                ? googleAdAccount 
-                : [googleAdAccount];
+            
+            // Merge existing and new accounts, avoiding duplicates
+            const mergedGoogleAccounts = [...existingGoogleAccounts];
+            newGoogleAccounts.forEach(newAccount => {
+                const exists = mergedGoogleAccounts.some(existing => 
+                    existing.clientId === newAccount.clientId
+                );
+                if (!exists) {
+                    mergedGoogleAccounts.push(newAccount);
+                }
+            });
+            
+            updateData.googleAdAccount = mergedGoogleAccounts;
         }
 
         const updatedBrand = await Brand.findByIdAndUpdate(

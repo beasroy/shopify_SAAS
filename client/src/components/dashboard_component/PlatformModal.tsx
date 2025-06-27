@@ -50,6 +50,7 @@ export default function PlatformModal({
   const [showLoginButton, setShowLoginButton] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
   const user = useSelector((state: RootState) => state.user.user);
@@ -189,24 +190,51 @@ export default function PlatformModal({
     }
   };
 
-  const updateBrandWithAccount = async (accountId: string, accountName: string, managerId: string | undefined) => {
+  const updateBrandWithAccount = async (accountIds: string[], accountNames: string[], managerIds: (string | undefined)[]) => {
     try {
       let updateData = {};
       
       switch (platform.toLowerCase()) {
         case 'facebook':
-          updateData = { fbAdAccounts: [accountId] };
+          // Get current brand to append to existing accounts
+          const currentBrand = brands.find(brand => brand._id === brandId);
+          const existingFbAccounts = currentBrand?.fbAdAccounts || [];
+          const newFbAccounts = [...new Set([...existingFbAccounts, ...accountIds])];
+          updateData = { fbAdAccounts: newFbAccounts };
           break;
         case 'google ads':
-          updateData = { 
-            googleAdAccount: [{ 
-              clientId: accountId, 
-              managerId: managerId 
-            }] 
-          };
+          // Get current brand to append to existing accounts
+          const currentBrandForGoogle = brands.find(brand => brand._id === brandId);
+          const existingGoogleAccounts = currentBrandForGoogle?.googleAdAccount || [];
+          const newGoogleAccounts = accountIds.map((accountId, index) => ({
+            clientId: accountId,
+            managerId: managerIds[index] || ''
+          }));
+          // Merge existing and new accounts, avoiding duplicates
+          const mergedGoogleAccounts = [...existingGoogleAccounts];
+          newGoogleAccounts.forEach(newAccount => {
+            const exists = mergedGoogleAccounts.some(existing => 
+              existing.clientId === newAccount.clientId && existing.managerId === newAccount.managerId
+            );
+            if (!exists) {
+              mergedGoogleAccounts.push({
+                clientId: newAccount.clientId,
+                managerId: newAccount.managerId || ''
+              });
+            }
+          });
+          updateData = { googleAdAccount: mergedGoogleAccounts };
           break;
         case 'google analytics':
-          updateData = { ga4Account: { PropertyID: accountId } };
+          // For GA4, we typically only have one account, but we can support multiple
+          const currentBrandForGA = brands.find(brand => brand._id === brandId);
+          const existingGAAccount = currentBrandForGA?.ga4Account?.PropertyID;
+          if (!existingGAAccount) {
+            updateData = { ga4Account: { PropertyID: accountIds[0] } };
+          } else {
+            // If GA4 account already exists, we might want to replace it or handle differently
+            updateData = { ga4Account: { PropertyID: accountIds[0] } };
+          }
           break;
       }
   
@@ -227,7 +255,13 @@ export default function PlatformModal({
         
         dispatch(setBrands(updatedBrands));
         
-        onSuccess?.(platform, accountName, accountId);
+        // Call onSuccess for each account
+        accountIds.forEach((accountId, index) => {
+          onSuccess?.(platform, accountNames[index], accountId);
+        });
+        
+        // Reset selected accounts
+        setSelectedAccounts([]);
         onOpenChange(false);
       }
     } catch (error) {
@@ -256,7 +290,61 @@ export default function PlatformModal({
       return;
     }
 
-    await updateBrandWithAccount(accountId, displayName, managerId);
+    await updateBrandWithAccount([accountId], [displayName], [managerId]);
+  };
+
+  const handleAccountSelection = (accountId: string) => {
+    setSelectedAccounts(prev => {
+      if (prev.includes(accountId)) {
+        return prev.filter(id => id !== accountId);
+      } else {
+        return [...prev, accountId];
+      }
+    });
+  };
+
+  const handleConnectSelected = async () => {
+    if (selectedAccounts.length === 0) return;
+
+    const selectedAccountData = selectedAccounts.map(accountId => {
+      const account = filteredAccounts()?.find(acc => {
+        if (platform.toLowerCase() === 'google ads') {
+          return (acc as GoogleAdsAccount).clientId === accountId;
+        } else if (platform.toLowerCase() === 'facebook') {
+          return (acc as FacebookAdsAccount).id === accountId;
+        } else {
+          return (acc as GoogleAnalyticsAccount).propertyId === accountId;
+        }
+      });
+
+      if (!account) return null;
+
+      let displayName: string;
+      let managerId: string | undefined;
+
+      if ('clientId' in account) {
+        managerId = account.managerId;
+        displayName = managerId
+          ? `${account.name} (${account.clientId}/${managerId})`
+          : `${account.name} (${account.clientId})`;
+      } else if ('propertyId' in account) {
+        displayName = `${account.propertyName} (${account.propertyId})`;
+      } else if ('id' in account) {
+        displayName = `${account.adname}`;
+      } else {
+        return null;
+      }
+
+      return { accountId, displayName, managerId };
+    }).filter(Boolean);
+
+    if (selectedAccountData.length > 0) {
+      const accountIds = selectedAccountData.map(data => data!.accountId);
+      const accountNames = selectedAccountData.map(data => data!.displayName);
+      const managerIds = selectedAccountData.map(data => data!.managerId);
+
+      await updateBrandWithAccount(accountIds, accountNames, managerIds);
+    }
   };
 
   const handleGoogleAdLogin = async () => {
@@ -403,6 +491,7 @@ export default function PlatformModal({
                   );
 
                   const isConnected = connectedAccounts.includes(accountId);
+                  const isSelected = selectedAccounts.includes(accountId);
 
                   const displayText = isGoogleAds && managerId
                     ? `${accountName} (${accountId}/${managerId})`
@@ -415,12 +504,21 @@ export default function PlatformModal({
                       key={accountId}
                       className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                     >
-                      <span>
-                        <div className="flex flex-row items-center gap-3">
-                          {platformLogo}
-                          {displayText}
-                        </div>
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleAccountSelection(accountId)}
+                          disabled={isConnected}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span>
+                          <div className="flex flex-row items-center gap-3">
+                            {platformLogo}
+                            {displayText}
+                          </div>
+                        </span>
+                      </div>
                       <Button
                         size="sm"
                         onClick={() => handleConnect(account)}
@@ -433,6 +531,22 @@ export default function PlatformModal({
                     </div>
                   );
                 })}
+                {selectedAccounts.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-blue-800">
+                        {selectedAccounts.length} account(s) selected
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={handleConnectSelected}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Connect Selected ({selectedAccounts.length})
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

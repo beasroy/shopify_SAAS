@@ -260,38 +260,37 @@ export default function PlatformModal({
           onSuccess?.(platform, accountNames[index], accountId);
         });
         
-        // Reset selected accounts
-        setSelectedAccounts([]);
-        onOpenChange(false);
+        // Don't automatically close modal - let handleConnectSelected handle it
+        // setSelectedAccounts([]);
+        // onOpenChange(false);
       }
     } catch (error) {
       console.error('Error updating brand:', error);
     }
   };
 
-  const handleConnect = async (account: GoogleAdsAccount | GoogleAnalyticsAccount | FacebookAdsAccount) => {
-    let accountId: string;
-    let displayName: string;
-    let managerId: string | undefined;
+  // const handleConnect = async (account: GoogleAdsAccount | GoogleAnalyticsAccount | FacebookAdsAccount) => {
+  //   let accountId: string;
 
-    if ('clientId' in account) {
-      accountId = account.clientId;
-      managerId = account.managerId;
-      displayName = managerId
-        ? `${account.name} (${accountId}/${managerId})`
-        : `${account.name} (${accountId})`;
-    } else if ('propertyId' in account) {
-      accountId = account.propertyId;
-      displayName = `${account.propertyName} (${accountId})`;
-    } else if ('id' in account) {
-      accountId = account.id;
-      displayName = `${account.adname}`;
-    } else {
-      return;
-    }
+  //   if ('clientId' in account) {
+  //     accountId = account.clientId;
+  //   } else if ('propertyId' in account) {
+  //     accountId = account.propertyId;
+  //   } else if ('id' in account) {
+  //     accountId = account.id;
+  //   } else {
+  //     return;
+  //   }
 
-    await updateBrandWithAccount([accountId], [displayName], [managerId]);
-  };
+  //   // Instead of immediately connecting, add to selected accounts
+  //   setSelectedAccounts(prev => {
+  //     if (prev.includes(accountId)) {
+  //       return prev.filter(id => id !== accountId);
+  //     } else {
+  //       return [...prev, accountId];
+  //     }
+  //   });
+  // };
 
   const handleAccountSelection = (accountId: string) => {
     setSelectedAccounts(prev => {
@@ -344,6 +343,13 @@ export default function PlatformModal({
       const managerIds = selectedAccountData.map(data => data!.managerId);
 
       await updateBrandWithAccount(accountIds, accountNames, managerIds);
+      
+      // Show success message
+      console.log(`Successfully connected ${selectedAccountData.length} account(s)`);
+      
+      // Reset selected accounts and close modal
+      setSelectedAccounts([]);
+      onOpenChange(false);
     }
   };
 
@@ -462,6 +468,35 @@ export default function PlatformModal({
                 />
               </div>
               <div className="max-h-[50vh] overflow-auto">
+              {selectedAccounts.length > 0 && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-blue-800">
+                        {selectedAccounts.length} account(s) selected
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedAccounts([]);
+                            onOpenChange(false);
+                          }}
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleConnectSelected}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          Save ({selectedAccounts.length})
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {filteredAccounts()?.map((account) => {
                   const isGoogleAds = platform.toLowerCase() === 'google ads';
                   const isFacebook = platform.toLowerCase() === 'facebook';
@@ -505,13 +540,7 @@ export default function PlatformModal({
                       className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleAccountSelection(accountId)}
-                          disabled={isConnected}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
+                   
                         <span>
                           <div className="flex flex-row items-center gap-3">
                             {platformLogo}
@@ -521,32 +550,17 @@ export default function PlatformModal({
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => handleConnect(account)}
+                        onClick={() => handleAccountSelection(accountId)}
                         disabled={isConnected}
-                        className={isConnected ? "bg-gray-400" : "bg-blue-600"}
+                        className={isConnected ? "bg-gray-400" : isSelected ? "bg-green-600" : "bg-blue-600"}
                       >
                         {isConnected && <Check className="h-4 w-4 mr-2" />}
-                        {isConnected ? 'Connected' : 'Connect'}
+                        {isConnected ? 'Connected' : isSelected ? 'Selected' : 'Select'}
                       </Button>
                     </div>
                   );
                 })}
-                {selectedAccounts.length > 0 && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-blue-800">
-                        {selectedAccounts.length} account(s) selected
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={handleConnectSelected}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Connect Selected ({selectedAccounts.length})
-                      </Button>
-                    </div>
-                  </div>
-                )}
+              
               </div>
             </>
           )}

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, PlusCircle, CheckCircle, XCircle } from "lucide-react"
 import { FullBrandData } from "@/interfaces"
+import PlatformModal from "@/components/dashboard_component/PlatformModal"
 
 
 interface PlatformIcon {
@@ -37,6 +38,8 @@ export function BrandIntegrationModal({
     platformIcons 
 }: BrandIntegrationModalProps) {
     const [activeTab, setActiveTab] = useState("overview")
+    const [platformModalOpen, setPlatformModalOpen] = useState(false)
+    const [selectedPlatform, setSelectedPlatform] = useState("")
     const platforms = [
         {
             key: "shopify",
@@ -86,6 +89,17 @@ export function BrandIntegrationModal({
     useEffect(()=>{
         console.log(brandId);
     },[])
+    
+    const handleAddAccount = (platformKey: string) => {
+        setSelectedPlatform(platformKey)
+        setPlatformModalOpen(true)
+    }
+    
+    const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
+        // Refresh the brand data or update the UI as needed
+        console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`)
+        // You might want to trigger a refresh of the brand data here
+    }
     
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -145,6 +159,7 @@ export function BrandIntegrationModal({
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="w-full"
+                                                onClick={() => handleAddAccount(platform.key)}
                                             >
                                                 <PlusCircle className="h-4 w-4 mr-2" />
                                                 Add {platform.key === 'shopify' ? 'Store' : 'Account'}
@@ -195,7 +210,7 @@ export function BrandIntegrationModal({
                                         </div>
 
                                         <div className="flex gap-3 mt-4 justify-end">
-                                        {platform.allowMultipleAccounts && ( <Button size={"sm"}>
+                                        {platform.allowMultipleAccounts && ( <Button size={"sm"} onClick={() => handleAddAccount(platform.key)}>
                                             <PlusCircle className="h-4 w-4 mr-1" />
                                             Add {platform.key === 'shopify' ? 'Store' : 'Account'}
                                         </Button>)}
@@ -220,7 +235,7 @@ export function BrandIntegrationModal({
                                             </ul>
                                         </div>
 
-                                        <Button className="mt-2">
+                                        <Button className="mt-2" onClick={() => handleAddAccount(platform.key)}>
                                             <PlusCircle className="h-4 w-4 mr-2" />
                                             Add {platform.key === 'shopify' ? 'Store' : 'Account'}
                                         </Button>
@@ -231,6 +246,19 @@ export function BrandIntegrationModal({
                     ))}
                 </Tabs>
             </DialogContent>
+            
+            {/* Platform Modal for adding accounts */}
+            {selectedPlatform && (
+                <PlatformModal
+                    platform={selectedPlatform === 'googleAds' ? 'Google Ads' : 
+                              selectedPlatform === 'googleAnalytics' ? 'Google Analytics' : 
+                              selectedPlatform === 'facebook' ? 'Facebook' : 'Shopify'}
+                    open={platformModalOpen}
+                    onOpenChange={setPlatformModalOpen}
+                    brandId={brandId}
+                    onSuccess={handlePlatformModalSuccess}
+                />
+            )}
         </Dialog>
     )
 }

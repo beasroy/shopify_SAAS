@@ -236,37 +236,118 @@ export const filterBrands = async (req, res) => {
 export const deleteBrand = async (req, res) => {
     try {
         const { brandId } = req.params;
+        const brand = await Brand.findByIdAndDelete(brandId);
+        
+        if (!brand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+        
+        res.status(200).json({ message: 'Brand deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error deleting brand', error: error.message });
+    }
+}
+
+export const deletePlatformIntegration = async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        const { platform, accountId, shopName } = req.body;
+
+        if (!brandId) {
+            return res.status(400).json({ error: 'Brand ID is required.' });
+        }
+
+        if (!platform) {
+            return res.status(400).json({ error: 'Platform is required.' });
+        }
 
         const brand = await Brand.findById(brandId);
         if (!brand) {
             return res.status(404).json({ error: 'Brand not found.' });
         }
-        
-        // Remove the brand from all users' brands arrays
-        await User.updateMany(
-            { brands: brandId },
-            { $pull: { brands: brandId } }
+
+        let updateData = {};
+        let deletedInfo = {};
+
+        switch (platform.toLowerCase()) {
+            case 'shopify':
+                if (!shopName) {
+                    return res.status(400).json({ error: 'Shop name is required for Shopify platform.' });
+                }
+                
+                if (brand.shopifyAccount?.shopName === shopName) {
+                    updateData = { shopifyAccount: {} };
+                    deletedInfo = { platform: 'shopify', shopName };
+                } else {
+                    return res.status(404).json({ error: 'Shopify store not found for this brand.' });
+                }
+                break;
+
+            case 'facebook':
+                if (!accountId) {
+                    return res.status(400).json({ error: 'Account ID is required for Facebook platform.' });
+                }
+                
+                const currentFbAccounts = brand.fbAdAccounts || [];
+                const updatedFbAccounts = currentFbAccounts.filter(account => account !== accountId);
+                
+                if (updatedFbAccounts.length === currentFbAccounts.length) {
+                    return res.status(404).json({ error: 'Facebook account not found for this brand.' });
+                }
+                
+                updateData = { fbAdAccounts: updatedFbAccounts };
+                deletedInfo = { platform: 'facebook', accountId };
+                break;
+
+            case 'google ads':
+                if (!accountId) {
+                    return res.status(400).json({ error: 'Account ID is required for Google Ads platform.' });
+                }
+                
+                const currentGoogleAccounts = brand.googleAdAccount || [];
+                const updatedGoogleAccounts = currentGoogleAccounts.filter(account => account.clientId !== accountId);
+                
+                if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
+                    return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
+                }
+                
+                updateData = { googleAdAccount: updatedGoogleAccounts };
+                deletedInfo = { platform: 'google ads', accountId };
+                break;
+
+            case 'google analytics':
+            case 'ga4':
+                if (brand.ga4Account?.PropertyID) {
+                    updateData = { ga4Account: {} };
+                    deletedInfo = { platform: 'google analytics', propertyId: brand.ga4Account.PropertyID };
+                } else {
+                    return res.status(404).json({ error: 'Google Analytics account not found for this brand.' });
+                }
+                break;
+
+            default:
+                return res.status(400).json({ error: 'Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics' });
+        }
+
+        const updatedBrand = await Brand.findByIdAndUpdate(
+            brandId,
+            { $set: updateData },
+            { new: true, runValidators: true }
         );
 
-        // Delete all AdMetrics data for this brand
-        const adMetricsResult = await AdMetrics.deleteMany({ brandId });
-        console.log(`Deleted ${adMetricsResult.deletedCount} AdMetrics records for brand ${brandId}`);
-
-        // Delete all RefundCache data for this brand
-        const refundCacheResult = await RefundCache.deleteMany({ brandId });
-        console.log(`Deleted ${refundCacheResult.deletedCount} RefundCache records for brand ${brandId}`);
-
-        // Delete the brand
-        await Brand.findByIdAndDelete(brandId);
+        if (!updatedBrand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
 
         res.status(200).json({ 
-            message: 'Brand deleted successfully.', 
-            brandId: brandId,
-            deletedAdMetrics: adMetricsResult.deletedCount,
-            deletedRefundCache: refundCacheResult.deletedCount
+            message: 'Platform integration deleted successfully', 
+            deletedInfo,
+            brand: updatedBrand 
         });
+
     } catch (error) {
-        console.error('Error deleting brand:', error);
-        res.status(500).json({ message: 'Error deleting brand.', error: error.message });
+        console.error('Error deleting platform integration:', error);
+        res.status(500).json({ message: 'Error deleting platform integration', error: error.message });
     }
-};
+}

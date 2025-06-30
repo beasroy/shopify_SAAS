@@ -45,10 +45,10 @@ export default function Dashboard() {
   const selectedBrand = brands.find((brand) => brand._id === brandId);
   const hasGoogleAdAccount = Boolean(selectedBrand?.googleAdAccount?.length);
   const hasFbAdAccount = Boolean(selectedBrand?.fbAdAccounts?.length);
-  const hasBothAdAccounts = hasGoogleAdAccount && hasFbAdAccount;
+  const hasAnyAdAccounts = hasGoogleAdAccount || hasFbAdAccount;
 
   // If no accounts are connected, show the connect accounts page
-  if (!hasBothAdAccounts) {
+  if (!hasAnyAdAccounts) {
     return <ConnectAccountsPage />;
   }
 
@@ -303,7 +303,7 @@ export default function Dashboard() {
         }}
       />
 
-      {!hasBothAdAccounts && (
+      {!hasAnyAdAccounts && (
         <div className="p-4 md:p-6 lg:px-8 space-y-6">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">Connect Your Ad Accounts</h2>
@@ -340,7 +340,7 @@ export default function Dashboard() {
 
       {/* Main content */}
       <main className="p-4 md:p-6 lg:px-8">
-        {!hasBothAdAccounts ? <></> : (
+        {!hasAnyAdAccounts ? <></> : (
           <div className="space-y-2">
             {/* Blended summary */}
             <section id='all'>

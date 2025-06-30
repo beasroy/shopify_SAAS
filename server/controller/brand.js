@@ -236,15 +236,57 @@ export const filterBrands = async (req, res) => {
 export const deleteBrand = async (req, res) => {
     try {
         const { brandId } = req.params;
-        const brand = await Brand.findByIdAndDelete(brandId);
+        
+        // First, check if the brand exists
+        const brand = await Brand.findById(brandId);
         
         if (!brand) {
             return res.status(404).json({ error: 'Brand not found.' });
         }
+
+        // Delete related data from RefundCache collection
+        try {
+            const refundCacheResult = await RefundCache.deleteMany({ brandId: brandId });
+            console.log(`Deleted ${refundCacheResult.deletedCount} refund cache entries for brand ${brandId}`);
+        } catch (refundCacheError) {
+            console.error(`Error deleting refund cache data for brand ${brandId}:`, refundCacheError);
+        }
+
+        // Delete related data from AdMetrics collection
+        try {
+            const adMetricsResult = await AdMetrics.deleteMany({ brandId: brandId });
+            console.log(`Deleted ${adMetricsResult.deletedCount} ad metrics entries for brand ${brandId}`);
+        } catch (adMetricsError) {
+            console.error(`Error deleting ad metrics data for brand ${brandId}:`, adMetricsError);
+        }
+
+        // Remove brand from all users' brands array
+        try {
+            const userUpdateResult = await User.updateMany(
+                { brands: brandId },
+                { $pull: { brands: brandId } }
+            );
+            console.log(`Removed brand ${brandId} from ${userUpdateResult.modifiedCount} users`);
+        } catch (userUpdateError) {
+            console.error(`Error removing brand from users for brand ${brandId}:`, userUpdateError);
+        }
+
+        // Finally, delete the brand itself
+        const deletedBrand = await Brand.findByIdAndDelete(brandId);
         
-        res.status(200).json({ message: 'Brand deleted successfully' });
+        if (!deletedBrand) {
+            return res.status(404).json({ error: 'Brand not found.' });
+        }
+        
+        res.status(200).json({ 
+            message: 'Brand and all related data deleted successfully',
+            deletedBrand: {
+                id: deletedBrand._id,
+                name: deletedBrand.name
+            }
+        });
     } catch (error) {
-        console.error(error);
+        console.error('Error deleting brand:', error);
         res.status(500).json({ message: 'Error deleting brand', error: error.message });
     }
 }

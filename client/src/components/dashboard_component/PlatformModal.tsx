@@ -467,36 +467,40 @@ export default function PlatformModal({
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="max-h-[50vh] overflow-auto">
+              
+              {/* Selected accounts section - sticky at top */}
               {selectedAccounts.length > 0 && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-blue-800">
-                        {selectedAccounts.length} account(s) selected
-                      </span>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedAccounts([]);
-                            onOpenChange(false);
-                          }}
-                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleConnectSelected}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          Save ({selectedAccounts.length})
-                        </Button>
-                      </div>
+                <div className="sticky top-0 z-10 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800">
+                      {selectedAccounts.length} account(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedAccounts([]);
+                          onOpenChange(false);
+                        }}
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleConnectSelected}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Save ({selectedAccounts.length})
+                      </Button>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
+              
+              {/* Scrollable accounts list */}
+              <div className="max-h-[50vh] overflow-auto">
                 {filteredAccounts()?.map((account) => {
                   const isGoogleAds = platform.toLowerCase() === 'google ads';
                   const isFacebook = platform.toLowerCase() === 'facebook';
@@ -560,7 +564,6 @@ export default function PlatformModal({
                     </div>
                   );
                 })}
-              
               </div>
             </>
           )}

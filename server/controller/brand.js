@@ -18,13 +18,36 @@ export const addBrands = async (req, res) => {
 
         await newBrand.save();
 
-        const userId = req.user?.id || 'system-brand-creation';
+        // Also add brand to all admin users
+        const adminUsers = await User.find({ isAdmin: true });
+        for (const adminUser of adminUsers) {
+            if (!adminUser.brands.includes(newBrand._id.toString())) {
+                adminUser.brands.push(newBrand._id);
+                await adminUser.save();
+            }
+        }
+
+        // Add brand to current user's brands array
+        const currentUserId = req.user?.id;
+        if (currentUserId) {
+            try {
+                const currentUser = await User.findById(currentUserId);
+                if (currentUser && !currentUser.brands.includes(newBrand._id.toString())) {
+                    currentUser.brands.push(newBrand._id);
+                    await currentUser.save();
+                    console.log(`Added brand ${newBrand._id} to current user ${currentUserId}`);
+                }
+            } catch (userUpdateError) {
+                console.error(`Error adding brand to current user ${currentUserId}:`, userUpdateError);
+            }
+        }
+
         const brandId = newBrand._id.toString();
 
         try {
             await metricsQueue.add('calculate-metrics', {
                 brandId: brandId,
-                userId: userId
+                userId: currentUserId
             }, {
                 attempts: 3,
                 backoff: {

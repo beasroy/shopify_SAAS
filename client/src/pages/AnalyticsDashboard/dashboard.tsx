@@ -19,7 +19,17 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [fbAdAccountsMetrics, setFbAdAccountsMetrics] = useState<AdAccountData[]>([]);
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
+  const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'Facebook' | 'Google Ads' | null>(null);
+  
   const locale = useSelector((state:RootState) => state.locale.locale)
+  const { brandId } = useParams();
+  const navigate = useNavigate();
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const brands = useSelector((state: RootState) => state.brand.brands);
+  const user = useSelector((state: RootState) => state.user.user);
+  
   const [rawMetrics, setRawMetrics] = useState({
     totalSpent: 0,
     totalRevenue: 0,
@@ -30,34 +40,23 @@ export default function Dashboard() {
     totalCPM: 0,
     totalCPP: 0,
   });
-  const { brandId } = useParams();
-  const navigate = useNavigate();
  
-  const dateFrom = useSelector((state: RootState) => state.date.from);
-  const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
   const axiosInstance = createAxiosInstance();
 
-  const brands = useSelector((state: RootState) => state.brand.brands);
   const selectedBrand = brands.find((brand) => brand._id === brandId);
   const hasGoogleAdAccount = Boolean(selectedBrand?.googleAdAccount?.length);
   const hasFbAdAccount = Boolean(selectedBrand?.fbAdAccounts?.length);
   const hasAnyAdAccounts = hasGoogleAdAccount || hasFbAdAccount;
+  const userId = user?.id;
 
   // If no accounts are connected, show the connect accounts page
   if (!hasAnyAdAccounts) {
     return <ConnectAccountsPage />;
   }
-
-  const user = useSelector((state: RootState) => state.user.user);
-
-  const userId = user?.id;
-
-  const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'Facebook' | 'Google Ads' | null>(null);
 
   const fetchFacebookData = async (startDate: string, endDate: string) => {
     try {

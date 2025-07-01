@@ -381,7 +381,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             const totalPrice = Number(day.totalPrice);
             const subtotalPrice = Number(day.subtotalPrice);
             const productReturn = Number(day.productReturn || 0);
-            const shopifySales = totalPrice - discountAmount - productReturn;
+            const shopifySales = totalPrice - discountAmount - refundAmount;
             
             return {
                 date: day.date,

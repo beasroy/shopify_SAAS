@@ -13,6 +13,25 @@ import RefundCache from '../models/RefundCache.js';
 
 config();
 
+// Helper function to calculate refund amounts (same as MonthlyReport.js)
+function getRefundAmount(refund) {
+    // Product-only refund (for net sales)
+    const productReturn = refund?.refund_line_items
+        ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+        : 0;
+
+    // Total return (product + adjustments, for total returns)
+    let adjustmentsTotal = 0;
+    if (refund?.order_adjustments) {
+        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+    }
+    const totalReturn = productReturn - adjustmentsTotal;
+
+    return {
+        productReturn, // for net sales
+        totalReturn    // for total returns
+    };
+}
 
 export const fetchTotalSales = async (brandId) => {
   try {
@@ -100,19 +119,8 @@ export const fetchTotalSales = async (brandId) => {
                   });
                   
                   if (!existingRefund) {
-                    // Calculate refund amounts
-                    let productReturn = 0;
-                    let totalReturn = 0;
-                    
-                    if (refund.refund_line_items) {
-                      productReturn = refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-                    }
-                    
-                    let adjustmentsTotal = 0;
-                    if (refund.order_adjustments) {
-                      adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
-                    }
-                    totalReturn = productReturn - adjustmentsTotal;
+                    // Use the helper function to calculate refund amounts
+                    const { productReturn, totalReturn } = getRefundAmount(refund);
                     
                     const refundCache = new RefundCache({
                       refundId: refund.id,
@@ -200,12 +208,32 @@ export const fetchTotalSales = async (brandId) => {
       }
     });
 
-    // Calculate total refund amount from cache
-    const totalRefundAmount = refundCacheData.reduce((sum, refund) => {
-      return sum + (refund.totalReturn || 0);
-    }, 0);
+    console.log(`Found ${refundCacheData.length} refunds in cache for yesterday`);
 
-    yesterdaySales.refundAmount = totalRefundAmount;
+    // Calculate refund amounts from cache (same logic as MonthlyReport.js)
+    const refundAmountsFromCache = refundCacheData.reduce((acc, refund) => {
+      const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
+      if (!acc[refundDate]) {
+        acc[refundDate] = {
+          productReturn: 0,
+          totalReturn: 0
+        };
+      }
+      acc[refundDate].productReturn += refund.productReturn || 0;
+      acc[refundDate].totalReturn += refund.totalReturn || 0;
+      return acc;
+    }, {});
+
+    // Apply refund amounts to yesterday's sales
+    const yesterdayDate = yesterday.format('YYYY-MM-DD');
+    if (refundAmountsFromCache[yesterdayDate]) {
+      const refundData = refundAmountsFromCache[yesterdayDate];
+      yesterdaySales.refundAmount = refundData.totalReturn;
+      console.log(`Applied refunds for ${yesterdayDate}: productReturn=${refundData.productReturn}, totalReturn=${refundData.totalReturn}`);
+    } else {
+      yesterdaySales.refundAmount = 0;
+      console.log(`No refunds found in cache for ${yesterdayDate}`);
+    }
 
     // Calculate final amounts
     const dailySales = [{

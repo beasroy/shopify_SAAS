@@ -98,6 +98,7 @@ function CampaignPage() {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
+            <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
                 {fbTokenError ? (
                     <NoAccessPage
                         platform="Facebook Ads"
@@ -122,7 +123,7 @@ function CampaignPage() {
                     </>) : (!date.from || !date.to) ? <MissingDateWarning /> : ((isLoading) ? <Loader isLoading={isLoading} /> :
                         <>
                             <div className="flex-none">
-                                <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
+                               
                             </div>
                             <main className="p-4 md:p-6 lg:px-8 overflow-auto">
                                 <div className="grid grid-cols-1 gap-6">

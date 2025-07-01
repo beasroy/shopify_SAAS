@@ -334,7 +334,7 @@ export const getFbAuthURL = (req, res) => {
         `client_id=${process.env.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
         `&state=${state}` +
-        `&scope=public_profile,email,ads_management,business_management,ads_read`;
+        `&scope=email,ads_read`;
 
     return res.status(200).json({ success: true, authURL });
 };

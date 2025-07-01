@@ -284,6 +284,12 @@ export default function Dashboard() {
     setIsPlatformModalOpen(true);
   };
 
+  const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
+    console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
+    // Refresh the page or refetch data to show the newly connected account
+    window.location.reload();
+  };
+
   if(isLoading){
     return <Loader isLoading={isLoading} />
   }
@@ -335,6 +341,7 @@ export default function Dashboard() {
         onOpenChange={setIsPlatformModalOpen}
         platform={selectedPlatform || 'Facebook'}
         brandId={brandId || ''}
+        onSuccess={handlePlatformModalSuccess}
       />
 
       {/* Main content */}
@@ -409,6 +416,29 @@ export default function Dashboard() {
           );
         })}
 
+        {!hasFbAdAccount && (
+          <div className="space-y-2">
+            <section className='mt-10' id="facebook">
+              <div className='flex flex-row gap-2 items-center'>
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#1877F2">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                <h3 className="text-lg font-semibold">Facebook Ad Metrics</h3>
+              </div>
+
+              <div className="text-center text-gray-500 mt-4 bg-white p-6 rounded-md">
+                <p className="mb-4">No Facebook Ad Account connected for this brand.</p>
+                <button
+                  onClick={() => handleConnectPlatform('Facebook')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Connect Facebook Ads
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
         {hasFbAdAccount && !hasGoogleAdAccount && (
           <div className="space-y-2">
             <section className='mt-10' id="google">
@@ -417,8 +447,15 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold">Google Ad Metrics</h3>
               </div>
 
-              <div className="text-center text-gray-500 mt-4 bg-white p-2 rounded-md">
-                No Google Ad Account for this brand.
+              <div className="flex flex-col items-center justify-center text-gray-500 mt-4 bg-white p-6 rounded-md">
+                <p className="mb-4">No Google Ad Account connected for this brand.</p>
+                <button
+                  onClick={() => handleConnectPlatform('Google Ads')}
+                  className="flex flex-row items-center justify-center gap-3 px-4 py-2 border-2 border-green-800 text-blackk rounded-md transition-colors"
+                >
+                  <GoogleLogo width={"1.5rem"} height={"1.5rem"} />
+                  Connect Google Ads
+                </button>
               </div>
             </section>
           </div>
@@ -436,6 +473,27 @@ export default function Dashboard() {
               }}
               isLoading={isLoading}
             />
+          </div>
+        )}
+
+        {!hasGoogleAdAccount && !hasFbAdAccount && (
+          <div className="space-y-2">
+            <section className='mt-10' id="google">
+              <div className='flex flex-row gap-2 items-center'>
+                <GoogleLogo width={"1.5rem"} height={"1.5rem"} />
+                <h3 className="text-lg font-semibold">Google Ad Metrics</h3>
+              </div>
+
+              <div className="text-center text-gray-500 mt-4 bg-white p-6 rounded-md">
+                <p className="mb-4">No Google Ad Account connected for this brand.</p>
+                <button
+                  onClick={() => handleConnectPlatform('Google Ads')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Connect Google Ads
+                </button>
+              </div>
+            </section>
           </div>
         )}
       </main>

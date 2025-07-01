@@ -14,10 +14,11 @@ import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
 import { CustomTabs } from '@/pages/ConversionReportPage/components/CustomTabs';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
-
-
-
-
+import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
+import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
+import { selectFbTokenError } from '@/store/slices/TokenSllice';
+import { useParams } from 'react-router-dom';
+import { Target } from 'lucide-react';
 
 const FbReportPage: React.FC = () => {
     const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -27,6 +28,13 @@ const FbReportPage: React.FC = () => {
         to: dateTo
     }), [dateFrom, dateTo]);
     const [activeTab, setActiveTab] = useState('age');
+    const { brandId } = useParams();
+    const brands = useSelector((state: RootState) => state.brand.brands);
+    const selectedBrand = brands.find((brand) => brand._id === brandId);
+    const hasFbAdAccount = (selectedBrand?.fbAdAccounts && selectedBrand?.fbAdAccounts.length > 0)
+        ? true
+        : false;
+    const fbTokenError = useSelector(selectFbTokenError);
 
     const dateRange = {
         from: date.from ? new Date(date.from) : undefined,
@@ -43,7 +51,6 @@ const FbReportPage: React.FC = () => {
         { label: 'Audience Segments', value: 'audienceSegments' }
     ];
 
-
     const handleTabChange = (value: string) => {
         setActiveTab(value);
     };
@@ -52,65 +59,87 @@ const FbReportPage: React.FC = () => {
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
             <div className="flex-1 h-screen overflow-hidden flex flex-col">
-                {(!date.from || !date.to) ? <MissingDateWarning /> :
-                 (<>
+                <Header
+                    title='Meta Reports'
+                    Icon={FaMeta}
+                    showDatePicker={true}
+                />
 
-                <div className="flex-none">
-                    <Header title='Meta Reports' Icon={FaMeta} showDatePicker={true} />
+                {fbTokenError ? (
+                    <NoAccessPage
+                        platform="Facebook Ads"
+                        message="Looks like we need to refresh your Facebook Ads connection to optimize your campaigns."
+                        icon={<Target className="w-8 h-8 text-red-500" />}
+                        loginOptions={[
+                            {
+                                label: "Connect Facebook Ads",
+                                provider: "facebook"
+                            }
+                        ]}
+                    />
+                ) : !hasFbAdAccount ? (
+                    <ConnectPlatform
+                        platform="facebook"
+                        brandId={brandId ?? ''}
+                        onSuccess={(platform, accountName, accountId) => {
+                            console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
+                        }}
+                    />
+                ) : (!date.from || !date.to) ? (
+                    <MissingDateWarning />
+                ) : (
+                    <>
+                        {/* Tabs */}
+                        <div className="bg-white px-6 sticky top-0 z-10">
+                            <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
+                        </div>
 
-                    {/* Tabs */}
-                    <div className="bg-white px-6 sticky top-0 z-10">
-                        <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
-                    </div>
-                </div>
-
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-auto">
-                    <div className="px-6 py-4 space-y-6">
-                        {activeTab === 'audienceSegments' && (
-                            <div id="audienceSegments">
-                                <AudienceFbReport dateRange={dateRange} />
+                        {/* Scrollable Content */}
+                        <div className="flex-1 overflow-auto">
+                            <div className="px-6 py-4 space-y-6">
+                                {activeTab === 'audienceSegments' && (
+                                    <div id="audienceSegments">
+                                        <AudienceFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'placement' && (
+                                    <div id="placement">
+                                        <PlacementFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'platform' && (
+                                    <div id="platform">
+                                        <PlatformFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'country' && (
+                                    <div id="country">
+                                        <CountryFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'impressionDevice' && (
+                                    <div id="impressionDevice">
+                                        <DeviceFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'gender' && (
+                                    <div id="gender">
+                                        <GenderFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'age' && (
+                                    <div id="age">
+                                        <AgeFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        {activeTab === 'placement' && (
-                            <div id="placement">
-                                <PlacementFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                        {activeTab === 'platform' && (
-                            <div id="platform">
-                                <PlatformFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                        {activeTab === 'country' && (
-                            <div id="country">
-                                <CountryFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                        {activeTab === 'impressionDevice' && (
-                            <div id="impressionDevice">
-                                <DeviceFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                        {activeTab === 'gender' && (
-                            <div id="gender">
-                                <GenderFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                        {activeTab === 'age' && (
-                            <div id="age">
-                                <AgeFbReport dateRange={dateRange} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-                </>)}
+                        </div>
+                    </>
+                )}
                 <HelpDeskModal />
             </div>
-       
         </div>
     );
-
 };
 
 export default FbReportPage;

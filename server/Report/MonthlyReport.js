@@ -53,6 +53,8 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
         const subtotalPrice = Number(order.subtotal_price || 0);
         const discountAmount = Number(order.total_discounts || 0);
         let grossSales = 0;
+        let totalTaxes = 0;
+        
         if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
             grossSales = order.line_items.reduce((sum, item) => {
                 const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
@@ -61,6 +63,7 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
                 if (item.tax_lines && Array.isArray(item.tax_lines)) {
                     taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
                 }
+                totalTaxes += taxTotal;
                 const netItemTotal = unitTotal - taxTotal;
                 return sum + netItemTotal;
             }, 0);
@@ -68,6 +71,7 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
             grossSales = subtotalPrice + discountAmount;
         }
         acc[orderDate].grossSales += grossSales;
+        acc[orderDate].totalTaxes += totalTaxes;
         acc[orderDate].discountAmount += discountAmount;
         acc[orderDate].subtotalPrice += subtotalPrice;
         acc[orderDate].totalPrice += totalPrice;
@@ -309,7 +313,8 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
                 discountAmount: 0,
                 orderCount: 0,
                 cancelledOrderCount: 0,
-                productReturn: 0 // Track product-only returns for net sales
+                productReturn: 0, // Track product-only returns for net sales
+                totalTaxes: 0
             };
             currentDay.add(1, 'day');
         }
@@ -381,18 +386,19 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             const totalPrice = Number(day.totalPrice);
             const subtotalPrice = Number(day.subtotalPrice);
             const productReturn = Number(day.productReturn || 0);
-            //const shopifySales = grossSales - discountAmount - refundAmount;
-            const shopifySales = subtotalPrice - refundAmount;
+            const totalTaxes = Number(day.totalTaxes || 0);
+            const shopifySales = subtotalPrice - totalTaxes - refundAmount;
             
             return {
                 date: day.date,
                 grossSales: grossSales.toFixed(2),
-                shopifySales: shopifySales.toFixed(2), // Net sales
+                shopifySales: shopifySales.toFixed(2), // Net sales (subtotal - taxes - refunds)
                 totalSales: (totalPrice - refundAmount).toFixed(2),
                 subtotalSales: subtotalPrice.toFixed(2),
                 refundAmount: refundAmount.toFixed(2),
                 discountAmount: discountAmount.toFixed(2),
                 productReturn: productReturn.toFixed(2),
+                totalTaxes: totalTaxes.toFixed(2),
                 orderCount: day.orderCount,
                 cancelledOrderCount: day.cancelledOrderCount,
                 currency: storeCurrency

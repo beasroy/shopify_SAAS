@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
+import RefundCache from '../models/RefundCache.js';
 
 
 config();
@@ -121,27 +122,22 @@ export const fetchShopifyData = async (req, res) => {
 
 // Helper for detailed refund calculation
 function getRefundAmount(refund) {
-    let lineItemsTotal = 0;
+    // Product-only refund (for net sales)
+    const productReturn = refund?.refund_line_items
+        ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+        : 0;
+
+    // Total return (product + adjustments, for total returns)
     let adjustmentsTotal = 0;
-
-    // Sum all refund line items
-    if (refund?.refund_line_items) {
-        lineItemsTotal = refund.refund_line_items.reduce((sum, item) => {
-            // Prefer subtotal_set.shop_money.amount if available, else fallback to subtotal
-            const subtotal = item.subtotal_set?.shop_money?.amount ?? item.subtotal ?? 0;
-            return sum + Number(subtotal);
-        }, 0);
-    }
-
-    // Sum all order adjustments (positive or negative)
     if (refund?.order_adjustments) {
-        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => {
-            return sum + Number(adjustment.amount || 0);
-        }, 0);
+        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
     }
+    const totalReturn = productReturn - adjustmentsTotal;
 
-    // Subtract adjustments from line items total
-    return lineItemsTotal - adjustmentsTotal;
+    return {
+        productReturn, // for net sales
+        totalReturn    // for total returns
+    };
 }
 
 export const fetchShopifySales = async (req, res) => {
@@ -257,7 +253,8 @@ export const fetchShopifySales = async (req, res) => {
         refundAmount: 0,
         discountAmount: 0,
         orderCount: 0,
-        cancelledOrderCount: 0
+        cancelledOrderCount: 0,
+        totalTaxes: 0
       };
       currentDay.add(1, 'day');
     }
@@ -274,35 +271,48 @@ export const fetchShopifySales = async (req, res) => {
         const subtotalPrice = Number(order.subtotal_price || 0);
         const discountAmount = Number(order.total_discounts || 0);
         let grossSales = 0;
+        let totalTaxes = 0;
+        
         if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
           grossSales = order.line_items.reduce((sum, item) => {
             const unitPrice = item.price_set
               ? Number(item.price_set.shop_money?.amount)
               : Number(item.original_price ?? item.price);
-            return sum + unitPrice * Number(item.quantity);
+            const unitTotal = unitPrice * Number(item.quantity);
+            let taxTotal = 0;
+            if (item.tax_lines && Array.isArray(item.tax_lines)) {
+              taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
+            }
+            totalTaxes += taxTotal;
+            const netItemTotal = unitTotal - taxTotal;
+            return sum + netItemTotal;
           }, 0);
         } else {
           grossSales = subtotalPrice + discountAmount;
         }
         dailySalesMap[orderDate].grossSales += grossSales;
+        dailySalesMap[orderDate].totalTaxes += totalTaxes;
         dailySalesMap[orderDate].subtotalPrice += subtotalPrice;
         dailySalesMap[orderDate].totalPrice += totalPrice;
         dailySalesMap[orderDate].discountAmount += discountAmount;
         dailySalesMap[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
       }
-      // Process refunds for this order
-      if (order.refunds && Array.isArray(order.refunds)) {
-        order.refunds.forEach(refund => {
-          const refundDate = moment.tz(refund.created_at, storeTimezone).format('YYYY-MM-DD');
-          if (isInTargetDateRange(refundDate) && dailySalesMap[refundDate]) {
-            const refundAmount = getRefundAmount(refund);
-            dailySalesMap[refundDate].refundAmount += refundAmount;
-            // Detailed logging
-            console.log(`REFUND: Order ${order.id} (${orderDate}) -> Refund ${refundAmount} on ${refundDate}`);
-          }
-        });
+    });
+    
+    // Fetch refund amounts from cache for the date range
+    const refundAmountsFromCache = await getRefundAmountsFromCache(brandId, startDateTime.format('YYYY-MM-DD'), endDateTime.format('YYYY-MM-DD'));
+    
+    console.log(`Refunds found in cache for date range: ${Object.keys(refundAmountsFromCache).length} dates`);
+    
+    // Apply refund amounts from cache to daily sales data
+    Object.keys(refundAmountsFromCache).forEach(date => {
+      if (dailySalesMap[date]) {
+        const refundData = refundAmountsFromCache[date];
+        dailySalesMap[date].refundAmount = refundData.totalReturn;
+        console.log(`Applied refunds for ${date}: totalReturn=${refundData.totalReturn}`);
       }
     });
+    
     // Prepare response
     const dailyResults = Object.values(dailySalesMap).map(day => {
       const grossSales = Number(day.grossSales);
@@ -310,14 +320,16 @@ export const fetchShopifySales = async (req, res) => {
       const refundAmount = Number(day.refundAmount);
       const totalPrice = Number(day.totalPrice);
       const subtotalPrice = Number(day.subtotalPrice);
+      const totalTaxes = Number(day.totalTaxes || 0);
       return {
         date: day.date,
         grossSales: grossSales.toFixed(2),
-        shopifySales: (grossSales - discountAmount - refundAmount).toFixed(2),
+        shopifySales: (subtotalPrice - totalTaxes - refundAmount).toFixed(2),
         totalSales: (totalPrice - refundAmount).toFixed(2),
         subtotalSales: subtotalPrice.toFixed(2),
         refundAmount: refundAmount.toFixed(2),
         discountAmount: discountAmount.toFixed(2),
+        totalTaxes: totalTaxes.toFixed(2),
         orderCount: day.orderCount,
         cancelledOrderCount: day.cancelledOrderCount,
         currency: storeCurrency
@@ -360,6 +372,7 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
   let grossSales = 0;
   let totalDiscounts = 0;
   let totalTaxes = 0;
+  let subtotalPrice = 0;
   const orderSummaries = [];
 
   // Process orders
@@ -367,25 +380,46 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
     // Convert order date to the store's timezone for accurate comparison
     const orderMoment = moment(order.created_at).tz(timezone);
     const totalPrice = Number(order.total_price || 0);
+    const orderSubtotalPrice = Number(order.subtotal_price || 0);
     const totalDiscount = Number(order.total_discounts || 0);
-    const totalTax = Number(order.total_tax || 0);
+    let orderGrossSales = 0;
+    let orderTotalTaxes = 0;
 
     const isTestOrder = (order) => {
       return order.test
     };
 
-    // Calculate gross sales only for orders within date range
+    // Calculate gross sales and taxes from line items only for orders within date range
     if (orderMoment.isSameOrAfter(startMoment) && orderMoment.isSameOrBefore(endMoment)) {
-      grossSales += totalPrice;
+      if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+        orderGrossSales = order.line_items.reduce((sum, item) => {
+          const unitPrice = item.price_set
+            ? Number(item.price_set.shop_money?.amount)
+            : Number(item.original_price ?? item.price);
+          const unitTotal = unitPrice * Number(item.quantity);
+          let taxTotal = 0;
+          if (item.tax_lines && Array.isArray(item.tax_lines)) {
+            taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
+          }
+          orderTotalTaxes += taxTotal;
+          const netItemTotal = unitTotal - taxTotal;
+          return sum + netItemTotal;
+        }, 0);
+      } else {
+        orderGrossSales = orderSubtotalPrice + totalDiscount;
+      }
+      
+      grossSales += orderGrossSales;
+      totalTaxes += orderTotalTaxes;
       totalDiscounts += totalDiscount;
-      totalTaxes += totalTax;
+      subtotalPrice += orderSubtotalPrice;
 
-      console.log(`Order ${order.id} (${orderMoment.format('YYYY-MM-DD HH:mm:ss')}) - Amount: ${totalPrice}`);
+      console.log(`Order ${order.id} (${orderMoment.format('YYYY-MM-DD HH:mm:ss')}) - Gross Sales: ${orderGrossSales}, Taxes: ${orderTotalTaxes}, Subtotal: ${orderSubtotalPrice}`);
     } else {
       console.log(`Order ${order.id} (${orderMoment.format('YYYY-MM-DD HH:mm:ss')}) - Outside date range`);
     }
 
-    // Process refunds - consider all refunds that occurred within the date range
+    // Process refunds using the same getRefundAmount function
     if (order.refunds && order.refunds.length > 0) {
       const orderRefunds = order.refunds.reduce((refundSum, refund) => {
         // Convert refund date to the store's timezone
@@ -393,12 +427,9 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
 
         // Only include refunds processed within the specified date range
         if (refundMoment.isSameOrAfter(startMoment) && refundMoment.isSameOrBefore(endMoment)) {
-          const lineItemRefunds = refund.refund_line_items.reduce((lineSum, lineItem) => {
-            return lineSum + Number(lineItem.subtotal_set?.shop_money?.amount || 0);
-          }, 0);
-
-          console.log(`Refund for order ${order.id} (${refundMoment.format('YYYY-MM-DD HH:mm:ss')}) - Amount: ${lineItemRefunds}`);
-          return refundSum + lineItemRefunds;
+          const refundAmount = getRefundAmount(refund);
+          console.log(`Refund for order ${order.id} (${refundMoment.format('YYYY-MM-DD HH:mm:ss')}) - Amount: ${refundAmount}`);
+          return refundSum + refundAmount;
         }
         return refundSum;
       }, 0);
@@ -425,8 +456,8 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
     }
   });
 
-  // Net sales after refunds
-  const netSales = grossSales - totalRefunds;
+  // Calculate net sales using the same formula: subtotalPrice - totalTaxes - totalRefunds
+  const netSales = subtotalPrice - totalTaxes - totalRefunds;
 
   // Debug logging
   console.log('Sales Calculation Summary:', {
@@ -434,9 +465,10 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
     periodStart: startMoment.format('YYYY-MM-DD HH:mm:ss'),
     periodEnd: endMoment.format('YYYY-MM-DD HH:mm:ss'),
     grossSales: grossSales.toFixed(2),
+    subtotalPrice: subtotalPrice.toFixed(2),
+    totalTaxes: totalTaxes.toFixed(2),
     totalRefunds: totalRefunds.toFixed(2),
     totalDiscounts: totalDiscounts.toFixed(2),
-    totalTaxes: totalTaxes.toFixed(2),
     netSales: netSales.toFixed(2),
     ordersWithRefunds: orderSummaries.length,
     totalOrdersProcessed: orders.length
@@ -448,13 +480,82 @@ function calculateTotalSales(orders, startDate, endDate, timezone = 'UTC') {
     totalDiscounts: Number(totalDiscounts.toFixed(2)),
     grossSales: Number(grossSales.toFixed(2)),
     totalTaxes: Number(totalTaxes.toFixed(2)),
+    subtotalPrice: Number(subtotalPrice.toFixed(2)),
     orderSummaries // Include for detailed reporting if needed
   };
 }
 
-
-
-
+// Function to get refund amounts from cache for a specific date range
+const getRefundAmountsFromCache = async (brandId, startDate, endDate) => {
+  try {
+    console.log(`Fetching refunds from cache for brand ${brandId} from ${startDate} to ${endDate}`);
+    
+    // First, let's check if there are any refunds at all for this brand
+    const allRefundsForBrand = await RefundCache.find({ brandId: brandId });
+    console.log(`Total refunds in cache for brand ${brandId}: ${allRefundsForBrand.length}`);
+    
+    if (allRefundsForBrand.length > 0) {
+      
+      // Check for refunds specifically on the target date
+      const targetDateRefunds = allRefundsForBrand.filter(r => {
+        const refundDate = moment(r.refundCreatedAt).format('YYYY-MM-DD');
+        return refundDate === startDate;
+      });
+      console.log(`Found ${targetDateRefunds.length} refunds specifically for target date ${startDate}`);
+      
+      if (targetDateRefunds.length > 0) {
+        console.log('Target date refunds:', targetDateRefunds.map(r => ({
+          refundId: r.refundId,
+          refundCreatedAt: r.refundCreatedAt,
+          productReturn: r.productReturn,
+          totalReturn: r.totalReturn
+        })));
+      }
+    }
+    
+    // Search by refundCreatedAt - exactly like MonthlyReport.js does
+    const refunds = await RefundCache.find({
+      brandId: brandId,
+      refundCreatedAt: {
+        $gte: moment(startDate).startOf('day').utc().toDate(),
+        $lte: moment(endDate).endOf('day').utc().toDate()
+      }
+    });
+    
+    console.log(`Found ${refunds.length} refunds in cache for the date range by refundCreatedAt`);
+    
+    // If we have refunds but none match the date range, log this for debugging
+    if (allRefundsForBrand.length > 0 && refunds.length === 0) {
+      console.log(`Warning: Found ${allRefundsForBrand.length} refunds in cache but none match the date range ${startDate} to ${endDate}`);
+      
+      // Get the actual date range from the cached refunds
+      const refundDates = allRefundsForBrand.map(r => moment(r.refundCreatedAt).format('YYYY-MM-DD')).sort();
+      const uniqueRefundDates = [...new Set(refundDates)];
+      console.log(`Available refund dates in cache: ${uniqueRefundDates.slice(0, 10).join(', ')}${uniqueRefundDates.length > 10 ? '...' : ''}`);
+      console.log(`Total unique refund dates: ${uniqueRefundDates.length}`);
+    }
+    
+    const result = refunds.reduce((acc, refund) => {
+      const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
+      if (!acc[refundDate]) {
+        acc[refundDate] = {
+          productReturn: 0,
+          totalReturn: 0
+        };
+      }
+      acc[refundDate].productReturn += refund.productReturn || 0;
+      acc[refundDate].totalReturn += refund.totalReturn || 0;
+      console.log(`Processing refund ${refund.refundId} for refund date ${refundDate}: productReturn=${refund.productReturn}, totalReturn=${refund.totalReturn}`);
+      return acc;
+    }, {});
+    
+    console.log(`Processed refunds for ${Object.keys(result).length} unique dates`);
+    return result;
+  } catch (error) {
+    console.error('Error fetching refund amounts from cache:', error);
+    return {};
+  }
+};
 
 // function getMonthlyAverageOrderValue(orders) {
 //   // Object to hold totals for each month

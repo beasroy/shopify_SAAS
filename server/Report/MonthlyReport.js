@@ -55,14 +55,20 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
         let grossSales = 0;
         let totalTaxes = 0;
         
+        // Check if this order has refunds
+        const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
+        
         if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
             grossSales = order.line_items.reduce((sum, item) => {
                 const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
                 const unitTotal = unitPrice * Number(item.quantity);
                 let taxTotal = 0;
-                if (item.tax_lines && Array.isArray(item.tax_lines)) {
+                
+                // Only include taxes if the order has no refunds
+                if (!hasRefunds && item.tax_lines && Array.isArray(item.tax_lines)) {
                     taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
                 }
+                
                 totalTaxes += taxTotal;
                 const netItemTotal = unitTotal - taxTotal;
                 return sum + netItemTotal;
@@ -76,6 +82,10 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
         acc[orderDate].subtotalPrice += subtotalPrice;
         acc[orderDate].totalPrice += totalPrice;
         acc[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
+        
+        if (hasRefunds) {
+            console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
+        }
     }
     
     // Cache refunds for this order if they exist (synchronously)

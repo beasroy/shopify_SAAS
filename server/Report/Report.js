@@ -73,9 +73,11 @@ export const fetchTotalSales = async (brandId) => {
     const yesterdaySales = {
       date: yesterday.format('YYYY-MM-DD'),
       grossSales: 0,
+      subtotalPrice: 0,
       totalPrice: 0,
       refundAmount: 0,
       discountAmount: 0,
+      totalTaxes: 0,
       orderCount: 0,
       cancelledOrderCount: 0
     };
@@ -150,19 +152,43 @@ export const fetchTotalSales = async (brandId) => {
                 yesterdaySales.cancelledOrderCount += 1;
               } else {
                 const totalPrice = Number(order.total_price || 0);
+                const subtotalPrice = Number(order.subtotal_price || 0);
                 const discountAmount = Number(order.total_discounts || 0);
-                let lineItemTotal = 0;
-                if (order.line_items && Array.isArray(order.line_items)) {
-                  for (const item of order.line_items) {
-                    const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
-                    lineItemTotal += itemTotal;
-                  }
+                let grossSales = 0;
+                let totalTaxes = 0;
+                
+                // Check if this order has refunds
+                const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
+                
+                if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+                  grossSales = order.line_items.reduce((sum, item) => {
+                    const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
+                    const unitTotal = unitPrice * Number(item.quantity);
+                    let taxTotal = 0;
+                    
+                    // Only include taxes if the order has no refunds
+                    if (!hasRefunds && item.tax_lines && Array.isArray(item.tax_lines)) {
+                      taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
+                    }
+                    
+                    totalTaxes += taxTotal;
+                    const netItemTotal = unitTotal - taxTotal;
+                    return sum + netItemTotal;
+                  }, 0);
+                } else {
+                  grossSales = subtotalPrice + discountAmount;
                 }
-                const grossSales = lineItemTotal > 0 ? lineItemTotal : (Number(order.subtotal_price || 0) + discountAmount);
+                
                 yesterdaySales.grossSales += grossSales;
                 yesterdaySales.totalPrice += totalPrice;
                 yesterdaySales.discountAmount += discountAmount;
                 yesterdaySales.orderCount += 1;
+                yesterdaySales.totalTaxes += totalTaxes;
+                yesterdaySales.subtotalPrice += subtotalPrice;
+                
+                if (hasRefunds) {
+                  console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
+                }
               }
             }
           }
@@ -238,10 +264,13 @@ export const fetchTotalSales = async (brandId) => {
     // Calculate final amounts
     const dailySales = [{
       date: yesterdaySales.date,
-      shopifySales: Number((yesterdaySales.grossSales - yesterdaySales.discountAmount).toFixed(2)),
+      grossSales: Number(yesterdaySales.grossSales.toFixed(2)),
+      shopifySales: Number((yesterdaySales.subtotalPrice - yesterdaySales.totalTaxes - yesterdaySales.refundAmount).toFixed(2)),
       totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
+      subtotalSales: Number(yesterdaySales.subtotalPrice.toFixed(2)),
       refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
       discountAmount: Number(yesterdaySales.discountAmount.toFixed(2)),
+      totalTaxes: Number(yesterdaySales.totalTaxes.toFixed(2)),
       orderCount: yesterdaySales.orderCount,
       cancelledOrderCount: yesterdaySales.cancelledOrderCount
     }];

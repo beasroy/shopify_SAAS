@@ -28,7 +28,7 @@ function Footer() {
               </Link>
               <span className="text-slate-500">|</span>
               <Link
-                to="#"
+                to="/terms-and-conditions"
                 className="text-slate-400 transition hover:text-blue-400"
               >
                 Terms of Service

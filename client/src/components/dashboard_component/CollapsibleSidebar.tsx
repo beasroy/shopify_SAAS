@@ -11,6 +11,7 @@ import {
   CalendarRange,
   LineChart,
   Target,
+  Plus,
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -19,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Logo from "@/assets/messold-icon.png"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useDispatch, useSelector } from "react-redux"
-import type { RootState } from "../../store/index.ts"
+import type { RootState } from "@/store/index.ts"
 import { clearUser } from "@/store/slices/UserSlice.ts"
 import { baseURL } from "@/data/constant.ts"
 import type { IBrand } from "@/interfaces"
@@ -27,6 +28,21 @@ import { WhiteGa4Logo, WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
 import { Crown } from 'lucide-react';
 import PricingModal from "../../pages/Pricing/Pricing.tsx"
+
+interface DashboardItem {
+  name: string;
+  path: string;
+  icon?: React.ReactNode;
+  subItems?: Array<{
+    name: string;
+    path: string;
+  }>;
+}
+
+interface SubItem {
+  name: string;
+  path: string;
+}
 
 export default function CollapsibleSidebar() {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -168,10 +184,10 @@ export default function CollapsibleSidebar() {
     { name: "Brands Targets", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 
-  const isItemDisabled = (item: any) => {
+  const isItemDisabled = (item: DashboardItem | SubItem) => {
     if (!selectedBrandId) return true
 
-    const currentBrand = brands.find((b) => b._id === selectedBrandId)
+    const currentBrand = brands.find((b: IBrand) => b._id === selectedBrandId)
     if (
       (item.name === "Analytics Dashboard" || item.name === "Campaign Metrics") &&
       !currentBrand?.fbAdAccounts &&
@@ -219,7 +235,7 @@ export default function CollapsibleSidebar() {
                 icon={<Store size={24} />}
                 text={
                   selectedBrandId
-                    ? brands.find((b) => b._id === selectedBrandId)?.name.replace(/_/g, " ") || "Unknown Brand"
+                    ? brands.find((b: IBrand) => b._id === selectedBrandId)?.name.replace(/_/g, " ") || "Unknown Brand"
                     : "Your Brands"
                 }
                 isExpanded={isExpanded}
@@ -238,11 +254,16 @@ export default function CollapsibleSidebar() {
                     isSelected={selectedBrandId === brand._id}
                   />
                 ))}
+                {/* Add Brand button, outside the map to avoid left border highlight */}
+                <div className="flex items-center text-xs  p-2 transition-colors duration-200 text-gray-300 hover:bg-gray-700 hover:text-white cursor-pointer border border-dashed border-gray-500 rounded-md mx-2 mb-2">
+                  <Plus size={16} className="mr-2" />
+                  <span>Add Brand</span>
+                </div>
               </SidebarItem>
 
               {/* Dashboard items - all open by default */}
-              {allDashboards.map((item, index) => {
-                const isAnySubItemSelected = item.subItems?.some((subItem) => location.pathname === subItem.path)
+              {allDashboards.map((item: DashboardItem, index: number) => {
+                const isAnySubItemSelected = item.subItems?.some((subItem: { name: string; path: string }) => location.pathname === subItem.path)
 
                 const isMainItemActive =
                   (location.pathname.startsWith(item.path) && item.path !== "#") || isAnySubItemSelected
@@ -521,7 +542,7 @@ function SidebarItem({
             <p className={React.Children.count(children) > 0 ? "mb-4" : ""}>{tooltipContent}</p>
             {React.Children.map(children, (child) => (
               <div className="relative">
-                <div className="absolute top-0 w-1 h-full bg-gray-500" />
+                  {/* <div className="absolute top-0 w-1 h-full bg-gray-500" /> */}
                 {child}
               </div>
             ))}
@@ -532,7 +553,7 @@ function SidebarItem({
       )}
       {isOpen && isExpanded && (
         <div className="relative pl-8">
-          <div className="absolute top-0 w-1 h-full bg-gray-500" />
+          {/* <div className="absolute top-0 w-1 h-full bg-gray-500" /> */}
           {React.Children.map(children, (child) => (
             <div>{child}</div>
           ))}

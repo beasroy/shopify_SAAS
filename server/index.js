@@ -25,6 +25,7 @@ import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
+import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 const app = express();
 const server = createServer(app);
@@ -76,6 +77,8 @@ dataOperationRouter.use("/zoho",zohoRoutes);
 dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
+
+//calculateMetricsForSingleBrand("6864c793d089883460c75101","685304dd2051ac48a3ddcba8")
 
 
 if (isDevelopment) {

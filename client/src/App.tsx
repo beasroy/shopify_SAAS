@@ -20,12 +20,15 @@ import TutorialManager from './components/Tutorial/TutorialManager.tsx';
 import TutorialDriver from './components/Tutorial/TutorialDriver.tsx';
 import LandingPage from './pages/LandingPage/page.tsx';
 import PrivacyPolicy from './pages/LandingPage/components/PrivacyPolicy.tsx';
+import TermsAndConditions from './pages/LandingPage/components/TermsAndConditions.tsx';
 import ConversionLens from './pages/ConversionReportPage/ConversionLens.tsx';
 import CampaignPage from './pages/Meta/Campaign Reports/CampaignPage.tsx';
 import InterestPage from './pages/Meta/Interest Reports/InterestReportPage.tsx';
 import ShopifyAuth from "./Auth/Shopify.tsx";
 import PricingCallback from './Auth/PricingSuccess.tsx';
 import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.tsx';
+
+
 
 function App() {
   return (
@@ -53,6 +56,7 @@ function App() {
                 <Route path ="/shopify" element = {<ShopifyAuth />} />
                 <Route path ="/brand-setup" element = {<AddBrandDashboard />} />
                 <Route path ="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path ="/terms-and-conditions" element={<TermsAndConditions />} />
                 <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
                 <Route path = "/meta-interest/:brandId" element={<InterestPage />} />
                 <Route path = "/pricing_callback" element={<PricingCallback />} />

@@ -53,11 +53,6 @@ export default function Dashboard() {
   const hasAnyAdAccounts = hasGoogleAdAccount || hasFbAdAccount;
   const userId = user?.id;
 
-  // If no accounts are connected, show the connect accounts page
-  if (!hasAnyAdAccounts) {
-    return <ConnectAccountsPage />;
-  }
-
   const fetchFacebookData = async (startDate: string, endDate: string) => {
     try {
       const fbAdResponse = await axiosInstance.post(
@@ -289,6 +284,11 @@ export default function Dashboard() {
     // Refresh the page or refetch data to show the newly connected account
     window.location.reload();
   };
+
+  // If no accounts are connected, show the connect accounts page
+  if (!hasAnyAdAccounts) {
+    return <ConnectAccountsPage />;
+  }
 
   if(isLoading){
     return <Loader isLoading={isLoading} />

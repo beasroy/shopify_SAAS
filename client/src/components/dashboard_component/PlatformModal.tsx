@@ -398,23 +398,36 @@ export default function PlatformModal({
       if (!googleAdsAccounts || googleAdsAccounts.length === 0) {
         return null;
       }
-      return googleAdsAccounts.filter((account) =>
-        account.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      return googleAdsAccounts.filter((account) => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          account.name.toLowerCase().includes(searchLower) ||
+          account.clientId.toLowerCase().includes(searchLower) ||
+          (account.managerId && account.managerId.toLowerCase().includes(searchLower))
+        );
+      });
     } else if (platform.toLowerCase() === 'google analytics') {
       if (!googleAnalyticsAccounts || googleAnalyticsAccounts.length === 0) {
         return null;
       }
-      return googleAnalyticsAccounts.filter((account) =>
-        account.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      return googleAnalyticsAccounts.filter((account) => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          account.propertyName.toLowerCase().includes(searchLower) ||
+          account.propertyId.toLowerCase().includes(searchLower)
+        );
+      });
     } else if (platform.toLowerCase() === 'facebook') {
       if (!facebookAdsAccounts || facebookAdsAccounts.length === 0) {
         return null; // Return null if there are no Facebook Ads accounts
       }
-      return facebookAdsAccounts.filter((account) =>
-        account.adname.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      return facebookAdsAccounts.filter((account) => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          account.adname.toLowerCase().includes(searchLower) ||
+          account.id.toLowerCase().includes(searchLower)
+        );
+      });
     } else {
       return [];
     }
@@ -501,69 +514,85 @@ export default function PlatformModal({
               
               {/* Scrollable accounts list */}
               <div className="max-h-[50vh] overflow-auto">
-                {filteredAccounts()?.map((account) => {
-                  const isGoogleAds = platform.toLowerCase() === 'google ads';
-                  const isFacebook = platform.toLowerCase() === 'facebook';
-
-                  const accountId = isGoogleAds
-                    ? (account as GoogleAdsAccount).clientId
-                    : isFacebook
-                      ? (account as FacebookAdsAccount).id
-                      : (account as GoogleAnalyticsAccount).propertyId;
-
-                  const managerId = isGoogleAds
-                    ? (account as GoogleAdsAccount).managerId
-                    : undefined;
-
-                  const accountName = isGoogleAds
-                    ? (account as GoogleAdsAccount).name
-                    : isFacebook
-                      ? (account as FacebookAdsAccount).adname
-                      : (account as GoogleAnalyticsAccount).propertyName;
-
-                  const platformLogo = isGoogleAds ? (
-                    <GoogleLogo height="1rem" width="1rem" />
-                  ) : isFacebook ? (
-                    <FacebookLogo height="1rem" width="1rem" />
-                  ) : (
-                    <Ga4Logo height="1rem" width="1rem" />
-                  );
-
-                  const isConnected = connectedAccounts.includes(accountId);
-                  const isSelected = selectedAccounts.includes(accountId);
-
-                  const displayText = isGoogleAds && managerId
-                    ? `${accountName} (${accountId}/${managerId})`
-                    : isFacebook
-                      ? `${accountName}`
-                      : `${accountName} (${accountId})`;
-
-                  return (
-                    <div
-                      key={accountId}
-                      className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                   
-                        <span>
-                          <div className="flex flex-row items-center gap-3">
-                            {platformLogo}
-                            {displayText}
-                          </div>
-                        </span>
+                {(() => {
+                  const filtered = filteredAccounts();  
+                  if (!filtered || filtered.length === 0) {
+                    return (
+                      <div className="text-center py-4 text-gray-500">
+                        {searchTerm ? 'No accounts found matching your search.' : 'No accounts available.'}
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAccountSelection(accountId)}
-                        disabled={isConnected}
-                        className={isConnected ? "bg-gray-400" : isSelected ? "bg-green-600" : "bg-blue-600"}
+                    );
+                  }
+                  
+                  return filtered.map((account, _) => {
+                    const isGoogleAds = platform.toLowerCase() === 'google ads';
+                    const isFacebook = platform.toLowerCase() === 'facebook';
+
+                    const accountId = isGoogleAds
+                      ? (account as GoogleAdsAccount).clientId
+                      : isFacebook
+                        ? (account as FacebookAdsAccount).id
+                        : (account as GoogleAnalyticsAccount).propertyId;
+
+                    const managerId = isGoogleAds
+                      ? (account as GoogleAdsAccount).managerId
+                      : undefined;
+
+                    const accountName = isGoogleAds
+                      ? (account as GoogleAdsAccount).name
+                      : isFacebook
+                        ? (account as FacebookAdsAccount).adname
+                        : (account as GoogleAnalyticsAccount).propertyName;
+
+                    // Create unique key to prevent duplicates
+                    const uniqueKey = isGoogleAds && managerId 
+                      ? `${accountId}-${managerId}`
+                      : accountId;
+
+                    const platformLogo = isGoogleAds ? (
+                      <GoogleLogo height="1rem" width="1rem" />
+                    ) : isFacebook ? (
+                      <FacebookLogo height="1rem" width="1rem" />
+                    ) : (
+                      <Ga4Logo height="1rem" width="1rem" />
+                    );
+
+                    const isConnected = connectedAccounts.includes(accountId);
+                    const isSelected = selectedAccounts.includes(accountId);
+
+                    const displayText = isGoogleAds && managerId
+                      ? `${accountName} (${accountId}/${managerId})`
+                      : isFacebook
+                        ? `${accountName}`
+                        : `${accountName} (${accountId})`;
+
+                    return (
+                      <div
+                        key={uniqueKey}
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
                       >
-                        {isConnected && <Check className="h-4 w-4 mr-2" />}
-                        {isConnected ? 'Connected' : isSelected ? 'Selected' : 'Select'}
-                      </Button>
-                    </div>
-                  );
-                })}
+                        <div className="flex items-center gap-3">
+                     
+                          <span>
+                            <div className="flex flex-row items-center gap-3">
+                              {platformLogo}
+                              {displayText}
+                            </div>
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAccountSelection(accountId)}
+                          disabled={isConnected}
+                          className={isConnected ? "bg-gray-400" : isSelected ? "bg-green-600" : "bg-blue-600"}
+                        >
+                          {isConnected && <Check className="h-4 w-4 mr-2" />}
+                          {isConnected ? 'Connected' : isSelected ? 'Selected' : 'Select'}
+                        </Button>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </>
           )}

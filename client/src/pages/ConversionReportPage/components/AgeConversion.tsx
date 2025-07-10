@@ -15,7 +15,7 @@ import { shallowEqual, useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 
@@ -44,6 +44,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<string[]>([]);
   const dispatch = useDispatch();
   const componentId = 'age-conversion';
 
@@ -126,6 +127,10 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
     fetchData();
   };
 
+  const handleCategoryFilter = (items: (string | number)[]) => {
+    setCurrentFilter(items.map(item => String(item)));
+  };
+
   // Extract columns dynamically from the API response
   const primaryColumn = "Age";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
@@ -183,6 +188,7 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
                 metricConfig={metricConfigs.sessionsAndConversion || {}}
+                onCategoryFilter={handleCategoryFilter}
               />
               <ConversionTable
                 data={apiResponse?.data || []}
@@ -192,13 +198,14 @@ const AgeConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRan
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
                 locale={locale}
+                filter={currentFilter}
               />
             </div>
         </div>
 
       </CardContent>
     </Card>
-  );
-};
+  )
+}
 
 export default AgeConversion;

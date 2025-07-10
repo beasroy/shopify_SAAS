@@ -40,7 +40,9 @@ export function BrandCards({
   const [selectedBrand, setSelectedBrand] = useState<{id: string, name: string} | null>(null)
   const [selectedBrandData, setSelectedBrandData] = useState<FullBrandData | null>(null)
   const brands = useSelector((state: RootState) => state.brand.brands);
+
   const dispatch = useDispatch();
+
 
   const userBrandDetails: BrandDetail[] = userBrands?.map((brandId: string) => {
     const brand = brands.find((b) => b._id === brandId);
@@ -75,10 +77,11 @@ export function BrandCards({
 
   const handleDeleteBrand = async (brandId: string) => {
     try {
+      
       await axios.delete(`${baseURL}/api/brands/delete/${brandId}`, { withCredentials: true });
       dispatch(deleteBrand(brandId));
       dispatch(removeBrandFromUser(brandId));
-      window.location.reload();
+      
     } catch (error) {
       console.error('Error deleting brand:', error);
     }

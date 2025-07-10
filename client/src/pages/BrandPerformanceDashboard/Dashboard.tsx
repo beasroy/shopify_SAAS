@@ -13,8 +13,11 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recha
 import { cn } from "@/lib/utils"
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { baseURL } from '@/data/constant'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
+
+
 
 // Define types for better type safety
 interface MetricsData {
@@ -53,42 +56,59 @@ export default function BrandPerformanceDashboard() {
   })
   const [editingBrand, setEditingBrand] = useState<string | null>(null)
   const [editData, setEditData] = useState<BrandTarget | null>(null)
-  const [achievedMetrics, setAchievedMetrics] = useState<{ [key: string]: MetricsData }>({})
+  const [achievedMetrics, setAchievedMetrics] = useState<{ [key: string]: { meta: MetricsData, google: MetricsData } }>({})
   const [isLoading, setIsLoading] = useState(false);
-  const user = useSelector((state: RootState) => state.user.user);
-  const userId = user?.id;
-  const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
 
   const navigate = useNavigate()
 
   const getMetaMetrics = useCallback(async (brandId: string) => {
     try {
-      const response = await axios.post(
-        `${baseURL}/api/performance/metaMetrics/${brandId}`, { userId },
+      const response = await axios.get(
+        `${baseURL}/api/performance/metaMetrics/${brandId}`,
         { withCredentials: true }
       );
       
       return response.data;
     } catch (error) {
-      console.error('Error fetching metrics data:', error);
+      console.error('Error fetching Meta metrics data:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         alert('Your session has expired. Please log in again.');
         navigate('/');
       }
       return { success: false, data: { spend: 0, Revenue: 0, purchase_roas: "0.00" } };
     }
-  }, [baseURL, userId, navigate]);
+  }, [baseURL, navigate]);
+
+  const getGoogleAdMetrics = useCallback(async (brandId: string) => {
+    try {
+      const response = await axios.get(
+        `${baseURL}/api/performance/googleAdMetrics/${brandId}`,
+        { withCredentials: true }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Google metrics data:', error);
+      return { success: false, data: { spend: 0, Revenue: 0, purchase_roas: "0.00" } };
+    }
+  }, [baseURL]);
+  
   
   const fetchMetricsData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const metricsData: { [key: string]: MetricsData } = {};
+      const metricsData: { [key: string]: { meta: MetricsData, google: MetricsData } } = {};
       await Promise.all(
         selectedBrands.map(async (brand) => {
-          const response = await getMetaMetrics(brand.brandId);
-          if (response.success) {
-            metricsData[brand.brandId] = response.data;
-          }
+          const [metaResponse, googleResponse] = await Promise.all([
+            getMetaMetrics(brand.brandId),
+            getGoogleAdMetrics(brand.brandId)
+          ]);
+          
+          metricsData[brand.brandId] = {
+            meta: metaResponse.success ? metaResponse.data : { spend: 0, Revenue: 0, purchase_roas: "0.00" },
+            google: googleResponse.success ? googleResponse.data : { spend: 0, Revenue: 0, purchase_roas: "0.00" }
+          };
         })
       );
       setAchievedMetrics(metricsData);
@@ -97,7 +117,7 @@ export default function BrandPerformanceDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedBrands, getMetaMetrics]);
+  }, [selectedBrands, getMetaMetrics, getGoogleAdMetrics]);
   
   useEffect(() => {
     if (selectedBrands.length > 0) {
@@ -196,8 +216,8 @@ export default function BrandPerformanceDashboard() {
     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-blue-500"></div>
   )
 
-  const calculateMetrics = (brand: BrandTarget) => {
-    const metrics = achievedMetrics[brand.brandId] || { spend: 0, Revenue: 0, purchase_roas: "0.00" }; 
+  const calculateMetrics = (brand: BrandTarget, source: 'meta' | 'google') => {
+    const metrics = achievedMetrics[brand.brandId]?.[source] || { spend: 0, Revenue: 0, purchase_roas: "0.00" }; 
     // Calculate spent metrics
     const achievedSpend = metrics.spend || 0;
     // Calculate sales metrics
@@ -227,13 +247,20 @@ export default function BrandPerformanceDashboard() {
   }
 
   const chartData = selectedBrands.map(brand => {
-    const { achievedSales, remainingSales } = calculateMetrics(brand);
+    const metaMetrics = calculateMetrics(brand, 'meta');
+    const googleMetrics = calculateMetrics(brand, 'google');
     return {
       name: brand.name,
-      Achieved: achievedSales,
-      Remaining: remainingSales
+      'Meta Achieved': metaMetrics.achievedSales,
+      'Meta Remaining': metaMetrics.remainingSales,
+      'Google Achieved': googleMetrics.achievedSales,
+      'Google Remaining': googleMetrics.remainingSales
     }
   });
+
+  // Filter brands by source
+  const metaBrands = selectedBrands.filter(brand => brand.source === 'Meta');
+  const googleBrands = selectedBrands.filter(brand => brand.source === 'Google');
 
   useEffect(() => {
     const fetchBrandTargets = async () => {
@@ -253,6 +280,131 @@ export default function BrandPerformanceDashboard() {
     fetchBrandTargets();
   }, [baseURL]);
 
+  const renderTable = (brands: BrandTarget[], source: 'meta' | 'google', title: string) => (
+    <Card className='mb-4'>
+      <CardHeader>
+        <CardTitle>{title} Performance Table</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Brand</TableHead>
+                <TableHead>Month</TableHead>
+                <TableHead>Target Spend</TableHead>
+                <TableHead>Target Sales</TableHead>
+                <TableHead>Target ROAS</TableHead>
+                <TableHead>Achieved Spend</TableHead>
+                <TableHead>Achieved Sales</TableHead>
+                <TableHead>Achieved ROAS</TableHead>
+                <TableHead>Remaining Sales</TableHead>
+                <TableHead>Remaining Days</TableHead>
+                <TableHead>Required Sales/Day</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {brands.map(brand => {
+                const { 
+                  achievedSales, 
+                  remainingSales, 
+                  achievedSpend, 
+                  achievedROAS, 
+                  remainingDays, 
+                  requiredSalesPerDay 
+                } = calculateMetrics(brand, source);
+                
+                const isEditing = editingBrand === brand.brandId;
+                
+                return (
+                  <TableRow key={brand.brandId}>
+                    <TableCell className="font-bold text-sm">{brand.name}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant={"outline"}>
+                              {editData?.targetDate ? format(editData.targetDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={editData?.targetDate}
+                              onSelect={(date) => date && setEditData(prev => prev ? { ...prev, targetDate: date } : null)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        format(new Date(brand.targetDate), "MMM yyyy") 
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editData?.targetSpend}
+                          onChange={(e) => setEditData(prev => prev ? { ...prev, targetSpend: Number(e.target.value) } : null)}
+                        />
+                      ) : (
+                        `₹${brand.targetSpend.toLocaleString()}`
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editData?.targetSales}
+                          onChange={(e) => setEditData(prev => prev ? { ...prev, targetSales: Number(e.target.value) } : null)}
+                        />
+                      ) : (
+                        `₹${brand.targetSales.toLocaleString()}`
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editData?.targetROAS}
+                          onChange={(e) => setEditData(prev => prev ? { ...prev, targetROAS: Number(e.target.value) } : null)}
+                        />
+                      ) : (
+                        brand.targetROAS.toFixed(2)
+                      )}
+                    </TableCell>
+                   
+                    <TableCell>{isLoading ? <Loader /> : `₹${achievedSpend.toLocaleString('en-IN')}`}</TableCell>
+                    <TableCell>{isLoading ? <Loader /> : `₹${achievedSales.toLocaleString('en-IN')}`}</TableCell>
+                    <TableCell>{isLoading ? <Loader /> : achievedROAS.toFixed(2)}</TableCell>
+                    <TableCell>{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(remainingSales))}</TableCell>
+                    <TableCell>{remainingDays}</TableCell>
+                    <TableCell>₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(requiredSalesPerDay)}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <>
+                          <Button onClick={() => handleSaveEdit(brand.brandId)} className="mr-2">Save</Button>
+                          <Button onClick={handleCancelEdit} variant="outline"><X className="h-4 w-4" /></Button>
+                        </>
+                      ) : (
+                        <div className='flex flex-row gap-1'>
+                          <Button size={"sm"} onClick={() => handleEdit(brand.brandId)} ><Edit2 className="h-2 w-2" /></Button>
+                          <Button size={"sm"} onClick={() => handleDelete(brand.brandId)} variant="destructive"><Trash2 className="h-2 w-2" /></Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="bg-gray-100 min-h-screen">
       <nav className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 lg:px-8">
@@ -266,7 +418,7 @@ export default function BrandPerformanceDashboard() {
             <CardTitle>Add New Brand Target</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               <div>
                 <Label htmlFor="brandName">Brand Name</Label>
                 <Select onValueChange={(value) => {
@@ -296,7 +448,6 @@ export default function BrandPerformanceDashboard() {
                     <SelectValue placeholder="Select source" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Meta & Google">Meta & Google</SelectItem>
                     <SelectItem value="Meta">Meta</SelectItem>
                     <SelectItem value="Google">Google</SelectItem>
                   </SelectContent>
@@ -336,181 +487,42 @@ export default function BrandPerformanceDashboard() {
                   step="0.01"
                 />
               </div>
-              <div>
-                <Label>Target Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !newBrand.targetDate && "text-muted-foreground"
-                      )}
-                    >
-                      {newBrand.targetDate ? format(newBrand.targetDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={newBrand.targetDate}
-                      onSelect={(date) => date && setNewBrand(prev => ({ ...prev, targetDate: date }))}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
               <div className="flex items-end">
                 <Button onClick={handleAddBrand} className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Brand Target
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className='mb-4'>
-          <CardHeader>
-            <CardTitle>Brand Performance Table</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Month</TableHead>
-                    <TableHead>Target Spend</TableHead>
-                    <TableHead>Target Sales</TableHead>
-                    <TableHead>Target ROAS</TableHead>
-                    <TableHead>Achieved Spend</TableHead>
-                    <TableHead>Achieved Sales</TableHead>
-                    <TableHead>Achieved ROAS</TableHead>
-                    <TableHead>Remaining Sales</TableHead>
-                    <TableHead>Remaining Days</TableHead>
-                    <TableHead>Required Sales/Day</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedBrands.map(brand => {
-                    const { 
-                      achievedSales, 
-                      remainingSales, 
-                      achievedSpend, 
-                      achievedROAS, 
-                      remainingDays, 
-                      requiredSalesPerDay 
-                    } = calculateMetrics(brand);
-                    
-                    const isEditing = editingBrand === brand.brandId;
-                    
-                    return (
-                      <TableRow key={brand.brandId}>
-                        <TableCell className="font-bold text-sm">{brand.name}</TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <Select
-                              onValueChange={(value) => setEditData(prev => prev ? { ...prev, source: value } : null)}
-                              defaultValue={editData?.source}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={brand.source} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Meta & Google">Meta & Google</SelectItem>
-                                <SelectItem value="Meta">Meta</SelectItem>
-                                <SelectItem value="Google">Google</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            brand.source
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant={"outline"}>
-                                  {editData?.targetDate ? format(editData.targetDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                  mode="single"
-                                  selected={editData?.targetDate}
-                                  onSelect={(date) => date && setEditData(prev => prev ? { ...prev, targetDate: date } : null)}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            format(new Date(brand.targetDate), "MMM yyyy") 
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={editData?.targetSpend}
-                              onChange={(e) => setEditData(prev => prev ? { ...prev, targetSpend: Number(e.target.value) } : null)}
-                            />
-                          ) : (
-                            `₹${brand.targetSpend.toLocaleString()}`
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={editData?.targetSales}
-                              onChange={(e) => setEditData(prev => prev ? { ...prev, targetSales: Number(e.target.value) } : null)}
-                            />
-                          ) : (
-                            `₹${brand.targetSales.toLocaleString()}`
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={editData?.targetROAS}
-                              onChange={(e) => setEditData(prev => prev ? { ...prev, targetROAS: Number(e.target.value) } : null)}
-                            />
-                          ) : (
-                            brand.targetROAS.toFixed(2)
-                          )}
-                        </TableCell>
-                       
-                        <TableCell>{isLoading ? <Loader /> : `₹${achievedSpend.toLocaleString('en-IN')}`}</TableCell>
-                        <TableCell>{isLoading ? <Loader /> : `₹${achievedSales.toLocaleString('en-IN')}`}</TableCell>
-                        <TableCell>{isLoading ? <Loader /> : achievedROAS.toFixed(2)}</TableCell>
-                        <TableCell>{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(remainingSales))}</TableCell>
-                        <TableCell>{remainingDays}</TableCell>
-                        <TableCell>₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(requiredSalesPerDay)}</TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <>
-                              <Button onClick={() => handleSaveEdit(brand.brandId)} className="mr-2">Save</Button>
-                              <Button onClick={handleCancelEdit} variant="outline"><X className="h-4 w-4" /></Button>
-                            </>
-                          ) : (
-                            <div className='flex flex-row gap-1'>
-                              <Button size={"sm"} onClick={() => handleEdit(brand.brandId)} ><Edit2 className="h-2 w-2" /></Button>
-                              <Button size={"sm"} onClick={() => handleDelete(brand.brandId)} variant="destructive"><Trash2 className="h-2 w-2" /></Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+            <div className="mt-4">
+              <Label>Target Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-2",
+                      !newBrand.targetDate && "text-muted-foreground"
+                    )}
+                  >
+                    {newBrand.targetDate ? format(newBrand.targetDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={newBrand.targetDate}
+                    onSelect={(date) => date && setNewBrand(prev => ({ ...prev, targetDate: date }))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </CardContent>
         </Card>
+
+        {renderTable(metaBrands, 'meta', 'Meta')}
+        {renderTable(googleBrands, 'google', 'Google')}
+
         <Card>
           <CardHeader>
             <CardTitle>Sales Progress</CardTitle>
@@ -521,8 +533,10 @@ export default function BrandPerformanceDashboard() {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
-                <Bar dataKey="Achieved" stackId="a" fill="#4ade80" />
-                <Bar dataKey="Remaining" stackId="a" fill="#f87171" />
+                <Bar dataKey="Meta Achieved" stackId="meta" fill="#4ade80" />
+                <Bar dataKey="Meta Remaining" stackId="meta" fill="#f87171" />
+                <Bar dataKey="Google Achieved" stackId="google" fill="#60a5fa" />
+                <Bar dataKey="Google Remaining" stackId="google" fill="#fbbf24" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

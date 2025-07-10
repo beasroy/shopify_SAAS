@@ -15,7 +15,7 @@ import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 
@@ -43,6 +43,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+    const [currentFilter, setCurrentFilter] = useState<string[]>([]);
     const componentId = 'pagePath-conversion'
 
     const locale = useSelector((state: RootState) => state.locale.locale);
@@ -124,6 +125,10 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
         fetchData();
     };
 
+    const handleCategoryFilter = (items: (string | number)[]) => {
+        setCurrentFilter(items.map(item => String(item)));
+    };
+
     // Extract columns dynamically from the API response
     const primaryColumn = "Page Path";
     const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
@@ -174,6 +179,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                                 data={apiResponse?.data || []}
                                 primaryColumn={primaryColumn}
                                 metricConfig={metricConfigs.sessionsAndConversion || {}}
+                                onCategoryFilter={handleCategoryFilter}
                             />
                             <ConversionTable
                                 data={apiResponse?.data || []}
@@ -183,6 +189,7 @@ const PagePathConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDa
                                 monthlyMetrics={monthlyMetrics}
                                 isFullScreen={isFullScreen}
                                 locale={locale}
+                                filter={currentFilter}
                             />
                         </div>
                 </div>

@@ -15,7 +15,7 @@ import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 
@@ -46,6 +46,7 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+    const [currentFilter, setCurrentFilter] = useState<string[]>([]);
     const componentId = 'browser-conversion';
     const locale = useSelector((state:RootState) => state.locale.locale)
     const { brandId } = useParams();
@@ -125,72 +126,80 @@ const BrowserConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         fetchData();
     };
 
-    // Extract columns dynamically from the API response
-    const primaryColumn = "Browser";
-    const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
-    const monthlyDataKey = "MonthlyData";
-    const monthlyMetrics = ["Sessions", "Conv. Rate"];
+    const handleCategoryFilter = (items: (string | number)[]) => {
+    setCurrentFilter(items.map(item => String(item)));
+  };
 
-    if(loading){
-        return <Loader isLoading={loading} /> 
-    }
+  // Extract columns dynamically from the API response
+  const primaryColumn = "Browser";
+  const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
+  const monthlyDataKey = "MonthlyData";
+  const monthlyMetrics = ["Sessions", "Conv. Rate"]; 
 
-    return (
-        <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
-            <CardContent>
+  if(loading){
+    return <Loader isLoading={loading} />
+  }
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-lg font-medium">Browser based Conversion</h2>
-                        <Ga4Logo />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                            <DatePickerWithRange
-                                defaultDate={{
-                                    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                    to: new Date()
-                                }}
-                            />
-                        </div>}
-                        <NumberFormatSelector/>
-                        <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        </Button>
-                        <FilterConversions componentId={componentId} />
-                        <ExcelDownload
-                            data={apiResponse?.data || []}
-                            fileName={`${primaryColumn}_Conversion_Report`}
-                            primaryColumn={primaryColumn}
-                            secondaryColumns={secondaryColumns}
-                            monthlyDataKey={monthlyDataKey}
-                            monthlyMetrics={monthlyMetrics}
-                            disabled={loading}
-                        />
-                        <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                            {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                        </Button>
-                    </div>
-                </div>
+  return (
+    <Card id="browser-report" className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
+      <CardContent >
 
-                <div className="rounded-md overflow-hidden">
-                   
-                        <div>
-                            <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} />
-                            <ConversionTable
-                                data={apiResponse?.data || []}
-                                primaryColumn={primaryColumn}
-                                secondaryColumns={secondaryColumns}
-                                monthlyDataKey={monthlyDataKey}
-                                monthlyMetrics={monthlyMetrics}
-                                isFullScreen={isFullScreen}
-                                locale = {locale}
-                            />
-                        </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-medium">Browser based Conversion</h2>
+            <Ga4Logo />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+          {isFullScreen && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                  <DatePickerWithRange
+                    defaultDate={{
+                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      to: new Date()
+                    }}
+                  />
+                </div>}
+                <NumberFormatSelector />
+            <Button id="refresh" onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <div id="filters">
+            <FilterConversions componentId={componentId} /> 
+            </div>
+  
+            <ExcelDownload
+              data={apiResponse?.data || []}
+              fileName={`${primaryColumn}_Conversion_Report`}
+              primaryColumn={primaryColumn}
+              secondaryColumns={secondaryColumns}
+              monthlyDataKey={monthlyDataKey}
+              monthlyMetrics={monthlyMetrics}
+              disabled={loading}
+            />
+            <Button id="expand-button" onClick={toggleFullScreen} size="icon" variant="outline">
+              {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-md overflow-hidden">
+            <div>
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} onCategoryFilter={handleCategoryFilter} />
+              <ConversionTable
+                data={apiResponse?.data || []}
+                primaryColumn={primaryColumn}
+                secondaryColumns={secondaryColumns}
+                monthlyDataKey={monthlyDataKey}
+                monthlyMetrics={monthlyMetrics}
+                isFullScreen={isFullScreen}
+                locale={locale}
+                filter={currentFilter}
+              />
+            </div>
+        </div>
+
+      </CardContent>
+    </Card>
+  )
 };
 
 export default BrowserConversion;

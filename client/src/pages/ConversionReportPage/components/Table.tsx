@@ -22,6 +22,7 @@ interface ConversionTableProps {
   rows?: number
   isAdsTable?: boolean
   locale: string
+  filter?: string[] // Add filter prop for filtering rows
 }
 
 export default function ConversionTable({
@@ -32,12 +33,25 @@ export default function ConversionTable({
   monthlyMetrics,
   isFullScreen,
   rows,
-  isAdsTable, locale
+  isAdsTable, 
+  locale,
+  filter,
 }: ConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [loadedRows, setLoadedRows] = useState<Array<{ dataIndex: number; metricIndex: number }>>([])
   const rowsPerPage = rows ? rows : 8
   const rowsPerChunk = 30
+
+  const filteredData = useMemo(() => {
+    let dataToProcess = data;
+    if (filter && filter.length > 0) {
+      dataToProcess = data.filter(row => {
+        const primaryValue = String(row[primaryColumn]);
+        return filter.includes(primaryValue);
+      });
+    }
+    return dataToProcess;
+  }, [data, filter, primaryColumn]);
 
   const getTableHeight = () => {
     if (isFullScreen) {
@@ -50,8 +64,8 @@ export default function ConversionTable({
   }
 
   const months = useMemo(() => {
-    if (!Array.isArray(data)) {
-      console.error("Data is not an array:", data)
+    if (!Array.isArray(filteredData)) {
+      console.error("Data is not an array:", filteredData)
       return []
     }
 
@@ -61,7 +75,7 @@ export default function ConversionTable({
     }
 
     const allMonths = new Set<string>()
-    data.forEach((row) => {
+    filteredData.forEach((row) => {
       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
       if (Array.isArray(monthlyData)) {
         monthlyData.forEach((month) => {
@@ -74,17 +88,17 @@ export default function ConversionTable({
       }
     })
     return Array.from(allMonths).reverse()
-  }, [data, monthlyDataKey])
+  }, [filteredData, monthlyDataKey])
 
   const allRows = useMemo(() => {
     const rows: Array<{ dataIndex: number; metricIndex: number }> = []
-    data.forEach((_, dataIndex) => {
+    filteredData.forEach((_, dataIndex) => {
       monthlyMetrics.forEach((_, metricIndex) => {
         rows.push({ dataIndex, metricIndex })
       })
     })
     return rows
-  }, [data, monthlyMetrics])
+  }, [filteredData, monthlyMetrics])
 
   const loadMoreRows = () => {
     setLoadedRows((prevRows) => [...prevRows, ...allRows.slice(prevRows.length, prevRows.length + rowsPerChunk)])
@@ -113,49 +127,65 @@ export default function ConversionTable({
   const thresholds = useMemo(() => {
     let totalSessions = 0,
       totalConvRate = 0,
-      sessionCount = 0
+      totalMonths = 0
     let totalSpend = 0,
       totalPurchaseROAS = 0,
-      spendCount = 0
+      spendMonths = 0
     let totalCost = 0,
       totalConvValuePerCost = 0,
-      costCount = 0
+      costMonths = 0
 
     data.forEach((row) => {
-      if (typeof row["Total Sessions"] === "number" && typeof row["Avg Conv. Rate"] === "number") {
-        totalSessions += Number(row["Total Sessions"])
-        totalConvRate += Number(row["Avg Conv. Rate"])
-        sessionCount++
-      }
+      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+      console.log(monthlyData)
+      
+      if (Array.isArray(monthlyData)) {
+        monthlyData.forEach((month) => {
+          // Sessions and Conversion Rate
+          if (typeof month["Sessions"] === "number" && typeof month["Conv. Rate"] === "number") {
+            totalSessions += Number(month["Sessions"])
+            totalConvRate += Number(month["Conv. Rate"])
+            totalMonths++
+          }
 
-      if (typeof row["Total Spend"] === "number" && typeof row["Total Purchase ROAS"] === "number") {
-        totalSpend += Number(row["Total Spend"])
-        totalPurchaseROAS += Number(row["Total Purchase ROAS"])
-        spendCount++
-      }
+          // Spend and Purchase ROAS
+          if (typeof month["Spend"] === "number" && typeof month["Purchase ROAS"] === "number") {
+            totalSpend += Number(month["Spend"])
+            totalPurchaseROAS += Number(month["Purchase ROAS"])
+            spendMonths++
+          }
 
-      if (typeof row["Total Cost"] === "number" && typeof row["Conv. Value / Cost"] === "number") {
-        totalCost += Number(row["Total Cost"])
-        totalConvValuePerCost += Number(row["Conv. Value / Cost"])
-        costCount++
+          // Cost and Conv. Value/Cost
+          if (typeof month["Cost"] === "number" && typeof month["Conv. Value/ Cost"] === "number") {
+            totalCost += Number(month["Cost"])
+            totalConvValuePerCost += Number(month["Conv. Value/ Cost"])
+            costMonths++
+          }
+        })
       }
     })
 
     return {
-      avgSessions: sessionCount > 0 ? totalSessions / sessionCount : 0,
-      avgConvRate: sessionCount > 0 ? totalConvRate / sessionCount : 0,
-      avgSpend: spendCount > 0 ? totalSpend / spendCount : 0,
-      avgPurchaseROAS: spendCount > 0 ? totalPurchaseROAS / spendCount : 0,
-      avgCost: costCount > 0 ? totalCost / costCount : 0,
-      avgConvValuePerCost: costCount > 0 ? totalConvValuePerCost / costCount : 0,
+      avgSessions: totalMonths > 0 ? totalSessions / totalMonths : 0,
+      avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
+      avgSpend: spendMonths > 0 ? totalSpend / spendMonths : 0,
+      avgPurchaseROAS: spendMonths > 0 ? totalPurchaseROAS / spendMonths : 0,
+      avgCost: costMonths > 0 ? totalCost / costMonths : 0,
+      avgConvValuePerCost: costMonths > 0 ? totalConvValuePerCost / costMonths : 0,
     }
-  }, [data])
+  }, [data, monthlyDataKey]) // Only depend on original data, not filteredData
 
   useEffect(() => {
     if (!isFullScreen) {
       setCurrentPage(1)
     }
   }, [isFullScreen])
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+    setLoadedRows([])
+  }, [filter])
 
   const getMetricColor = ({
     sessions,
@@ -543,7 +573,10 @@ export default function ConversionTable({
     }
 
     return (
-      <tr key={`${row[primaryColumn]}-${metric}`} className="hover:bg-slate-50 transition-colors duration-150 border-b border-slate-300">
+      <tr 
+        key={`${row[primaryColumn]}-${metric}`} 
+        className="hover:bg-slate-50 transition-colors duration-150 border-b border-slate-300"
+      >
         <td
           className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium border-r border-b border-slate-300"
           style={{
@@ -692,11 +725,9 @@ export default function ConversionTable({
           <tbody className="divide-y divide-slate-300">
             {displayRows.length > 0 ? (
               displayRows.map(({ dataIndex, metricIndex }) => {
-                console.log(`Rendering row at index: dataIndex=${dataIndex}, metricIndex=${metricIndex}`)
-                if (dataIndex < data.length && metricIndex < monthlyMetrics.length) {
-                  return renderMetricRow(data[dataIndex], metricIndex)
+                if (dataIndex < filteredData.length && metricIndex < monthlyMetrics.length) {
+                  return renderMetricRow(filteredData[dataIndex], metricIndex)
                 }
-                console.warn(`Skipping invalid row: dataIndex=${dataIndex}, metricIndex=${metricIndex}`)
                 return null
               })
             ) : (
@@ -705,7 +736,7 @@ export default function ConversionTable({
                   colSpan={2 + (secondaryColumns?.length || 0) + months.length}
                   className="p-4 text-center text-gray-500"
                 >
-                  No data to display
+                  {filter && filter.length > 0 ? "No data matches the selected filter" : "No data to display"}
                 </td>
               </tr>
             )}
@@ -721,6 +752,11 @@ export default function ConversionTable({
           <div className="text-sm font-medium" style={{ color: COLORS.text.secondary }}>
             Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
             {totalRows} rows
+            {(filter && filter.length > 0) ? (
+              <span className="ml-2 text-xs">
+                (Filtered from {data.length} total rows)
+              </span>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Button

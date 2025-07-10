@@ -59,7 +59,8 @@ export const fetchTotalSales = async (brandId) => {
     console.log('Store timezone:', storeTimezone);
 
     // Calculate yesterday's start and end in store's timezone
-    const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
+    // const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
+    const yesterday = moment.tz('2025-07-06', storeTimezone);
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
 
@@ -96,7 +97,7 @@ export const fetchTotalSales = async (brandId) => {
             status: 'any',
             created_at_min: startTime,
             created_at_max: endTime,
-            limit: 150
+            limit: 250
           };
           if (pageInfo) {
             params.page_info = pageInfo;
@@ -148,9 +149,6 @@ export const fetchTotalSales = async (brandId) => {
           for (const order of validOrders) {
             const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
             if (orderDate === yesterday.format('YYYY-MM-DD')) {
-              if (order.cancelled_at || order.cancel_reason) {
-                yesterdaySales.cancelledOrderCount += 1;
-              } else {
                 const totalPrice = Number(order.total_price || 0);
                 const subtotalPrice = Number(order.subtotal_price || 0);
                 const discountAmount = Number(order.total_discounts || 0);
@@ -185,11 +183,15 @@ export const fetchTotalSales = async (brandId) => {
                 yesterdaySales.orderCount += 1;
                 yesterdaySales.totalTaxes += totalTaxes;
                 yesterdaySales.subtotalPrice += subtotalPrice;
+           
+                if (order.cancelled_at || order.cancel_reason) {
+                  yesterdaySales.cancelledOrderCount += 1;
+                }
                 
                 if (hasRefunds) {
                   console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
                 }
-              }
+              
             }
           }
           const linkHeader = response.headers?.link;
@@ -276,6 +278,7 @@ export const fetchTotalSales = async (brandId) => {
     }];
 
     console.log('Yesterday\'s sales summary:', dailySales[0]);
+    console.log('Total Price', yesterdaySales.totalPrice)
     console.log(`Refund cache entries for yesterday: ${refundCacheData.length}`);
 
     return dailySales;
@@ -725,7 +728,6 @@ export const calculateMetricsForAllBrands = async () => {
     };
   }
 };
-
 
 
 

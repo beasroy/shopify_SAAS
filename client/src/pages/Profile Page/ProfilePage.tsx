@@ -16,7 +16,7 @@ import { BrandCards } from './components/BrandCard';
 function ProfilePage() {
     const [activeTab, setActiveTab] = useState('brands');
     const user = useSelector((state: RootState) => state.user.user);
-    const userbrands = user?.brands;    
+    console.log(user?.brands)
 
     const handleZohoLogin = async () => {
         try {
@@ -83,7 +83,7 @@ function ProfilePage() {
                             </div>
 
                             {activeTab.toLowerCase() === 'brands' &&
-                              <BrandCards userBrands={userbrands} />
+                              <BrandCards userBrands={user?.brands} />
                             }
                             {activeTab.toLowerCase() === "support" && user?.isAdmin && (
                                 <div className="py-8 flex gap-4 items-center justify-center">

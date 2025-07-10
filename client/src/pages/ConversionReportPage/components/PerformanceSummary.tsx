@@ -13,36 +13,56 @@ import { PerformanceSummaryProps, CategoryData } from '@/interfaces';
 const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
   data,
   primaryColumn,
-  metricConfig
+  metricConfig,
+
+  onCategoryFilter
 }) => {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [filteredCategory, setFilteredCategory] = useState<string | null>(null);
 
   const thresholds = useMemo(() => {
     const metrics: Record<string, number> = {
       [metricConfig.primary.key]: 0,
       [metricConfig.secondary.key]: 0
     };
-    let count = 0;
+    let totalMonths = 0;
 
+    // Always calculate thresholds from the complete original data
     data.forEach(row => {
-      const primaryMetric = row[metricConfig.primary.key];
-      const secondaryMetric = row[metricConfig.secondary.key];
+      const monthlyData = row.MonthlyData as Array<{ Month: string; [key: string]: any }> | undefined;
+      
+      if (Array.isArray(monthlyData)) {
+        monthlyData.forEach((month) => {
+          // Map the metric keys to monthly data keys
+          const primaryMonthlyKey = metricConfig.primary.key === "Total Sessions" ? "Sessions" : 
+                                   metricConfig.primary.key === "Total Spend" ? "Spend" :
+                                   metricConfig.primary.key === "Total Cost" ? "Cost" :
+                                   metricConfig.primary.key;
+          
+          const secondaryMonthlyKey = metricConfig.secondary.key === "Avg Conv. Rate" ? "Conv. Rate" :
+                                     metricConfig.secondary.key === "Total Purchase ROAS" ? "Purchase ROAS" :
+                                     metricConfig.secondary.key === "Conv. Value / Cost" ? "Conv. Value/ Cost" :
+                                     metricConfig.secondary.key;
 
-      if (
-        typeof primaryMetric === 'number' &&
-        typeof secondaryMetric === 'number'
-      ) {
-        metrics[metricConfig.primary.key] += Number(primaryMetric);
-        metrics[metricConfig.secondary.key] += Number(secondaryMetric);
-        count++;
+          const primaryMetric = month[primaryMonthlyKey];
+          const secondaryMetric = month[secondaryMonthlyKey];
+
+          if (
+            typeof primaryMetric === 'number' &&
+            typeof secondaryMetric === 'number'
+          ) {
+            metrics[metricConfig.primary.key] += Number(primaryMetric);
+            metrics[metricConfig.secondary.key] += Number(secondaryMetric);
+            totalMonths++;
+          }
+        });
       }
     });
 
     return {
-      [metricConfig.primary.key]: metrics[metricConfig.primary.key] / count,
-      [metricConfig.secondary.key]: metrics[metricConfig.secondary.key] / count
+      [metricConfig.primary.key]: totalMonths > 0 ? metrics[metricConfig.primary.key] / totalMonths : 0,
+      [metricConfig.secondary.key]: totalMonths > 0 ? metrics[metricConfig.secondary.key] / totalMonths : 0
     };
-  }, [data, metricConfig]);
+  }, [data, metricConfig]); // Only depend on original data
 
   const categories: CategoryData[] = useMemo(() => {
     const categorizedItems: Record<string, (string | number)[]> = {
@@ -107,6 +127,19 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
     ];
   }, [data, thresholds, primaryColumn, metricConfig]);
 
+  const handleCategoryClick = (categoryName: string) => {
+    const category = categories.find(c => c.name === categoryName);
+    if (category) {
+      if (filteredCategory === categoryName) {
+        setFilteredCategory(null);
+        onCategoryFilter?.([]);
+      } else {
+        setFilteredCategory(categoryName);
+        onCategoryFilter?.(category.items);
+      }
+    }
+  };
+
   return (
     <TooltipProvider>
       <div id="age-report-performance" className="space-y-4 py-2.5">
@@ -117,11 +150,14 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
                 <TooltipTrigger asChild>
                   <div
                     className={`relative flex-grow ${category.bgColor} border-r last:border-r-0 border-gray-300 cursor-pointer transition-all duration-300 ease-in-out hover:opacity-90`}
-                    onClick={() => setExpandedCategory(expandedCategory === category.name ? null : category.name)}
+                    onClick={() => handleCategoryClick(category.name)}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-xs font-medium ${category.color} ${expandedCategory === category.name ? 'underline' : ''}`}>
+                      <span className={`text-xs font-medium ${category.color} ${filteredCategory === category.name ? 'underline' : ''}`}>
                         {category.name} ({category.count})
+                        {filteredCategory === category.name && (
+                          <span className="ml-1 inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -146,28 +182,10 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
               </Tooltip>
             ))}
           </div>
-          {expandedCategory && (
-            <div className="p-4 bg-white border-t border-gray-200">
-              <h3 className={`text-lg font-semibold mb-2 flex items-center gap-2 ${categories.find(c => c.name === expandedCategory)?.color}`}>
-                {expandedCategory}
-                <span className={`w-3 h-3 rounded-lg ${categories.find(c => c.name === expandedCategory)?.bgColor} border border-gray-200`} />
-              </h3>
-              <ul className="grid grid-cols-4 list-disc pl-5 max-h-40 overflow-y-auto gap-4">
-                {categories.find(c => c.name === expandedCategory)?.items.map((item, index) => (
-                  <li key={index} className="text-sm mb-1 break-words w-full">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
     </TooltipProvider>
   );
 };
-
-
-
 
 export default PerformanceSummary;

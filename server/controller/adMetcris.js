@@ -569,7 +569,6 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
 
     // Initialize arrays to store data from all accounts
     let allAdAccountsData = [];
-    let allCampaignData = [];
     let combinedTotalSpend = 0;
     let combinedTotalClicks = 0;
     let combinedTotalConversionsValue = 0;
@@ -594,11 +593,10 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
 
       try {
         // Fetch reports for this account
-        const [adLevelReport, campaignLevelReport] = await Promise.all([
-          customer.report({
-            entity: "customer",
-            attributes: ["customer.descriptive_name"],
-            metrics: [
+        const adLevelReport = await customer.report({
+          entity: "customer",
+          attributes: ["customer.descriptive_name"],
+          metrics: [
               "metrics.cost_micros",
               "metrics.conversions_value",
               "metrics.conversions",
@@ -607,21 +605,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
             ],
             from_date: startDate,
             to_date: endDate,
-          }),
-
-          customer.report({
-            entity: "campaign",
-            attributes: ["campaign.id", "campaign.name", "customer.descriptive_name"],
-            metrics: [
-              "metrics.cost_micros",
-              "metrics.conversions_value",
-              "metrics.impressions",
-              "metrics.clicks"
-            ],
-            from_date: startDate,
-            to_date: endDate,
           })
-        ]);
 
         // Process ad-level metrics for this account
         let accountTotalSpend = 0;
@@ -661,22 +645,7 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
           totalImpressions: accountTotalImpressions,
         };
 
-        // Process campaign-level metrics for this account
-        const accountCampaignData = campaignLevelReport
-          .map(row => {
-            const costMicros = row.metrics.cost_micros || 0;
-            const spend = costMicros / 1_000_000;
-            const conversionsValue = row.metrics.conversions_value || 0;
 
-            return {
-              account_id: adAccountId,
-              account_name: adAccountName,
-              campaign_name: row.campaign.name,
-              spend: spend.toFixed(2),
-              purchase_roas: spend > 0 ? (conversionsValue / spend).toFixed(2) : 0,
-            };
-          })
-          .filter(campaign => parseFloat(campaign.spend) > 0 || parseFloat(campaign.roas) > 0);
 
         // Store data for this account
         allAdAccountsData.push({
@@ -685,8 +654,6 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
           adMetrics: accountAdMetrics
         });
 
-        // Add campaign data to combined list
-        allCampaignData = [...allCampaignData, ...accountCampaignData];
 
         // Add to combined totals for potential aggregation
         combinedTotalSpend += accountTotalSpend;
@@ -728,7 +695,6 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
         data: {
           adAccountName: singleAccount.adAccountName,
           adMetrics: singleAccount.adMetrics,
-          campaignData: allCampaignData
         },
         aggregatedMetrics: null // No aggregation needed for single account
       });
@@ -738,7 +704,6 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
         success: true,
         data: {
           accounts: allAdAccountsData,
-          campaignData: allCampaignData
         },
         aggregatedMetrics
       });

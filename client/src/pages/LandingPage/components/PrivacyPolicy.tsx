@@ -1,6 +1,6 @@
 import Footer from "./Footer";
 import Navbar from "./Navbar";
-import { privacyPolicySections } from "@/data";
+import { privacyPolicySections } from "@/data/constant";
 
 function PrivacyPolicy() {
   return (

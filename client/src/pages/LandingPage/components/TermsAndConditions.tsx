@@ -1,6 +1,6 @@
 import Footer from "./Footer";
 import Navbar from "./Navbar";
-import { termsAndConditionsSections } from "@/data";
+import { termsAndConditionsSections } from "@/data/constant";
 
 function TermsAndConditions() {
   return (

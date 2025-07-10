@@ -15,7 +15,7 @@ import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 
@@ -44,6 +44,7 @@ const RegionConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDate
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<string[]>([]);
   const componentId = 'region-conversion'
   const locale = useSelector((state : RootState)=> state.locale.locale);
   
@@ -123,6 +124,10 @@ const fetchData = useCallback(async () => {
     fetchData();
   };
 
+  const handleCategoryFilter = (items: (string | number)[]) => {
+    setCurrentFilter(items.map(item => String(item)));
+  };
+
   // Extract columns dynamically from the API response
   const primaryColumn = "Region";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
@@ -170,7 +175,7 @@ const fetchData = useCallback(async () => {
         <div className="rounded-md overflow-hidden">
 
             <div>
-              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}}/>
+              <PerformanceSummary data={apiResponse?.data || []} primaryColumn={primaryColumn} metricConfig={metricConfigs.sessionsAndConversion || {}} onCategoryFilter={handleCategoryFilter}/>
               <ConversionTable
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
@@ -179,6 +184,7 @@ const fetchData = useCallback(async () => {
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
                 locale={locale}
+                filter={currentFilter}
               />
             </div>
         </div>

@@ -15,7 +15,7 @@ import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { setDate } from "@/store/slices/DateSlice";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 
@@ -43,6 +43,7 @@ const CountryConversion: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<string[]>([]);
   const componentId = 'country-conversion';
   const locale = useSelector((state:RootState) =>state.locale.locale);
   const { brandId } = useParams();
@@ -124,6 +125,10 @@ const fetchData = useCallback(async () => {
   const monthlyDataKey = "MonthlyData";
   const monthlyMetrics = ["Sessions", "Conv. Rate"];
 
+  const handleCategoryFilter = (items: (string | number)[]) => {
+    setCurrentFilter(items.map(item => String(item)));
+  };
+
   if(loading){
     return <Loader isLoading={loading} />
   }
@@ -168,6 +173,7 @@ const fetchData = useCallback(async () => {
                 data={apiResponse?.data || []}
                 primaryColumn={primaryColumn}
                 metricConfig={metricConfigs.sessionsAndConversion || {}}
+                onCategoryFilter={handleCategoryFilter}
               />
               <ConversionTable
                 data={apiResponse?.data || []}
@@ -177,6 +183,7 @@ const fetchData = useCallback(async () => {
                 monthlyMetrics={monthlyMetrics}
                 isFullScreen={isFullScreen}
                 locale={locale}
+                filter={currentFilter}
               />
             </div>
         </div>

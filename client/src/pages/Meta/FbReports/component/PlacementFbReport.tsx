@@ -13,7 +13,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setDate } from "@/store/slices/DateSlice";
 import PerformanceSummary from "@/pages/ConversionReportPage/components/PerformanceSummary";
-import { metricConfigs } from "@/data";
+import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
 

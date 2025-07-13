@@ -4,6 +4,9 @@ import NodeCache from 'node-cache';
 
 const cache = new NodeCache({ stdTTL: 7 * 24 * 60 * 60, checkperiod: 60 });
 
+// Export cache instance for central management
+export { cache };
+
 async function getAccessTokenWithRefreshToken(refreshToken) {
     try {
         const response = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {

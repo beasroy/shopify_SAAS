@@ -1,12 +1,6 @@
 import mongoose from 'mongoose';
 
 const subscriptionSchema = new mongoose.Schema({
-  brandId: {
-    type: String,
-    required: true,
-    index: true,
-    ref: 'Brand'
-  },
   shopId: {
     type: Number,
     required: true,

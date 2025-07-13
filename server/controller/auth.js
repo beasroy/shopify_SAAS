@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
-import { OAuth2Client } from 'google-auth-library';
+import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis'
 import crypto from 'crypto';
 import axios from 'axios';
@@ -573,12 +573,19 @@ export const handleShopifyCallback = async (req, res) => {
         const emailToUse = ownerEmail || `${shopName}@${shop}`;
         let user = await User.findOne({ email: emailToUse });
 
+        if (user) {
+            user.loginCount += 1;
+            await user.save();
+        }
+
         if (!user) {
             user = new User({
                 username: ownerName || shopName,
                 email: emailToUse,
                 method: 'shopify',
-                brands: []
+                brands: [],
+                isAdmin: false,
+                loginCount: 0,
             });
             await user.save();
         }

@@ -6,6 +6,9 @@ import NodeCache from 'node-cache';
 
 const dataCache = new NodeCache({ stdTTL: 86400 });
 
+// Export cache instance for central management
+export { dataCache };
+
 function getDateRange(startDate, endDate) {
     return {
         adjustedStartDate: startDate || moment().startOf('month').format('YYYY-MM-DD'),

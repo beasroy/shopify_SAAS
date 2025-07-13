@@ -25,6 +25,7 @@ import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
+import cacheRoutes from "./routes/cache.js"
 
 
 const app = express();
@@ -77,6 +78,7 @@ dataOperationRouter.use("/zoho",zohoRoutes);
 dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
+dataOperationRouter.use("/cache",cacheRoutes)
 
 
 if (isDevelopment) {

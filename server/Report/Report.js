@@ -59,8 +59,7 @@ export const fetchTotalSales = async (brandId) => {
     console.log('Store timezone:', storeTimezone);
 
     // Calculate yesterday's start and end in store's timezone
-    // const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
-    const yesterday = moment.tz('2025-07-06', storeTimezone);
+    const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
 

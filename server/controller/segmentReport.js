@@ -5,6 +5,9 @@ import NodeCache from 'node-cache';
 
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
+// Export cache instance for central management
+export { cache };
+
 // Array to store cache keys for tracking
 let cacheKeys = [];
 

@@ -8,6 +8,9 @@ import axios from 'axios';
 const cache = new NodeCache({ stdTTL: 604800, checkperiod: 600 });
 config();
 
+// Export cache instance for central management
+export { cache };
+
 const createGoogleAdsClient = (refreshToken) => {
     return new GoogleAdsApi({
         client_id: process.env.GOOGLE_CLIENT_ID,

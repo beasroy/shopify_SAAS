@@ -513,7 +513,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 
 
 export const getShopifyAuthUrl = (req, res) => {
-    const { shop } = req.body;
+    const { shop , flowType} = req.body;
 
     if (!shop) {
         return res.status(400).json({ error: 'Shop name is required' });
@@ -523,8 +523,14 @@ export const getShopifyAuthUrl = (req, res) => {
     const cleanShop = shop.replace('.myshopify.com', '');
 
     const SCOPES = "read_all_orders,read_analytics, write_returns, read_returns, write_reports, read_reports, write_orders, read_orders, write_customers, read_customers, write_products, read_products"
+    let redirectUri;
+    if (flowType === 'brandSetup') {
+        redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
+    } else {
+        redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
+    }
 
-    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
+    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
 
     res.json({ success: true, authUrl });
 }

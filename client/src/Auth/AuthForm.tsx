@@ -169,7 +169,7 @@ export default function AuthForm() {
         return
       }
 
-      const response = await axios.post(`${baseURL}/api/auth/shopify`, { shop })
+      const response = await axios.post(`${baseURL}/api/auth/shopify`, { shop , flowType: "login" })
       const { authUrl } = response.data
       window.location.href = authUrl
     } catch (error) {

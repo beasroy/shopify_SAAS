@@ -48,7 +48,7 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
   const fetchSubscriptionDetails = async () => {
     try {
       setLoading(true)
-      const response = await axios.get(`${baseURL}/api/pricing/details/${brandId}`)
+      const response = await axios.get(`${baseURL}/api/pricing/details/${brandId}`,{withCredentials: true })
       setSubscription(response.data)
     } catch (err) {
       console.error("Error fetching subscription details:", err)

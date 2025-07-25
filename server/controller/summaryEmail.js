@@ -4,14 +4,11 @@ import User from "../models/User.js";
 import Brands from "../models/Brands.js";
 
 const slackChannelMapping = {
-  "Udd Studio": "uddstudio-aaaaglc336lhdjxxxckkhmuvya@messold-india.slack.com",
+  "udd Studio": "uddstudio-aaaaglc336lhdjxxxckkhmuvya@messold-india.slack.com",
   "Theme My Party": "thememyparty-aaaagkvp77vveitk5ojzxwjaya@messold-india.slack.com",
-  "House of Nitya": "house-of-nitya-aaaaock7yx7bitu43at4dawqaq@messold-india.slack.com",
-  "The Oakery": "theoakery-aaaapegzoi3fhaahviptegy7pi@messold-india.slack.com",
-  "The weaving cult": "theweavingcult-aaaapgs6j4yybz4oz4iqq2miau@messold-india.slack.com",
-  "Kraftsmiths": "kraftsmiths-aaaagqabimb4faacblc3w6nghe@messold-india.slack.com",
-  "Litlmeu": "litlemeu-aaaaofzywanliwgxizzhhupcpa@messold-india.slack.com",
-  "Ethnic Trends By Shaheen": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
+  "weavingcult": "theweavingcult-aaaapgs6j4yybz4oz4iqq2miau@messold-india.slack.com",
+  "Kraft Smiths": "kraftsmiths-aaaagqabimb4faacblc3w6nghe@messold-india.slack.com",
+  "Ethnic Trends By Shaheen ": "ethnictrendsbyshaheen-aaaaolcjqr2dm7tyb2yfllpvna@messold-india.slack.com"
 };
 
 const smtpConfig = {
@@ -115,7 +112,7 @@ export async function getPlatformSummaryWithPartialData(
           : Promise.resolve(null)
       ];
 
-      // Execute analytics and Meta Ads promises
+      // Execute analytics and Meta Ads   
       const [
         currentAnalyticsData,
         prevAnalyticsData,

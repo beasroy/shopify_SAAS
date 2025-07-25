@@ -26,6 +26,7 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
+import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
 const app = express();
@@ -87,6 +88,8 @@ if (isDevelopment) {
   setupCronJobs();
   console.log('Cron jobs initialized in production environment');
 }
+
+//calculateMetricsForSingleBrand("686921dad089883460c75808","686921dad089883460c75805")
 
 const PORT = process.env.PORT || 5000;
 

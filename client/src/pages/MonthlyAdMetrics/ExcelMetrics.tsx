@@ -18,6 +18,7 @@ import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
 import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
+import Footer from "../LandingPage/components/Footer"
 
 export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
   return formatCurrencyUtil(amount, currencyCode);
@@ -518,7 +519,9 @@ export const ExcelMetricsPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">{renderContent()}</div>
+      <div className="flex-1 h-screen overflow-auto">{renderContent()}
+        <Footer />
+      </div>
       <HelpDeskModal />
     </div>
   )

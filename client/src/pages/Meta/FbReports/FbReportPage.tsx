@@ -19,6 +19,7 @@ import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
 import { selectFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
 import { Target } from 'lucide-react';
+import Footer from '@/pages/LandingPage/components/Footer';
 
 const FbReportPage: React.FC = () => {
     const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -58,7 +59,7 @@ const FbReportPage: React.FC = () => {
     return (
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
-            <div className="flex-1 h-screen overflow-hidden flex flex-col">
+            <div className="flex-1 h-screen overflow-auto">
                 <Header
                     title='Meta Reports'
                     Icon={FaMeta}
@@ -136,6 +137,7 @@ const FbReportPage: React.FC = () => {
                         </div>
                     </>
                 )}
+                <Footer />
                 <HelpDeskModal />
             </div>
         </div>

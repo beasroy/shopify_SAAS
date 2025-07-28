@@ -26,6 +26,7 @@ import CampaignConversion from './components/CampaignConversion';
 import ChannelConversion from './components/ChannelConversion';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
+import Footer from '../LandingPage/components/Footer';
 
 const ConversionLens: React.FC = () => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -215,6 +216,7 @@ const ConversionLens: React.FC = () => {
                   }} />
                 </div>}
               </div>
+              <Footer />
               <HelpDeskModal />
             </div>
           </>

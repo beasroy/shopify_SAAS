@@ -16,6 +16,7 @@ import { selectFbTokenError } from "@/store/slices/TokenSllice";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import ConnectPlatform from "@/pages/ReportPage/ConnectPlatformPage";
 import { Target } from "lucide-react";
+import Footer from "@/pages/LandingPage/components/Footer";
 // Define interface for interest data structure
 interface InterestMetric {
   Interest: string;
@@ -163,7 +164,7 @@ function InterestPage() {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">
+      <div className="flex-1 h-screen overflow-auto">
         <Header
           title='Meta Interest Analysis'
           Icon={FaMeta}
@@ -247,6 +248,7 @@ function InterestPage() {
             )}
           </main>
         )}
+        <Footer />
         <HelpDeskModal />
       </div>
     </div>

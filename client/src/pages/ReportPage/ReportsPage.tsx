@@ -16,6 +16,7 @@ import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Wa
 import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 import { resetAllTokenErrors } from '@/store/slices/TokenSllice';
 import { useDispatch } from 'react-redux';
+import Footer from '../LandingPage/components/Footer';
 
 const ReportsPage: React.FC = () => {
   const isLoading = false;
@@ -105,6 +106,7 @@ const ReportsPage: React.FC = () => {
             )}
           </>
         )}
+        <Footer />
       </div>
       <HelpDeskModal />
     </div>

@@ -17,6 +17,7 @@ import ConnectPlatform from "@/pages/ReportPage/ConnectPlatformPage";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import { selectFbTokenError } from "@/store/slices/TokenSllice";
 import { Target } from "lucide-react";
+import Footer from "@/pages/LandingPage/components/Footer";
 
 function CampaignPage() {
 
@@ -97,7 +98,7 @@ function CampaignPage() {
     return (
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
-            <div className="flex-1 h-screen overflow-hidden flex flex-col">
+            <div className="flex-1 h-screen overflow-auto">
             <Header title='Meta Campaign Trends' Icon={FaMeta} showDatePicker={true} />
                 {fbTokenError ? (
                     <NoAccessPage
@@ -161,6 +162,7 @@ function CampaignPage() {
 
                         </>
                     )}
+                    <Footer />
                 <HelpDeskModal />
             </div>
         </div>

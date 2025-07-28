@@ -13,6 +13,7 @@ import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import Keyword from './components/Keyword';
 import Product from './components/Product';
+import Footer from '../LandingPage/components/Footer';
 
 
 
@@ -50,7 +51,7 @@ const GoogleAdsDashboard: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-hidden flex flex-col">
+      <div className="flex-1 h-screen overflow-auto">
         {!hasGoogleAdAccount ? (
           <>
             <ConnectPlatform
@@ -120,6 +121,7 @@ const GoogleAdsDashboard: React.FC = () => {
             </div>
           </>
         )}
+        <Footer />
       </div>
       <HelpDeskModal />
     </div>

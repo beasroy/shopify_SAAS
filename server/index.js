@@ -80,6 +80,7 @@ dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 dataOperationRouter.use("/cache",cacheRoutes)
+dataOperationRouter.use("/instagram",instagramConnectionRoutes)
 
 
 if (isDevelopment) {

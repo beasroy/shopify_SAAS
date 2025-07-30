@@ -6,6 +6,10 @@ import {
   setGoogleAdsTokenError, 
   setGoogleAnalyticsTokenError 
 } from '@/store/slices/TokenSllice';
+import { store } from '@/store';
+import { clearUser } from '@/store/slices/UserSlice';
+import { resetBrand } from '@/store/slices/BrandSlice';
+import { baseURL } from '@/data/constant';
 
 const createAxiosInstance = (): AxiosInstance => {
   const navigate = useNavigate();
@@ -34,6 +38,19 @@ const createAxiosInstance = (): AxiosInstance => {
     },
     (error: AxiosError) => {
       if (error.response?.status === 401) {
+        console.log('401 Unauthorized - Token expired or invalid');
+        
+        // Clear Redux state
+        store.dispatch(clearUser());
+        store.dispatch(resetBrand());
+        
+        // Call logout API
+        axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true })
+          .catch(() => {
+            // Ignore logout API errors
+          });
+        
+        // Navigate to login page
         navigate('/login');
       } else if (error.response?.status === 403) {
         if (error.config?.url?.includes('/meta')) {

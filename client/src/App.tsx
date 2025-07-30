@@ -27,6 +27,7 @@ import InterestPage from './pages/Meta/Interest Reports/InterestReportPage.tsx';
 import ShopifyAuth from "./Auth/Shopify.tsx";
 import PricingCallback from './Auth/PricingSuccess.tsx';
 import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.tsx';
+import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
 
 
 
@@ -36,10 +37,11 @@ function App() {
       <PersistGate loading={null} persistor={persistor}>
         <TokenErrorProvider>
           <Router>
-            <TutorialManager>
-              <TutorialDriver />
-              <Toaster />
-              <Routes>
+            <AutoLogout>
+              <TutorialManager>
+                <TutorialDriver />
+                <Toaster />
+                <Routes>
                 <Route path='/' element={<LandingPage />} />
                 <Route path="/login" element={<AuthForm />} />
                 <Route path="/dashboard" element={<GeneralDashboard />} />
@@ -63,6 +65,7 @@ function App() {
                 <Route path = "/first-time-brand-setup" element={<BrandSetupDashboard />} />
               </Routes>
             </TutorialManager>
+            </AutoLogout>
           </Router>
         </TokenErrorProvider>
       </PersistGate>

@@ -99,14 +99,14 @@ export const handleGoogleCallback = async (req, res) => {
             const jwtToken = jwt.sign(
                 { id: user._id, email: user.email, method: user.method },
                 SECRET_KEY,
-                { expiresIn: '14d' }
+                { expiresIn: '7d' }
             );
 
             res.cookie('token', jwtToken, {
                 httpOnly: true,
                 secure: isProduction,
                 sameSite: isProduction ? 'strict' : 'lax',
-                maxAge: 14 * 24 * 60 * 60 * 1000,
+                maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
             const clientURL = isProduction
@@ -323,9 +323,7 @@ export const userLogout = (req, res) => {
 };
 
 export const getFbAuthURL = (req, res) => {
-    const { source } = req.query;
-    const state = crypto.randomBytes(16).toString('hex'); // Generate a random state
-    
+    const { source } = req.query; 
     // Store both state and source in the cookie
     const stateData = JSON.stringify({ state, source: source || '/dashboard' });
     res.cookie('fb_state', stateData, { httpOnly: true, secure: true }); // Store in a secure cookie
@@ -683,7 +681,8 @@ export const handleShopifyCallback = async (req, res) => {
         const token = jwt.sign(
             {
                 id: user._id,
-                email: user.email
+                email: user.email,
+                method: user.method
             },
             process.env.JWT_SECRET,
             { expiresIn: '30d' }
@@ -712,35 +711,18 @@ export const handleShopifyCallback = async (req, res) => {
     }
 };
 
+export const handleShopifyBrandSetupCallback = async (req, res) => {
+    const { code, shop } = req.query;
+    const clientId = process.env.SHOPIFY_CLIENT_ID;
+    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
-export const getShopifyUrlInstall = async (req, res) => {
-  const { hmac, shop, timestamp, host } = req.body;
-
-    const message = Object.entries({ shop, timestamp, host })
-    .sort(([a], [b]) => a.localeCompare(b)) 
-    .map(([key, value]) => `${key}=${value}`)
-    .join('&');
-  
-  const generatedHash = crypto
-    .createHmac('sha256', process.env.SHOPIFY_CLIENT_SECRET)
-    .update(message)
-    .digest('hex');
-  
-  const isValid = crypto.timingSafeEqual(
-    Buffer.from(generatedHash, 'hex'),
-    Buffer.from(hmac, 'hex')
-  );
-  
-  if (!isValid) {
-    return res.status(401).json({ success: false, error: 'Invalid HMAC' });
-  }
-  
-  const SCOPES = "read_analytics, write_returns, read_returns, write_orders, read_orders, write_customers, read_customers, write_products, read_products";
-  const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${process.env.SHOPIFY_REDIRECT_URI}`;
-  
-  return res.json({ success: true, authUrl });
-};
+    if (!code || !shop) {}
+}
  
+
+
+
+
 export const getZohoAuthURL = (req, res) => {
     const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +
         `?client_id=${process.env.ZOHO_CLIENT_ID}` +

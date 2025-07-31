@@ -324,6 +324,10 @@ export const userLogout = (req, res) => {
 
 export const getFbAuthURL = (req, res) => {
     const { source } = req.query; 
+    
+    // Generate a random state for security
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
     // Store both state and source in the cookie
     const stateData = JSON.stringify({ state, source: source || '/dashboard' });
     res.cookie('fb_state', stateData, { httpOnly: true, secure: true }); // Store in a secure cookie

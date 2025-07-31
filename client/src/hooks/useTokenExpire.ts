@@ -24,6 +24,8 @@ export const useTokenExpire = () => {
   // Function to get token from cookies
   const getTokenFromCookies = (): string | null => {
     const cookies = document.cookie.split(';');
+    console.log('Raw document.cookie:', document.cookie);
+    console.log('Length:', document.cookie.length);
     const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('token='));
     return tokenCookie ? tokenCookie.split('=')[1] : null;
   };

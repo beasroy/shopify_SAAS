@@ -1,5 +1,5 @@
-import InstagramConnection from '../models/InstagramConnection';
-import Brand from '../models/Brand';
+import InstagramConnection from '../models/InstagramConnection.js';
+import Brand from '../models/Brands.js';
 
 export const getInstagramName = async (req, res) => {
     const { brandId } = req.body;

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getInstagramName, createInstagramConnection } from '../controller/instagramConnection';
+import { getInstagramName, createInstagramConnection } from '../controller/instagramConnection.js';
 
 const router = express.Router();
 

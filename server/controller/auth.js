@@ -769,3 +769,56 @@ export const handleZohoCallback = async (req, res) => {
         res.status(500).send('Authentication failed');
     }
 };
+
+export const checkTokenValidity = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided',
+                isValid: false
+            });
+        }
+
+        try {
+            const decoded = jwt.verify(token, SECRET_KEY);
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            if (decoded.exp < currentTime) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Token has expired',
+                    isValid: false,
+                    expiresAt: decoded.exp
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'Token is valid',
+                isValid: true,
+                expiresAt: decoded.exp,
+                user: {
+                    id: decoded.id,
+                    email: decoded.email,
+                    method: decoded.method
+                }
+            });
+        } catch (jwtError) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token',
+                isValid: false
+            });
+        }
+    } catch (error) {
+        console.error('Error checking token validity:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error checking token validity',
+            isValid: false
+        });
+    }
+};

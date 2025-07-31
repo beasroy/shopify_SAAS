@@ -26,6 +26,7 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
+import instagramConnectionRoutes from "./routes/instagramConnection.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 

@@ -47,9 +47,16 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
   origin: isDevelopment 
-    ? ['http://13.203.31.8', 'http://localhost:5173', 'https://extensions.shopifycdn.com']
-    : ['https://parallels.messold.com', 'https://extensions.shopifycdn.com'],
-  credentials: true  
+    ? true  // Allow all origins in development
+    : [
+        'https://parallels.messold.com',
+        'https://extensions.shopifycdn.com',
+        'https://*.shopifycdn.com',
+        'https://extensions.shopify.com'
+      ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({

@@ -14,7 +14,7 @@ router.get('/facebook/callback',handleFbCallback);
 router.put('/updateTokens/:type',verifyAuth,updateTokensForGoogleAndFbAndZoho);
 router.post('/shopify',getShopifyAuthUrl);
 router.get('/shopify/callback',handleShopifyCallback);
-router.get('/shopify/brand-setup/callback',handleShopifyBrandSetupCallback);
+router.get('/shopify/callback-brand-setup',handleShopifyBrandSetupCallback);
 router.get('/zoho',getZohoAuthURL);
 router.get('/zoho/callback', handleZohoCallback);
 router.get('/check-token', checkTokenValidity);

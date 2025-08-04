@@ -720,8 +720,50 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
     const clientId = process.env.SHOPIFY_CLIENT_ID;
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
-    if (!code || !shop) {}
-}
+    if (!code || !shop) {
+        return res.status(400).json({ error: 'Missing required parameters: code or shop' });
+    }
+
+    try {
+        // Step 1: Exchange code for access token
+        const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+            client_id: clientId,
+            client_secret: clientSecret,
+            code: code,
+        });
+
+        const accessToken = tokenResponse.data?.access_token;
+        if (!accessToken) {
+            return res.status(500).json({ error: 'Failed to obtain access token' });
+        }
+
+        // Step 2: Fetch shop details to get shop name
+        const shopResponse = await axios.get(`https://${shop}/admin/api/2024-04/shop.json`, {
+            headers: {
+                'X-Shopify-Access-Token': accessToken
+            }
+        });
+
+        const shopData = shopResponse.data.shop;
+        const shopName = shopData.name;
+
+        // Step 3: Redirect to frontend with access token and shop name
+        const clientURL = process.env.NODE_ENV === 'production'
+            ? 'https://parallels.messold.com/brand-setup'
+            : 'http://localhost:5173/brand-setup';
+
+        const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
+
+        return res.redirect(redirectUrl);
+
+    } catch (error) {
+        console.error('Shopify Brand Setup OAuth callback error:', error);
+        return res.status(500).json({
+            error: 'Something went wrong during Shopify brand setup callback',
+            details: error.response?.data || error.message
+        });
+    }
+};
  
 
 

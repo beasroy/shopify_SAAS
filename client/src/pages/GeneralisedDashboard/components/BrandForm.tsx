@@ -147,6 +147,10 @@ export default function BrandSetup() {
       setGa4Id(accountId)
     } else if (platform.toLowerCase() === "facebook") {
       setFBAdId((prev) => [...prev, accountId])
+    } else if (platform.toLowerCase() === "shopify") {
+      // For Shopify, accountId is the access token, account is the shop name
+      setShopifyAccessToken(accountId)
+      setShop(account) // account here is the shop name
     }
 
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" })
@@ -299,7 +303,7 @@ export default function BrandSetup() {
                       </DialogDescription>
                     </DialogHeader>
                     {platform.name === "Shopify" ? (
-                      <ShopifyModalContent />
+                      <ShopifyModalContent onConnect={handleConnect} />
                     ) : (
                       <OtherPlatformModalContent
                         platform={platform.name}

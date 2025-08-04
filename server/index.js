@@ -26,7 +26,6 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
-import instagramConnectionRoutes from "./routes/instagramConnection.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
@@ -45,26 +44,24 @@ connectDB();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// app.use(cors({
-//   origin: isDevelopment 
-//     ? true  // Allow all origins in development
-//     : [
-//         'https://parallels.messold.com',
-//         'https://extensions.shopifycdn.com',
-//         'https://*.shopifycdn.com',
-//         'https://extensions.shopify.com'
-//       ],
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
-
 app.use(cors({
-  origin: true, // Temporarily allow all
+  origin: isDevelopment 
+    ? true  // Allow all origins in development
+    : [
+        'https://parallels.messold.com',
+        'https://extensions.shopifycdn.com',
+        'https://*.shopifycdn.com',
+        'https://extensions.shopify.com'
+      ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -95,7 +92,6 @@ dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 dataOperationRouter.use("/cache",cacheRoutes)
-dataOperationRouter.use("/instagram",instagramConnectionRoutes)
 
 
 if (isDevelopment) {

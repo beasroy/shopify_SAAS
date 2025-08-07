@@ -747,7 +747,7 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
         const shopData = shopResponse.data.shop;
         const shopName = shopData.name;
 
-        // Step 3: Redirect to frontend with access token and shop name
+    
         const clientURL = process.env.NODE_ENV === 'production'
             ? 'https://parallels.messold.com/brand-setup'
             : 'http://localhost:5173/brand-setup';

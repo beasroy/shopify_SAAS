@@ -64,6 +64,9 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
 
+    const [blendedFilter, setBlendedFilter] = useState<string[]>([]);
+    const [accountFilters, setAccountFilters] = useState<Record<string, string[]>>({});
+
     const { brandId } = useParams();
     const toggleFullScreen = (accountId: string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
@@ -130,6 +133,19 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
     const locale = useSelector((state: RootState) => state.locale.locale)
+
+     // Separate handler for blended summary filter
+     const handleBlendedCategoryFilter = (items: (string | number)[]) => {
+        setBlendedFilter(items.map(item => String(item)));
+    };
+
+    // Separate handler for individual account filters
+    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[]) => {
+        setAccountFilters(prev => ({
+            ...prev,
+            [accountName]: items.map(item => String(item))
+        }));
+    };
 
     
     if(loading){
@@ -201,6 +217,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                                         data={blendedGenderData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
+                                        onCategoryFilter={handleBlendedCategoryFilter}
                                     />
                                     <ConversionTable
                                         data={Array.isArray(blendedGenderData) ? blendedGenderData : [blendedGenderData]}
@@ -210,6 +227,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === 'blended-summary'}
                                         locale={locale}
+                                        filter={blendedFilter}
                                     />
                                 </div>
                             </CardContent>
@@ -265,6 +283,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                                         data={account.genderData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
+                                        onCategoryFilter={handleAccountCategoryFilter(account.account_name)}
                                     />
                                     <ConversionTable
                                         data={account.genderData}
@@ -275,6 +294,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                                         isFullScreen={fullScreenAccount === account.account_name}
                                         isAdsTable={true}
                                         locale={locale}
+                                        filter={accountFilters[account.account_name]||[]}
                                     />
                                 </div>
                             </CardContent>

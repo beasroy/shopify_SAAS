@@ -64,6 +64,9 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
 
+    const [blendedFilter, setBlendedFilter] = useState<string[]>([]);
+    const [accountFilters, setAccountFilters] = useState<Record<string, string[]>>({});
+
     const { brandId } = useParams();
     const toggleFullScreen = (accountId:string) => {
         setFullScreenAccount(fullScreenAccount === accountId ? '' : accountId);
@@ -123,6 +126,19 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
 
     const handleManualRefresh = () => {
         fetchData();
+    };
+
+    // Separate handler for blended summary filter
+    const handleBlendedCategoryFilter = (items: (string | number)[]) => {
+        setBlendedFilter(items.map(item => String(item)));
+    };
+
+    // Separate handler for individual account filters
+    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[]) => {
+        setAccountFilters(prev => ({
+            ...prev,
+            [accountName]: items.map(item => String(item))
+        }));
     };
 
     // Extract columns dynamically from the API response
@@ -200,6 +216,7 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
                                         data={blendedCountryData|| []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
+                                        onCategoryFilter={handleBlendedCategoryFilter}
                                     />
                                  <ConversionTable
                                      data={Array.isArray(blendedCountryData) ? blendedCountryData : [blendedCountryData]}
@@ -209,6 +226,7 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
                                      monthlyMetrics={monthlyMetrics}
                                      isFullScreen={fullScreenAccount === 'blended-summary'}
                                      locale={locale}
+                                     filter={blendedFilter}
                                  />
                              </div>
                          </CardContent>
@@ -264,6 +282,7 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
                                         data={account.countryData|| []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
+                                        onCategoryFilter={handleAccountCategoryFilter(account.account_name)}
                                     />
                                     <ConversionTable
                                         data={account.countryData}
@@ -273,6 +292,7 @@ const CountryFbReport : React.FC<CityBasedReportsProps> = ({ dateRange: propDate
                                         monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
                                         locale={locale}
+                                        filter={accountFilters[account.account_name]||[]}
                                     />
                                 </div>
                             </CardContent>

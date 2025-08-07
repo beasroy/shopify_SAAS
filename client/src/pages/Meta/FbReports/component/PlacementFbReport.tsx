@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
-import { Card, CardContent} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Maximize, Minimize, RefreshCw } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -53,8 +53,8 @@ interface CityBasedReportsProps {
 }
 
 const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
-    const dateFrom = useSelector((state : RootState) =>state.date.from)
-    const dateTo = useSelector((state : RootState)=>state.date.to)
+    const dateFrom = useSelector((state: RootState) => state.date.from)
+    const dateTo = useSelector((state: RootState) => state.date.to)
     const date = useMemo(() => ({
         from: dateFrom,
         to: dateTo
@@ -63,6 +63,8 @@ const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [fullScreenAccount, setFullScreenAccount] = useState('');
+    const [blendedFilter, setBlendedFilter] = useState<string[]>([]);
+    const [accountFilters, setAccountFilters] = useState<Record<string, string[]>>({});
 
     const { brandId } = useParams();
     const toggleFullScreen = (accountId: string) => {
@@ -78,7 +80,7 @@ const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
         try {
 
             const response = await axiosInstance.post(`/api/meta/report/placement/${brandId}`, {
-                 startDate: startDate, endDate: endDate,
+                startDate: startDate, endDate: endDate,
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];
@@ -101,40 +103,53 @@ const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
 
     useEffect(() => {
         if (propDateRange) {
-          dispatch(setDate({
-            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-          }));
+            dispatch(setDate({
+                from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+                to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+            }));
         }
-      }, [propDateRange]);
-      
-      useEffect(() => {
+    }, [propDateRange]);
+
+    useEffect(() => {
         if (!fullScreenAccount) {
-          if (propDateRange) {
-          dispatch(setDate({
-            from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-            to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-          }));
+            if (propDateRange) {
+                dispatch(setDate({
+                    from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+                    to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+                }));
+            }
         }
-        }
-      }, [fullScreenAccount, propDateRange]);
+    }, [fullScreenAccount, propDateRange]);
 
     const handleManualRefresh = () => {
         fetchData();
     };
 
-    const blendedPlacementData = apiResponse?.blendedPlacementData;    
+    // Separate handler for blended summary filter
+    const handleBlendedCategoryFilter = (items: (string | number)[]) => {
+        setBlendedFilter(items.map(item => String(item)));
+    };
+
+    // Separate handler for individual account filters
+    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[]) => {
+        setAccountFilters(prev => ({
+            ...prev,
+            [accountName]: items.map(item => String(item))
+        }));
+    };
+
+    const blendedPlacementData = apiResponse?.blendedPlacementData;
 
     // Extract columns dynamically from the API response
     const primaryColumn = "Placements";
     const monthlyDataKey = "MonthlyData";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyMetrics = ["Spend", "Purchase ROAS"];
-    const locale = useSelector((state:RootState) => state.locale.locale)
+    const locale = useSelector((state: RootState) => state.locale.locale)
 
-   
-    if(loading){
-        return <Loader isLoading={loading}/>
+
+    if (loading) {
+        return <Loader isLoading={loading} />
     }
     return (
         <div>
@@ -149,135 +164,139 @@ const PlacementFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDat
 
             </div>
 
-                <div className="grid grid-cols-1 gap-6">
-                    {(blendedPlacementData && blendedPlacementData.length > 0)&&(
-                         <Card
-                         className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
-                     >
-                         <div className="bg-white rounded-md pt-2 px-3">
-                             <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                     <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                     <div className="text-lg font-medium">
-                                         Blended Summary
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center space-x-2">
-                                     {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                                         <DatePickerWithRange
-                                             
-                                         />
-                                     </div>}
-                                     <NumberFormatSelector />
-                                     <Button
-                                         onClick={handleManualRefresh}
-                                         disabled={loading}
-                                         size="sm"
-                                         variant="outline"
-                                         className="hover:bg-muted"
-                                     >
-                                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                     </Button>
-                                     <Button
-                                         onClick={() => toggleFullScreen('blended-summary')}
-                                         size="sm"
-                                         variant="outline"
-                                         className="hover:bg-muted"
-                                     >
-                                         {fullScreenAccount === 'blended-summary' ? (
-                                             <Minimize className="h-4 w-4" />
-                                         ) : (
-                                             <Maximize className="h-4 w-4" />
-                                         )}
-                                     </Button>
-                                 </div>
-                             </div>
-                         </div>
-                         <CardContent className="p-0">
-                             <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
-                             <PerformanceSummary
-                                        data={blendedPlacementData || []}
-                                        primaryColumn={primaryColumn}
-                                        metricConfig={metricConfigs.spendAndRoas || {}}
-                                    />
-                                 <ConversionTable
-                                     data={Array.isArray(blendedPlacementData) ? blendedPlacementData : [blendedPlacementData]}
-                                     primaryColumn={primaryColumn}
-                                     secondaryColumns={secondaryColumns}
-                                     monthlyDataKey={monthlyDataKey}
-                                     monthlyMetrics={monthlyMetrics}
-                                     isFullScreen={fullScreenAccount === 'blended-summary'}
-                                     locale={locale}
-                                 />
-                             </div>
-                         </CardContent>
-                     </Card>
-                    )}
-                    {apiResponse?.data.map((account, index) => (
-                        <Card
-                            key={index}
-                            className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
-                        >
-                            <div className="bg-white rounded-md pt-2 px-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                        <div className="text-lg font-medium">
-                                            {account.account_name}
-                                        </div>
+            <div className="grid grid-cols-1 gap-6">
+                {(blendedPlacementData && blendedPlacementData.length > 0) && (
+                    <Card
+                        className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
+                    >
+                        <div className="bg-white rounded-md pt-2 px-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                                    <div className="text-lg font-medium">
+                                        Blended Summary
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                                            <DatePickerWithRange
-                                               
-                                            />
-                                        </div>}
-                                        <NumberFormatSelector />
-                                        <Button
-                                            onClick={handleManualRefresh}
-                                            disabled={loading}
-                                            size="sm"
-                                            variant="outline"
-                                            className="hover:bg-muted"
-                                        >
-                                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                        </Button>
-                                        <Button
-                                            onClick={() => toggleFullScreen(account.account_name)}
-                                            size="sm"
-                                            variant="outline"
-                                            className="hover:bg-muted"
-                                        >
-                                            {fullScreenAccount === account.account_name ? (
-                                                <Minimize className="h-4 w-4" />
-                                            ) : (
-                                                <Maximize className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                        <DatePickerWithRange
+
+                                        />
+                                    </div>}
+                                    <NumberFormatSelector />
+                                    <Button
+                                        onClick={handleManualRefresh}
+                                        disabled={loading}
+                                        size="sm"
+                                        variant="outline"
+                                        className="hover:bg-muted"
+                                    >
+                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                    </Button>
+                                    <Button
+                                        onClick={() => toggleFullScreen('blended-summary')}
+                                        size="sm"
+                                        variant="outline"
+                                        className="hover:bg-muted"
+                                    >
+                                        {fullScreenAccount === 'blended-summary' ? (
+                                            <Minimize className="h-4 w-4" />
+                                        ) : (
+                                            <Maximize className="h-4 w-4" />
+                                        )}
+                                    </Button>
                                 </div>
                             </div>
-                            <CardContent className="p-0">
-                                <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                        </div>
+                        <CardContent className="p-0">
+                            <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
                                 <PerformanceSummary
-                                        data={account.placementData || []}
-                                        primaryColumn={primaryColumn}
-                                        metricConfig={metricConfigs.spendAndRoas || {}}
-                                    />
-                                    <ConversionTable
-                                        data={account.placementData}
-                                        primaryColumn={primaryColumn}
-                                        secondaryColumns={secondaryColumns}
-                                        monthlyDataKey={monthlyDataKey}
-                                        monthlyMetrics={monthlyMetrics}
-                                        isFullScreen={fullScreenAccount === account.account_name}
-                                        locale={locale}
-                                    />
+                                    data={blendedPlacementData || []}
+                                    primaryColumn={primaryColumn}
+                                    metricConfig={metricConfigs.spendAndRoas || {}}
+                                    onCategoryFilter={handleBlendedCategoryFilter}
+                                />
+                                <ConversionTable
+                                    data={Array.isArray(blendedPlacementData) ? blendedPlacementData : [blendedPlacementData]}
+                                    primaryColumn={primaryColumn}
+                                    secondaryColumns={secondaryColumns}
+                                    monthlyDataKey={monthlyDataKey}
+                                    monthlyMetrics={monthlyMetrics}
+                                    isFullScreen={fullScreenAccount === 'blended-summary'}
+                                    locale={locale}
+                                    filter={blendedFilter}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+                {apiResponse?.data.map((account, index) => (
+                    <Card
+                        key={index}
+                        className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
+                    >
+                        <div className="bg-white rounded-md pt-2 px-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                                    <div className="text-lg font-medium">
+                                        {account.account_name}
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                                <div className="flex items-center space-x-2">
+                                    {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                                        <DatePickerWithRange
+
+                                        />
+                                    </div>}
+                                    <NumberFormatSelector />
+                                    <Button
+                                        onClick={handleManualRefresh}
+                                        disabled={loading}
+                                        size="sm"
+                                        variant="outline"
+                                        className="hover:bg-muted"
+                                    >
+                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                    </Button>
+                                    <Button
+                                        onClick={() => toggleFullScreen(account.account_name)}
+                                        size="sm"
+                                        variant="outline"
+                                        className="hover:bg-muted"
+                                    >
+                                        {fullScreenAccount === account.account_name ? (
+                                            <Minimize className="h-4 w-4" />
+                                        ) : (
+                                            <Maximize className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                        <CardContent className="p-0">
+                            <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                                <PerformanceSummary
+                                    data={account.placementData || []}
+                                    primaryColumn={primaryColumn}
+                                    metricConfig={metricConfigs.spendAndRoas || {}}
+                                    onCategoryFilter={handleAccountCategoryFilter(account.account_name)}
+                                />
+                                <ConversionTable
+                                    data={account.placementData}
+                                    primaryColumn={primaryColumn}
+                                    secondaryColumns={secondaryColumns}
+                                    monthlyDataKey={monthlyDataKey}
+                                    monthlyMetrics={monthlyMetrics}
+                                    isFullScreen={fullScreenAccount === account.account_name}
+                                    locale={locale}
+                                    filter={accountFilters[account.account_name]||[]}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
         </div>
     );
 }

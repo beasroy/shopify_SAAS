@@ -9,7 +9,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 // Ensure MongoDB connection before processing jobs
 const ensureMongoConnection = async () => {
     const { isConnected, cachedConnection } = getConnectionStatus();
-    
+
     if (!isConnected || !cachedConnection) {
         console.log('Establishing new MongoDB connection...');
         await connectDB();
@@ -21,11 +21,11 @@ const ensureMongoConnection = async () => {
 // Create worker for metrics calculation (handles both regular and new additions)
 const metricsWorker = new Worker('metrics-calculation', async (job) => {
     const { brandId, userId, newAdditions } = job.data;
-    
+
     try {
         // Ensure MongoDB connection before processing
         await ensureMongoConnection();
-        
+
         if (newAdditions) {
             // Handle new additions processing
             console.log(`Processing metrics calculation for new additions for brand ${brandId}`);
@@ -37,26 +37,30 @@ const metricsWorker = new Worker('metrics-calculation', async (job) => {
             await calculateMetricsForSingleBrand(brandId, userId);
             console.log(`Successfully calculated regular metrics for brand ${brandId}`);
         }
-        
+
     } catch (error) {
         console.error(`Error calculating metrics for brand ${brandId}:`, error);
         throw error;
     }
-}, {
-    connection: createRedisConnection(),
-    concurrency: isDevelopment ? 2 : 5, 
-    limiter: isDevelopment ? {
-        max: 5, 
-        duration: 1000
-    } : {
-        max: 10,
-        duration: 1000
-    },
-    settings: {
-        lockDuration: isDevelopment ? 30000 : 300000, 
-        stalledInterval: isDevelopment ? 5000 : 30000, 
+},
+
+    {
+        connection: createRedisConnection(),
+        // concurrency: isDevelopment ? 2 : 5, 
+        concurrency: 1,
+        limiter: isDevelopment ? {
+            max: 5,
+            duration: 1000
+        } : {
+            max: 10,
+            duration: 1000
+        },
+        settings: {
+            lockDuration: isDevelopment ? 30000 : 300000,
+            stalledInterval: isDevelopment ? 5000 : 30000,
+        }
     }
-});
+);
 
 // Event handlers for metrics worker
 metricsWorker.on('active', (job) => {
@@ -116,7 +120,7 @@ const shutdown = async () => {
     console.log('Shutting down metrics worker...');
     await metricsWorker.close();
     await mongoose.connection.close();
-    
+
     process.exit(0);
 };
 
@@ -127,7 +131,7 @@ process.on('SIGINT', shutdown);
 // Check if this file is being run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
     console.log('Starting metrics worker...');
-    
+
     // Ensure MongoDB connection before starting worker
     connectDB().then(() => {
         metricsWorker.on('ready', () => {

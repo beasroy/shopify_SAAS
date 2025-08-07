@@ -19,7 +19,6 @@ import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
 import { selectFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
 import { Target } from 'lucide-react';
-import Footer from '@/pages/LandingPage/components/Footer';
 
 const FbReportPage: React.FC = () => {
     const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -137,7 +136,7 @@ const FbReportPage: React.FC = () => {
                         </div>
                     </>
                 )}
-                <Footer />
+       
                 <HelpDeskModal />
             </div>
         </div>

@@ -14,7 +14,6 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
   data,
   primaryColumn,
   metricConfig,
-
   onCategoryFilter
 }) => {
   const [filteredCategory, setFilteredCategory] = useState<string | null>(null);
@@ -129,15 +128,15 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
 
   const handleCategoryClick = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
-    if (category) {
+
       if (filteredCategory === categoryName) {
         setFilteredCategory(null);
         onCategoryFilter?.([]);
       } else {
         setFilteredCategory(categoryName);
-        onCategoryFilter?.(category.items);
+        onCategoryFilter?.(category?.items || []);
       }
-    }
+    
   };
 
   return (

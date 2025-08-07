@@ -53,6 +53,8 @@ export default function ConversionTable({
     return dataToProcess;
   }, [data, filter, primaryColumn]);
 
+
+
   const getTableHeight = () => {
     if (isFullScreen) {
       if (isAdsTable) {
@@ -137,7 +139,6 @@ export default function ConversionTable({
 
     data.forEach((row) => {
       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
-      console.log(monthlyData)
       
       if (Array.isArray(monthlyData)) {
         monthlyData.forEach((month) => {
@@ -692,7 +693,14 @@ export default function ConversionTable({
                   borderBottom: `2px solid ${COLORS.border.dark}`,
                 }}
               >
-                {primaryColumn}
+                <div className="flex items-center gap-2">
+                  <span>{primaryColumn}</span>
+                  {filter && filter.length > 0 && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                      Filtered
+                    </span>
+                  )}
+                </div>
               </th>
               <th
                 className="sticky left-[130px] top-0 min-w-[100px] w-[150px] z-20 px-3 py-3 text-left text-sm font-medium border-r border-b border-slate-200 shadow-sm"
@@ -736,7 +744,14 @@ export default function ConversionTable({
                   colSpan={2 + (secondaryColumns?.length || 0) + months.length}
                   className="p-4 text-center text-gray-500"
                 >
-                  {filter && filter.length > 0 ? "No data matches the selected filter" : "No data to display"}
+                  {filter && filter.length > 0 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <span>No data matches the selected filter</span>
+                      <span className="text-xs text-gray-400">
+                        Filter: {filter.join(", ")} | Total rows: {data.length}
+                      </span>
+                    </div>
+                  ) : "No data to display"}
                 </td>
               </tr>
             )}
@@ -750,13 +765,26 @@ export default function ConversionTable({
           style={{ background: "linear-gradient(to bottom, white, #F4F4F4)" }}
         >
           <div className="text-sm font-medium" style={{ color: COLORS.text.secondary }}>
-            Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
-            {totalRows} rows
-            {(filter && filter.length > 0) ? (
-              <span className="ml-2 text-xs">
-                (Filtered from {data.length} total rows)
-              </span>
-            ) : null}
+            {totalRows > 0 ? (
+              <>
+                Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
+                {totalRows} rows
+                {(filter && filter.length > 0) ? (
+                  <span className="ml-2 text-xs">
+                    (Filtered from {data.length} total rows)
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                No rows to display
+                {(filter && filter.length > 0) ? (
+                  <span className="ml-2 text-xs">
+                    (Filter: {filter.join(", ")}) | Total rows: {data.length}
+                  </span>
+                ) : null}
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <Button

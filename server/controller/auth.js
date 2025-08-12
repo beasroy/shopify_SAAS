@@ -493,7 +493,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
             });
 
             return res.status(200).json({
-                success: true,
+                success: true, 
                 message: 'Zoho refresh token updated successfully.',
             });
         }

@@ -283,13 +283,13 @@ export async function getDayWiseAddToCartAndCheckouts(req, res) {
 
     // Object to store accumulated data per weekday
     const weeklyData = {
+      Sunday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Monday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Tuesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Wednesday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Thursday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Friday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
       Saturday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
-      Sunday: { Sessions: 0, 'Add To Cart': 0, Checkouts: 0, Purchases: 0 },
     };
 
     // Process data and accumulate it based on weekday

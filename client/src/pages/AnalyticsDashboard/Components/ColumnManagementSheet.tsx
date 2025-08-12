@@ -3,11 +3,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Search, Settings2, GripVertical, Pin, PinOff } from "lucide-react";
+import { Search, GripVertical, Pin, PinOff, Columns3 } from "lucide-react";
 
 interface ColumnManagementSheetProps {
   visibleColumns: string[];
   columnOrder: string[];
+  availableColumns?: string[];
   frozenColumns?: string[];
   onVisibilityChange: (columns: string[]) => void;
   onOrderChange: (order: string[]) => void;
@@ -17,6 +18,7 @@ interface ColumnManagementSheetProps {
 const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({ 
   visibleColumns, 
   columnOrder,
+  availableColumns,
   frozenColumns = [],
   onVisibilityChange,
   onOrderChange,
@@ -26,7 +28,12 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [dropTargetColumn, setDropTargetColumn] = useState<string | null>(null);
 
-  const filteredColumns = columnOrder.filter(column =>
+  // Always use columnOrder for the display order, but filter by availableColumns if provided
+  const columnsToShow = availableColumns 
+    ? columnOrder.filter(col => availableColumns.includes(col))
+    : columnOrder;
+  
+  const filteredColumns = columnsToShow.filter(column =>
     column.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -44,13 +51,30 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
   const handleDrop = (targetColumn: string) => {
     if (!draggedColumn || draggedColumn === targetColumn) return;
 
+    console.log('Drop event:', { draggedColumn, targetColumn });
+    console.log('Current columnOrder:', columnOrder);
+
+    // Create a new order array based on the current visible columns
     const newOrder = [...columnOrder];
+    
+    // Find the indices in the original columnOrder
     const draggedIdx = newOrder.indexOf(draggedColumn);
     const targetIdx = newOrder.indexOf(targetColumn);
+    
+    console.log('Indices:', { draggedIdx, targetIdx });
+    
+    if (draggedIdx === -1 || targetIdx === -1) {
+      console.log('Invalid indices found');
+      return;
+    }
 
+    // Remove the dragged column from its current position
     newOrder.splice(draggedIdx, 1);
+    
+    // Insert it at the target position
     newOrder.splice(targetIdx, 0, draggedColumn);
 
+    console.log('New order:', newOrder);
     onOrderChange(newOrder);
     setDraggedColumn(null);
     setDropTargetColumn(null);
@@ -75,9 +99,8 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-2">
-          <Settings2 className="w-4 h-4 mr-2" />
-          Manage Columns
+        <Button variant="outline" size="icon" className="ml-2">
+          <Columns3 className="w-4 h-4" />
         </Button>
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[540px]">
@@ -107,8 +130,13 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
                 onDragStart={() => handleDragStart(column)}
                 onDragOver={(e) => handleDragOver(e, column)}
                 onDrop={() => handleDrop(column)}
-                className={`flex items-center space-x-3 p-3 border-b border-slate-200 hover:bg-slate-50 cursor-move
-                  ${dropTargetColumn === column ? 'bg-slate-100' : ''}`}
+                onDragEnd={() => {
+                  setDraggedColumn(null);
+                  setDropTargetColumn(null);
+                }}
+                className={`flex items-center space-x-3 p-3 border-b border-slate-200 hover:bg-slate-50 cursor-move transition-colors
+                  ${draggedColumn === column ? 'opacity-50' : ''}
+                  ${dropTargetColumn === column ? 'bg-blue-50 border-blue-200' : ''}`}
               >
                 <GripVertical className="w-4 h-4 text-slate-400" />
                 <Checkbox

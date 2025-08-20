@@ -22,8 +22,7 @@ interface EcommerceMetric {
 }
 
 interface EcommerceMetricsProps {
-  dateRange: DateRange | undefined;
-  isFullScreen?: boolean;
+  dateRange: DateRange | undefined
   visibleColumns: string[];
   columnOrder: string[];
   refreshTrigger: number;
@@ -31,7 +30,6 @@ interface EcommerceMetricsProps {
 
 const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ 
   dateRange: propDateRange, 
-  isFullScreen: propIsFullScreen,
   visibleColumns,
   columnOrder,
   refreshTrigger
@@ -44,6 +42,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
   const [data, setData] = useState<EcommerceMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const { brandId } = useParams();
 
   const date = useMemo(() => ({
@@ -61,7 +60,6 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const compareStartDate = compareDate?.from ? format(new Date(compareDate.from), "yyyy-MM-dd") : "";
   const compareEndDate = compareDate?.to ? format(new Date(compareDate.to), "yyyy-MM-dd") : "";
   
-  const [isFullScreen, setIsFullScreen] = useState(propIsFullScreen || false);
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
@@ -80,10 +78,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
     }));
   }, [data]);
 
-  // Update isFullScreen when prop changes
-  useEffect(() => {
-    setIsFullScreen(propIsFullScreen || false);
-  }, [propIsFullScreen]);
+
 
   // Consolidate date range effects
   useEffect(() => {
@@ -153,19 +148,35 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
     }
   }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
 
+  // Set mounted state
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
   // Consolidate to single useEffect for fetching metrics
   useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 15 * 60 * 1000);
+    // Only fetch if we have valid dates and component is mounted
+    if (startDate && endDate && isMounted) {
+      fetchMetrics();
+    }
+    
+    const intervalId = setInterval(() => {
+      // Only fetch on interval if we have valid dates and component is mounted
+      if (startDate && endDate && isMounted) {
+        fetchMetrics();
+      }
+    }, 15 * 60 * 1000);
+    
     return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
+  }, [startDate, endDate, isMounted]); // Add isMounted to dependencies
 
   // Listen for refresh trigger from parent
   useEffect(() => {
-    if (refreshTrigger > 0) {
+    if (refreshTrigger > 0 && startDate && endDate && isMounted) {
       fetchMetrics();
     }
-  }, [refreshTrigger, fetchMetrics]);
+  }, [refreshTrigger, startDate, endDate, isMounted]); // Add isMounted to dependencies
 
   if(isLoading){
     return <Loader isLoading={isLoading} />

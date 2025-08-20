@@ -7,8 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PerformanceSummaryProps, CategoryData } from '@/interfaces';
-
-
+import { X } from 'lucide-react';
 
 const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
   data,
@@ -68,7 +67,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       'Top Performers': [],
       [`High ${metricConfig.primary.name}`]: [],
       [`High ${metricConfig.secondary.name}`]: [],
-      'Underperformers': []
+      'Under Performers': []
     };
 
     data.forEach(row => {
@@ -86,41 +85,41 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
       } else if (!isHighPrimary && isHighSecondary) {
         categorizedItems[`High ${metricConfig.secondary.name}`].push(primaryValue);
       } else {
-        categorizedItems['Underperformers'].push(primaryValue);
+        categorizedItems['Under Performers'].push(primaryValue);
       }
     });
 
     return [
       {
         name: 'Top Performers',
-        color: 'text-green-700',
-        bgColor: 'bg-[#D7FFDF]',
+        color: 'text-blue-500',
+        bgColor: 'bg-white',
         count: categorizedItems['Top Performers'].length,
         items: categorizedItems['Top Performers'],
         description: `Above average in both ${metricConfig.primary.name} (>${thresholds[metricConfig.primary.key].toFixed(2)}) and ${metricConfig.secondary.name} (>${thresholds[metricConfig.secondary.key].toFixed(2)})`
       },
       {
         name: `High ${metricConfig.primary.name}`,
-        color: 'text-blue-700',
-        bgColor: 'bg-[#EFF6FF]',
+        color: 'text-gray-700',
+        bgColor: 'bg-white',
         count: categorizedItems[`High ${metricConfig.primary.name}`].length,
         items: categorizedItems[`High ${metricConfig.primary.name}`],
         description: `High ${metricConfig.primary.name} (>${thresholds[metricConfig.primary.key].toFixed(2)}) but below average ${metricConfig.secondary.name} (<${thresholds[metricConfig.secondary.key].toFixed(2)})`
       },
       {
         name: `High ${metricConfig.secondary.name}`,
-        color: 'text-yellow-700',
-        bgColor: 'bg-[#FFFBEB]',
+        color: 'text-gray-700',
+        bgColor: 'bg-white',
         count: categorizedItems[`High ${metricConfig.secondary.name}`].length,
         items: categorizedItems[`High ${metricConfig.secondary.name}`],
         description: `High ${metricConfig.secondary.name} (>${thresholds[metricConfig.secondary.key].toFixed(2)}) but below average ${metricConfig.primary.name} (<${thresholds[metricConfig.primary.key].toFixed(2)})`
       },
       {
-        name: 'Underperformers',
-        color: 'text-red-700',
-        bgColor: 'bg-[#FFF1F2]',
-        count: categorizedItems['Underperformers'].length,
-        items: categorizedItems['Underperformers'],
+        name: 'Under Performers',
+        color: 'text-gray-700',
+        bgColor: 'bg-white',
+        count: categorizedItems['Under Performers'].length,
+        items: categorizedItems['Under Performers'],
         description: `Below average in both ${metricConfig.primary.name} (<${thresholds[metricConfig.primary.key].toFixed(2)}) and ${metricConfig.secondary.name} (<${thresholds[metricConfig.secondary.key].toFixed(2)})`
       }
     ];
@@ -128,60 +127,71 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({
 
   const handleCategoryClick = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
-
-      if (filteredCategory === categoryName) {
-        setFilteredCategory(null);
-        onCategoryFilter?.([]);
-      } else {
-        setFilteredCategory(categoryName);
-        onCategoryFilter?.(category?.items || []);
-      }
     
+    if (filteredCategory === categoryName) {
+      return;
+    } else {
+      setFilteredCategory(categoryName);
+      onCategoryFilter?.(category?.items || []);
+    }
+  };
+
+  const handleRemoveFilter = () => {
+    setFilteredCategory(null);
+    onCategoryFilter?.(undefined);
   };
 
   return (
     <TooltipProvider>
-      <div id="age-report-performance" className="space-y-4 py-2.5">
-        <div className="border border-gray-300 rounded-lg overflow-hidden">
-          <div className="flex items-stretch h-9">
-            {categories.map((category) => (
-              <Tooltip key={category.name}>
-                <TooltipTrigger asChild>
-                  <div
-                    className={`relative flex-grow ${category.bgColor} border-r last:border-r-0 border-gray-300 cursor-pointer transition-all duration-300 ease-in-out hover:opacity-90`}
-                    onClick={() => handleCategoryClick(category.name)}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-xs font-medium ${category.color} ${filteredCategory === category.name ? 'underline' : ''}`}>
-                        {category.name} ({category.count})
-                        {filteredCategory === category.name && (
-                          <span className="ml-1 inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
-                        )}
-                      </span>
-                    </div>
+      <div id="age-report-performance" className="flex items-center gap-1">
+        {categories.map((category) => (
+          <Tooltip key={category.name}>
+            <TooltipTrigger asChild>
+              <div
+                className={`relative cursor-pointer transition-all duration-300 ease-in-out hover:opacity-90 rounded-full p-2 min-w-[60px] ${
+                  filteredCategory === category.name ? 'bg-blue-50 border border-blue-500' : 'bg-white border border-gray-300'
+                }`}
+                onClick={() => handleCategoryClick(category.name)}
+              >
+                <div className="flex items-center justify-center gap-0.5">
+                  <span className={`text-xs font-medium ${filteredCategory === category.name ? 'text-blue-700 font-semibold' : 'text-gray-700'}`}>
+                    {category.name} ({category.count})
+                  </span>
+                  {filteredCategory === category.name && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFilter();
+                      }}
+                      className="ml-0.5 p-0.5 hover:bg-blue-200 rounded-full transition-colors"
+                    >
+                      <X className="w-3 h-3 text-blue-700" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs p-4 bg-gray-900 text-white border-0 shadow-lg">
+              <div>
+                
+                {/* Category name and larger color sample */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
+                    filteredCategory === category.name ? 'bg-blue-50' : 'bg-white'
+                  }`}>
+                    <div className={`w-3 h-3 rounded-full bg-gray-400`} />
                   </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs p-4 bg-gray-900 text-white border-0 shadow-lg">
-                  <div>
-                    
-                    {/* Category name and larger color sample */}
-                    <div  className="flex items-center gap-3 mb-3">
-                      <div className={`w-8 h-8 rounded-lg ${category.bgColor} border border-white/20 flex items-center justify-center`}>
-                        <div className={`w-4 h-4 rounded-md ${category.color.replace('text-', 'bg-')}`} />
-                      </div>
-                      <p className="font-medium text-lg text-white">
-                        {category.name}
-                      </p>
-                    </div>
+                  <p className="font-medium text-lg text-white">
+                    {category.name}
+                  </p>
+                </div>
 
-                    {/* Description */}
-                    <p className="text-sm text-gray-200">{category.description}</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
+                {/* Description */}
+                <p className="text-sm text-gray-200">{category.description}</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ))}
       </div>
     </TooltipProvider>
   );

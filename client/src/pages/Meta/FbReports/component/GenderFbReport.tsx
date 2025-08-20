@@ -135,16 +135,27 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     const locale = useSelector((state: RootState) => state.locale.locale)
 
      // Separate handler for blended summary filter
-     const handleBlendedCategoryFilter = (items: (string | number)[]) => {
-        setBlendedFilter(items.map(item => String(item)));
+     const handleBlendedCategoryFilter = (items: (string | number)[] | undefined) => {
+        if (items === undefined) {
+            setBlendedFilter([]);
+        } else {
+            setBlendedFilter(items.map(item => String(item)));
+        }
     };
 
     // Separate handler for individual account filters
-    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[]) => {
-        setAccountFilters(prev => ({
-            ...prev,
-            [accountName]: items.map(item => String(item))
-        }));
+    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[] | undefined) => {
+        if (items === undefined) {
+            setAccountFilters(prev => ({
+                ...prev,
+                [accountName]: []
+            }));
+        } else {
+            setAccountFilters(prev => ({
+                ...prev,
+                [accountName]: items.map(item => String(item))
+            }));
+        }
     };
 
     

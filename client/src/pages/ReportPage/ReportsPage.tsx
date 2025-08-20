@@ -35,12 +35,16 @@ const ReportsPage: React.FC = () => {
     to: dateTo
   }), [dateFrom, dateTo]);
 
-  const dateRange = {
+  const dateRange = useMemo(() => ({
     from: date.from ? new Date(date.from) : undefined,
     to: date.to ? new Date(date.to) : undefined
-  }
+  }), [date.from, date.to]);
+
   const [activeTab, setActiveTab] = useState('daily');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  
+  // Memoize the dateRange to prevent unnecessary re-renders
+  const memoizedDateRange = useMemo(() => dateRange, [dateRange.from, dateRange.to]);
   
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -84,8 +88,6 @@ const ReportsPage: React.FC = () => {
   
   const handleOrderChange = (newOrder: string[]) => {
     setColumnOrder(newOrder);
-    // Don't update visibleColumns here - let it maintain its own state
-    console.log('Column order updated:', newOrder);
   };
 
   const dispatch = useDispatch();
@@ -126,20 +128,20 @@ const ReportsPage: React.FC = () => {
         ) : (!dateRange.from || !dateRange.to) ? (
           <MissingDateWarning />
         ) : (
-          <div className="p-6">
+          <div className="p-3">
             <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
               <CardContent>
                 <div className="space-y-4">
                   {/* Header Section - Fixed within card */}
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      {/* Custom Oval Tabs */}
-                      <div className="flex bg-gray-100 p-1 rounded-full">
+                    <div className="flex items-start gap-6">
+                                            {/* Custom Vertical Tabs */}
+                      <div className="flex flex-row bg-gray-100 p-1.5 rounded-2xl">
                         {tabs.map((tab) => (
                           <button
                             key={tab.value}
                             onClick={() => handleTabChange(tab.value)}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                            className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 last:mb-0 ${
                               activeTab === tab.value
                                 ? 'bg-white text-blue-600 shadow-sm'
                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -175,8 +177,8 @@ const ReportsPage: React.FC = () => {
                     <section className="h-full overflow-auto">
                       {activeTab === 'daily' && (
                         <EcommerceMetricsPage 
-                          dateRange={dateRange} 
-                          isFullScreen={isFullScreen}
+                          key="daily-metrics"
+                          dateRange={memoizedDateRange} 
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
@@ -184,8 +186,8 @@ const ReportsPage: React.FC = () => {
                       )}
                       {activeTab === 'day wise' && (
                         <DaywiseMetricsPage 
-                          dateRange={dateRange} 
-                          isFullScreen={isFullScreen}
+                          key="daywise-metrics"
+                          dateRange={memoizedDateRange} 
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}

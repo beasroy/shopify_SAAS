@@ -114,7 +114,7 @@ export interface PerformanceSummaryProps {
     data: RowData[];
     primaryColumn: string;
     metricConfig: MetricConfig;
-    onCategoryFilter?: (items: (string | number)[]) => void;
+    onCategoryFilter?: (items: (string | number)[] | undefined) => void;
 }
 
 interface Campaign {

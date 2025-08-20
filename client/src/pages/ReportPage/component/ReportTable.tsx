@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export type FunnelRow = {
   id: string
+  day?: string
   date: string
   sessions: number
   addToCart: number
@@ -33,6 +34,7 @@ type ColumnDef<T extends keyof FunnelRow = keyof FunnelRow> = {
 }
 
 const allColumns: ColumnDef[] = [
+  { key: "day", header: "Day", width: 140, minWidth: 120 },
   { key: "date", header: "Date", width: 140, minWidth: 120 },
   { key: "sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
   { key: "addToCart", header: "Add To Cart", width: 140, minWidth: 120, align: "right" },
@@ -54,7 +56,7 @@ type DragState = {
   startWidth: number
 }
 
-export default function ResizableTable({
+export default function ReportTable({
   rows,
   initialPageSize = "50",
   visibleColumns,
@@ -77,6 +79,7 @@ export default function ResizableTable({
     
     // Create a mapping from display names to column keys
     const columnNameToKey: Record<string, keyof FunnelRow> = {
+      'Day': 'day',
       'Date': 'date',
       'Sessions': 'sessions',
       'Add To Cart': 'addToCart',
@@ -97,8 +100,7 @@ export default function ResizableTable({
         return foundColumn;
       })
       .filter((col): col is ColumnDef => col !== undefined);
-    
-      console.log('Final filtered columns:', filteredColumns);
+
   
   // If no valid columns found, return all columns as fallback
   const finalColumns = filteredColumns.length > 0 ? filteredColumns : allColumns;
@@ -206,7 +208,7 @@ export default function ResizableTable({
               ))}
             </colgroup>
 
-            <thead className="bg-gray-50 sticky top-0 z-50">
+            <thead className="bg-gray-100 sticky top-0 z-50">
               <tr className="text-gray-600">
                 {columns.map((col, idx) => {
                   if (!col || !col.key) {
@@ -223,10 +225,10 @@ export default function ResizableTable({
                       className={cn(
                         "relative h-11 align-middle border-b border-l last:border-r",
                         active ? "border-blue-500" : "border-gray-200",
-                        "px-3 text-left font-medium bg-gray-50",
+                        "px-3 text-left font-medium bg-gray-100",
                         col.align === "right" && "text-right",
                         isFirst &&
-                          "sticky left-0 z-50 bg-gray-50 after:pointer-events-none after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-4 after:bg-gradient-to-r after:from-transparent after:to-gray-300/60"
+                          "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -285,7 +287,7 @@ export default function ResizableTable({
                           "border-gray-200",
                           alignClass,
                           isFirst &&
-                            "sticky left-0 z-40 bg-white after:pointer-events-none after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-2 after:bg-gradient-to-r after:from-transparent after:to-gray-300/60"
+                            "sticky left-0 z-40 bg-white shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                         )}
                         title={
                           typeof (row as any)[col.key] === "string"

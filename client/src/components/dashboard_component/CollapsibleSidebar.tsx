@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
-  Blend,
   LogOut,
   User2Icon,
   Store,
@@ -12,6 +11,8 @@ import {
   LineChart,
   Target,
   Plus,
+  Home,
+  BarChart3,
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -24,7 +25,7 @@ import type { RootState } from "@/store/index.ts"
 import { clearUser } from "@/store/slices/UserSlice.ts"
 import { baseURL } from "@/data/constant.ts"
 import type { IBrand } from "@/interfaces"
-import { WhiteGa4Logo, WhiteGoogleAdsLogo } from "@/data/logo.tsx"
+import {  WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
 import { Crown } from 'lucide-react';
 import PricingModal from "../../pages/Pricing/Pricing.tsx"
@@ -42,6 +43,7 @@ interface DashboardItem {
 interface SubItem {
   name: string;
   path: string;
+  disabled?: boolean;
 }
 
 export default function CollapsibleSidebar() {
@@ -88,7 +90,7 @@ export default function CollapsibleSidebar() {
 
   useEffect(() => {
     fetchBrands()
-  }, [fetchBrands]) // Will only run when dependencies change
+  }, [fetchBrands])
 
   const toggleSidebar = () => setIsExpanded((prev) => !prev)
 
@@ -99,7 +101,6 @@ export default function CollapsibleSidebar() {
         dispatch(clearUser())
         dispatch(resetBrand())
         navigate("/")
-        // Reset initial load state for next login
         setIsInitialLoad(true)
       }
     } catch (error) {
@@ -114,37 +115,30 @@ export default function CollapsibleSidebar() {
     }
   }, [location.pathname, dispatch])
 
-  // Helper function to get current path type
   const getCurrentPathType = () => {
     const pathParts = location.pathname.split("/")
     if (pathParts.length >= 2) {
-      return pathParts[1] // Returns the path type (e.g., 'ad-metrics', 'analytics-dashboard', etc.)
+      return pathParts[1]
     }
-    return 'dashboard' // Default
+    return 'dashboard'
   }
 
-  // Function to handle brand change navigation
   const handleBrandChange = (brandId: string) => {
     dispatch(setSelectedBrandId(brandId))
 
-    // If it's initial load, we'll navigate to dashboard (this is handled in fetchBrands)
-    // For subsequent brand changes, stay on current dashboard type but with new brand ID
     if (!isInitialLoad) {
       const currentPathType = getCurrentPathType()
 
-      // Special case for main dashboard that doesn't have brandId in URL
       if (currentPathType === 'dashboard') {
         navigate('/dashboard')
         return
       }
 
-      // For pages with brand ID in URL path, replace the old brand ID with the new one
       const pathParts = location.pathname.split("/")
       if (pathParts.length >= 3) {
         pathParts[2] = brandId
         navigate(pathParts.join('/'))
       } else {
-        // Fallback - navigate to the same dashboard type with new brandId
         navigate(`/${currentPathType}/${brandId}`)
       }
     }
@@ -154,37 +148,34 @@ export default function CollapsibleSidebar() {
     setIsPricingOpen(true);
   }
 
-  // Define base dashboards that all users can see
   const allDashboards = [
-    { name: "Business Overview", path: `/dashboard`, icon: <Blend size={20} /> },
-    { name: "Marketing Insights Tracker", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
-    { name: "Ad Metrics Hub", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
+    { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
+    { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
+    { name: "Ad Metrics", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
     {
-      name: "GA4 Analytics",
+      name: "Analytics",
       path: `#`,
-      icon: <WhiteGa4Logo />,
+      icon: <BarChart3 size={20} />,
       subItems: [
-        { name: "E-Commerce Insights", path: `/ecommerce-reports/${selectedBrandId}` },
-        { name: "Conversion Lens", path: `/conversion-reports/${selectedBrandId}` },
+        { name: "E-Commerce Reports", path: `/ecommerce-reports/${selectedBrandId}` },
+        { name: "Conversion Reports", path: `/conversion-reports/${selectedBrandId}` },
       ],
     },
     {
-      name: "Meta",
+      name: "Meta Ads",
       path: `#`,
-      icon: <FaMeta />,
+      icon: <FaMeta size={20} />,
       subItems: [
         { name: "Campaign Analysis", path: `/meta-campaigns/${selectedBrandId}` },
-        { name: "Interest 360", path: `/meta-interest/${selectedBrandId}` },
-        { name: "Meta Reports", path: `/meta-reports/${selectedBrandId}` },
+        { name: "Interest Reports", path: `/meta-interest/${selectedBrandId}` },
+        { name: "Performance Reports", path: `/meta-reports/${selectedBrandId}` },
       ],
     },
-
-    { name: "Google Reports", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
-
-    { name: "Brands Targets", path: `/performance-metrics`, icon: <Target size={20} /> },
+    { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
+    { name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 
-  const isItemDisabled = (item: DashboardItem | SubItem) => {
+  const isItemDisabled = (item: DashboardItem | SubItem): boolean => {
     if (!selectedBrandId) return true
 
     const currentBrand = brands.find((b: IBrand) => b._id === selectedBrandId)
@@ -202,161 +193,140 @@ export default function CollapsibleSidebar() {
     <TooltipProvider>
       <div
         ref={sidebarRef}
-        className={`bg-[rgb(4,16,33)] text-white transition-all duration-500 ease-in-out flex flex-col ${isExpanded ? "w-56" : "w-16"}`}
+        className={`bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl relative ${
+          isExpanded ? "w-60" : "w-16"
+        }`}
         style={{ height: "100vh" }}
       >
-        <div className={`flex justify-between items-center p-4 relative`}>
-          <div className="flex items-center cursor-pointer" onClick={() => navigate("/dashboard")}>
-            <img src={Logo || "/placeholder.svg"} alt="Messold Logo" className="h-8 w-8" />
-            {isExpanded ? <span className="text-sm ml-2">Messold</span> : null}
+
+                {/* Header Section */}
+        <div className="flex-shrink-0 p-4 border-b border-slate-700/50">
+          <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center cursor-pointer group" 
+              onClick={() => navigate("/dashboard")}
+            >
+              <div className="relative">
+                <img src={Logo || "/placeholder.svg"} alt="Messold Logo" className="h-8 w-8 rounded-lg shadow-lg" />
+                <div className="absolute inset-0 bg-blue-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              </div>
+              {isExpanded && (
+                <span className="ml-3 text-lg font-bold text-slate-200">
+                  Parallels
+                </span>
+              )}
+            </div>
+            
+            {/* Toggle button - only show when expanded */}
+            {isExpanded && (
+              <button
+                onClick={toggleSidebar}
+                className="p-0.5 rounded-md text-white hover:text-slate-50 border border-slate-200 hover:bg-slate-700/30 transition-all duration-200 opacity-60 hover:opacity-100"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
           </div>
-          <span
-            className={`transition-all duration-300 ease-in-out bg-[rgb(4,16,33)] rounded-full flex items-center justify-center`}
-            style={{
-              width: "25px",
-              height: "25px",
-              position: "absolute",
-              right: "-10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 50,
-            }}
-            onClick={toggleSidebar}
-          >
-            {isExpanded ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
-          </span>
+          
+          {/* Toggle button for collapsed state - positioned above logo */}
+          {!isExpanded && (
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={toggleSidebar}
+                className="p-0.5 rounded-md text-white border border-slate-200 hover:text-slate-50 hover:bg-slate-700/30 transition-all duration-200 opacity-60 hover:opacity-100"
+                title="Expand sidebar"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className={`flex-1 overflow-y-auto ${isExpanded ? "h-[calc(100vh-64px)]" : "h-[calc(100vh-16px)]"}`}>
-          <ScrollArea className="h-full">
-            <nav className="mt-3">
-              {/* Brand selector - Modified to use handleBrandChange */}
-              <SidebarItem
-                icon={<Store size={24} />}
-                text={
-                  selectedBrandId
-                    ? brands.find((b: IBrand) => b._id === selectedBrandId)?.name.replace(/_/g, " ") || "Unknown Brand"
-                    : "Your Brands"
-                }
-                isExpanded={isExpanded}
-                openIcon={<ChevronUp />}
-                closeIcon={<ChevronDown />}
-                isSelected={!!selectedBrandId}
-                tooltipContent="Your Brands"
-                autoOpenOnSelect={false}
-              >
-                {brands.map((brand: IBrand) => (
-                  <SidebarChild
-                    key={brand._id}
-                    path={`#`} // Changed to # to prevent default navigation
-                    text={brand.name.replace(/_/g, " ")}
-                    onClick={() => handleBrandChange(brand._id)} // Use our new handler
-                    isSelected={selectedBrandId === brand._id}
-                  />
-                ))}
-                {/* Add Brand button, outside the map to avoid left border highlight */}
-                <div className="flex items-center text-xs  p-2 transition-colors duration-200 text-gray-300 hover:bg-gray-700 hover:text-white cursor-pointer border border-dashed border-gray-500 rounded-md mx-2 mb-2">
-                  <Plus size={16} className="mr-2" />
-                  <span>Add Brand</span>
-                </div>
-              </SidebarItem>
-
-              {/* Dashboard items - all open by default */}
-              {allDashboards.map((item: DashboardItem, index: number) => {
-                const isAnySubItemSelected = item.subItems?.some((subItem: { name: string; path: string }) => location.pathname === subItem.path)
-
-                const isMainItemActive =
-                  (location.pathname.startsWith(item.path) && item.path !== "#") || isAnySubItemSelected
-
-                // Main heading with tooltip when collapsed
-                const dashboardItemContent = (
-                  <div
-                    className={`flex items-center px-4 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 ${item.subItems ? "cursor-auto" : "cursor-pointer"}
-                      ${isMainItemActive ? "text-white font-semibold relative" : "text-gray-100"
-                      } ${isItemDisabled(item) ? "cursor-not-allowed opacity-50" : ""}`}
-                    onClick={() => {
-                      if (!isItemDisabled(item) && item.path && item.path !== "#" && !item.subItems) {
-                        navigate(item.path)
-                      }
-                    }}
-                  >
-                    <span className="mr-2">{item.icon}</span>
-                    {isExpanded && <span className="text-xs">{item.name}</span>}
-                    {isExpanded && item.subItems && <span className="ml-auto"></span>}
+        {/* Navigation Section */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className={`h-full ${isExpanded ? "px-3" : "px-2"}`}>
+            <nav className="space-y-2 py-4">
+              {/* Brand Selector */}
+              <div className="mb-6">
+                                 <SidebarItem
+                   icon={<Store size={20} className="text-slate-300" />}
+                  text={
+                    selectedBrandId
+                      ? brands.find((b: IBrand) => b._id === selectedBrandId)?.name.replace(/_/g, " ") || "Select Brand"
+                      : "Your Brands"
+                  }
+                  isExpanded={isExpanded}
+                  openIcon={<ChevronUp size={16} />}
+                  closeIcon={<ChevronDown size={16} />}
+                  isSelected={!!selectedBrandId}
+                  tooltipContent="Brand Management"
+                  autoOpenOnSelect={false}
+                >
+                  {brands.map((brand: IBrand) => (
+                    <SidebarChild
+                      key={brand._id}
+                      path={`#`}
+                      text={brand.name.replace(/_/g, " ")}
+                      onClick={() => handleBrandChange(brand._id)}
+                      isSelected={selectedBrandId === brand._id}
+                    />
+                  ))}
+                  <div className="mx-3 mt-2">
+                    <button className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors duration-200 border border-dashed border-slate-600 rounded-lg hover:border-slate-400 hover:bg-slate-600/30">
+                      <Plus size={14} />
+                      <span>Add Brand</span>
+                    </button>
                   </div>
-                )
+                </SidebarItem>
+              </div>
 
-                return (
-                  <div key={index}>
-                    {/* Main heading with tooltip when collapsed */}
-                    {!isExpanded ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>{dashboardItemContent}</TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>{item.name}</p>
-                          {item.subItems && (
-                            <>
-                              <div className="h-[1px] w-full my-2 bg-gray-400" />
-                              <div className="mt-1">
-                                {item.subItems.map((subItem, subIndex) => {
-                                  const disabled = isItemDisabled(subItem);
-                                  return (
-                                    <div
-                                      key={subIndex}
-                                      className={`text-xs py-1.5 px-1 rounded transition-colors ${disabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-700 cursor-pointer"
-                                        }`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!disabled) navigate(subItem.path);
-                                      }}
-                                    >
-                                      {subItem.name}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      dashboardItemContent
-                    )}
+              {/* Main Navigation */}
+              <div className="space-y-1">
+                {allDashboards.map((item: DashboardItem, index: number) => {
+                  const isAnySubItemSelected = item.subItems?.some((subItem) => location.pathname === subItem.path)
+                  const isMainItemActive = (location.pathname.startsWith(item.path) && item.path !== "#") || isAnySubItemSelected
 
-                    {/* Subheadings with divider */}
-                    {isExpanded && item.subItems && (
-                      <div className="pl-8 mb-2">
-                        <div className="h-[1px] w-2/3 my-2 bg-gray-400" />
-                        {item.subItems.map((subItem, subIndex) => {
-                          const disabled = isItemDisabled(subItem);
+                  return (
+                    <div key={index}>
+                      <SidebarItem
+                        icon={item.icon}
+                        text={item.name}
+                        isExpanded={isExpanded}
+                        openIcon={<ChevronDown size={16} />}
+                        closeIcon={<ChevronDown size={16} />}
+                        isSelected={Boolean(isMainItemActive)}
+                        tooltipContent={item.name}
+                        onClick={() => {
+                          if (!isItemDisabled(item) && item.path && item.path !== "#" && !item.subItems) {
+                            navigate(item.path)
+                          }
+                        }}
+                        disabled={isItemDisabled(item)}
+                      >
+                        {item.subItems?.map((subItem, subIndex) => {
+                          const disabled = isItemDisabled(subItem) || false;
                           return (
-                            <div
+                            <SidebarChild
                               key={subIndex}
-                              className={`flex items-center text-xs w-full p-2 transition-colors duration-200 ${disabled
-                                  ? "opacity-50"
-                                  : "cursor-pointer hover:bg-gray-700"
-                                } ${location.pathname === subItem.path && !disabled
-                                  ? "text-white font-semibold relative bg-gray-800"
-                                  : "text-gray-100"
-                                }`}
-                              onClick={() => {
-                                if (!disabled) navigate(subItem.path);
-                              }}
-                            >
-                              <span>{subItem.name}</span>
-                            </div>
+                              path={subItem.path}
+                              text={subItem.name}
+                              isSelected={location.pathname === subItem.path}
+                              disabled={disabled}
+                            />
                           );
                         })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                      </SidebarItem>
+                    </div>
+                  )
+                })}
+              </div>
             </nav>
           </ScrollArea>
         </div>
 
-        <div className="flex flex-col">
+        {/* Footer Section */}
+        <div className={`flex-shrink-0 border-t border-slate-700/50 space-y-1 ${isExpanded ? "p-3" : "p-2"}`}>
           <PricingButton isExpanded={isExpanded} handlePricing={handlePricing} />
           <UserProfile isExpanded={isExpanded} user={user} />
           <LogoutButton handleLogout={handleLogout} isExpanded={isExpanded} />
@@ -367,7 +337,7 @@ export default function CollapsibleSidebar() {
   )
 }
 
-// Keep these components for the brand section which should remain the same
+// Enhanced SidebarChild component
 interface SidebarChildProps {
   path: string
   text: string
@@ -403,17 +373,18 @@ function SidebarChild({
     }
   }, [isActive])
 
-  const baseClasses = `flex items-center text-xs w-full p-2 transition-colors duration-200 
-      ${isActive ? "text-white font-semibold relative bg-gray-800" : "text-gray-100"} 
-      ${disabled ? "cursor-not-allowed text-gray-400" : "hover:bg-gray-700"}`
+  const baseClasses = `flex items-center text-xs w-full px-4 py-3 rounded-lg transition-all duration-200 ${
+    isActive 
+      ? "text-white bg-slate-600/30  shadow-lg" 
+      : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+  } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`
 
   const content = (
     <>
       <div className="flex items-center justify-between w-full">
-        <span>{text}</span>
-        {hasChildren && <span className="ml-2">{isOpen ? <ChevronUp /> : <ChevronDown />}</span>}
+        <span className="font-medium">{text}</span>
+        {hasChildren && <span className="ml-2">{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>}
       </div>
-      {isActive && <div className="absolute left-0 top-0 w-1 h-full bg-white" />}
     </>
   )
 
@@ -424,17 +395,12 @@ function SidebarChild({
       to={path}
       className={baseClasses}
       onClick={(e) => {
-        // Stop default navigation for items that are just containers
         if (path === "/#" || !path || path === "#") {
           e.preventDefault()
         }
-
-        // Always toggle if there are children
         if (hasChildren) {
           handleToggle()
         }
-
-        // External onClick handler
         if (onClick) {
           onClick()
         }
@@ -448,8 +414,8 @@ function SidebarChild({
     <div>
       {childItem}
       {isOpen && hasChildren && (
-        <div className="relative pl-4">
-          <div className="absolute top-0 left-4 w-1 h-full bg-gray-500" />
+        <div className="relative pl-4 mt-1">
+          <div className="absolute top-0 left-4 w-px h-full bg-slate-600/50" />
           {children}
         </div>
       )}
@@ -457,6 +423,7 @@ function SidebarChild({
   )
 }
 
+// Enhanced SidebarItem component
 interface SidebarItemProps {
   icon?: React.ReactNode
   text: string
@@ -493,10 +460,8 @@ function SidebarItem({
     }
   }
 
-  // Enhanced recursive check for nested selections
   const isChildSelected = React.Children.toArray(children).some((child: any) => {
     if (child?.props?.isSelected) return true
-    // Check if any of this child's children are selected
     if (child?.props?.children) {
       return React.Children.toArray(child.props.children).some((grandchild: any) => grandchild?.props?.isSelected)
     }
@@ -514,22 +479,30 @@ function SidebarItem({
   const content = (
     <div
       onClick={() => {
-        // Always toggle if it has children
         if (hasChildren) {
           handleToggle()
         }
-
-        // Then handle navigation via onClick if provided
         if (!disabled && onClick) {
           onClick()
         }
       }}
-      className={`flex items-center px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer ${isActive ? "text-white font-semibold relative" : "text-gray-100"
-        } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer group ${
+        isActive 
+          ? "text-white bg-slate-600/30 border-l-2 border-slate-400 shadow-lg" 
+          : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
-      <span className="mr-2">{icon}</span>
-      {isExpanded && <span className="text-xs">{text}</span>}
-      {isExpanded && <span className="ml-auto">{isOpen ? openIcon : closeIcon}</span>}
+             <span className={`mr-3 transition-colors duration-200 ${
+         isActive ? "text-slate-300" : "text-slate-400 group-hover:text-slate-300"
+       }`}>
+        {icon}
+      </span>
+      {isExpanded && <span className="text-sm font-medium flex-1">{text}</span>}
+      {isExpanded && hasChildren && (
+        <span className="text-slate-400 group-hover:text-white transition-colors">
+          {isOpen ? openIcon : closeIcon}
+        </span>
+      )}
     </div>
   )
 
@@ -538,13 +511,10 @@ function SidebarItem({
       {!isExpanded ? (
         <Tooltip>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right">
-            <p className={React.Children.count(children) > 0 ? "mb-4" : ""}>{tooltipContent}</p>
+          <TooltipContent side="right" className="bg-slate-800 border-slate-700">
+            <p className="font-medium">{tooltipContent}</p>
             {React.Children.map(children, (child) => (
-              <div className="relative">
-                  {/* <div className="absolute top-0 w-1 h-full bg-gray-500" /> */}
-                {child}
-              </div>
+              <div className="relative">{child}</div>
             ))}
           </TooltipContent>
         </Tooltip>
@@ -552,8 +522,8 @@ function SidebarItem({
         content
       )}
       {isOpen && isExpanded && (
-        <div className="relative pl-8">
-          {/* <div className="absolute top-0 w-1 h-full bg-gray-500" /> */}
+        <div className="relative pl-4 mt-1">
+          <div className="absolute top-0 left-4 w-px h-full bg-slate-600/50" />
           {React.Children.map(children, (child) => (
             <div>{child}</div>
           ))}
@@ -563,6 +533,7 @@ function SidebarItem({
   )
 }
 
+// Enhanced UserProfile component
 interface UserProfileProps {
   isExpanded: boolean
   user: any
@@ -573,14 +544,17 @@ function UserProfile({ isExpanded, user }: UserProfileProps) {
   const userProfileContent = (
     <div
       onClick={() => navigate("/profile")}
-      className={
-        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
-      }
+      className={`flex items-center gap-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 cursor-pointer group ${isExpanded ? "px-3" : "px-2"}`}
     >
-      <span className="text-gray-300 hover:text-white">
-        <User2Icon size={24} />
-      </span>
-      {isExpanded && <span className="text-sm mr-2">{user?.username || "user"}</span>}
+      <div className="p-1.5 rounded-lg bg-slate-700/50 group-hover:bg-blue-600/20 transition-colors duration-200">
+        <User2Icon size={18} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+      </div>
+      {isExpanded && (
+        <div className="flex-1">
+          <span className="text-sm font-medium">{user?.username || "User"}</span>
+          <div className="text-xs text-slate-400">View Profile</div>
+        </div>
+      )}
     </div>
   )
 
@@ -589,8 +563,9 @@ function UserProfile({ isExpanded, user }: UserProfileProps) {
       {!isExpanded ? (
         <Tooltip>
           <TooltipTrigger asChild>{userProfileContent}</TooltipTrigger>
-          <TooltipContent side="right">
-            <p>{user?.username || "user"}</p>
+          <TooltipContent side="right" className="bg-slate-800 border-slate-700">
+            <p className="font-medium">{user?.username || "User"}</p>
+            <p className="text-sm text-slate-400">View Profile</p>
           </TooltipContent>
         </Tooltip>
       ) : (
@@ -600,6 +575,7 @@ function UserProfile({ isExpanded, user }: UserProfileProps) {
   )
 }
 
+// Enhanced LogoutButton component
 interface LogoutButtonProps {
   handleLogout: () => void
   isExpanded: boolean
@@ -609,14 +585,17 @@ function LogoutButton({ handleLogout, isExpanded }: LogoutButtonProps) {
   const logoutContent = (
     <div
       onClick={handleLogout}
-      className={
-        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
-      }
+      className={`flex items-center gap-3 py-2.5 rounded-lg text-slate-300 hover:bg-red-600/20 hover:text-red-400 transition-all duration-200 cursor-pointer group ${isExpanded ? "px-3" : "px-2"}`}
     >
-      <span className="text-gray-300 hover:text-white">
-        <LogOut size={24} />
-      </span>
-      {isExpanded && <span className="hidden sm:inline">Logout</span>}
+      <div className="p-1.5 rounded-lg bg-slate-700/50 group-hover:bg-red-600/20 transition-colors duration-200">
+        <LogOut size={18} className="text-slate-400 group-hover:text-red-400 transition-colors" />
+      </div>
+      {isExpanded && (
+        <div className="flex-1">
+          <span className="text-sm font-medium">Logout</span>
+          <div className="text-xs text-slate-400">Sign out</div>
+        </div>
+      )}
     </div>
   )
 
@@ -625,8 +604,9 @@ function LogoutButton({ handleLogout, isExpanded }: LogoutButtonProps) {
       {!isExpanded ? (
         <Tooltip>
           <TooltipTrigger asChild>{logoutContent}</TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Logout</p>
+          <TooltipContent side="right" className="bg-slate-800 border-slate-700">
+            <p className="font-medium">Logout</p>
+            <p className="text-sm text-slate-400">Sign out</p>
           </TooltipContent>
         </Tooltip>
       ) : (
@@ -636,6 +616,7 @@ function LogoutButton({ handleLogout, isExpanded }: LogoutButtonProps) {
   )
 }
 
+// Enhanced PricingButton component
 interface pricingButtonProps {
   handlePricing: () => void
   isExpanded: boolean
@@ -645,14 +626,17 @@ function PricingButton({ handlePricing, isExpanded }: pricingButtonProps) {
   const pricingContent = (
     <div
       onClick={handlePricing}
-      className={
-        "flex items-center gap-3 px-3 py-1.5 mb-1 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 cursor-pointer"
-      }
+      className={`flex items-center gap-3 py-2.5 rounded-lg text-slate-300 hover:bg-yellow-600/20 hover:text-yellow-400 transition-all duration-200 cursor-pointer group ${isExpanded ? "px-3" : "px-2"}`}
     >
-      <span className="text-gray-300 hover:text-white">
-        <Crown size={24} />
-      </span>
-      {isExpanded && <span className="hidden sm:inline">Pricing</span>}
+      <div className="p-1.5 rounded-lg bg-slate-700/50 group-hover:bg-yellow-600/20 transition-colors duration-200">
+        <Crown size={18} className="text-slate-400 group-hover:text-yellow-400 transition-colors" />
+      </div>
+      {isExpanded && (
+        <div className="flex-1">
+          <span className="text-sm font-medium">Pricing</span>
+          <div className="text-xs text-slate-400">View Plans</div>
+        </div>
+      )}
     </div>
   )
 
@@ -661,8 +645,9 @@ function PricingButton({ handlePricing, isExpanded }: pricingButtonProps) {
       {!isExpanded ? (
         <Tooltip>
           <TooltipTrigger asChild>{pricingContent}</TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Pricing</p>
+          <TooltipContent side="right" className="bg-slate-800 border-slate-700">
+            <p className="font-medium">Pricing</p>
+            <p className="text-sm text-slate-400">View Plans</p>
           </TooltipContent>
         </Tooltip>
       ) : (

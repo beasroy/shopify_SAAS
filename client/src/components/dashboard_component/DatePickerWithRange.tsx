@@ -301,7 +301,7 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
           {/* Preset selection column */}
           <div className="border-r p-3 w-full md:w-[150px] overflow-y-auto bg-gradient-to-b from-muted/50 to-muted/10" style={{ maxHeight: "400px" }}>
             <div className="space-y-1.5">
-              <h1 className="text-sm pb-2 font-medium border-b border-border/50 text-primary">Presets</h1>
+              <h1 className="text-sm pb-2 font-semibold border-b border-border/50 text-black">Quick Select</h1>
               <div className="grid grid-cols-2 md:grid-cols-1 gap-1">
                 {presets.map((preset) => (
                   <Button

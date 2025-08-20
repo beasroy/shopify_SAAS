@@ -741,6 +741,7 @@ export async function getAgeMetrics(req, res) {
     );
 
     const rows = response?.data?.rows;
+
     if (!rows || rows.length === 0) {
       console.warn("No data found in the response.");
       return res.status(200).json({
@@ -1659,7 +1660,6 @@ export async function getAgeWiseConversions(req, res) {
       })
 
     const Rows = response?.data?.rows || [];
-
 
     // Process data starting with sessions
     const groupedData = Rows.reduce((acc, row) => {

@@ -22,7 +22,6 @@ interface DaywiseMetric {
 
 interface DaywiseMetricProps {
   dateRange: DateRange | undefined;
-  isFullScreen?: boolean;
   visibleColumns: string[];
   columnOrder: string[];
   refreshTrigger: number;
@@ -30,8 +29,7 @@ interface DaywiseMetricProps {
 
 const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ 
   dateRange: propDateRange, 
-  isFullScreen: propIsFullScreen,
-  visibleColumns,
+   visibleColumns,
   columnOrder,
   refreshTrigger
 }) => {
@@ -43,19 +41,19 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
   }), [dateFrom, dateTo]);
   const [data, setData] = useState<DaywiseMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const { brandId } = useParams();
 
   
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
-  const [isFullScreen, setIsFullScreen] = useState(propIsFullScreen || false);
+
   
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
   // Transform data to match ReportTable's expected format
   const transformedData = useMemo(() => {
-    console.log('Transforming data:', data);
     const transformed = data.map((item, index) => {
       const transformedItem = {
         id: `row-${index}`,
@@ -68,37 +66,20 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
         purchases: parseInt(item['Purchases']) || 0,
         purchaseRate: item['Purchase Rate'] || '0%'
       };
-      console.log('Transformed item:', transformedItem);
       return transformedItem;
     });
-    console.log('Final transformed data:', transformed);
     return transformed;
   }, [data]);
 
-  // Update isFullScreen when prop changes
-  useEffect(() => {
-    setIsFullScreen(propIsFullScreen || false);
-  }, [propIsFullScreen]);
-
+  // Consolidate date handling into a single useEffect
   useEffect(() => {
     if (propDateRange) {
       dispatch(setDate({
-        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+        from: propDateRange.from ? propDateRange.from.toISOString() : undefined,
+        to: propDateRange.to ? propDateRange.to.toISOString() : undefined
       }));
     }
-  }, [propDateRange]);
-
-  useEffect(() => {
-    if (!isFullScreen) {
-      if (propDateRange) {
-      dispatch(setDate({
-        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-      }));
-    }
-    }
-  }, [isFullScreen, propDateRange]);
+  }, [propDateRange, dispatch]);
 
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
@@ -124,18 +105,34 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
     }
   }, [startDate, endDate, brandId]);
 
+  // Set mounted state
   useEffect(() => {
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, 15 * 60 * 1000);
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useEffect(() => {
+    // Only fetch if we have valid dates and component is mounted
+    if (startDate && endDate && isMounted) {
+      fetchMetrics();
+    }
+    
+    const intervalId = setInterval(() => {
+      // Only fetch on interval if we have valid dates and component is mounted
+      if (startDate && endDate && isMounted) {
+        fetchMetrics();
+      }
+    }, 15 * 60 * 1000);
+    
     return () => clearInterval(intervalId);
-  }, [fetchMetrics]);
+  }, [startDate, endDate, isMounted]); // Add isMounted to dependencies
 
   // Listen for refresh trigger from parent
   useEffect(() => {
-    if (refreshTrigger > 0) {
+    if (refreshTrigger > 0 && startDate && endDate && isMounted) {
       fetchMetrics();
     }
-  }, [refreshTrigger, fetchMetrics]);
+  }, [refreshTrigger, startDate, endDate, isMounted]); // Add isMounted to dependencies
 
   if(isLoading){
     return <Loader isLoading={isLoading} />

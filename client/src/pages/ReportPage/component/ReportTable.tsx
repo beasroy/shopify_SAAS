@@ -263,7 +263,7 @@ export default function ReportTable({
 
             <tbody className="text-gray-700">
               {currentRows.map((row, rIdx) => (
-                <tr key={row.id} className={cn(rIdx % 2 === 1 && "bg-gray-50/60")}>
+                <tr key={row.id} className={cn(rIdx % 2 === 1 && "bg-gray-50/60", "hover:bg-blue-50 transition-colors duration-150")}>
                   {columns.map((col, cIdx) => {
                     if (!col || !col.key) {
                       console.error('Invalid column at index', cIdx, col);
@@ -287,7 +287,7 @@ export default function ReportTable({
                           "border-gray-200",
                           alignClass,
                           isFirst &&
-                            "sticky left-0 z-40 bg-white shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
+                            "sticky left-0 z-40 bg-transparent shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                         )}
                         title={
                           typeof (row as any)[col.key] === "string"

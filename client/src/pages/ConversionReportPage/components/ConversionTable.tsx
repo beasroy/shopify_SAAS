@@ -2,7 +2,7 @@ import React from "react"
 
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export interface MonthlyData {
@@ -24,6 +24,29 @@ interface SimpleConversionTableProps {
   filter?: string[]
 }
 
+// Column definition interface for resizing
+interface ColumnDef {
+  key: string
+  header: string
+  width: number
+  minWidth?: number
+  maxWidth?: number
+  align?: "left" | "right" | "center"
+}
+
+// Drag state interface
+type DragState = {
+  index: number
+  startX: number
+  startWidth: number
+}
+
+// Utility function to clamp values
+function clamp(n: number, min: number, max?: number) {
+  if (max != null) return Math.min(Math.max(n, min), max)
+  return Math.max(n, min)
+}
+
 export default function NewConversionTable({
   data,
   primaryColumn,
@@ -35,6 +58,124 @@ export default function NewConversionTable({
 }: SimpleConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(50)
+
+  // Column resizing state
+  const [widths, setWidths] = useState<number[]>([])
+  const dragRef = useRef<DragState | null>(null)
+  const [resizingIndex, setResizingIndex] = useState<number | null>(null)
+
+  // Get months helper function - moved before it's used
+  const getMonths = () => {
+    if (!Array.isArray(data)) {
+      return []
+    }
+
+    const getMonthName = (monthNumber: string): string => {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      return months[Number.parseInt(monthNumber) - 1]
+    }
+
+    const allMonths = new Set<string>()
+    data.forEach((row) => {
+      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+      if (Array.isArray(monthlyData)) {
+        monthlyData.forEach((month) => {
+          if (month?.Month) {
+            const year = month.Month.slice(0, 4)
+            const monthNum = month.Month.slice(4)
+            allMonths.add(`${getMonthName(monthNum)}-${year}`)
+          }
+        })
+      }
+    })
+    return Array.from(allMonths).reverse()
+  }
+
+  // Define columns with their widths and constraints
+  const columns = useMemo((): ColumnDef[] => {
+    const cols: ColumnDef[] = [
+      { key: primaryColumn, header: primaryColumn, width: 130, minWidth: 100, maxWidth: 300, align: "left" }
+    ]
+
+    if (secondaryColumns) {
+      secondaryColumns.forEach((col) => {
+        cols.push({
+          key: col,
+          header: col,
+          width: 130,
+          minWidth: 100,
+          maxWidth: 200,
+          align: "right"
+        })
+      })
+    }
+
+    // Add monthly columns
+    const months = getMonths()
+    months.forEach((month) => {
+      cols.push({
+        key: month,
+        header: month,
+        width: 120,
+        minWidth: 100,
+        maxWidth: 150,
+        align: "right"
+      })
+    })
+
+    return cols
+  }, [primaryColumn, secondaryColumns, monthlyDataKey, data])
+
+  // Update widths when columns change
+  useEffect(() => {
+    setWidths(columns.map((c) => c.width))
+  }, [columns])
+
+  // Ensure widths array matches columns array length
+  const safeWidths = useMemo(() => {
+    return columns.map((col, index) => widths[index] || col.width)
+  }, [columns, widths])
+
+  // Column resize event handlers
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const delta = e.clientX - drag.startX
+      const def = columns[drag.index]
+      setWidths((prev) => {
+        const next = [...prev]
+        next[drag.index] = clamp(
+          drag.startWidth + delta,
+          def.minWidth ?? 80,
+          def.maxWidth
+        )
+        return next
+      })
+    }
+
+    const onUp = () => {
+      dragRef.current = null
+      setResizingIndex(null)
+      document.body.style.cursor = ""
+      document.body.classList.remove("select-none")
+    }
+
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    return () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+    }
+  }, [columns])
+
+  const startDrag = (e: React.PointerEvent, index: number) => {
+    dragRef.current = { index, startX: e.clientX, startWidth: widths[index] }
+    setResizingIndex(index)
+    document.body.style.cursor = "col-resize"
+    document.body.classList.add("select-none")
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
 
   const filteredData = useMemo(() => {
     // If no filter is applied (undefined), show all data
@@ -54,33 +195,9 @@ export default function NewConversionTable({
     })
   }, [data, filter, primaryColumn])
 
-
   const months = useMemo(() => {
-    if (!Array.isArray(filteredData)) {
-      console.error("Data is not an array:", filteredData)
-      return []
-    }
-
-    const getMonthName = (monthNumber: string): string => {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      return months[Number.parseInt(monthNumber) - 1]
-    }
-
-    const allMonths = new Set<string>()
-    filteredData.forEach((row) => {
-      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
-      if (Array.isArray(monthlyData)) {
-        monthlyData.forEach((month) => {
-          if (month?.Month) {
-            const year = month.Month.slice(0, 4)
-            const monthNum = month.Month.slice(4)
-            allMonths.add(`${getMonthName(monthNum)}-${year}`)
-          }
-        })
-      }
-    })
-    return Array.from(allMonths).reverse()
-  }, [filteredData, monthlyDataKey])
+    return getMonths()
+  }, [data, monthlyDataKey])
 
   const thresholds = useMemo(() => {
     let totalSessions = 0,
@@ -106,8 +223,6 @@ export default function NewConversionTable({
       avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
     }
   }, [data, monthlyDataKey])
-
-
 
   useEffect(() => {
     setCurrentPage(1)
@@ -140,25 +255,25 @@ export default function NewConversionTable({
   }
 
   const renderMonthCell = (monthData: MonthlyData | undefined) => {
-    if (!monthData) {
-      return (
-        <td className="w-[120px] text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200">
-          <div>—</div>
-          <div>—</div>
-        </td>
-      )
-    }
+          if (!monthData) {
+        return (
+          <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+            <div className="truncate">—</div>
+            <div className="truncate">—</div>
+          </td>
+        )
+      }
 
     const sessions = monthData["Sessions"]
     const convRate = monthData["Conv. Rate"]
     const purchases = monthData["Purchases"]
 
-    return (
-      <td className="w-[120px] text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200">
+        return (
+      <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
         <div className="space-y-1">
-          <div className="font-medium">{renderCell(sessions, "sessions")}</div>
-          <div>{renderCell(convRate, "percentage")}</div>
-          {purchases !== undefined && <div className="text-xs">Purchases: {purchases.toLocaleString(locale)}</div>}
+          <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
+          <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
+          {purchases !== undefined && <div className="text-xs truncate">Purchases: {purchases.toLocaleString(locale)}</div>}
         </div>
       </td>
     )
@@ -167,11 +282,19 @@ export default function NewConversionTable({
   const renderSummaryCell = (row: RowData, column: string, columnIndex: number) => {
     const value = row[column]
 
+    // Calculate dynamic left position based on actual column widths
+    const getLeftPosition = (index: number) => {
+      if (index === 0) return "left-0"
+      if (index === 1) return `left-[${safeWidths[0]}px]`
+      if (index === 2) return `left-[${safeWidths[0] + safeWidths[1]}px]`
+      return ""
+    }
+
     if (typeof value !== "number") {
       return (
         <td
-          className={`min-w-[130px] p-3 text-sm border-r border-b border-gray-200 bg-white ${
-            columnIndex < 2 ? `sticky z-10 ${columnIndex === 0 ? "left-[130px]" : "left-[260px] "}` : ""
+          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
+            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
           }`}
         >
           {""}
@@ -185,12 +308,12 @@ export default function NewConversionTable({
     if (column.includes("Sessions")) {
       return (
         <td
-          className={`min-w-[130px] p-3 text-sm border-r border-b border-gray-200 bg-white ${
-            columnIndex < 2 ? `sticky z-10 ${columnIndex === 0 ? "left-[130px]" : "left-[260px]"}` : ""
-          } ${columnIndex === 1 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
+            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
         >
           <div className="text-right">
-            <div className="font-medium">{renderCell(value, "sessions")}</div>
+            <div className="font-medium truncate">{renderCell(value, "sessions")}</div>
           </div>
         </td>
       )
@@ -199,40 +322,44 @@ export default function NewConversionTable({
     if (column.includes("Rate")) {
       return (
         <td
-          className={`min-w-[130px] p-3 text-sm border-r border-b border-gray-200 bg-white ${
-            columnIndex < 2 ? `sticky z-10 ${columnIndex === 0 ? "left-[130px]" : "left-[260px]"}` : ""
-          } ${columnIndex === 1 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
+            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
         >
           <div className="text-right">
-            <div className="font-medium">{renderCell(value, "percentage")}</div>
-            {totalPurchases && <div className="text-xs mt-1">Total Purchases: {totalPurchases}</div>}
+            <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
+            {totalPurchases && <div className="text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
           </div>
         </td>
       )
     }
 
     return (
-              <td
-          className={`min-w-[130px] p-3 text-sm border-r border-b border-gray-200 bg-white ${
-            columnIndex < 2 ? `sticky z-10 ${columnIndex === 0 ? "left-[130px]" : "left-[260px]"}` : ""
-          } ${columnIndex === 1 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
-        >
-          <div className="text-right font-medium">{renderCell(value)}</div>
-        </td>
+      <td
+        className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
+          columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+        } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+      >
+        <div className="text-right font-medium truncate">{renderCell(value)}</div>
+      </td>
     )
   }
 
   const renderDataRow = (row: RowData, index: number) => {
     return (
-      <tr key={`${row[primaryColumn]}-${index}`}>
-        <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-white border-r border-b border-gray-200 ">
-          {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
-            ? renderCell(row[primaryColumn])
-            : ""}
+      <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150">
+        <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-transparent border-r border-b border-gray-200">
+          <div className="truncate">
+            {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
+              ? renderCell(row[primaryColumn])
+              : ""}
+          </div>
         </td>
-        {secondaryColumns?.map((column, columnIndex) => (
-          <React.Fragment key={column}>{renderSummaryCell(row, column, columnIndex)}</React.Fragment>
-        ))}
+        {secondaryColumns?.map((column, columnIndex) => {
+          // Add 1 to account for the primary column
+          const absoluteIndex = columnIndex + 1
+          return <React.Fragment key={column}>{renderSummaryCell(row, column, absoluteIndex)}</React.Fragment>
+        })}
         {months.map((month) => {
           const getMonthNumber = (monthName: string): number => {
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -271,16 +398,46 @@ export default function NewConversionTable({
       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`
     }
 
+    const isFirst = columnIndex < 3
+    const active = resizingIndex === columnIndex
+
+    // Calculate dynamic left position based on actual column widths
+    const getLeftPosition = (index: number) => {
+      if (index === 0) return "left-0"
+      if (index === 1) return `left-[${safeWidths[0]}px]`
+      if (index === 2) return `left-[${safeWidths[0] + safeWidths[1]}px]`
+      return ""
+    }
+
     return (
       <th
         key={column}
-        className={`sticky top-0 min-w-[130px] z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${
-          columnIndex < 2 ? `${columnIndex === 0 ? "left-[130px] z-20" : "left-[260px] z-20 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"}` : ""
-        }`}
+        className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${
+          isFirst ? `${getLeftPosition(columnIndex)} z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
+        } ${active ? "border-blue-500" : ""}`}
       >
         <div className="flex flex-col">
-          <span>{column}</span>
-          {thresholdValue && <span className="text-xs font-normal mt-0.5">{thresholdValue}</span>}
+          <span className="truncate">{column}</span>
+          {thresholdValue && <span className="text-xs font-normal mt-0.5 truncate">{thresholdValue}</span>}
+        </div>
+
+        {/* Resize handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${column} column`}
+          onPointerDown={(e) => startDrag(e, columnIndex)}
+          className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
+            active
+              ? "bg-blue-500/15"
+              : "hover:bg-gray-200/30 active:bg-gray-200/50"
+          }`}
+        >
+          <div
+            className={`absolute right-0 top-0 h-full w-px ${
+              active ? "bg-blue-500" : "bg-gray-200"
+            }`}
+          />
         </div>
       </th>
     )
@@ -291,25 +448,80 @@ export default function NewConversionTable({
       <div className={`relative overflow-x-auto ${
         isFullScreen ? 'max-h-[calc(100vh-80px)]' : ''
       } max-h-[100vh]`}>
-        <table className="w-full table-auto border border-gray-200">
+        <table className="w-full table-fixed border border-gray-200">
+          <colgroup>
+            {safeWidths.map((w, i) => (
+              <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th className="sticky left-0 top-0 min-w-[130px] z-30 px-3 py-3 text-left text-sm font-medium bg-gray-100 border-r border-b border-gray-200">
                 <div className="flex items-center gap-2">
-                  <span>{primaryColumn}</span>
+                  <span className="truncate">{primaryColumn}</span>
                   {filter && filter.length > 0 && <span className="text-xs px-2 py-1 rounded">Filtered</span>}
                 </div>
-              </th>
-              {secondaryColumns?.map((column, columnIndex) => renderColumnHeader(column, columnIndex))}
-              {months.map((month) => (
-                <th
-                  key={month}
-                  className="sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200"
+                
+                {/* Resize handle for primary column */}
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={`Resize ${primaryColumn} column`}
+                  onPointerDown={(e) => startDrag(e, 0)}
+                  className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
+                    resizingIndex === 0
+                      ? "bg-blue-500/15"
+                      : "hover:bg-gray-200/30 active:bg-gray-200/50"
+                  }`}
                 >
-                  <div>{month}</div>
-                  <div className="text-xs mt-1">Sessions / Conv Rate</div>
-                </th>
-              ))}
+                  <div
+                    className={`absolute right-0 top-0 h-full w-px ${
+                      resizingIndex === 0 ? "bg-blue-500" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
+              </th>
+              {secondaryColumns?.map((column, columnIndex) => {
+                // Add 1 to account for the primary column
+                const absoluteIndex = columnIndex + 1
+                return renderColumnHeader(column, absoluteIndex)
+              })}
+              {months.map((month, monthIndex) => {
+                // Add 1 for primary column + secondary columns length
+                const columnIndex = 1 + (secondaryColumns?.length || 0) + monthIndex
+                const active = resizingIndex === columnIndex
+                
+                return (
+                  <th
+                    key={month}
+                    className={`sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200 ${
+                      active ? "border-blue-500" : ""
+                    }`}
+                  >
+                                      <div className="truncate">{month}</div>
+                  <div className="text-xs mt-1 truncate">Sessions / Conv Rate</div>
+
+                    {/* Resize handle for monthly columns */}
+                    <div
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize ${month} column`}
+                      onPointerDown={(e) => startDrag(e, columnIndex)}
+                      className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
+                        active
+                          ? "bg-blue-500/15"
+                          : "hover:bg-gray-200/30 active:bg-gray-200/50"
+                      }`}
+                    >
+                      <div
+                        className={`absolute right-0 top-0 h-full w-px ${
+                          active ? "bg-blue-500" : "bg-gray-200"
+                        }`}
+                      />
+                    </div>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>

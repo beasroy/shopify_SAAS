@@ -34,7 +34,7 @@ export const fetchShopifySales = async (req, res) => {
     console.log('Store timezone:', storeTimezone);
     console.log('Store currency:', storeCurrency);
 
-    // Use provided date range or default to first day of current month
+    // Use provided date range or default to current month
     let startDateTime, endDateTime;
     if (startDate && endDate) {
       startDateTime = moment.tz(startDate, storeTimezone).startOf('day');
@@ -42,8 +42,53 @@ export const fetchShopifySales = async (req, res) => {
     } else {
       const now = moment().tz(storeTimezone);
       startDateTime = moment(now).startOf('month');
-      endDateTime = moment(now);
+      endDateTime = moment(now).endOf('month');
     }
+
+    // Calculate total days in the period
+    const totalDays = endDateTime.diff(startDateTime, 'days') + 1;
+    
+    // Calculate number of weeks dynamically
+    const totalWeeks = Math.ceil(totalDays / 7);
+    console.log(`Period: ${totalDays} days, ${totalWeeks} weeks`);
+
+    // Get current date to determine which weeks are pending
+    const currentDate = moment().tz(storeTimezone);
+
+    // Create dynamic weekly structure
+    const weeklySalesMap = {};
+    for (let weekNum = 1; weekNum <= totalWeeks; weekNum++) {
+      const weekStart = startDateTime.clone().add((weekNum - 1) * 7, 'days');
+      const weekEnd = moment.min(weekStart.clone().add(6, 'days'), endDateTime);
+      
+      // Check if this week has started yet
+      const weekHasStarted = currentDate.isSameOrAfter(weekStart);
+      const weekHasEnded = currentDate.isAfter(weekEnd);
+      
+      weeklySalesMap[`week${weekNum}`] = {
+        weekNumber: weekNum,
+        status: weekHasStarted ? (weekHasEnded ? 'completed' : 'in-progress') : 'pending',
+        totalSales: 0,
+        grossSales: 0,
+        refundAmount: 0,
+        discountAmount: 0,
+        orderCount: 0,
+        cancelledOrderCount: 0,
+        totalTaxes: 0
+      };
+    }
+
+    // Helper function to determine which week a date belongs to
+    const getWeekNumber = (dateMoment) => {
+      const startOfPeriod = startDateTime.clone();
+      const daysDiff = dateMoment.diff(startOfPeriod, 'days');
+      return Math.floor(daysDiff / 7) + 1;
+    };
+
+    // Helper function to get week key
+    const getWeekKey = (weekNum) => {
+      return `week${weekNum}`;
+    };
 
     // Chunked order fetching for reliability
     const CHUNK_SIZE_DAYS = 7;
@@ -108,33 +153,13 @@ export const fetchShopifySales = async (req, res) => {
     }
     console.log(`Successfully fetched a total of ${allOrders.length} valid orders`);
 
-    // Detailed sales/refund calculation per day
-    const dailySalesMap = {};
-    let currentDay = startDateTime.clone().startOf('day');
-    while (currentDay.isSameOrBefore(endDateTime)) {
-      const dateStr = currentDay.format('YYYY-MM-DD');
-      dailySalesMap[dateStr] = {
-        date: dateStr,
-        grossSales: 0,
-        subtotalPrice: 0,
-        totalPrice: 0,
-        refundAmount: 0,
-        discountAmount: 0,
-        orderCount: 0,
-        cancelledOrderCount: 0,
-        totalTaxes: 0
-      };
-      currentDay.add(1, 'day');
-    }
-    // Helper to check if date is in range
-    const isInTargetDateRange = (dateStr) => {
-      const dateMoment = moment.tz(dateStr, storeTimezone);
-      return dateMoment.isBetween(startDateTime, endDateTime, 'day', '[]');
-    };
-    // Process orders
+    // Process orders and populate weekly data
     allOrders.forEach(order => {
       const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-      if (isInTargetDateRange(orderDate) && dailySalesMap[orderDate]) {
+      const orderDateMoment = moment.tz(order.created_at, storeTimezone);
+      
+      // Check if order is within our date range
+      if (orderDateMoment.isBetween(startDateTime, endDateTime, 'day', '[]')) {
         const totalPrice = Number(order.total_price || 0);
         const subtotalPrice = Number(order.subtotal_price || 0);
         const discountAmount = Number(order.total_discounts || 0);
@@ -164,67 +189,68 @@ export const fetchShopifySales = async (req, res) => {
         } else {
           grossSales = subtotalPrice + discountAmount;
         }
-        dailySalesMap[orderDate].grossSales += grossSales;
-        dailySalesMap[orderDate].totalTaxes += totalTaxes;
-        dailySalesMap[orderDate].subtotalPrice += subtotalPrice;
-        dailySalesMap[orderDate].totalPrice += totalPrice;
-        dailySalesMap[orderDate].discountAmount += discountAmount;
-        dailySalesMap[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
         
-        if (hasRefunds) {
-          console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
+        // Update weekly sales map
+        const weekNum = getWeekNumber(orderDateMoment);
+        const weekKey = getWeekKey(weekNum);
+        
+        if (weeklySalesMap[weekKey]) {
+          weeklySalesMap[weekKey].grossSales += grossSales;
+          weeklySalesMap[weekKey].totalSales += totalPrice;
+          weeklySalesMap[weekKey].discountAmount += discountAmount;
+          weeklySalesMap[weekKey].orderCount += order.cancelled_at ? 0 : 1;
+          weeklySalesMap[weekKey].cancelledOrderCount += order.cancelled_at ? 1 : 0;
+          weeklySalesMap[weekKey].totalTaxes += totalTaxes;
         }
       }
     });
-    
+
     // Fetch refund amounts from cache for the date range
     const refundAmountsFromCache = await getRefundAmountsFromCache(brandId, startDateTime.format('YYYY-MM-DD'), endDateTime.format('YYYY-MM-DD'));
     
-    console.log(`Refunds found in cache for date range: ${Object.keys(refundAmountsFromCache).length} dates`);
-    
-    // Apply refund amounts from cache to daily sales data
+    // Apply refund amounts to weekly data
     Object.keys(refundAmountsFromCache).forEach(date => {
-      if (dailySalesMap[date]) {
+      const dateMoment = moment.tz(date, storeTimezone);
+      if (dateMoment.isBetween(startDateTime, endDateTime, 'day', '[]')) {
         const refundData = refundAmountsFromCache[date];
-        dailySalesMap[date].refundAmount = refundData.totalReturn;
-        console.log(`Applied refunds for ${date}: totalReturn=${refundData.totalReturn}`);
+        const weekNum = getWeekNumber(dateMoment);
+        const weekKey = getWeekKey(weekNum);
+        
+        if (weeklySalesMap[weekKey]) {
+          weeklySalesMap[weekKey].refundAmount += refundData.totalReturn;
+        }
       }
     });
-    
-    // Prepare response
-    const dailyResults = Object.values(dailySalesMap).map(day => {
-      const grossSales = Number(day.grossSales);
-      const discountAmount = Number(day.discountAmount);
-      const refundAmount = Number(day.refundAmount);
-      const totalPrice = Number(day.totalPrice);
-      const subtotalPrice = Number(day.subtotalPrice);
-      const totalTaxes = Number(day.totalTaxes || 0);
+
+    // Prepare weekly results
+    const weeklyResults = Object.values(weeklySalesMap).map(week => {
       return {
-        date: day.date,
-        grossSales: grossSales.toFixed(2),
-        shopifySales: (subtotalPrice - totalTaxes - refundAmount).toFixed(2),
-        totalSales: (totalPrice - refundAmount).toFixed(2),
-        subtotalSales: subtotalPrice.toFixed(2),
-        refundAmount: refundAmount.toFixed(2),
-        discountAmount: discountAmount.toFixed(2),
-        totalTaxes: totalTaxes.toFixed(2),
-        orderCount: day.orderCount,
-        cancelledOrderCount: day.cancelledOrderCount,
-        currency: storeCurrency,
-        totalPrice: totalPrice
+        weekNumber: week.weekNumber,
+        status: week.status,
+        totalSales: week.totalSales.toFixed(2),
+        grossSales: week.grossSales.toFixed(2),
+        refundAmount: week.refundAmount.toFixed(2),
+        discountAmount: week.discountAmount.toFixed(2),
+        orderCount: week.orderCount,
+        cancelledOrderCount: week.cancelledOrderCount,
+        totalTaxes: week.totalTaxes.toFixed(2),
+        shopifySales: (week.grossSales - week.totalTaxes - week.refundAmount).toFixed(2),
+        currency: storeCurrency
       };
     });
+
     res.json({
-      orders: allOrders,
-      totalOrders: allOrders.length,
-      dailyResults,
-      currency: storeCurrency,
-      dateRange: {
-        start: startDateTime.format('YYYY-MM-DD'),
-        end: endDateTime.format('YYYY-MM-DD'),
+      weeklyResults,
+      periodInfo: {
+        totalDays: totalDays,
+        totalWeeks: totalWeeks,
+        startDate: startDateTime.format('YYYY-MM-DD'),
+        endDate: endDateTime.format('YYYY-MM-DD'),
         timezone: storeTimezone
-      }
+      },
+      currency: storeCurrency
     });
+
   } catch (error) {
     console.error('Error in fetchShopifySales:', error);
     let errorMessage = 'Failed to fetch Shopify sales data';

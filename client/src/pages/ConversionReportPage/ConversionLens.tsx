@@ -165,7 +165,10 @@ const ConversionLens: React.FC = () => {
   };
 
   if (tokenError) {
-    return <NoAccessPage
+    return  <div className="flex h-screen bg-gray-100">
+      <CollapsibleSidebar /> 
+      <div className="flex-1 h-screen overflow-hidden flex flex-col lg:ml-0">
+      <NoAccessPage
       platform="Google Analytics"
       message="We need access to your Google Analytics account to show you amazing insights about your website performance."
       icon={<ChartBar className="w-8 h-8 text-blue-600" />}
@@ -176,16 +179,23 @@ const ConversionLens: React.FC = () => {
           provider: "google"
         }
       ]}
-    />;
+    />
+    </div>
+    </div>;
   }
 
   if (!hasGA4Account) {
-    return <ConnectPlatform
+    return    <div className="flex h-screen bg-gray-100">
+      <CollapsibleSidebar />
+       <div className="flex-1 h-screen overflow-hidden flex flex-col lg:ml-0">
+       <ConnectPlatform
       platform="google analytics"
       brandId={brandId ?? ''}
       onSuccess={(platform, accountName, accountId) => {
         console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
-      }} />;
+      }} />
+      </div>
+      </div>;
   }
 
   return (

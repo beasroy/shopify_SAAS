@@ -3,13 +3,12 @@ import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar"
-import { CalendarRange, ChevronDown, Download, Maximize, Minimize } from "lucide-react"
+import {ChevronDown, Download, Maximize, Minimize,} from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import { FacebookLogo, GoogleLogo, ShopifyLogo } from "@/data/logo.tsx"
 import { useSelector } from "react-redux"
 import type { RootState } from "@/store"
-import Header from "@/components/dashboard_component/Header"
 import { Button } from "@/components/ui/button"
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal"
@@ -18,7 +17,8 @@ import Loader from "@/components/dashboard_component/loader"
 import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
 import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
-import Footer from "../LandingPage/components/Footer"
+import HeaderNotificationDropdown from "@/components/dashboard_component/HeaderNotificationDropdown"
+
 
 export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
   return formatCurrencyUtil(amount, currencyCode);
@@ -141,9 +141,9 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const getTableHeight = () => {
     if (isFullScreen) {
-      return "max-h-[calc(100vh-120px)]"
+      return "h-screen"
     }
-    return "max-h-[calc(100vh-230px)]"
+    return "h-full"
   }
 
   useEffect(() => {
@@ -256,8 +256,8 @@ export const ExcelMetricsPage: React.FC = () => {
     }
 
     return (
-      <div className="border rounded-lg shadow-sm overflow-hidden bg-white">
-        <div className={`${getTableHeight()} overflow-auto`}>
+      <div className="border rounded-lg shadow-sm overflow-hidden bg-white h-full flex flex-col font-karla">
+        <div className={`${getTableHeight()} overflow-auto flex-1`}>
           <table className="w-full border-collapse font-inter">
             <thead className="sticky top-0 z-20">
               <tr>
@@ -271,7 +271,7 @@ export const ExcelMetricsPage: React.FC = () => {
                 <TooltipHeader
                   title="Shopify (Actual Sales Data)"
                   tooltip="Shopify Metrics"
-                  colSpan={5}
+                  colSpan={3}
                   isFirstInSection={true}
                 />
                 <TooltipHeader title="Meta + Google" tooltip="Meta + Google" colSpan={3} isFirstInSection={true} />
@@ -284,7 +284,7 @@ export const ExcelMetricsPage: React.FC = () => {
                 <TooltipHeader title="Google Ads" tooltip="Google Metrics" colSpan={3} isFirstInSection={true} />
               </tr>
               <tr>
-                <TooltipHeader
+                {/* <TooltipHeader
                   title="Net Sales"
                   tooltip="Net Sales = Gross Sales - Discount"
                   isSubHeader
@@ -295,12 +295,12 @@ export const ExcelMetricsPage: React.FC = () => {
                   tooltip="Net ROI = Net Sales / Total Spend"
                   isSubHeader
                   isImportant={true}
-                />
+                /> */}
+                <TooltipHeader title="Total Sales" tooltip="Total Sales" isSubHeader isFirstInSection={true} />
                 <TooltipHeader title="Total Returns" tooltip="Net Returns + Shipping Returned + Return Fees + Taxes Returned" isSubHeader />
-                <TooltipHeader title="Total Sales" tooltip="Total Sales = Net Sales - Returns" isSubHeader />
                 <TooltipHeader
-                  title="Final ROI"
-                  tooltip="Final ROI = Total Sales / Total Spend"
+                  title="ROAS"
+                  tooltip="ROAS = Total Sales / Total Spend"
                   isSubHeader
                   isImportant={true}
                 />
@@ -333,7 +333,7 @@ export const ExcelMetricsPage: React.FC = () => {
                   <React.Fragment key={monthYear}>
                     <tr
                       className={`
-                        ${isExpanded ? "bg-blue-50/30" : "bg-white hover:bg-slate-50/80"} 
+                        ${isExpanded ? "bg-blue-50" : "bg-white hover:bg-slate-50/80"} 
                         cursor-pointer transition-colors 
                       `}
                       onClick={() => toggleMonth(monthYear)}
@@ -357,7 +357,7 @@ export const ExcelMetricsPage: React.FC = () => {
                       >
                         {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
                       </Cell>
-                      <Cell
+                      {/* <Cell
                         isNumeric
                         isExpanded={isExpanded}
                         className="px-3 py-2.5 font-medium text-sm"
@@ -367,13 +367,14 @@ export const ExcelMetricsPage: React.FC = () => {
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.netROI)}
+                      </Cell> */}
+                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm" isFirstInSection={true}>
+                        {formatCurrency(monthData.totalSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
                         {formatCurrency(monthData.refundAmount)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm">
-                        {formatCurrency(monthData.totalSales)}
-                      </Cell>
+
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.ROI)}
                       </Cell>
@@ -415,18 +416,19 @@ export const ExcelMetricsPage: React.FC = () => {
                           >
                             {format(new Date(daily.date), "dd/MM/yyyy")}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                          {/* <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.shopifySales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.netROI)}
+                          </Cell> */}
+                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                            {formatCurrency(daily.totalSales)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
                             {formatCurrency(daily.refundAmount)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.totalSales)}
-                          </Cell>
+
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.ROI)}
                           </Cell>
@@ -473,45 +475,49 @@ export const ExcelMetricsPage: React.FC = () => {
     if (loading) return <Loader isLoading={loading} />
     if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
     return (
-      <div className="flex-1 h-screen overflow-hidden bg-slate-100">
-        <Header title="Marketing Insights Tracker" Icon={CalendarRange} showDatePicker={true} />
-        <Card
-          id="metrics-table"
-          className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : "m-6"} shadow-md`}
-        >
-          <CardContent className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                <h2 className="text-xl font-semibold text-slate-800">Key Performance Metrics</h2>
-                <div className="flex flex-row gap-3 items-center">
-                  <FacebookLogo width={20} height={20} />
-                  <GoogleLogo width={20} height={20} />
+      <div className="flex-1 h-screen overflow-hidden bg-slate-100 flex flex-col">
+        <div className="p-3 flex-1 flex flex-col min-h-0">
+          {/* Combined Date Controls and Metrics Table Card */}
+          <Card
+            id="metrics-table"
+            className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : ""} shadow-md flex-1 flex flex-col min-h-0`}
+          >
+            <CardContent className="p-2 md:p-3 flex-1 flex flex-col min-h-0">
+              {/* Date and Controls Section */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-3 gap-4 flex-shrink-0">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                  <h2 className="text-xl font-semibold text-slate-800">Cross-Platform Performance</h2>
+                  <div className="flex flex-row gap-3 items-center">
                   <ShopifyLogo width={20} height={20} />
+                    <FacebookLogo width={20} height={20} />
+                    <GoogleLogo width={20} height={20} />
+                  </div>
+                </div>
+                <div className="flex flex-row items-center gap-3">
+                  <DatePickerWithRange
+                    defaultDate={{
+                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      to: new Date(),
+                    }}
+                  />
+                  <Button onClick={toggleFullScreen} size="icon" variant="outline" className="bg-white">
+                    {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2 bg-white">
+                    <Download className="h-4 w-4" />
+                    Export
+                  </Button>
+                  <HeaderNotificationDropdown />
                 </div>
               </div>
-              <div className="flex flex-row items-center gap-3">
-                {isFullScreen && (
-                  <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                    <DatePickerWithRange
-                      defaultDate={{
-                        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                        to: new Date(),
-                      }}
-                    />
-                  </div>
-                )}
-                <Button onClick={toggleFullScreen} size="icon" variant="outline" className="bg-white">
-                  {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2 bg-white">
-                  <Download className="h-4 w-4" />
-                  Export
-                </Button>
+
+              {/* Metrics Table */}
+              <div className="flex-1 overflow-hidden min-h-0">
+                {renderTable()}
               </div>
-            </div>
-            {renderTable()}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -519,9 +525,7 @@ export const ExcelMetricsPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-auto">{renderContent()}
-        <Footer />
-      </div>
+      <div className="flex-1 h-screen overflow-auto">{renderContent()}</div>
       <HelpDeskModal />
     </div>
   )

@@ -259,21 +259,85 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         
         const brand = await Brand.findById(brandId);
         if (!brand) throw new Error('Brand not found.');
+        
+        // Enhanced logging for brand data
+        console.log('Brand found:', {
+            brandId: brand._id,
+            brandName: brand.name,
+            hasShopifyAccount: !!brand.shopifyAccount,
+            shopifyAccountData: brand.shopifyAccount ? {
+                shopName: brand.shopifyAccount.shopName,
+                hasAccessToken: !!brand.shopifyAccount.shopifyAccessToken,
+                accessTokenLength: brand.shopifyAccount.shopifyAccessToken?.length || 0
+            } : null
+        });
+        
         const access_token = brand.shopifyAccount?.shopifyAccessToken;
         if (!access_token) throw new Error('Access token is missing or invalid.');
+        
+        const shopName = brand.shopifyAccount?.shopName;
+        if (!shopName) throw new Error('Shop name is missing or invalid.');
+        
+        console.log('Shopify configuration:', {
+            shopName: shopName,
+            accessTokenLength: access_token.length,
+            apiVersion: '2024-04'
+        });
+        
         const shopify = new Shopify({
-            shopName: brand.shopifyAccount?.shopName,
+            shopName: shopName,
             accessToken: access_token,
             apiVersion: '2024-04'
         });
-        const shopData = await shopify.shop.get();
+        
+        // Test shop connection first
+        let shopData;
+        try {
+            console.log('Testing Shopify connection...');
+            shopData = await shopify.shop.get();
+            console.log('✅ Shopify connection successful');
+        } catch (shopError) {
+            console.error('❌ Shopify connection failed:', {
+                error: shopError.message,
+                code: shopError.code,
+                statusCode: shopError.statusCode,
+                shopName: shopName,
+                apiVersion: '2024-04'
+            });
+            
+            // Try with different API version if current one fails
+            if (shopError.statusCode === 404 || shopError.code === 'ERR_GOT_REQUEST_ERROR') {
+                console.log('🔄 Trying with API version 2024-01...');
+                try {
+                    const shopifyFallback = new Shopify({
+                        shopName: shopName,
+                        accessToken: access_token,
+                        apiVersion: '2024-01'
+                    });
+                    shopData = await shopifyFallback.shop.get();
+                    console.log('✅ Shopify connection successful with fallback API version');
+                    
+                    // Update the shopify instance to use the working version
+                    shopify.apiVersion = '2024-01';
+                } catch (fallbackError) {
+                    console.error('❌ Fallback API version also failed:', fallbackError.message);
+                    throw new Error(`Shopify connection failed: ${shopError.message}. Tried API versions: 2024-04, 2024-01`);
+                }
+            } else {
+                throw shopError;
+            }
+        }
+        
         const storeTimezone = shopData.iana_timezone || 'UTC';
         const storeCurrency = shopData.currency || 'USD';
         
         console.log('Store info:', {
-            shopName: brand.shopifyAccount?.shopName,
+            shopName: shopName,
             timezone: storeTimezone,
-            currency: storeCurrency
+            currency: storeCurrency,
+            shopId: shopData.id,
+            shopEmail: shopData.email,
+            shopDomain: shopData.domain
         });
         
         const originalStartDate = moment.tz(startDate, storeTimezone);
@@ -335,8 +399,20 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             // Test order check (optimized)
             const isTestOrder = (order) => order.test;
             
+            console.log('🔄 Starting to fetch orders from Shopify...');
+            
             // Fetch all orders from extended date range (for refund caching)
-            orders = await fetchAllOrdersChunked(shopify, fetchStartDate, originalEndDate, storeTimezone, isTestOrder);
+            try {
+                orders = await fetchAllOrdersChunked(shopify, fetchStartDate, originalEndDate, storeTimezone, isTestOrder);
+                console.log('✅ Orders fetched successfully:', orders.length);
+            } catch (ordersError) {
+                console.error('❌ Error fetching orders:', {
+                    error: ordersError.message,
+                    code: ordersError.code,
+                    statusCode: ordersError.statusCode
+                });
+                throw new Error(`Failed to fetch orders from Shopify: ${ordersError.message}`);
+            }
             
             console.log('Total orders fetched:', orders.length);
             console.log('Test orders filtered out:', orders.filter(order => order.test).length);
@@ -354,7 +430,20 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         } else {
             // Only fetch orders for the target date range since refunds are already cached
             const isTestOrder = (order) => order.test;
-            orders = await fetchAllOrdersChunked(shopify, originalStartDate, originalEndDate, storeTimezone, isTestOrder);
+            
+            console.log('🔄 Fetching orders for target date range only...');
+            
+            try {
+                orders = await fetchAllOrdersChunked(shopify, originalStartDate, originalEndDate, storeTimezone, isTestOrder);
+                console.log('✅ Orders fetched successfully for target range:', orders.length);
+            } catch (ordersError) {
+                console.error('❌ Error fetching orders for target range:', {
+                    error: ordersError.message,
+                    code: ordersError.code,
+                    statusCode: ordersError.statusCode
+                });
+                throw new Error(`Failed to fetch orders for target range: ${ordersError.message}`);
+            }
             
             console.log('Total orders fetched (target range only):', orders.length);
             console.log('Test orders filtered out:', orders.filter(order => order.test).length);
@@ -415,7 +504,13 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             };
         });
     } catch (error) {
-        console.error('Error in fetchTotalSales:', error);
+        console.error('❌ Error in fetchTotalSales:', {
+            error: error.message,
+            stack: error.stack,
+            brandId: brandId,
+            startDate: startDate,
+            endDate: endDate
+        });
         throw new Error(`Failed to fetch total sales: ${error.message}`);
     }
 };

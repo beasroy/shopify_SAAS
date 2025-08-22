@@ -382,7 +382,7 @@ function SidebarChild({
   const content = (
     <>
       <div className="flex items-center justify-between w-full">
-        <span className="font-medium">{text}</span>
+        <span className="font-medium capitalize">{text}</span>
         {hasChildren && <span className="ml-2">{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>}
       </div>
     </>
@@ -486,7 +486,7 @@ function SidebarItem({
           onClick()
         }
       }}
-      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer group ${
+      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer group capitalize ${
         isActive 
           ? "text-white bg-slate-600/30 border-l-2 border-slate-400 shadow-lg" 
           : "text-slate-300 hover:text-white hover:bg-slate-700/50"
@@ -497,7 +497,7 @@ function SidebarItem({
        }`}>
         {icon}
       </span>
-      {isExpanded && <span className="text-sm font-medium flex-1">{text}</span>}
+      {isExpanded && <span className="text-sm font-medium flex-1 capitalize">{text}</span>}
       {isExpanded && hasChildren && (
         <span className="text-slate-400 group-hover:text-white transition-colors">
           {isOpen ? openIcon : closeIcon}

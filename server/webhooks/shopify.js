@@ -30,7 +30,6 @@ function getRefundAmount(refund) {
   const totalReturn = productReturn - adjustmentsTotal;
 
   return {
-    productReturn,
     totalReturn
   };
 }
@@ -384,7 +383,7 @@ export const app_uninstalled = async (req, res) => {
 export const refundsCreated = async (req, res) => {
   try {
     const refund = req.body;
-    const { productReturn, totalReturn } = getRefundAmount(refund);
+    const { totalReturn } = getRefundAmount(refund);
     const shopDomain = req.headers['x-shopify-shop-domain'];
     const brand = await Brand.findOne({ 'shopifyAccount.shopName': shopDomain });
     const brandId = brand ? brand._id : null;
@@ -398,7 +397,6 @@ export const refundsCreated = async (req, res) => {
       orderId: orderId,
       refundCreatedAt: new Date(refund.created_at),
       orderCreatedAt: new Date(orderCreatedAt),
-      productReturn: productReturn,
       totalReturn: totalReturn,
       rawData: JSON.stringify(refund),
       brandId: brandId

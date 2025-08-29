@@ -56,7 +56,6 @@ export const getMetricsbyID = async (req, res) => {
                     },
                     totalSales: { $sum: "$totalSales" },
                     refundAmount: { $sum: "$refundAmount" },
-                    shopifySales: { $sum: "$shopifySales" },
                     metaSpend: { $sum: "$metaSpend" },
                     googleSpend: { $sum: "$googleSpend" },
                     totalSpend: { $sum: "$totalSpend" },
@@ -65,14 +64,12 @@ export const getMetricsbyID = async (req, res) => {
                             date: "$date",
                             totalSales: "$totalSales",
                             refundAmount: "$refundAmount",
-                            shopifySales: "$shopifySales",
                             metaSpend: "$metaSpend",
                             googleSpend: "$googleSpend",
                             totalSpend: "$totalSpend",
                             metaROAS: "$metaROAS",
                             googleROAS: "$googleROAS",
                             grossROI: "$grossROI",
-                            netROI: "$netROI"
                         }
                     }
                 }
@@ -83,7 +80,6 @@ export const getMetricsbyID = async (req, res) => {
                     year: "$_id.year",
                     totalSales: 1,
                     refundAmount: 1,
-                    shopifySales: 1,
                     metaSpend: 1,
                     googleSpend: 1,
                     totalSpend: 1,
@@ -148,20 +144,20 @@ export const checkRefundCache = async (req, res) => {
             if (!acc[refundDate]) {
                 acc[refundDate] = {
                     refundDate,
-                    totalProductReturn: 0,
+                   
                     totalRefundAmount: 0,
                     refundCount: 0,
                     refunds: []
                 };
             }
             
-            acc[refundDate].totalProductReturn += refund.productReturn || 0;
+           
             acc[refundDate].totalRefundAmount += refund.totalReturn || 0;
             acc[refundDate].refundCount += 1;
             acc[refundDate].refunds.push({
                 refundId: refund.refundId,
                 orderId: refund.orderId,
-                productReturn: refund.productReturn,
+               
                 totalReturn: refund.totalReturn,
                 refundCreatedAt: refund.refundCreatedAt,
                 orderCreatedAt: refund.orderCreatedAt
@@ -172,7 +168,7 @@ export const checkRefundCache = async (req, res) => {
 
         // Calculate summary statistics
         const totalRefunds = refunds.length;
-        const totalProductReturn = refunds.reduce((sum, refund) => sum + (refund.productReturn || 0), 0);
+       
         const totalRefundAmount = refunds.reduce((sum, refund) => sum + (refund.totalReturn || 0), 0);
 
         res.json({
@@ -180,7 +176,6 @@ export const checkRefundCache = async (req, res) => {
             data: {
                 summary: {
                     totalRefunds,
-                    totalProductReturn,
                     totalRefundAmount,
                     dateRange: refundDate || 'All dates'
                 },
@@ -188,7 +183,6 @@ export const checkRefundCache = async (req, res) => {
                 rawRefunds: refunds.map(refund => ({
                     refundId: refund.refundId,
                     orderId: refund.orderId,
-                    productReturn: refund.productReturn,
                     totalReturn: refund.totalReturn,
                     refundCreatedAt: refund.refundCreatedAt,
                     orderCreatedAt: refund.orderCreatedAt

@@ -28,7 +28,6 @@ function getRefundAmount(refund) {
     const totalReturn = productReturn - adjustmentsTotal;
 
     return {
-        productReturn, // for net sales
         totalReturn    // for total returns
     };
 }
@@ -56,18 +55,12 @@ export const fetchTotalSales = async (brandId) => {
     // Get store timezone from Shopify shop data
     const shopData = await shopify.shop.get();
     const storeTimezone = shopData.iana_timezone || 'UTC';
-    console.log('Store timezone:', storeTimezone);
 
     // Calculate yesterday's start and end in store's timezone
     const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
 
-    console.log('Fetching data for yesterday:', {
-      startOfYesterday: startOfYesterday.toISOString(),
-      endOfYesterday: endOfYesterday.toISOString(),
-      storeTimezone
-    });
 
     // Initialize yesterday's data structure
     const yesterdaySales = {
@@ -122,14 +115,13 @@ export const fetchTotalSales = async (brandId) => {
                   
                   if (!existingRefund) {
                     // Use the helper function to calculate refund amounts
-                    const { productReturn, totalReturn } = getRefundAmount(refund);
+                    const { totalReturn } = getRefundAmount(refund);
                     
                     const refundCache = new RefundCache({
                       refundId: refund.id,
                       orderId: order.id,
                       refundCreatedAt: new Date(refund.created_at),
                       orderCreatedAt: new Date(order.created_at),
-                      productReturn: productReturn,
                       totalReturn: totalReturn,
                       rawData: JSON.stringify(refund),
                       brandId: brandId
@@ -242,11 +234,9 @@ export const fetchTotalSales = async (brandId) => {
       const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
       if (!acc[refundDate]) {
         acc[refundDate] = {
-          productReturn: 0,
           totalReturn: 0
         };
       }
-      acc[refundDate].productReturn += refund.productReturn || 0;
       acc[refundDate].totalReturn += refund.totalReturn || 0;
       return acc;
     }, {});
@@ -256,7 +246,7 @@ export const fetchTotalSales = async (brandId) => {
     if (refundAmountsFromCache[yesterdayDate]) {
       const refundData = refundAmountsFromCache[yesterdayDate];
       yesterdaySales.refundAmount = refundData.totalReturn;
-      console.log(`Applied refunds for ${yesterdayDate}: productReturn=${refundData.productReturn}, totalReturn=${refundData.totalReturn}`);
+      console.log(`Applied refunds for ${yesterdayDate}: totalReturn=${refundData.totalReturn}`);
     } else {
       yesterdaySales.refundAmount = 0;
       console.log(`No refunds found in cache for ${yesterdayDate}`);
@@ -266,7 +256,6 @@ export const fetchTotalSales = async (brandId) => {
     const dailySales = [{
       date: yesterdaySales.date,
       grossSales: Number(yesterdaySales.grossSales.toFixed(2)),
-      shopifySales: Number((yesterdaySales.subtotalPrice - yesterdaySales.totalTaxes - yesterdaySales.refundAmount).toFixed(2)),
       totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
       subtotalSales: Number(yesterdaySales.subtotalPrice.toFixed(2)),
       refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
@@ -408,7 +397,7 @@ export const getGoogleAdData = async (brandId, userId) => {
       };
     }
 
-    const refreshToken = user.googleRefreshToken;
+    const refreshToken = user.googleAdsRefreshToken;
     if (!refreshToken) {
       return {
         success: false,
@@ -560,7 +549,7 @@ export const addReportData = async (brandId, userId) => {
     }
 
     // Destructure the sales data - using direct array access since we expect one day of data
-    const { totalSales, refundAmount, shopifySales } = salesData[0];
+    const { totalSales, refundAmount} = salesData[0];
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
@@ -572,7 +561,7 @@ export const addReportData = async (brandId, userId) => {
     const googleSales = parseFloat(googleData.googleSales) || 0;
     const adSales = metaSales + googleSales; // Total sales from ads
     const grossROI = totalSpend > 0 ? adSales / totalSpend : 0;
-    const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
+  
 
 
     const metricsEntry = new AdMetrics({
@@ -584,10 +573,8 @@ export const addReportData = async (brandId, userId) => {
       googleROAS,
       totalSales,
       refundAmount,
-      shopifySales,
       totalSpend: totalSpend.toFixed(2),
       grossROI: grossROI.toFixed(2),
-      netROI: netROI.toFixed(2),
     });
 
     // Save the document
@@ -727,7 +714,6 @@ export const calculateMetricsForAllBrands = async () => {
     };
   }
 };
-
 
 
 

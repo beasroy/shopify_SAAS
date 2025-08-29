@@ -39,7 +39,6 @@ function getRefundAmount(refund) {
     const totalReturn = productReturn - adjustmentsTotal;
 
     return {
-        productReturn, // for net sales
         totalReturn    // for total returns
     };
 }
@@ -99,14 +98,13 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
                 });
                 
                 if (!existingRefund) {
-                    const { productReturn, totalReturn } = getRefundAmount(refund);
+                    const { totalReturn } = getRefundAmount(refund);
                     
                     const refundCache = new RefundCache({
                         refundId: refund.id,
                         orderId: order.id,
                         refundCreatedAt: new Date(refund.created_at),
                         orderCreatedAt: new Date(order.created_at),
-                        productReturn: productReturn,
                         totalReturn: totalReturn,
                         rawData: JSON.stringify(refund),
                         brandId: brandId
@@ -122,132 +120,150 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
     }
 }
 
-// Helper: Chunked order fetching with fallback
+
+
 async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate, storeTimezone, isTestOrder) {
-    const CHUNK_SIZE_DAYS = 7;
-    const SUB_CHUNK_SIZE_DAYS = 3;
-    let allOrders = [];
-    let currentStart = extendedStartDate.clone();
-    const finalEnd = originalEndDate.clone();
-    while (currentStart.isSameOrBefore(finalEnd)) {
-        const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
-        const startTime = currentStart.clone().startOf('day').tz(storeTimezone).utc().format();
-        const endTime = chunkEnd.clone().endOf('day').tz(storeTimezone).utc().format();
-        let chunkOrders = [];
-        let pageInfo = null;
-        let pageCount = 0;
-        const fetchChunkWithRetries = async (params, maxRetries = 5) => {
-            let attempt = 0;
-            while (attempt < maxRetries) {
-                try {
-                    return await shopify.order.list(params);
-                } catch (error) {
-                    attempt++;
-                    console.error(`Attempt ${attempt} failed for chunk ${startTime} to ${endTime}:`, error.message);
-                    
-                    // Handle specific Shopify API errors
-                    if (error.code === 'ERR_GOT_REQUEST_ERROR' && error.message.includes('invalid id')) {
-                        console.error('Invalid ID error detected - this might be due to malformed page_info token');
-                        // Reset pageInfo and try again
-                        params.page_info = null;
-                        if (attempt >= maxRetries) throw error;
-                    }
-                    
-                    if (attempt >= maxRetries) throw error;
-                    const wait = 2000 * attempt;
-                    await new Promise(resolve => setTimeout(resolve, wait));
-                }
-            }
-        };
-        let chunkFailed = false;
-        try {
-            do {
-                const params = {
-                    status: 'any',
-                    limit: 250,
-                    fields: 'id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at'
-                };
-                if (pageInfo) {
-                    params.page_info = pageInfo;
-                } else {
-                    params.created_at_min = startTime;
-                    params.created_at_max = endTime;
-                }
-                const response = await fetchChunkWithRetries(params, 7);
-                if (!response || response.length === 0) break;
-                const validOrders = response.filter(order => !isTestOrder(order));
-                chunkOrders = chunkOrders.concat(validOrders);
-                pageCount++;
-                if (response.length === 250) {
-                    try {
-                        pageInfo = Buffer.from(response[response.length - 1].id.toString()).toString('base64');
-                    } catch (pageInfoError) {
-                        console.error('Error creating page_info token:', pageInfoError);
-                        pageInfo = null;
-                        break;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                } else {
-                    pageInfo = null;
-                }
-            } while (pageInfo);
-        } catch (error) {
-            chunkFailed = true;
-            console.error(`Chunk failed for ${startTime} to ${endTime}:`, error.message);
-        }
-        if (chunkFailed) {
-            let subStart = currentStart.clone();
-            while (subStart.isSameOrBefore(chunkEnd)) {
-                const subEnd = moment.min(subStart.clone().add(SUB_CHUNK_SIZE_DAYS - 1, 'days'), chunkEnd);
-                const subStartTime = subStart.clone().startOf('day').tz(storeTimezone).utc().format();
-                const subEndTime = subEnd.clone().endOf('day').tz(storeTimezone).utc().format();
-                let subChunkOrders = [];
-                let subPageInfo = null;
-                try {
-                    do {
-                        const params = {
-                            status: 'any',
-                            limit: 250,
-                            fields: 'id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at'
-                        };
-                        if (subPageInfo) {
-                            params.page_info = subPageInfo;
-                        } else {
-                            params.created_at_min = subStartTime;
-                            params.created_at_max = subEndTime;
-                        }
-                        const response = await fetchChunkWithRetries(params, 7);
-                        if (!response || response.length === 0) break;
-                        const validOrders = response.filter(order => !isTestOrder(order));
-                        subChunkOrders = subChunkOrders.concat(validOrders);
-                        if (response.length === 250) {
-                            try {
-                                subPageInfo = Buffer.from(response[response.length - 1].id.toString()).toString('base64');
-                            } catch (pageInfoError) {
-                                console.error('Error creating sub-page_info token:', pageInfoError);
-                                subPageInfo = null;
-                                break;
-                            }
-                            await new Promise(resolve => setTimeout(resolve, 300));
-                        } else {
-                            subPageInfo = null;
-                        }
-                    } while (subPageInfo);
-                } catch (subError) {
-                    console.error(`Sub-chunk failed for ${subStartTime} to ${subEndTime}:`, subError.message);
-                }
-                allOrders = allOrders.concat(subChunkOrders);
-                subStart = subEnd.clone().add(1, 'day');
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-        } else {
-            allOrders = allOrders.concat(chunkOrders);
-        }
-        currentStart = chunkEnd.clone().add(1, 'day');
-        await new Promise(resolve => setTimeout(resolve, 500));
+  const CHUNK_SIZE_DAYS = 7;
+  const SUB_CHUNK_SIZE_DAYS = 3;
+  let allOrders = [];
+  let currentStart = extendedStartDate.clone();
+  const finalEnd = originalEndDate.clone();
+
+  // Helper: retry wrapper for Shopify requests
+  const fetchChunkWithRetries = async (params, maxRetries = 5) => {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        return await shopify.order.list(params);
+      } catch (error) {
+        attempt++;
+        console.error(
+          `Attempt ${attempt} failed for ${params.created_at_min || "page_info"} - ${params.created_at_max || ""}:`,
+          error.message
+        );
+
+        if (attempt >= maxRetries) throw error;
+        const wait = 2000 * attempt; // exponential backoff
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
     }
-    return allOrders;
+  };
+
+  while (currentStart.isSameOrBefore(finalEnd)) {
+    const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, "days"), finalEnd);
+    const startTime = currentStart.clone().startOf("day").tz(storeTimezone).utc().format();
+    const endTime = chunkEnd.clone().endOf("day").tz(storeTimezone).utc().format();
+
+    let chunkOrders = [];
+    let chunkFailed = false;
+
+    try {
+      let pageInfo = null;
+
+      do {
+        let params = {
+          limit: 250,
+          fields:
+            "id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at",
+        };
+
+        if (pageInfo) {
+          // pagination mode
+          params.page_info = pageInfo;
+        } else {
+          // first page (with filters)
+          params.status = "any";
+          params.created_at_min = startTime;
+          params.created_at_max = endTime;
+        }
+
+        const response = await fetchChunkWithRetries(params, 7);
+
+        if (!response || response.length === 0) break;
+
+        const validOrders = response.filter((order) => !isTestOrder(order));
+        chunkOrders = chunkOrders.concat(validOrders);
+
+        // Parse `page_info` from Link header
+        const linkHeader = response.headers?.link;
+        if (linkHeader) {
+          const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+          pageInfo = match ? match[1] : null;
+        } else {
+          pageInfo = null;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } while (pageInfo);
+    } catch (error) {
+      chunkFailed = true;
+      console.error(`Chunk failed for ${startTime} to ${endTime}:`, error.message);
+    }
+
+    // Sub-chunk fallback if a chunk fails
+    if (chunkFailed) {
+      let subStart = currentStart.clone();
+      while (subStart.isSameOrBefore(chunkEnd)) {
+        const subEnd = moment.min(subStart.clone().add(SUB_CHUNK_SIZE_DAYS - 1, "days"), chunkEnd);
+        const subStartTime = subStart.clone().startOf("day").tz(storeTimezone).utc().format();
+        const subEndTime = subEnd.clone().endOf("day").tz(storeTimezone).utc().format();
+
+        let subChunkOrders = [];
+
+        try {
+          let subPageInfo = null;
+
+          do {
+            let params = {
+              limit: 250,
+              fields:
+                "id,created_at,total_price,subtotal_price,total_discounts,test,tags,financial_status,line_items,refunds,cancelled_at",
+            };
+
+            if (subPageInfo) {
+              params.page_info = subPageInfo;
+            } else {
+              params.status = "any";
+              params.created_at_min = subStartTime;
+              params.created_at_max = subEndTime;
+            }
+
+            const response = await fetchChunkWithRetries(params, 7);
+            if (!response || response.length === 0) break;
+
+            const validOrders = response.filter((order) => !isTestOrder(order));
+            subChunkOrders = subChunkOrders.concat(validOrders);
+
+            // Parse `page_info` from Link header
+            const linkHeader = response.headers?.link;
+            if (linkHeader) {
+              const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+              subPageInfo = match ? match[1] : null;
+            } else {
+              subPageInfo = null;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          } while (subPageInfo);
+        } catch (subError) {
+          console.error(`Sub-chunk failed for ${subStartTime} to ${subEndTime}:`, subError.message);
+        }
+
+        allOrders = allOrders.concat(subChunkOrders);
+        subStart = subEnd.clone().add(1, "day");
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    } else {
+      allOrders = allOrders.concat(chunkOrders);
+    }
+
+    currentStart = chunkEnd.clone().add(1, "day");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  return allOrders;
 }
+
 
 export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refundOnlyStartDate = null) => {
     try {
@@ -260,29 +276,13 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         const brand = await Brand.findById(brandId);
         if (!brand) throw new Error('Brand not found.');
         
-        // Enhanced logging for brand data
-        console.log('Brand found:', {
-            brandId: brand._id,
-            brandName: brand.name,
-            hasShopifyAccount: !!brand.shopifyAccount,
-            shopifyAccountData: brand.shopifyAccount ? {
-                shopName: brand.shopifyAccount.shopName,
-                hasAccessToken: !!brand.shopifyAccount.shopifyAccessToken,
-                accessTokenLength: brand.shopifyAccount.shopifyAccessToken?.length || 0
-            } : null
-        });
         
         const access_token = brand.shopifyAccount?.shopifyAccessToken;
         if (!access_token) throw new Error('Access token is missing or invalid.');
         
         const shopName = brand.shopifyAccount?.shopName;
         if (!shopName) throw new Error('Shop name is missing or invalid.');
-        
-        console.log('Shopify configuration:', {
-            shopName: shopName,
-            accessTokenLength: access_token.length,
-            apiVersion: '2024-04'
-        });
+     
         
         const shopify = new Shopify({
             shopName: shopName,
@@ -331,14 +331,6 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         const storeTimezone = shopData.iana_timezone || 'UTC';
         const storeCurrency = shopData.currency || 'USD';
         
-        console.log('Store info:', {
-            shopName: shopName,
-            timezone: storeTimezone,
-            currency: storeCurrency,
-            shopId: shopData.id,
-            shopEmail: shopData.email,
-            shopDomain: shopData.domain
-        });
         
         const originalStartDate = moment.tz(startDate, storeTimezone);
         const originalEndDate = moment.tz(endDate, storeTimezone);
@@ -346,11 +338,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         // Determine the actual fetch start date (for refund caching)
         const fetchStartDate = refundOnlyStartDate ? moment.tz(refundOnlyStartDate, storeTimezone) : originalStartDate;
         
-        console.log('Date processing:', {
-            fetchStartDate: fetchStartDate.format('YYYY-MM-DD'),
-            originalStartDate: originalStartDate.format('YYYY-MM-DD'),
-            originalEndDate: originalEndDate.format('YYYY-MM-DD')
-        });
+    
         
         // Check if refunds are already cached for the extended period
         let needToFetchOrders = true;
@@ -387,7 +375,6 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
                 discountAmount: 0,
                 orderCount: 0,
                 cancelledOrderCount: 0,
-                productReturn: 0, // Track product-only returns for net sales
                 totalTaxes: 0
             };
             currentDay.add(1, 'day');
@@ -458,15 +445,13 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         const refundAmountsFromCache = await getRefundAmountsFromCache(brandId, originalStartDate.format('YYYY-MM-DD'), originalEndDate.format('YYYY-MM-DD'));
         
         console.log(`Refunds found in cache for target range: ${Object.keys(refundAmountsFromCache).length} dates`);
-        console.log(`Total refund entries in cache: ${Object.values(refundAmountsFromCache).reduce((sum, data) => sum + (data.productReturn + data.totalReturn), 0)}`);
         
         // Apply refund amounts from cache to daily sales data
         Object.keys(refundAmountsFromCache).forEach(date => {
             if (dailySalesMap[date]) {
                 const refundData = refundAmountsFromCache[date];
-                dailySalesMap[date].productReturn = refundData.productReturn;
                 dailySalesMap[date].refundAmount = refundData.totalReturn;
-                console.log(`Applied refunds for ${date}: productReturn=${refundData.productReturn}, totalReturn=${refundData.totalReturn}`);
+                console.log(`Applied refunds for ${date}: totalReturn=${refundData.totalReturn}`);
             }
         });
         
@@ -484,19 +469,16 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             const refundAmount = Number(day.refundAmount);
             const totalPrice = Number(day.totalPrice);
             const subtotalPrice = Number(day.subtotalPrice);
-            const productReturn = Number(day.productReturn || 0);
             const totalTaxes = Number(day.totalTaxes || 0);
-            const shopifySales = subtotalPrice - totalTaxes - refundAmount;
+           
             
             return {
                 date: day.date,
                 grossSales: grossSales.toFixed(2),
-                shopifySales: shopifySales.toFixed(2), // Net sales (subtotal - taxes - refunds)
                 totalSales: (totalPrice - refundAmount).toFixed(2),
                 subtotalSales: subtotalPrice.toFixed(2),
                 refundAmount: refundAmount.toFixed(2),
                 discountAmount: discountAmount.toFixed(2),
-                productReturn: productReturn.toFixed(2),
                 totalTaxes: totalTaxes.toFixed(2),
                 orderCount: day.orderCount,
                 cancelledOrderCount: day.cancelledOrderCount,
@@ -917,7 +899,6 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                             {
                                 totalSales: parseFloat(sale.totalSales) || 0,
                                 refundAmount: parseFloat(sale.refundAmount) || 0,
-                                shopifySales: parseFloat(sale.shopifySales) || 0
                             }
                         ])
                     );
@@ -990,7 +971,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                         const shopifyData = shopifySalesMap.get(date) || {
                             totalSales: 0,
                             refundAmount: 0,
-                            shopifySales: 0
+                  
                         };
                         const entryObj = createMetricsEntry(brandId, date, metrics, shopifyData).toObject();
                         delete entryObj._id;
@@ -1068,7 +1049,7 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     });
 
     const { totalMetaSpend, totalMetaROAS, googleSpend, googleROAS, googleSales } = metrics;
-    const { totalSales, refundAmount, shopifySales } = shopifyData;
+    const { totalSales, refundAmount} = shopifyData;
 
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
     const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
@@ -1077,7 +1058,7 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     const adTotalSales = metaSales + googleSales;
 
     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
-    const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
+    //const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
     const entry = new AdMetrics({
         brandId,
@@ -1089,10 +1070,9 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
         googleSales,
         totalSales,
         refundAmount,
-        shopifySales,
         totalSpend: totalSpend.toFixed(2),
         grossROI: grossROI.toFixed(2),
-        netROI: netROI.toFixed(2)
+        //netROI: netROI.toFixed(2)
     });
 
     console.log('Created metrics entry:', entry.toObject());
@@ -1340,8 +1320,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             shopifySalesData.forEach(sale => {
                 shopifyDataMap.set(sale.date, {
                     totalSales: parseFloat(sale.totalSales) || 0,
-                    refundAmount: parseFloat(sale.refundAmount) || 0,
-                    shopifySales: parseFloat(sale.shopifySales) || 0
+                    refundAmount: parseFloat(sale.refundAmount) || 0
                 });
             });
 
@@ -1358,7 +1337,6 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                         ...existingMetric.toObject(),
                         totalSales: shopifyData.totalSales,
                         refundAmount: shopifyData.refundAmount,
-                        shopifySales: shopifyData.shopifySales
                     };
 
                     // Recalculate ROI metrics based on existing ad spend data
@@ -1366,10 +1344,10 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                     const metaSales = (existingMetric.metaSpend || 0) * (existingMetric.metaROAS || 0);
                     const adTotalSales = metaSales + (existingMetric.googleSales || 0);
                     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
-                    const netROI = totalSpend > 0 ? shopifyData.shopifySales / totalSpend : 0;
+                
 
                     updatedMetric.grossROI = grossROI.toFixed(2);
-                    updatedMetric.netROI = netROI.toFixed(2);
+                  
 
                     updatedMetrics.push(updatedMetric);
                 }
@@ -1384,7 +1362,6 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                             $set: {
                                 totalSales: metric.totalSales,
                                 refundAmount: metric.refundAmount,
-                                shopifySales: metric.shopifySales,
                                 grossROI: metric.grossROI,
                                 netROI: metric.netROI
                             }
@@ -1533,11 +1510,11 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                     const metaSales = updatedMetric.metaSpend * updatedMetric.metaROAS;
                     const adTotalSales = metaSales + updatedMetric.googleSales;
                     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
-                    const netROI = totalSpend > 0 ? updatedMetric.shopifySales / totalSpend : 0;
+                
 
                     updatedMetric.totalSpend = totalSpend.toFixed(2);
                     updatedMetric.grossROI = grossROI.toFixed(2);
-                    updatedMetric.netROI = netROI.toFixed(2);
+                 
 
                     updatedMetrics.push(updatedMetric);
                 }
@@ -1618,13 +1595,11 @@ const getRefundAmountsFromCache = async (brandId, startDate, endDate) => {
             const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
             if (!acc[refundDate]) {
                 acc[refundDate] = {
-                    productReturn: 0,
                     totalReturn: 0
                 };
             }
-            acc[refundDate].productReturn += refund.productReturn || 0;
             acc[refundDate].totalReturn += refund.totalReturn || 0;
-            console.log(`Processing refund ${refund.refundId} for date ${refundDate}: productReturn=${refund.productReturn}, totalReturn=${refund.totalReturn}`);
+            console.log(`Processing refund ${refund.refundId} for date ${refundDate}: totalReturn=${refund.totalReturn}`);
             return acc;
         }, {});
         
@@ -1675,7 +1650,6 @@ const getRefundAmountsFromCache = async (brandId, startDate, endDate) => {
 //         throw error; // Re-throw to handle upstream
 //     }
 // }
-
 
 
 

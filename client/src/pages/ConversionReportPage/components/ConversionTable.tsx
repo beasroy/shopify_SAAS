@@ -88,7 +88,24 @@ export default function NewConversionTable({
         })
       }
     })
-    return Array.from(allMonths).reverse()
+    
+    // Sort months in reverse chronological order (newest first)
+    return Array.from(allMonths).sort((a, b) => {
+      const [monthA, yearA] = a.split('-')
+      const [monthB, yearB] = b.split('-')
+      
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      const monthIndexA = months.indexOf(monthA)
+      const monthIndexB = months.indexOf(monthB)
+      
+      // First compare years
+      if (yearA !== yearB) {
+        return parseInt(yearB) - parseInt(yearA) // Reverse order (newest year first)
+      }
+      
+      // If same year, compare months
+      return monthIndexB - monthIndexA // Reverse order (newest month first)
+    })
   }
 
   // Define columns with their widths and constraints
@@ -284,18 +301,19 @@ export default function NewConversionTable({
 
     // Calculate dynamic left position based on actual column widths
     const getLeftPosition = (index: number) => {
-      if (index === 0) return "left-0"
-      if (index === 1) return `left-[${safeWidths[0]}px]`
-      if (index === 2) return `left-[${safeWidths[0] + safeWidths[1]}px]`
-      return ""
+      if (index === 0) return 0
+      if (index === 1) return safeWidths[0]
+      if (index === 2) return safeWidths[0] + safeWidths[1]
+      return 0
     }
 
     if (typeof value !== "number") {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
-            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+          className={`p-3 text-sm border-r border-b border-gray-200 ${
+            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
           }`}
+          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           {""}
         </td>
@@ -308,9 +326,10 @@ export default function NewConversionTable({
     if (column.includes("Sessions")) {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
-            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+          className={`p-3 text-sm border-r border-b border-gray-200 ${
+            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
           } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           <div className="text-right">
             <div className="font-medium truncate">{renderCell(value, "sessions")}</div>
@@ -322,9 +341,10 @@ export default function NewConversionTable({
     if (column.includes("Rate")) {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
-            columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+          className={`p-3 text-sm border-r border-b border-gray-200 ${
+            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
           } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           <div className="text-right">
             <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
@@ -336,9 +356,10 @@ export default function NewConversionTable({
 
     return (
       <td
-        className={`p-3 text-sm border-r border-b border-gray-200 bg-transparent ${
-          columnIndex < 3 ? `sticky z-10 ${getLeftPosition(columnIndex)}` : ""
+        className={`p-3 text-sm border-r border-b border-gray-200 ${
+          columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
         } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+        style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
       >
         <div className="text-right font-medium truncate">{renderCell(value)}</div>
       </td>
@@ -347,8 +368,8 @@ export default function NewConversionTable({
 
   const renderDataRow = (row: RowData, index: number) => {
     return (
-      <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150">
-        <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-transparent border-r border-b border-gray-200">
+      <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150 group">
+        <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-white group-hover:bg-blue-50 border-r border-b border-gray-200">
           <div className="truncate">
             {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
               ? renderCell(row[primaryColumn])
@@ -403,18 +424,19 @@ export default function NewConversionTable({
 
     // Calculate dynamic left position based on actual column widths
     const getLeftPosition = (index: number) => {
-      if (index === 0) return "left-0"
-      if (index === 1) return `left-[${safeWidths[0]}px]`
-      if (index === 2) return `left-[${safeWidths[0] + safeWidths[1]}px]`
-      return ""
+      if (index === 0) return 0
+      if (index === 1) return safeWidths[0]
+      if (index === 2) return safeWidths[0] + safeWidths[1]
+      return 0
     }
 
     return (
       <th
         key={column}
         className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${
-          isFirst ? `${getLeftPosition(columnIndex)} z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
+          isFirst ? `z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
         } ${active ? "border-blue-500" : ""}`}
+        style={isFirst ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
       >
         <div className="flex flex-col">
           <span className="truncate">{column}</span>

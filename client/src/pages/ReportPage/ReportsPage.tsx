@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
 import ColumnManagementSheet from '@/pages/AnalyticsDashboard/Components/ColumnManagementSheet';
+import MonthlyMetricsPage from './component/MonthlyMetricsPage';
 
 const ReportsPage: React.FC = () => {
   const isLoading = false;
@@ -47,20 +48,53 @@ const ReportsPage: React.FC = () => {
   const memoizedDateRange = useMemo(() => dateRange, [dateRange.from, dateRange.to]);
   
 
-  const [visibleColumns, setVisibleColumns] = useState<string[]>([
-    'Date', 'Sessions', 'Add To Cart', 'Add To Cart Rate', 
-    'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'
-  ]);
-  const [columnOrder, setColumnOrder] = useState<string[]>([
-    'Date', 'Sessions', 'Add To Cart', 'Add To Cart Rate', 
-    'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'
-  ]);
-  
-  // Available columns for the funnel report
-  const availableColumns = [
-    'Date', 'Sessions', 'Add To Cart', 'Add To Cart Rate', 
+  const baseColumns = [
+    'Sessions', 'Add To Cart', 'Add To Cart Rate', 
     'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'
   ];
+
+  const availableColumns = ['Date', 'Month','Day', ...baseColumns];
+
+  // Single column state
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    'Date', ...baseColumns
+  ]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'Date', ...baseColumns
+  ]);
+
+
+  const [activeViewPreset, setActiveViewPreset] = useState<string | null>(null);
+
+  // Define view presets for Reports page - make them dynamic based on active tab
+  const getViewPresets = (activeTab: string) => {
+    const timeColumn = activeTab === 'month wise' ? 'Month' : activeTab === 'day wise' ? 'Day' : 'Date';
+    
+    return [
+      {
+        label: "Counts View",
+        columns: [timeColumn, 'Sessions', 'Add To Cart', 'Checkouts', 'Purchases']
+      },
+      {
+        label: "Rates View", 
+        columns: [timeColumn, 'Sessions', 'Add To Cart Rate', 'Checkout Rate', 'Purchase Rate']
+      }
+    ];
+  };
+
+  // Update the useEffect to handle view presets
+  useEffect(() => {
+    const timeColumn = activeTab === 'month wise' ? 'Month' : activeTab === 'day wise' ? 'Day' : 'Date';
+    
+    if (visibleColumns[0] !== timeColumn) {
+      // Keep all current columns but replace the first one (time column)
+      const newColumns = [timeColumn, ...visibleColumns.slice(1)];
+      const newOrder = [timeColumn, ...columnOrder.slice(1)];
+      
+      setVisibleColumns(newColumns);
+      setColumnOrder(newOrder);
+    }
+  }, [activeTab]);
   
   // Refresh trigger state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -68,6 +102,7 @@ const ReportsPage: React.FC = () => {
   const tabs = [
     { label: 'Daily Metrics', value: 'daily' },
     { label: 'Day wise Metrics', value: 'day wise' },
+    { label: 'Monthly Metrics', value: 'month wise' },
   ];
 
   const handleTabChange = (value: string) => {
@@ -82,8 +117,17 @@ const ReportsPage: React.FC = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Update the handleVisibilityChange to track which preset is active
   const handleVisibilityChange = (columns: string[]) => {
     setVisibleColumns(columns);
+    
+    // Check if the new columns match any preset
+    const viewPresets = getViewPresets(activeTab);
+    const matchingPreset = viewPresets.find(preset => 
+      JSON.stringify(preset.columns) === JSON.stringify(columns)
+    );
+    
+    setActiveViewPreset(matchingPreset ? matchingPreset.label : null);
   };
   
   const handleOrderChange = (newOrder: string[]) => {
@@ -163,6 +207,9 @@ const ReportsPage: React.FC = () => {
                         availableColumns={availableColumns}
                         onVisibilityChange={handleVisibilityChange}
                         onOrderChange={handleOrderChange}
+                        viewPresets={getViewPresets(activeTab)}
+                        showViewPresets={true}
+                        activeViewPreset={activeViewPreset}
                       />
                       <Button onClick={toggleFullScreen} size="icon" variant="outline">
                         {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
@@ -187,6 +234,15 @@ const ReportsPage: React.FC = () => {
                       {activeTab === 'day wise' && (
                         <DaywiseMetricsPage 
                           key="daywise-metrics"
+                          dateRange={memoizedDateRange} 
+                          visibleColumns={visibleColumns}
+                          columnOrder={columnOrder}
+                          refreshTrigger={refreshTrigger}
+                        />
+                      )}
+                      {activeTab === 'month wise' && (
+                        <MonthlyMetricsPage 
+                          key="monthly-metrics"
                           dateRange={memoizedDateRange} 
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}

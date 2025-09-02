@@ -337,7 +337,143 @@ export async function getDayWiseAddToCartAndCheckouts(req, res) {
   }
 }
 
+export async function getMonthlyAddToCartAndCheckouts(req, res) {
+  try {
+    const { brandId } = req.params;
+    let { dateRanges } = req.body;
+    const userId = req.user._id;
+    // Ensure dateRanges is an array and has at least one range
+    if (!dateRanges || !Array.isArray(dateRanges) || dateRanges.length === 0) {
+      const now = new Date();
+      const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const defaultEndDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
 
+      dateRanges = [{ startDate: defaultStartDate, endDate: defaultEndDate }];
+    }
+
+    const brand = await Brand.findById(brandId).lean();
+    const user = await User.findById(userId).lean();
+
+    if (!brand || !user) {
+      return res.status(404).json({
+        success: false,
+        message: !brand ? 'Brand not found.' : 'User not found'
+      });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+
+    const refreshToken = user.googleAnalyticsRefreshToken;
+    if (!refreshToken || refreshToken.trim() === '') {
+      console.warn(`No refresh token found for User ID: ${userId}`);
+      return res.status(403).json({
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.'
+      });
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    // Process each date range
+    const allRangeData = [];
+
+    for (const range of dateRanges) {
+      const { startDate, endDate } = range;
+
+      const requestBody = {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'yearMonth' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'addToCarts' },
+          { name: 'checkouts' },
+          { name: 'ecommercePurchases' },
+        ],
+        orderBys: [
+          {
+            desc: true,
+            dimension: { dimensionName: 'yearMonth' },
+          },
+        ],
+      };
+
+      const response = await axios.post(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+        requestBody,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const rows = response?.data?.rows;
+      if (!rows || rows.length === 0) {
+        console.warn(`No data found for date range ${startDate} to ${endDate}`);
+        allRangeData.push({
+          dateRange: { startDate, endDate },
+          data: [],
+        });
+        continue;
+      }
+
+      const data = rows.map((row) => {
+        const getMonthName = (monthNum) => {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return months[parseInt(monthNum) - 1];
+        };
+
+        const month = `${getMonthName(row.dimensionValues[0]?.value.substring(4, 6))}-${row.dimensionValues[0]?.value.substring(0, 4)}`;
+        const sessions = parseInt(row.metricValues[0]?.value) || 0;
+        const addToCarts = parseInt(row.metricValues[1]?.value) || 0;
+        const checkouts = parseInt(row.metricValues[2]?.value) || 0;
+        const purchases = parseInt(row.metricValues[3]?.value) || 0;
+
+        return {
+          Month: month,
+          Sessions: sessions,
+          'Add To Cart': addToCarts,
+          'Add To Cart Rate': sessions ? `${((addToCarts / sessions) * 100).toFixed(2)}%` : '0%',
+          Checkouts: checkouts,
+          'Checkout Rate': sessions ? `${((checkouts / sessions) * 100).toFixed(2)}%` : '0%',
+          Purchases: purchases,
+          'Purchase Rate': sessions ? `${((purchases / sessions) * 100).toFixed(2)}%` : '0%',
+        };
+      });
+
+      allRangeData.push({
+        dateRange: { startDate, endDate },
+        data,
+      });
+    }
+
+    // If only one date range, return daily breakout
+    if (dateRanges.length === 1) {
+      return res.status(200).json({
+        reportType: 'Monthy Add to Cart, Checkout, and Session Data',
+        ranges: allRangeData,
+      });
+    }
+
+
+    // If more than two date ranges, return as is
+    return res.status(200).json({
+      reportType: 'Add to Cart, Checkout, and Session Data for Multiple Date Ranges',
+      ranges: allRangeData,
+    });
+  } catch (error) {
+    console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({
+        error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.'
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to fetch daily Add to Cart and Checkout data.'
+    });
+  }
+}
 
 
 export async function getLandingPageMetrics(req, res) {

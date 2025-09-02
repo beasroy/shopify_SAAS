@@ -14,7 +14,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export type FunnelRow = {
   id: string
   day?: string
-  date: string
+  month?: string
+  date?: string
   sessions: number
   addToCart: number
   addToCartRate: string
@@ -35,6 +36,7 @@ type ColumnDef<T extends keyof FunnelRow = keyof FunnelRow> = {
 
 const allColumns: ColumnDef[] = [
   { key: "day", header: "Day", width: 140, minWidth: 120 },
+  { key: "month", header: "Month", width: 140, minWidth: 120 },
   { key: "date", header: "Date", width: 140, minWidth: 120 },
   { key: "sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
   { key: "addToCart", header: "Add To Cart", width: 140, minWidth: 120, align: "right" },
@@ -80,6 +82,7 @@ export default function ReportTable({
     // Create a mapping from display names to column keys
     const columnNameToKey: Record<string, keyof FunnelRow> = {
       'Day': 'day',
+      'Month': 'month',
       'Date': 'date',
       'Sessions': 'sessions',
       'Add To Cart': 'addToCart',

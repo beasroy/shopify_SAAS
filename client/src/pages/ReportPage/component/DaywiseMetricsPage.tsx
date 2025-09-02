@@ -41,7 +41,6 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
   }), [dateFrom, dateTo]);
   const [data, setData] = useState<DaywiseMetric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
   const { brandId } = useParams();
 
   
@@ -57,7 +56,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
     const transformed = data.map((item, index) => {
       const transformedItem = {
         id: `row-${index}`,
-        date: item.Day,
+        day: item.Day,
         sessions: parseInt(item.Sessions) || 0,
         addToCart: parseInt(item['Add To Cart']) || 0,
         addToCartRate: item['Add To Cart Rate'] || '0%',
@@ -105,34 +104,31 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
     }
   }, [startDate, endDate, brandId]);
 
-  // Set mounted state
-  useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false);
-  }, []);
-
-  useEffect(() => {
-    // Only fetch if we have valid dates and component is mounted
-    if (startDate && endDate && isMounted) {
+   // Fetch data when dates or brandId change
+   useEffect(() => {
+    if (startDate && endDate) {
       fetchMetrics();
     }
+  }, [startDate, endDate, brandId]); // Only depend on what actually triggers a new fetch
+
+  // Set up polling interval
+  useEffect(() => {
+    if (!startDate || !endDate) return;
     
     const intervalId = setInterval(() => {
-      // Only fetch on interval if we have valid dates and component is mounted
-      if (startDate && endDate && isMounted) {
-        fetchMetrics();
-      }
+      fetchMetrics();
     }, 15 * 60 * 1000);
     
     return () => clearInterval(intervalId);
-  }, [startDate, endDate, isMounted]); // Add isMounted to dependencies
-
+  }, [startDate, endDate, brandId]); // Only depend on what affects the interval
   // Listen for refresh trigger from parent
+ 
   useEffect(() => {
-    if (refreshTrigger > 0 && startDate && endDate && isMounted) {
+    if (refreshTrigger > 0 && startDate && endDate) {
       fetchMetrics();
     }
-  }, [refreshTrigger, startDate, endDate, isMounted]); // Add isMounted to dependencies
+  }, [refreshTrigger, startDate, endDate, brandId]); // Only depend on what affects the refresh  // Listen for refresh trigger from parent
+
 
   if(isLoading){
     return <Loader isLoading={isLoading} />

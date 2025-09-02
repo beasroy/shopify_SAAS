@@ -11,7 +11,7 @@ import Loader from "@/components/dashboard_component/loader";
 
 
 interface EcommerceMetric {
-  "Date": string
+  "Month": string
   "Add To Cart": string
   "Checkouts": string
   "Sessions": string
@@ -28,7 +28,7 @@ interface EcommerceMetricsProps {
   refreshTrigger: number;
 }
 
-const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ 
+const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({ 
   dateRange: propDateRange, 
   visibleColumns,
   columnOrder,
@@ -66,7 +66,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const transformedData = useMemo(() => {
     return data.map((item, index) => ({
       id: `row-${index}`,
-      date: item.Date,
+      month: item.Month,
       sessions: parseInt(item.Sessions) || 0,
       addToCart: parseInt(item['Add To Cart']) || 0,
       addToCartRate: item['Add To Cart Rate'] || '0%',
@@ -113,7 +113,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
       // Only fetch if we have at least one date range
       if (dateRanges.length > 0) {
         const DailyAnalyticsResponse = await axiosInstance.post(
-          `/api/analytics/atcreport/${brandId}`,
+          `/api/analytics/monthAtcReport/${brandId}`,
           {
             dateRanges: dateRanges,
           },
@@ -186,4 +186,4 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
   );
 };
 
-export default EcommerceMetricsPage;
+export default MonthlyMetricsPage;

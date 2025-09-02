@@ -241,6 +241,7 @@ export const fetchShopifySales = async (req, res) => {
 
     res.json({
       weeklyResults,
+      orders: allOrders,
       periodInfo: {
         totalDays: totalDays,
         totalWeeks: totalWeeks,

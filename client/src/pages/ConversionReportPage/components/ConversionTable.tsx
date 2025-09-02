@@ -103,7 +103,6 @@ export default function NewConversionTable({
         return parseInt(yearB) - parseInt(yearA) // Reverse order (newest year first)
       }
       
-      // If same year, compare months
       return monthIndexB - monthIndexA // Reverse order (newest month first)
     })
   }

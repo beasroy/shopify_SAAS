@@ -13,6 +13,13 @@ interface ColumnManagementSheetProps {
   onVisibilityChange: (columns: string[]) => void;
   onOrderChange: (order: string[]) => void;
   onFrozenChange?: (columns: string[]) => void;
+  // New props for view presets
+  viewPresets?: {
+    label: string;
+    columns: string[];
+  }[];
+  showViewPresets?: boolean;
+  activeViewPreset?: string | null;
 }
 
 const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({ 
@@ -22,7 +29,10 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
   frozenColumns = [],
   onVisibilityChange,
   onOrderChange,
-  onFrozenChange
+  onFrozenChange,
+  viewPresets = [],
+  showViewPresets = false,
+  activeViewPreset = null
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -111,16 +121,40 @@ const ColumnManagementSheet: React.FC<ColumnManagementSheetProps> = ({
           </SheetDescription>
         </SheetHeader>
         
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center space-x-2 px-1">
-            <Search className="w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search columns..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8"
-            />
+        {/* Add View Presets Section */}
+        {showViewPresets && viewPresets.length > 0 && (
+          <div className="space-y-4 my-4">
+            <h3 className="text-sm font-medium">Quick Views</h3>
+            <div className="flex flex-wrap gap-2">
+              {viewPresets.map((preset, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onVisibilityChange(preset.columns)}
+                  className={`text-xs ${
+                    activeViewPreset === preset.label
+                      ? 'bg-blue-50 border-blue-600 text-blue-700'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
           </div>
+        )}
+          
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center space-x-2 px-1">
+              <Search className="w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search columns..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8"
+              />
+            </div>
           
           <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
             {filteredColumns.map(column => (

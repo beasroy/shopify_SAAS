@@ -13,7 +13,6 @@ interface ColumnManagementSheetProps {
   onVisibilityChange: (columns: string[]) => void;
   onOrderChange: (order: string[]) => void;
   onFrozenChange?: (columns: string[]) => void;
-  // New props for view presets
   viewPresets?: {
     label: string;
     columns: string[];

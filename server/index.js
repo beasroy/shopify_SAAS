@@ -27,6 +27,7 @@ import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+import { getGoogleAdData } from "./Report/Report.js";
 
 
 const app = express();
@@ -102,6 +103,10 @@ if (isDevelopment) {
 }
 
 //calculateMetricsForSingleBrand("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
+
+// getGoogleAdData("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
+// .then(console.log)
+// .catch(console.error)
 
 const PORT = process.env.PORT || 5000;
 

@@ -407,16 +407,15 @@ export const getGoogleAdData = async (brandId, userId) => {
     }
 
     // Check if brand has Google Ad accounts
-    if (!brand.googleAdAccount || !brand.googleAdAccount.clientId || brand.googleAdAccount.clientId.length === 0) {
+    if (!brand.googleAdAccount ||  brand.googleAdAccount.length === 0) {
       return {
         success: false,
-        message: 'No Google Ads accounts found for this brand.',
+        message: 'No Google Ads accounts found for this brand.',    
         data: [],
       };
     }
 
-    const clientIds = brand.googleAdAccount.clientId;
-    const managerId = brand.googleAdAccount.managerId;
+  
 
     const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
     const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
@@ -426,10 +425,13 @@ export const getGoogleAdData = async (brandId, userId) => {
     let accountResults = [];
 
     // Process each client ID
-    for (const clientId of clientIds) {
+    for (const adAccount of brand.googleAdAccount) {
+      const adAccountId = adAccount.clientId;
+      const managerId = adAccount.managerId;
+      
       try {
         const customer = client.Customer({
-          customer_id: clientId,
+          customer_id: adAccountId,
           refresh_token: refreshToken,
           login_customer_id: managerId,
         });
@@ -452,7 +454,7 @@ export const getGoogleAdData = async (brandId, userId) => {
 
         // Process each row of the report
         for (const row of adsReport) {
-          accountName = row.customer?.descriptive_name || `Account ${clientId}`;
+          accountName = row.customer?.descriptive_name || `Account ${adAccountId}`;
           const costMicros = row.metrics.cost_micros || 0;
           const spend = costMicros / 1_000_000;
           accountSpend += spend;
@@ -460,25 +462,26 @@ export const getGoogleAdData = async (brandId, userId) => {
         }
 
         // Calculate metrics for this account
-        const accountRoas = accountSpend > 0 ? (accountConversionsValueAll / accountSpend).toFixed(2) : "0";
+        const accountRoas = accountSpend > 0 ? (accountConversionsValue / accountSpend).toFixed(2) : "0";
         const accountSales = parseFloat(accountRoas) * accountSpend || 0;
 
         // Add this account's data to the total
         totalSpendAll += accountSpend;
         totalConversionsValueAll += accountConversionsValue;
 
+
         // Store individual account data
         accountResults.push({
-          accountId: clientId,
+          accountId: adAccountId,
           accountName,
           googleSpend: accountSpend.toFixed(2),
           googleRoas: accountRoas,
           googleSales: accountSales.toFixed(2),
         });
       } catch (error) {
-        console.error(`Error fetching data for account ${clientId}:`, error);
+        console.error(`Error fetching data for account ${adAccountId}:`, error);
         accountResults.push({
-          accountId: clientId,
+          accountId: adAccountId,
           error: error.message || 'Failed to fetch data',
         });
       }
@@ -502,7 +505,7 @@ export const getGoogleAdData = async (brandId, userId) => {
       }
     };
 
-    console.log('Google Ad Data:', result, startDate, endDate);
+  
     return {
       success: true,
       data: result,

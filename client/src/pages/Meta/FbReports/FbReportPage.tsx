@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { FaMeta } from "react-icons/fa6";
 import AudienceFbReport from './component/AudienceFbReport';
 import PlacementFbReport from './component/PlacementFbReport';
 import PlatformFbReport from './component/PlatformFbReport';
@@ -9,16 +8,15 @@ import GenderFbReport from './component/GenderFbReport';
 import AgeFbReport from './component/AgeFbReport';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import Header from '@/components/dashboard_component/Header';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
-import { CustomTabs } from '@/pages/ConversionReportPage/components/CustomTabs';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
 import { selectFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
 import { Target } from 'lucide-react';
+import { SideTab } from '@/components/ui/side-tab';
 
 const FbReportPage: React.FC = () => {
     const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -58,12 +56,13 @@ const FbReportPage: React.FC = () => {
     return (
         <div className="flex h-screen bg-gray-100">
             <CollapsibleSidebar />
+            <SideTab 
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      />
             <div className="flex-1 h-screen overflow-auto">
-                <Header
-                    title='Meta Reports'
-                    Icon={FaMeta}
-                    showDatePicker={true}
-                />
+               
 
                 {fbTokenError ? (
                     <NoAccessPage
@@ -89,10 +88,7 @@ const FbReportPage: React.FC = () => {
                     <MissingDateWarning />
                 ) : (
                     <>
-                        {/* Tabs */}
-                        <div className="bg-white px-6 sticky top-0 z-10">
-                            <CustomTabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
-                        </div>
+                        
 
                         {/* Scrollable Content */}
                         <div className="flex-1 overflow-auto">

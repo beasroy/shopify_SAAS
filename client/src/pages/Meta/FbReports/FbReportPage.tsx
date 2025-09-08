@@ -88,11 +88,9 @@ const FbReportPage: React.FC = () => {
                     <MissingDateWarning />
                 ) : (
                     <>
-                        
-
                         {/* Scrollable Content */}
                         <div className="flex-1 overflow-auto">
-                            <div className="px-6 py-4 space-y-6">
+                            <div className="p-3 space-y-6">
                                 {activeTab === 'audienceSegments' && (
                                     <div id="audienceSegments">
                                         <AudienceFbReport dateRange={dateRange} />

@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
-import { Maximize, Minimize, RefreshCw} from "lucide-react";
+import { Maximize, Minimize, RefreshCw, ChevronDown } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
-import { FacebookLogo } from "@/data/logo";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -16,7 +14,13 @@ import PerformanceSummary from "@/pages/ConversionReportPage/components/Performa
 import { metricConfigs } from "@/data/constant";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import Loader from "@/components/dashboard_component/loader";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import MetaReportTable from "./MetaReportTable";
 
 type ApiResponse = {
     data: Array<{
@@ -66,6 +70,7 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
 
     const [blendedFilter, setBlendedFilter] = useState<string[]>([]);
     const [accountFilters, setAccountFilters] = useState<Record<string, string[]>>({});
+    const [selectedAccount, setSelectedAccount] = useState<string>('');
 
     const { brandId } = useParams();
     const toggleFullScreen = (accountId: string) => {
@@ -79,18 +84,14 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-
             const response = await axiosInstance.post(`/api/meta/report/gender/${brandId}`, {
              startDate: startDate, endDate: endDate,
             }, { withCredentials: true })
 
             const fetchedData = response.data || [];
-
             setApiResponse(fetchedData);
-
         } catch (error) {
             console.error("Error fetching data:", error);
-
         } finally {
             setLoading(false);
         }
@@ -103,43 +104,31 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
     }, [fetchData]);
 
     useEffect(() => {
-        if (propDateRange) {
+        if (propDateRange?.from && propDateRange?.to) {
             dispatch(setDate({
-                from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-                to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+                from: propDateRange.from.toISOString(), 
+                to: propDateRange.to.toISOString() 
             }));
         }
-    }, [propDateRange]);
+    }, [propDateRange, dispatch]);
 
-    useEffect(() => {
-        if (!fullScreenAccount) {
-            if (propDateRange) {
-                dispatch(setDate({
-                    from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-                    to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-                }));
-            }
-        }
-    }, [fullScreenAccount, propDateRange]);
+    const primaryColumn = "Gender";
+    const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
+    const monthlyDataKey = "MonthlyData";
+    const locale = useSelector((state: RootState) => state.locale.locale);
 
     const handleManualRefresh = () => {
         fetchData();
     };
-
-    const blendedGenderData = apiResponse?.blendedGenderData;
-    // Extract columns dynamically from the API response
-    const primaryColumn = "Gender";
-    const monthlyDataKey = "MonthlyData";
-    const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
-    const monthlyMetrics = ["Spend", "Purchase ROAS"];
-    const locale = useSelector((state: RootState) => state.locale.locale)
 
      // Separate handler for blended summary filter
      const handleBlendedCategoryFilter = (items: (string | number)[] | undefined) => {
         if (items === undefined) {
             setBlendedFilter([]);
         } else {
-            setBlendedFilter(items.map(item => String(item)));
+            // If items is an empty array, it means filter applied but no results
+            // We need to distinguish between "no filter" and "filter with no results"
+            setBlendedFilter(items.length === 0 ? ['__NO_RESULTS__'] : items.map(item => String(item)));
         }
     };
 
@@ -151,118 +140,95 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                 [accountName]: []
             }));
         } else {
+            // If items is an empty array, it means filter applied but no results
             setAccountFilters(prev => ({
                 ...prev,
-                [accountName]: items.map(item => String(item))
+                [accountName]: items.length === 0 ? ['__NO_RESULTS__'] : items.map(item => String(item))
             }));
         }
     };
 
-    
-    if(loading){
-        return <Loader isLoading={loading}/>
+    const blendedGenderData = apiResponse?.blendedGenderData;
+
+    // Set default selected account
+    useEffect(() => {
+        if (apiResponse?.data && !selectedAccount) {
+            if (blendedGenderData && blendedGenderData.length > 0) {
+                setSelectedAccount('blended-summary');
+            } else if (apiResponse.data.length === 1) {
+                setSelectedAccount(apiResponse.data[0].account_name);
+            } else if (apiResponse.data.length > 1) {
+                setSelectedAccount(apiResponse.data[0].account_name);
+            }
+        }
+    }, [apiResponse, selectedAccount, blendedGenderData]);
+
+    // Get current data based on selected account
+    const currentData = useMemo(() => {
+        if (selectedAccount === 'blended-summary') {
+            return blendedGenderData || [];
+        }
+        const account = apiResponse?.data.find(acc => acc.account_name === selectedAccount);
+        return account?.genderData || [];
+    }, [selectedAccount, apiResponse, blendedGenderData]);
+
+    const singleAccountFilter = useMemo(() => {
+        if (apiResponse?.data && apiResponse.data.length === 1) {
+            const account = apiResponse.data[0];
+            const accountFilter = accountFilters[account.account_name];
+            if (!accountFilter || accountFilter.length === 0) return undefined;
+            if (accountFilter.includes('__NO_RESULTS__')) return [];
+            return accountFilter;
+        }
+        return undefined;
+    }, [apiResponse?.data, accountFilters]);
+
+    // Get current filter based on selected account - handle the special case
+    const currentFilter = useMemo(() => {
+        if (selectedAccount === 'blended-summary') {
+            if (blendedFilter.length === 0) return undefined;
+            if (blendedFilter.includes('__NO_RESULTS__')) return [];
+            return blendedFilter;
+        }
+        const accountFilter = accountFilters[selectedAccount];
+        if (!accountFilter || accountFilter.length === 0) return undefined;
+        if (accountFilter.includes('__NO_RESULTS__')) return [];
+        return accountFilter;
+    }, [selectedAccount, blendedFilter, accountFilters]);
+
+    // Get current filter handler based on selected account
+    const currentFilterHandler = useMemo(() => {
+        if (selectedAccount === 'blended-summary') {
+            return handleBlendedCategoryFilter;
+        }
+        return handleAccountCategoryFilter(selectedAccount);
+    }, [selectedAccount]);
+
+    if (loading) {
+        return <Loader isLoading={loading} />
     }
 
+    // Don't render if no data
+    if (!apiResponse?.data || apiResponse.data.length === 0) {
+        return <div>No data available</div>;
+    }
+
+    // If only one account and no blended summary, show directly without filter
+    if (apiResponse.data.length === 1 && (!blendedGenderData || blendedGenderData.length === 0)) {
+        const account = apiResponse.data[0];
     return (
         <div>
-            {/* Dashboard Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <FacebookLogo />
-                    <div>
-                        <h2 className="text-xl font-semibold tracking-tight">Gender Insights</h2>
-                    </div>
-                </div>
-
-            </div>
-
-
-                <div className="grid grid-cols-1 gap-6">
-                    {(blendedGenderData && blendedGenderData.length > 0) && (
-                        <Card
-
-                            className={`${fullScreenAccount === 'blended-summary' ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
-                        >
-                            <div className="bg-white rounded-md px-3 pt-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                        <div className="text-lg font-medium">
-                                            Blended Summary
-                                        </div>
-                                    </div>
+                <Card className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}>
+                    <div className="bg-white rounded-md pt-2 px-3">
                                     <div className="flex items-center space-x-2">
-                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                                            <DatePickerWithRange
-
-                                            />
-                                        </div>}
-                                        <NumberFormatSelector />
-                                        <Button
-                                            onClick={handleManualRefresh}
-                                            disabled={loading}
-                                            size="sm"
-                                            variant="outline"
-                                            className="hover:bg-muted"
-                                        >
-                                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                        </Button>
-                                        <Button
-                                            onClick={() => toggleFullScreen('blended-summary')}
-                                            size="sm"
-                                            variant="outline"
-                                            className="hover:bg-muted"
-                                        >
-                                            {fullScreenAccount === 'blended-summary' ? (
-                                                <Minimize className="h-4 w-4" />
-                                            ) : (
-                                                <Maximize className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                            <CardContent className="p-0">
-                                <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
                                     <PerformanceSummary
-                                        data={blendedGenderData || []}
+                                key={account.account_name}
+                                data={account.genderData || []}
                                         primaryColumn={primaryColumn}
                                         metricConfig={metricConfigs.spendAndRoas || {}}
-                                        onCategoryFilter={handleBlendedCategoryFilter}
-                                    />
-                                    <ConversionTable
-                                        data={Array.isArray(blendedGenderData) ? blendedGenderData : [blendedGenderData]}
-                                        primaryColumn={primaryColumn}
-                                        secondaryColumns={secondaryColumns}
-                                        monthlyDataKey={monthlyDataKey}
-                                        monthlyMetrics={monthlyMetrics}
-                                        isFullScreen={fullScreenAccount === 'blended-summary'}
-                                        locale={locale}
-                                        filter={blendedFilter}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                    {apiResponse?.data.map((account, index) => (
-                        <Card
-                            key={index}
-                            className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}
-                        >
-                            <div className="bg-white rounded-md pt-2 px-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                        <div className="text-lg font-medium">
-                                            {account.account_name}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        {fullScreenAccount && <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                                            <DatePickerWithRange
-
-                                            />
-                                        </div>}
+                                onCategoryFilter={handleAccountCategoryFilter(account.account_name)}
+                            />
+                            <DatePickerWithRange />
                                      <NumberFormatSelector />
                                         <Button
                                             onClick={handleManualRefresh}
@@ -285,34 +251,115 @@ const GenderFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRa
                                                 <Maximize className="h-4 w-4" />
                                             )}
                                         </Button>
-                                    </div>
                                 </div>
                             </div>
                             <CardContent className="p-0">
                                 <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
-                                    <PerformanceSummary
-                                        data={account.genderData || []}
-                                        primaryColumn={primaryColumn}
-                                        metricConfig={metricConfigs.spendAndRoas || {}}
-                                        onCategoryFilter={handleAccountCategoryFilter(account.account_name)}
-                                    />
-                                    <ConversionTable
-                                        data={account.genderData}
+                            <MetaReportTable
+                                data={Array.isArray(account.genderData) ? account.genderData : [account.genderData]}
                                         primaryColumn={primaryColumn}
                                         secondaryColumns={secondaryColumns}
                                         monthlyDataKey={monthlyDataKey}
-                                        monthlyMetrics={monthlyMetrics}
                                         isFullScreen={fullScreenAccount === account.account_name}
-                                        isAdsTable={true}
                                         locale={locale}
-                                        filter={accountFilters[account.account_name]||[]}
+                                filter={ singleAccountFilter}
                                     />
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+            </div>
+        );
+    }
+
+    // Multiple accounts or blended summary available - show with filter
+    return (
+        <div>
+     
+            <Card className={`${fullScreenAccount === selectedAccount ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}>
+                <div className="bg-white rounded-md pt-2 px-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {/* Account Selector */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-2">
+                                        <span className="text-sm">
+                                            {selectedAccount === 'blended-summary' ? 'All Accounts' : selectedAccount}
+                                        </span>
+                                        <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                    {blendedGenderData && blendedGenderData.length > 0 && (
+                                        <DropdownMenuItem
+                                            onClick={() => setSelectedAccount('blended-summary')}
+                                            className={selectedAccount === 'blended-summary' ? 'bg-blue-50' : ''}
+                                        >
+                                            All Accounts
+                                        </DropdownMenuItem>
+                                    )}
+                                    {apiResponse?.data.map((account) => (
+                                        <DropdownMenuItem
+                                            key={account.account_name}
+                                            onClick={() => setSelectedAccount(account.account_name)}
+                                            className={selectedAccount === account.account_name ? 'bg-blue-50' : ''}
+                                        >
+                                            {account.account_name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <DatePickerWithRange />
+                            <NumberFormatSelector />
+                            <Button
+                                onClick={handleManualRefresh}
+                                disabled={loading}
+                                size="sm"
+                                variant="outline"
+                                className="hover:bg-muted"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
+                            <Button
+                                onClick={() => toggleFullScreen(selectedAccount)}
+                                size="sm"
+                                variant="outline"
+                                className="hover:bg-muted"
+                            >
+                                {fullScreenAccount === selectedAccount ? (
+                                    <Minimize className="h-4 w-4" />
+                                ) : (
+                                    <Maximize className="h-4 w-4" />
+                                )}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
+                <CardContent className="p-0 mt-3">
+                    <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
+                        <PerformanceSummary
+                            key={selectedAccount}
+                            data={currentData}
+                            primaryColumn={primaryColumn}
+                            metricConfig={metricConfigs.spendAndRoas || {}}
+                            onCategoryFilter={currentFilterHandler}
+                        />
+                        <MetaReportTable
+                            data={Array.isArray(currentData) ? currentData : [currentData]}
+                            primaryColumn={primaryColumn}
+                            secondaryColumns={secondaryColumns}
+                            monthlyDataKey={monthlyDataKey}
+                            isFullScreen={fullScreenAccount === selectedAccount}
+                            locale={locale}
+                            filter={currentFilter}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
+
 export default GenderFbReport;

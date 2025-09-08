@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import MetaReportTable from "./MetaReportTable";
 
 
 type ApiResponse = {
@@ -122,35 +122,38 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     const primaryColumn = "Age";
     const secondaryColumns = ["Total Spend", "Total Purchase ROAS"];
     const monthlyDataKey = "MonthlyData";
-    const monthlyMetrics = ["Spend", "Purchase ROAS"];
+ 
 
     const handleManualRefresh = () => {
         fetchData();
     };
 
-    // Separate handler for blended summary filter
-    const handleBlendedCategoryFilter = (items: (string | number)[] | undefined) => {
+    // Separate handler for blended summary filter - memoized
+    const handleBlendedCategoryFilter = useCallback((items: (string | number)[] | undefined) => {
         if (items === undefined) {
             setBlendedFilter([]);
         } else {
-            setBlendedFilter(items.map(item => String(item)));
+            // If items is an empty array, it means filter applied but no results
+            // We need to distinguish between "no filter" and "filter with no results"
+            setBlendedFilter(items.length === 0 ? ['__NO_RESULTS__'] : items.map(item => String(item)));
         }
-    };
+    }, []);
 
-    // Separate handler for individual account filters
-    const handleAccountCategoryFilter = (accountName: string) => (items: (string | number)[] | undefined) => {
+    // Separate handler for individual account filters - memoized
+    const handleAccountCategoryFilter = useCallback((accountName: string) => (items: (string | number)[] | undefined) => {
         if (items === undefined) {
             setAccountFilters(prev => ({
                 ...prev,
                 [accountName]: []
             }));
         } else {
+            // If items is an empty array, it means filter applied but no results
             setAccountFilters(prev => ({
                 ...prev,
-                [accountName]: items.map(item => String(item))
+                [accountName]: items.length === 0 ? ['__NO_RESULTS__'] : items.map(item => String(item))
             }));
         }
-    };
+    }, []);
 
     const blendedAgeData = apiResponse?.blendedAgeData;
 
@@ -176,13 +179,30 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
         return account?.ageData || [];
     }, [selectedAccount, apiResponse, blendedAgeData]);
 
-    // Get current filter based on selected account
+    // Get current filter based on selected account - handle the special case
     const currentFilter = useMemo(() => {
         if (selectedAccount === 'blended-summary') {
+            if (blendedFilter.length === 0) return undefined;
+            if (blendedFilter.includes('__NO_RESULTS__')) return [];
             return blendedFilter;
         }
-        return accountFilters[selectedAccount] || [];
+        const accountFilter = accountFilters[selectedAccount];
+        if (!accountFilter || accountFilter.length === 0) return undefined;
+        if (accountFilter.includes('__NO_RESULTS__')) return [];
+        return accountFilter;
     }, [selectedAccount, blendedFilter, accountFilters]);
+
+    // Get filter for single account case - optimized
+    const singleAccountFilter = useMemo(() => {
+        if (apiResponse?.data && apiResponse.data.length === 1) {
+            const account = apiResponse.data[0];
+            const accountFilter = accountFilters[account.account_name];
+            if (!accountFilter || accountFilter.length === 0) return undefined;
+            if (accountFilter.includes('__NO_RESULTS__')) return [];
+            return accountFilter;
+        }
+        return undefined;
+    }, [apiResponse?.data, accountFilters]);
 
     // Get current filter handler based on selected account
     const currentFilterHandler = useMemo(() => {
@@ -190,7 +210,7 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
             return handleBlendedCategoryFilter;
         }
         return handleAccountCategoryFilter(selectedAccount);
-    }, [selectedAccount]);
+    }, [selectedAccount, handleBlendedCategoryFilter, handleAccountCategoryFilter]);
 
     if (loading) {
         return <Loader isLoading={loading} />
@@ -204,12 +224,14 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
     // If only one account and no blended summary, show directly without filter
     if (apiResponse.data.length === 1 && (!blendedAgeData || blendedAgeData.length === 0)) {
         const account = apiResponse.data[0];
+        
         return (
             <div>
                 <Card className={`${fullScreenAccount === account.account_name ? 'fixed inset-0 z-50 m-0 bg-background p-2 overflow-auto' : 'rounded-md'}`}>
                     <div className="bg-white rounded-md pt-2 px-3">
                         <div className="flex items-center space-x-2">
                             <PerformanceSummary
+                                key={account.account_name} // Add key to force remount
                                 data={account.ageData || []}
                                 primaryColumn={primaryColumn}
                                 metricConfig={metricConfigs.spendAndRoas || {}}
@@ -242,15 +264,14 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                     </div>
                     <CardContent className="p-0">
                         <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
-                            <ConversionTable
+                            <MetaReportTable
                                 data={Array.isArray(account.ageData) ? account.ageData : [account.ageData]}
                                 primaryColumn={primaryColumn}
                                 secondaryColumns={secondaryColumns}
                                 monthlyDataKey={monthlyDataKey}
-                                monthlyMetrics={monthlyMetrics}
                                 isFullScreen={fullScreenAccount === account.account_name}
                                 locale={locale}
-                                filter={accountFilters[account.account_name] || []}
+                                filter={singleAccountFilter} // Use the proper filter logic
                             />
                         </div>
                     </CardContent>
@@ -266,7 +287,6 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                 <div className="bg-white rounded-md pt-2 px-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                      
                             {/* Account Selector */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -328,20 +348,20 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
                 <CardContent className="p-0 mt-3">
                     <div className="rounded-b-lg overflow-hidden px-2.5 pb-2.5">
                         <PerformanceSummary
+                            key={selectedAccount} // Add key to force remount when account changes
                             data={currentData}
                             primaryColumn={primaryColumn}
                             metricConfig={metricConfigs.spendAndRoas || {}}
                             onCategoryFilter={currentFilterHandler}
                         />
-                        <ConversionTable
+                        <MetaReportTable
                             data={Array.isArray(currentData) ? currentData : [currentData]}
                             primaryColumn={primaryColumn}
                             secondaryColumns={secondaryColumns}
                             monthlyDataKey={monthlyDataKey}
-                            monthlyMetrics={monthlyMetrics}
                             isFullScreen={fullScreenAccount === selectedAccount}
                             locale={locale}
-                            filter={currentFilter}
+                            filter={currentFilter} // Let MetaReportTable handle the filtering logic
                         />
                     </div>
                 </CardContent>

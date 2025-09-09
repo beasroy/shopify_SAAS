@@ -15,7 +15,7 @@ import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
 import { selectFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
-import { Target } from 'lucide-react';
+import { Computer, MapPin, Monitor, Smartphone, SquareUser, Target, User, Users } from 'lucide-react';
 import { SideTab } from '@/components/ui/side-tab';
 
 const FbReportPage: React.FC = () => {
@@ -40,13 +40,13 @@ const FbReportPage: React.FC = () => {
     }
 
     const tabs = [
-        { label: 'Age', value: 'age' },
-        { label: 'Gender', value: 'gender' },
-        { label: 'Country', value: 'country' },
-        { label: 'Platform', value: 'platform' },
-        { label: 'Placement', value: 'placement' },
-        { label: 'Impression Device', value: 'impressionDevice' },
-        { label: 'Audience Segments', value: 'audienceSegments' }
+        { label: 'Age', value: 'age', icon: <SquareUser className="w-4 h-4" /> },
+        { label: 'Gender', value: 'gender', icon: <User className="w-4 h-4" /> },
+        { label: 'Country', value: 'country' , icon: < MapPin className="w-4 h-4" /> },
+        { label: 'Platform', value: 'platform' , icon: <Computer className="w-4 h-4" /> },
+        { label: 'Placement', value: 'placement', icon: <Smartphone className="w-4 h-4" /> },
+        { label: 'Impression Device', value: 'impressionDevice' , icon: <Monitor className="w-4 h-4" /> },
+        { label: 'Audience Segments', value: 'audienceSegments', icon: <Users className="w-4 h-4" /> }
     ];
 
     const handleTabChange = (value: string) => {

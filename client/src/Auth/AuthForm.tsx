@@ -227,7 +227,6 @@ export default function AuthForm() {
                   />
                 </div>
                 {errors.shop && <p className="text-red-500 text-sm">{errors.shop}</p>}
-                <p className="text-sm text-gray-500 mt-1">Enter only the store name without .myshopify.com</p>
               </div>
             ) : (
               <>

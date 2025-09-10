@@ -6,11 +6,13 @@ import { useDispatch } from 'react-redux';
 import { setUser } from '@/store/slices/UserSlice'
 import { setBrands , setSelectedBrandId } from '@/store/slices/BrandSlice'
 import { resetAllTokenErrors } from '@/store/slices/TokenSllice'
+import { useBrandRefresh } from '@/hooks/useBrandRefresh';
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const dispatch = useDispatch();
+    const { refreshBrands } = useBrandRefresh();
     const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
@@ -162,12 +164,10 @@ const GoogleCallback = () => {
                         const user = getUser.data.user;
                         const brands = getUser.data.brands;
 
-                        console.log("User brands:", user.brands); 
-                        console.log("Brands data:", brands);
-
                         dispatch(setUser(user));
                         dispatch(setBrands(brands));
                         dispatch(setSelectedBrandId(brands[0]._id));
+                        await refreshBrands();  
                         if (!user.brands || user.brands.length === 0) {
                             console.log('No brands found, redirecting to /brand-setup');
                             navigate('/brand-setup');

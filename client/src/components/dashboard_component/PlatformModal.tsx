@@ -396,36 +396,36 @@ export default function PlatformModal({
   const filteredAccounts = () => {
     if (platform.toLowerCase() === 'google ads') {
       if (!googleAdsAccounts || googleAdsAccounts.length === 0) {
-        return null;
+        return [];
       }
       return googleAdsAccounts.filter((account) => {
         const searchLower = searchTerm.toLowerCase();
         return (
-          account.name.toLowerCase().includes(searchLower) ||
-          account.clientId.toLowerCase().includes(searchLower) ||
+          (account.name && account.name.toLowerCase().includes(searchLower)) ||
+          (account.clientId && account.clientId.toLowerCase().includes(searchLower)) ||
           (account.managerId && account.managerId.toLowerCase().includes(searchLower))
         );
       });
     } else if (platform.toLowerCase() === 'google analytics') {
       if (!googleAnalyticsAccounts || googleAnalyticsAccounts.length === 0) {
-        return null;
+        return [];
       }
       return googleAnalyticsAccounts.filter((account) => {
         const searchLower = searchTerm.toLowerCase();
         return (
-          account.propertyName.toLowerCase().includes(searchLower) ||
-          account.propertyId.toLowerCase().includes(searchLower)
+          (account.propertyName && account.propertyName.toLowerCase().includes(searchLower)) ||
+          (account.propertyId && account.propertyId.toLowerCase().includes(searchLower))
         );
       });
     } else if (platform.toLowerCase() === 'facebook') {
       if (!facebookAdsAccounts || facebookAdsAccounts.length === 0) {
-        return null; // Return null if there are no Facebook Ads accounts
+        return [];
       }
       return facebookAdsAccounts.filter((account) => {
         const searchLower = searchTerm.toLowerCase();
         return (
-          account.adname.toLowerCase().includes(searchLower) ||
-          account.id.toLowerCase().includes(searchLower)
+          (account.adname && account.adname.toLowerCase().includes(searchLower)) ||
+          (account.id && account.id.toLowerCase().includes(searchLower))
         );
       });
     } else {

@@ -23,6 +23,7 @@ import { RootState } from "@/store"
 import { useNavigate } from "react-router-dom"
 import { setUser } from "@/store/slices/UserSlice"
 import { setBrandFormData, clearBrandFormData } from "@/store/slices/BrandFormSlice"
+import { useBrandRefresh } from '@/hooks/useBrandRefresh';
 
 const platforms = [
   {
@@ -77,6 +78,7 @@ export default function BrandSetup() {
   const [fbAdId, setFBAdId] = useState<string[]>(formData.fbAdId || [])
   const [shop, setShop] = useState<string>(formData.shop || "")
   const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
+  const { refreshBrands } = useBrandRefresh();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -178,8 +180,9 @@ export default function BrandSetup() {
   }
 
   const handleSubmit = async () => {
-    if (!brandName || Object.keys(connectedAccounts).length === 0) {
-      return toast({ description: 'Please complete all fields before submitting.', variant: "destructive" });
+    if (!brandName.trim()) {
+      toast({ description: 'Please enter a brand name', variant: "destructive" });
+      return;
     }
 
     const payload = {
@@ -214,6 +217,7 @@ export default function BrandSetup() {
           { withCredentials: true }
         );
       }
+      
       // Update local state
       const updatedUser = user ? {
         ...user,
@@ -224,6 +228,10 @@ export default function BrandSetup() {
         dispatch(setUser(updatedUser));
         // Clear form data from Redux after successful submission
         dispatch(clearBrandFormData());
+        
+        // Refresh the brands list to show the new brand
+        await refreshBrands();
+        
         navigate('/dashboard');
       }
 

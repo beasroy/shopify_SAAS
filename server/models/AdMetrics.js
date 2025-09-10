@@ -6,7 +6,7 @@ const admetricsSchema = new mongoose.Schema({
     totalSales: { type: Number, default: 0},
     refundAmount: { type: Number, default: 0},
     metaSpend: { type: Number, default: 0 }, 
-    metaROAS: { type: Number, default: 0 },
+    metaRevenue: { type: Number, default: 0 },
     googleSpend: { type: Number, default: 0 },
     googleROAS: { type: Number, default: 0 },
     totalSpend: { type: Number, default: 0 },

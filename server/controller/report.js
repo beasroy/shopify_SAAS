@@ -67,7 +67,7 @@ export const getMetricsbyID = async (req, res) => {
                             metaSpend: "$metaSpend",
                             googleSpend: "$googleSpend",
                             totalSpend: "$totalSpend",
-                            metaROAS: "$metaROAS",
+                            metaRevenue: "$metaRevenue",
                             googleROAS: "$googleROAS",
                             grossROI: "$grossROI",
                         }

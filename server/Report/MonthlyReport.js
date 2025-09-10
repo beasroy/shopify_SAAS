@@ -558,7 +558,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
 
                 // Create batch requests for each account
                 adAccountIds.forEach(accountId => {
-                    const requestUrl = `${accountId}/insights?fields=spend,purchase_roas&time_range={"since":"${formattedDay}","until":"${formattedDay}"}`;
+                    const requestUrl = `${accountId}/insights?fields=spend,action_values&time_range={"since":"${formattedDay}","until":"${formattedDay}"}`;
                     batchRequests.push({ method: 'GET', relative_url: requestUrl });
                     requestDates.push({ accountId, date: currentDay.clone() });
                 });
@@ -586,21 +586,21 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
                                     const insight = result.data?.[0];
 
                                     if (insight) {
+                                        // Extract revenue from action_values
+                                        const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0';
+                                        
                                         results.push({
                                             adAccountId: accountId,
                                             date: formattedDate,
                                             spend: insight.spend || '0',
-                                            purchase_roas: insight.purchase_roas?.map(roas => ({
-                                                action_type: roas.action_type || 'N/A',
-                                                value: roas.value || '0'
-                                            })) || []
+                                            revenue: revenue
                                         });
                                     } else {
                                         results.push({
                                             adAccountId: accountId,
                                             date: formattedDate,
                                             spend: '0',
-                                            purchase_roas: []
+                                            revenue: '0'
                                         });
                                     }
                                 } catch (parseError) {
@@ -609,7 +609,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
                                         adAccountId: accountId,
                                         date: formattedDate,
                                         spend: '0',
-                                        purchase_roas: []
+                                        revenue: '0'
                                     });
                                 }
                             } else {
@@ -618,7 +618,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
                                     adAccountId: accountId,
                                     date: formattedDate,
                                     spend: '0',
-                                    purchase_roas: []
+                                    revenue: '0'
                                 });
                             }
                         });
@@ -630,7 +630,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
                                 adAccountId: accountId,
                                 date: date.format('YYYY-MM-DD'),
                                 spend: '0',
-                                purchase_roas: []
+                                revenue: '0'
                             });
                         });
                     }
@@ -907,7 +907,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                     shopifySalesMap.forEach((value, date) => {
                         metricsByDate.set(date, {
                             totalMetaSpend: 0,
-                            totalMetaROAS: 0,
+                            totalMetaRevenue: 0,
                             googleSpend: 0,
                             googleROAS: 0,
                             googleSales: 0
@@ -931,7 +931,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                         if (!metricsByDate.has(date)) {
                             metricsByDate.set(date, {
                                 totalMetaSpend: 0,
-                                totalMetaROAS: 0,
+                                totalMetaRevenue: 0,
                                 googleSpend: 0,
                                 googleROAS: 0,
                                 googleSales: 0
@@ -943,15 +943,15 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                         metrics.googleSales = value.googleSales;
                     });
 
-                    // Process Facebook data
+                    // Process Facebook data - aggregate spend and revenue across all accounts
                     for (const account of fbData) {
                         if (!account?.date) continue;
-                        const { date, spend, purchase_roas = [] } = account;
+                        const { date, spend, revenue } = account;
 
                         if (!metricsByDate.has(date)) {
                             metricsByDate.set(date, {
                                 totalMetaSpend: 0,
-                                totalMetaROAS: 0,
+                                totalMetaRevenue: 0,
                                 googleSpend: 0,
                                 googleROAS: 0,
                                 googleSales: 0
@@ -960,10 +960,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
 
                         const metrics = metricsByDate.get(date);
                         metrics.totalMetaSpend += parseFloat(spend) || 0;
-                        metrics.totalMetaROAS += purchase_roas.reduce(
-                            (acc, roas) => acc + (parseFloat(roas?.value) || 0),
-                            0
-                        );
+                        metrics.totalMetaRevenue += parseFloat(revenue) || 0;
                     }
 
                     // Create entries for bulk write
@@ -1048,23 +1045,22 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
         shopifyData
     });
 
-    const { totalMetaSpend, totalMetaROAS, googleSpend, googleROAS, googleSales } = metrics;
+    const { totalMetaSpend, totalMetaRevenue, googleSpend, googleROAS, googleSales } = metrics;
     const { totalSales, refundAmount} = shopifyData;
 
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
-    const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
+    const metaRevenue = parseFloat(totalMetaRevenue.toFixed(2));
     const totalSpend = metaSpend + googleSpend;
-    const metaSales = metaSpend * metaROAS;
-    const adTotalSales = metaSales + googleSales;
+    
+    const adTotalSales = metaRevenue + googleSales;
 
     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
-    //const netROI = totalSpend > 0 ? shopifySales / totalSpend : 0;
 
     const entry = new AdMetrics({
         brandId,
         date: new Date(date), // Ensure UTC date
         metaSpend,
-        metaROAS,
+        metaRevenue,
         googleSpend,
         googleROAS,
         googleSales,
@@ -1072,7 +1068,6 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
         refundAmount,
         totalSpend: totalSpend.toFixed(2),
         grossROI: grossROI.toFixed(2),
-        //netROI: netROI.toFixed(2)
     });
 
     console.log('Created metrics entry:', entry.toObject());
@@ -1483,10 +1478,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
 
                     dateFbData.forEach(entry => {
                         newMetaSpend += parseFloat(entry.spend) || 0;
-                        newMetaROAS += entry.purchase_roas.reduce(
-                            (acc, roas) => acc + (parseFloat(roas?.value) || 0),
-                            0
-                        );
+                        newMetaROAS += parseFloat(entry.revenue) || 0;
                     });
 
                     // Get Google data for this date

@@ -38,7 +38,7 @@ export interface IDailyMetric {
     totalSales: number
     refundAmount: number
     netROI: number
-    metaSales?: number
+    metaRevenue: number
     googleSales?: number
     ROI?: number
 }
@@ -61,7 +61,7 @@ export interface IMonthlyAggregate {
     dailyMetrics: IDailyMetric[]
     month: number
     year: number
-    metaSales?: number
+    metaRevenue: number
     googleSales?: number
     totalAdSales?: number
     ROI?: number

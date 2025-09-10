@@ -199,13 +199,13 @@ export const ExcelMetricsPage: React.FC = () => {
     return metricsData.map((monthData: IMonthlyAggregate) => {
       const processedDailyMetrics = monthData.dailyMetrics.map((daily) => ({
         ...daily,
-        metaSales: daily.metaSpend * (daily.metaROAS || 0),
-        googleSales: daily.googleSpend * (daily.googleROAS || 0),
-        adSales: daily.totalSpend * daily.grossROI || 0,
+        metaROAS: safeDivide(daily.metaRevenue, daily.metaSpend),
+        googleSales: (daily.googleSpend) * (daily.googleROAS),
+        adSales: (daily.totalSpend) * (daily.grossROI || 0),
         ROI: safeDivide(daily.totalSales, daily.totalSpend),
       }))
 
-      const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.metaSales, 0)
+      const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + (daily.metaRevenue || 0), 0)
       const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0)
       const totalAdSales = metaSales + googleSales || 0
 
@@ -445,7 +445,7 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatCurrency(daily.metaSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.metaSales)}
+                            {formatCurrency(daily.metaRevenue)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.metaROAS)}

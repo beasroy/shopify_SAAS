@@ -2,7 +2,7 @@ import Header from "@/components/dashboard_component/Header";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { FaMeta } from "react-icons/fa6";
 import { useEffect, useCallback, useState, useMemo } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { format } from "date-fns";
@@ -12,7 +12,7 @@ import Loader from "@/components/dashboard_component/loader";
 import InterestTable from "./components/InterestTable";
 import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
-import { selectFbTokenError } from "@/store/slices/TokenSllice";
+import { selectFbTokenError, setFbTokenError } from "@/store/slices/TokenSllice";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import ConnectPlatform from "@/pages/ReportPage/ConnectPlatformPage";
 import { Target } from "lucide-react";
@@ -43,6 +43,7 @@ function InterestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [metaInterest, setMetaInterest] = useState<MetaInterestData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch();
   const brands = useSelector((state: RootState) => state.brand.brands);
   const { brandId } = useParams();
   const selectedBrand = brands.find((brand) => brand._id === brandId);
@@ -57,6 +58,10 @@ function InterestPage() {
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
+
+  useEffect(() => {
+    dispatch(setFbTokenError(false));
+}, [brandId]);
 
   const axiosInstance = createAxiosInstance();
   const navigate = useNavigate();

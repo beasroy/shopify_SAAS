@@ -33,24 +33,19 @@ export async function fetchSearchTermMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
 
-    const userId = req.user._id;
-
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
             });
         }
 
-        const refreshToken = user.googleAdsRefreshToken;
+        const refreshToken = brand.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-            console.warn(`No refresh token found for User ID: ${userId}`);
+            console.warn(`No refresh token found for Brand ID: ${brandId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
@@ -219,8 +214,6 @@ export async function fetchAgeMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
 
-    const userId = req.user._id;
-
     const ageRanges = {
         0: "UNSPECIFIED",
         1: "UNKNOWN",
@@ -234,21 +227,18 @@ export async function fetchAgeMetrics(req, res) {
     };
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
             });
         }
 
-        const refreshToken = user.googleAdsRefreshToken;
+        const refreshToken = brand.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-            console.warn(`No refresh token found for User ID: ${userId}`);
+            console.warn(`No refresh token found for Brand ID: ${brandId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
@@ -603,29 +593,23 @@ export async function fetchGenderMetrics(req, res) {
         });
     }
 }
-
 export async function fetchKeywordMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
 
-    const userId = req.user._id; 
-
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
             });
         }
 
-        const refreshToken = user.googleAdsRefreshToken;
+        const refreshToken = brand.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-            console.warn(`No refresh token found for User ID: ${userId}`);
+            console.warn(`No refresh token found for Brand ID: ${brandId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
@@ -788,29 +772,23 @@ export async function fetchKeywordMetrics(req, res) {
         });
     }
 }
-
 export async function fetchProductMetrics(req, res) {
     const { brandId } = req.params;
     let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
 
-    const userId = req.user._id;
-
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
             });
         }
 
-        const refreshToken = user.googleAdsRefreshToken;
+        const refreshToken = brand.googleAdsRefreshToken;
         if (!refreshToken || refreshToken.trim() === '') {
-            console.warn(`No refresh token found for User ID: ${userId}`);
+            console.warn(`No refresh token found for Brand ID: ${brandId}`);
             return res.status(403).json({ error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' });
         }
 
@@ -1056,20 +1034,20 @@ function formatStateData(stateData) {
 }
 
 // Helper function to validate brand and user
-function validateBrandAndUser(brand, user) {
-    if (!brand || !user) {
+function validateBrandAndUser(brand) {
+    if (!brand) {
         return {
             success: false,
-            message: !brand ? 'Brand not found.' : 'User not found.',
+            message: 'Brand not found.',
         };
     }
     return null;
 }
 
 // Helper function to validate refresh token
-function validateRefreshToken(refreshToken, userId) {
+function validateRefreshToken(refreshToken, brandId) {
     if (!refreshToken?.trim()) {
-        console.warn(`No refresh token found for User ID: ${userId}`);
+        console.warn(`No refresh token found for Brand ID: ${brandId}`);
         return { error: 'Access to Google Ads API is forbidden. Check your credentials or permissions.' };
     }
     return null;
@@ -1115,20 +1093,16 @@ async function processAccountStateData(customer, adjustedStartDate, adjustedEndD
 
 export async function fetchStateMetrics(req, res) {
     const { brandId } = req.params;
-    const user = req.user;
-    const userId = user.id;
+
     let { startDate, endDate, costFilter, convValuePerCostFilter } = req.body;
 
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        const validationError = validateBrandAndUser(brand, user);
+        const validationError = validateBrandAndUser(brand);
         if (validationError) return res.status(404).json(validationError);
 
-        const refreshTokenError = validateRefreshToken(user.googleAdsRefreshToken, userId);
+        const refreshTokenError = validateRefreshToken(brand.googleAdsRefreshToken, brandId);
         if (refreshTokenError) return res.status(403).json(refreshTokenError);
 
         const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
@@ -1150,7 +1124,7 @@ export async function fetchStateMetrics(req, res) {
             try {
                 const customer = client.Customer({
                     customer_id: clientId,
-                    refresh_token: user.googleAdsRefreshToken,
+                    refresh_token: brand.googleAdsRefreshToken,
                     login_customer_id: managerId
                 });
 

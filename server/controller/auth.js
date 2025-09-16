@@ -88,8 +88,7 @@ export const handleGoogleCallback = async (req, res) => {
                     email,
                     googleId: id,
                     method: 'google',
-                    googleAdsRefreshToken: tokens.refresh_token, 
-                    googleAnalyticsRefreshToken: tokens.refresh_token, 
+                    googleLoginRefreshToken: tokens.refresh_token, 
                     isAdmin: false,
                     isClient: true
                 });
@@ -399,121 +398,103 @@ export const handleFbCallback = async (req, res) => {
 
 export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
     try {
-        const { type } = req.params;
-        const token = req.cookies.token;
-
-        if (!token) {
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. No token provided.',
-            });
+      const { type} = req.params;
+      const { brandId } = req.query;
+      const token = req.cookies.token;
+  
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: "Access denied. No token provided.",
+        });
+      }
+  
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(401).send("User not authenticated.");
+      }
+  
+      // Special case: Zoho token lives on User, not Brand
+      if (type === "zoho") {
+        const { zohoToken } = req.query;
+        if (!zohoToken) {
+          return res.status(400).json({ success: false, message: "Zoho refresh token is required." });
         }
-
-        const decoded = jwt.verify(token, SECRET_KEY);
-        const user = await User.findById(decoded.id);
-
-        if (!user) {
-            return res.status(401).send('User not authenticated.');
-        }
-
-        const userId = user._id;
-
-        if (type === 'fbToken') {
-            const { fbToken } = req.query;
-
-            if (!fbToken) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Facebook token is required.',
-                });
-            }
-
-            await User.findByIdAndUpdate(userId, {
-                fbAccessToken: fbToken,
-            });
-
-            return res.status(200).json({
-                success: true,
-                message: 'Facebook access token updated successfully.',
-            });
-        }
-
-        if (type === 'googleadRefreshToken') {
-            const { googleadRefreshToken } = req.query;
-
-            if (!googleadRefreshToken) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Google refresh token is required.',
-                });
-            }
-
-            await User.findByIdAndUpdate(userId, {
-                googleAdsRefreshToken: googleadRefreshToken,
-            });
-
-            return res.status(200).json({
-                success: true,
-                message: 'Google Ads refresh token updated successfully.',
-            });
-        }
-
-        if (type === 'googleanalyticsRefreshToken') {
-            const { googleanalyticsRefreshToken } = req.query; // <-- lowercase as in URL
-
-            if (!googleanalyticsRefreshToken) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Google Analytics refresh token is required.',
-                });
-            }
-
-            await User.findByIdAndUpdate(userId, {
-                googleAnalyticsRefreshToken: googleanalyticsRefreshToken, // match field name
-            });
-
-            return res.status(200).json({
-                success: true,
-                message: 'Google Analytics refresh token updated successfully.',
-            });
-        }
-
-        if (type === 'zoho') {
-            const { zohoToken } = req.query;
-
-            if (!zohoToken) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Zoho refresh token is required.',
-                });
-            }
-
-            await User.findByIdAndUpdate(userId, {
-                zohoRefreshToken: zohoToken,
-            });
-
-            return res.status(200).json({
-                success: true, 
-                message: 'Zoho refresh token updated successfully.',
-            });
-        }
-
+  
+        user.zohoRefreshToken = zohoToken;
+        await user.save();
+  
+        return res.status(200).json({
+          success: true,
+          message: "Zoho refresh token updated successfully.",
+        });
+      }
+  
+      // All other tokens should belong to a Brand
+      if (!brandId) {
         return res.status(400).json({
-            success: false,
-            message: `Unsupported token type: ${type}`,
+          success: false,
+          message: "Brand ID is required for this token type.",
         });
-
+      }
+  
+      // 🔎 Check ownership
+      const ownsBrand = user.brands.includes(brandId);
+      if (!ownsBrand) {
+        return res.status(403).json({
+          success: false,
+          message: "You do not have permission to update this brand.",
+        });
+      }
+  
+      // 🔑 Update brand tokens
+      let update = {};
+      if (type === "fbToken") {
+        const { fbToken } = req.query;
+        if (!fbToken) return res.status(400).json({ success: false, message: "Facebook token is required." });
+        update.fbAccessToken = fbToken;
+  
+      } else if (type === "googleadRefreshToken") {
+        const { googleadRefreshToken } = req.query;
+        if (!googleadRefreshToken) return res.status(400).json({ success: false, message: "Google Ads refresh token is required." });
+        update.googleAdsRefreshToken = googleadRefreshToken;
+  
+      } else if (type === "googleanalyticsRefreshToken") {
+        const { googleanalyticsRefreshToken } = req.query;
+        if (!googleanalyticsRefreshToken) return res.status(400).json({ success: false, message: "Google Analytics refresh token is required." });
+        update.googleAnalyticsRefreshToken = googleanalyticsRefreshToken;
+  
+      } else {
+        return res.status(400).json({ success: false, message: `Unsupported token type: ${type}` });
+      }
+  
+      const updatedBrand = await Brand.findByIdAndUpdate(
+        brandId,
+        update,
+        { new: true }
+      );
+  
+      if (!updatedBrand) {
+        return res.status(404).json({ success: false, message: "Brand not found" });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        message: `${type} updated successfully for brand ${brandId}`,
+        brand: updatedBrand,
+      });
+  
     } catch (err) {
-        console.error(`Error updating ${type} token:`, err);
-        return res.status(500).json({
-            success: false,
-            message: `Failed to update ${type} token.`,
-            error: err.message,
-        });
+      console.error(`Error updating ${req.params.type} token:`, err);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to update ${req.params.type} token.`,
+        error: err.message,
+      });
     }
 };
-
-
+  
 export const getShopifyAuthUrl = (req, res) => {
     const { shop , flowType} = req.body;
 
@@ -764,10 +745,6 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
         });
     }
 };
- 
-
-
-
 
 export const getZohoAuthURL = (req, res) => {
     const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +

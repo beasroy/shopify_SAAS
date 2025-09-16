@@ -330,32 +330,28 @@ export const handleCampaignData = async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
 
-    console.log(`[REQUEST] Processing campaign data request for brand ${brandId}, user ${userId}`);
+    console.log(`[REQUEST] Processing campaign data request for brand ${brandId}`);
     console.log(`[REQUEST] Date range: ${startDate} to ${endDate}`);
 
-    if (!brandId || !userId) {
+    if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID and User ID are required.'
+        message: 'Brand ID is required.'
       });
     }
 
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found'
+        message: 'Brand not found.'
       });
     }
 
     const adAccountIds = brand.fbAdAccounts;
-    const accessToken = user.fbAccessToken;
+    const accessToken = brand.fbAccessToken;
 
     if (!adAccountIds || adAccountIds.length === 0) {
       return res.status(404).json({

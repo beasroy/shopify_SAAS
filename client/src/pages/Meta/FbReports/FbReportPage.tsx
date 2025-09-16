@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import AudienceFbReport from './component/AudienceFbReport';
 import PlacementFbReport from './component/PlacementFbReport';
 import PlatformFbReport from './component/PlatformFbReport';
@@ -6,19 +6,20 @@ import CountryFbReport from './component/CountryFbReport';
 import DeviceFbReport from './component/DeviceFbReport';
 import GenderFbReport from './component/GenderFbReport';
 import AgeFbReport from './component/AgeFbReport';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
 import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
 import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
-import { selectFbTokenError } from '@/store/slices/TokenSllice';
+import { selectFbTokenError, setFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
 import { Computer, MapPin, Monitor, Smartphone, SquareUser, Target, User, Users } from 'lucide-react';
 import { SideTab } from '@/components/ui/side-tab';
 
 const FbReportPage: React.FC = () => {
+    const dispatch = useDispatch();
     const dateFrom = useSelector((state: RootState) => state.date.from);
     const dateTo = useSelector((state: RootState) => state.date.to);
     const date = useMemo(() => ({
@@ -32,6 +33,8 @@ const FbReportPage: React.FC = () => {
     const hasFbAdAccount = (selectedBrand?.fbAdAccounts && selectedBrand?.fbAdAccounts.length > 0)
         ? true
         : false;
+    
+    // Remove the useMemo and useEffect, just use simple useSelector
     const fbTokenError = useSelector(selectFbTokenError);
 
     const dateRange = {
@@ -52,6 +55,10 @@ const FbReportPage: React.FC = () => {
     const handleTabChange = (value: string) => {
         setActiveTab(value);
     };
+
+    useEffect(() => {
+        dispatch(setFbTokenError(false));
+    }, [brandId]);
 
     return (
         <div className="flex h-screen bg-gray-100">

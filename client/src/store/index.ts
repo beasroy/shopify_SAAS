@@ -9,7 +9,7 @@ import campaignGroupsReducer from './slices/CampaignGroupSlice.ts';
 import campaignLabelsReducer from './slices/campaignLabelsSlice.ts';
 import tutorialsReducer from "./slices/TutorialSlice.ts"
 import localReducer from "./slices/LocalSlice.ts"
-import tokenReducer from "./slices/TokenSllice.ts"
+import tokenErrorReducer from './slices/TokenSllice';
 import interestFilterReducer from './slices/interestFilterSlice';
 import brandFormReducer from './slices/BrandFormSlice';
 import notificationReducer from './slices/NotificationSlice';
@@ -25,7 +25,7 @@ const rootReducer = combineReducers({
   campaignLabels: campaignLabelsReducer,
   tutorials: tutorialsReducer,
   locale: localReducer,
-  tokenError: tokenReducer,
+  tokenError: tokenErrorReducer,
   interestFilter: interestFilterReducer,
   brandForm: brandFormReducer,
   notifications: notificationReducer,

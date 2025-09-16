@@ -45,6 +45,10 @@ const ChannelConversion: React.FC<ConversionComponentProps> = ({
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
+  useEffect(() => {
+    setApiResponse(null); // Clear old data when brand changes
+  }, [brandId]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,7 +71,7 @@ const ChannelConversion: React.FC<ConversionComponentProps> = ({
     if (date.from && date.to) {
       fetchData();
     }
-  }, [fetchData, refreshTrigger]);
+  }, [fetchData, refreshTrigger]); // Add brandId to dependencies
 
   // Update parent with data
   useEffect(() => {

@@ -338,30 +338,26 @@ export const fetchInterestData = async (req, res) => {
   try { 
     const { startDate, endDate } = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
 
-    if (!brandId || !userId) {
+    if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID and User ID are required.'
+        message: 'Brand ID is required.'
       });
     }
 
     // Fetch brand and user data in parallel
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found'
+        message: 'Brand not found.'
       });
     }
 
     const adAccountIds = brand.fbAdAccounts;
-    const accessToken = user.fbAccessToken;
+    const accessToken = brand.fbAccessToken;
 
     if (!adAccountIds || adAccountIds.length === 0) {
       return res.status(404).json({
@@ -373,7 +369,7 @@ export const fetchInterestData = async (req, res) => {
     if (!accessToken) {
       return res.status(403).json({
         success: false,
-        message: 'User does not have a valid Facebook access token.',
+        message: 'Brand does not have a valid Facebook access token.',
       });
     }
 

@@ -46,6 +46,11 @@ const AgeConversion: React.FC<ConversionComponentProps> = ({
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
+  // Add this useEffect to clear data when brandId changes
+  useEffect(() => {
+    setApiResponse(null); // Clear old data when brand changes
+  }, [brandId]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -58,17 +63,18 @@ const AgeConversion: React.FC<ConversionComponentProps> = ({
       setApiResponse(fetchedData);
     } catch (error) {
       console.error("Error fetching data:", error);
+      setApiResponse(null); // Clear data on error
     } finally {
       setLoading(false);
     }
   }, [brandId, startDate, endDate]);
 
-  // Fetch data when component mounts, date changes, or refresh trigger changes
+  // Fetch data when component mounts, date changes, brandId changes, or refresh trigger changes
   useEffect(() => {
     if (date.from && date.to) {
       fetchData();
     }
-  }, [fetchData, refreshTrigger]);
+  }, [fetchData, refreshTrigger]); // Add brandId to dependencies
 
   // Update parent with data
   useEffect(() => {
@@ -86,6 +92,9 @@ const AgeConversion: React.FC<ConversionComponentProps> = ({
   if (loading) {
     return <Loader isLoading={loading} />;
   }
+
+
+  console.log(apiResponse?.data);
 
   return (
     <div className="rounded-md overflow-hidden">

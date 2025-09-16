@@ -370,6 +370,8 @@
 //             const totalPrice = Number(day.totalPrice);
 //             const subtotalPrice = Number(day.subtotalPrice);
 //             const totalTaxes = Number(day.totalTaxes || 0);
+
+//             console.log("refundAmount , totalPrice, totalSales",refundAmount ,totalPrice , totalPrice - refundAmount)
            
 //             return {
 //                 date: day.date,

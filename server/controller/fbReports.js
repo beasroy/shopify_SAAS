@@ -82,34 +82,31 @@ const calculateBlendedAgeSummary = (accountsData) => {
 export const fetchFbAgeReports = async (req, res) => {
     const { startDate, endDate } = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
+    
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -121,7 +118,7 @@ export const fetchFbAgeReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -137,7 +134,7 @@ export const fetchFbAgeReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -164,7 +161,7 @@ export const fetchFbAgeReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -249,7 +246,7 @@ export const fetchFbAgeReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -350,33 +347,29 @@ const calculateBlendedGenderSummary = (accountsData) => {
 export const fetchFbGenderReports = async (req, res) => {
     const { startDate, endDate} = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
 
     try {
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -388,7 +381,7 @@ export const fetchFbGenderReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -404,7 +397,7 @@ export const fetchFbGenderReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -431,7 +424,7 @@ export const fetchFbGenderReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -516,7 +509,7 @@ export const fetchFbGenderReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -617,34 +610,30 @@ const calculateBlendedDeviceSummary = (accountsData) => {
 export const fetchFbDeviceReports = async (req, res) => {
     const { startDate, endDate} = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -656,7 +645,7 @@ export const fetchFbDeviceReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -672,7 +661,7 @@ export const fetchFbDeviceReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -699,7 +688,7 @@ export const fetchFbDeviceReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -784,7 +773,7 @@ export const fetchFbDeviceReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -887,34 +876,30 @@ const calculateBlendedCountrySummary = (accountsData) => {
 export const fetchFbCountryReports = async (req, res) => {
     const { startDate, endDate } = req.body;
     const { brandId } = req.params;
-    const userId = req.user.id;
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -926,7 +911,7 @@ export const fetchFbCountryReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -942,7 +927,7 @@ export const fetchFbCountryReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -969,7 +954,7 @@ export const fetchFbCountryReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -1054,7 +1039,7 @@ export const fetchFbCountryReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -1157,34 +1142,30 @@ export const fetchFbAudienceReports = async (req, res) => {
     const { startDate, endDate} = req.body;
     const { brandId } = req.params;
 
-    const userId = req.user.id;
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -1196,7 +1177,7 @@ export const fetchFbAudienceReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -1212,7 +1193,7 @@ export const fetchFbAudienceReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -1239,7 +1220,7 @@ export const fetchFbAudienceReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -1324,7 +1305,7 @@ export const fetchFbAudienceReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -1426,34 +1407,30 @@ export const fetchFbPlatformReports = async (req, res) => {
     const { startDate, endDate } = req.body;
     const { brandId } = req.params;
 
-    const userId = req.user.id;
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -1465,7 +1442,7 @@ export const fetchFbPlatformReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -1481,7 +1458,7 @@ export const fetchFbPlatformReports = async (req, res) => {
             try {
 
                 const aggregateParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -1508,7 +1485,7 @@ export const fetchFbPlatformReports = async (req, res) => {
 
                 // 3. Now fetch monthly data only for top platforms
                 const monthlyParams = new URLSearchParams({
-                    access_token: user.fbAccessToken,
+                    access_token: brand.fbAccessToken,
                     fields: 'spend,purchase_roas,action_values,account_name',
                     time_range: JSON.stringify({
                         since: adjustedStartDate,
@@ -1593,7 +1570,7 @@ export const fetchFbPlatformReports = async (req, res) => {
                     status: error.response?.status,
                     data: error.response?.data,
                     config: {
-                        url: error.config?.url?.replace(user.fbAccessToken, 'HIDDEN_TOKEN'),
+                        url: error.config?.url?.replace(brand.fbAccessToken, 'HIDDEN_TOKEN'),
                         method: error.config?.method
                     }
                 });
@@ -1696,34 +1673,30 @@ export const fetchFbPlacementReports = async (req, res) => {
     const { startDate, endDate} = req.body;
     const { brandId } = req.params;
 
-    const userId = req.user.id;
 
     try {
 
         const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
 
-        if (!brandId || !userId) {
+        if (!brandId) {
             return res.status(400).json({
                 success: false,
-                message: 'Brand ID and User ID are required.'
+                message: 'Brand ID is required.'
             });
         }
 
         // Fetch brand and user data in parallel
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean()
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return res.status(404).json({
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found'
+                message: 'Brand not found.'
             });
         }
 
         const adAccountIds = brand.fbAdAccounts;
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
 
         if (!adAccountIds || adAccountIds.length === 0) {
             return res.status(404).json({
@@ -1735,7 +1708,7 @@ export const fetchFbPlacementReports = async (req, res) => {
         if (!accessToken) {
             return res.status(403).json({
                 success: false,
-                message: 'User does not have a valid Facebook access token.',
+                message: 'Brand does not have a valid Facebook access token.',
             });
         }
 
@@ -1753,7 +1726,7 @@ export const fetchFbPlacementReports = async (req, res) => {
             try {
                 do {
                     const params = new URLSearchParams({
-                        access_token: user.fbAccessToken,
+                        access_token: brand.fbAccessToken,
                         fields: 'spend,purchase_roas,action_values,account_name',
                         time_range: JSON.stringify({
                             since: adjustedStartDate,

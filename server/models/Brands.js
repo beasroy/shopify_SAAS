@@ -33,6 +33,9 @@ const brandSchema = new mongoose.Schema({
       default: 'INR'
     }
   },
+  googleAdsRefreshToken: { type: String }, 
+  googleAnalyticsRefreshToken: { type: String },   
+  fbAccessToken: {type: String},   
 }, {
   timestamps: true 
 });

@@ -305,10 +305,9 @@ const fetchInterestData = async (adAccountIds, accessToken, startDate, endDate) 
 };
 
 export const fetchFBAdAccountData = async (req, res) => {
-  let { startDate, endDate, userId } = req.body;
+  let { startDate, endDate } = req.body;
   const { brandId } = req.params;
 
-  console.log(`[API] Request received for brandId: ${brandId}, userId: ${userId}`);
   console.log(`[API] Date range: ${startDate} to ${endDate}`);
 
   try {
@@ -320,13 +319,10 @@ export const fetchFBAdAccountData = async (req, res) => {
     }
 
     // Find brand and user
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
-      console.log(`[API] ${!brand ? 'Brand' : 'User'} not found: ${!brand ? brandId : userId}`);
+    if (!brand) {
+      console.log(`[API] Brand not found: ${brandId}`);
       return res.status(404).json({
         success: false,
         message: !brand ? 'Brand not found.' : 'User not found.',
@@ -345,12 +341,12 @@ export const fetchFBAdAccountData = async (req, res) => {
 
     console.log(`[API] Found ${adAccountIds.length} ad accounts: ${adAccountIds.join(', ')}`);
 
-    const accessToken = user.fbAccessToken;
+    const accessToken = brand.fbAccessToken;
     if (!accessToken) {
-      console.log(`[API] User ${userId} does not have a valid Facebook access token`);
+      console.log(`[API] Brand ${brandId} does not have a valid Facebook access token`);
       return res.status(403).json({
         success: false,
-        message: 'User does not have a valid Facebook access token.',
+        message: 'Brand does not have a valid Facebook access token.',
       });
     }
 
@@ -526,22 +522,17 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
   const { brandId } = req.params;
   let { startDate, endDate } = req.body;
 
-  const userId = req.user._id;
-
   try {
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean(),
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found.',
+        message: 'Brand not found.',
       });
     }
 
-    const refreshToken = user.googleAdsRefreshToken;
+    const refreshToken = brand.googleAdsRefreshToken;
     if (!refreshToken) {
       return res.status(200).json({
         success: true,

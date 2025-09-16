@@ -2,11 +2,12 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '../hooks/use-toast';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '@/store/slices/UserSlice'
 import { setBrands , setSelectedBrandId } from '@/store/slices/BrandSlice'
 import { resetAllTokenErrors } from '@/store/slices/TokenSllice'
 import { useBrandRefresh } from '@/hooks/useBrandRefresh';
+import { RootState } from '@/store';
 
 const GoogleCallback = () => {
     const navigate = useNavigate();
@@ -16,6 +17,8 @@ const GoogleCallback = () => {
     const baseURL = import.meta.env.PROD
         ? import.meta.env.VITE_API_URL
         : import.meta.env.VITE_LOCAL_API_URL;
+
+    const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
 
     useEffect(() => {
         const handleOauthCallback = async () => {
@@ -28,13 +31,13 @@ const GoogleCallback = () => {
                 const zohoRefreshToken = queryParams.get('zohoToken');
                 const userId = queryParams.get('userId');
                 const appToken = queryParams.get('shopify_token');
-                
+               
 
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {
                     try {
                         const response = await axios.put(
-                            `${baseURL}${url}/${type}`,
+                            `${baseURL}${url}/${type}?brandId=${selectedBrandId}`,
                             {}, // Empty body since we're using query params
                             { 
                                 params: { [type]: token },
@@ -203,7 +206,7 @@ const GoogleCallback = () => {
         };
 
         handleOauthCallback();
-    }, [navigate, setUser, toast, baseURL]);
+    }, [navigate, setUser, toast, baseURL, selectedBrandId]);
 
 
     return null;

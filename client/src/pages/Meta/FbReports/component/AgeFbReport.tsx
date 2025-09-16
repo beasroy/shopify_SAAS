@@ -83,6 +83,10 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
 
     const axiosInstance = createAxiosInstance();
 
+    useEffect(() => {
+        setApiResponse(null);
+    }, [brandId]);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -101,14 +105,23 @@ const AgeFbReport: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange
         } finally {
             setLoading(false);
         }
-    }, [brandId, startDate, endDate,]);
+    }, [brandId, startDate, endDate]);
 
     useEffect(() => {
-        fetchData();
-        const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000);
-
-        return () => clearInterval(intervalId);
+        if (date.from && date.to) {
+            fetchData();
+        }
     }, [fetchData]);
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            if (date.from && date.to) {
+                fetchData();
+            }
+        }, 3 * 60 * 60 * 1000);
+        
+        return () => clearInterval(intervalId);
+    }, [fetchData, date.from, date.to]);
 
     useEffect(() => {
         if (propDateRange?.from && propDateRange?.to) {

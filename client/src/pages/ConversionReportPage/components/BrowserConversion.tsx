@@ -45,6 +45,11 @@ const BrowserConversion: React.FC<ConversionComponentProps> = ({
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
+  // Add this useEffect to clear data when brandId changes
+  useEffect(() => {
+    setApiResponse(null); // Clear old data when brand changes
+  }, [brandId]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,7 +72,7 @@ const BrowserConversion: React.FC<ConversionComponentProps> = ({
     if (date.from && date.to) {
       fetchData();
     }
-  }, [fetchData, refreshTrigger]);
+  }, [fetchData, refreshTrigger]); // Add brandId to dependencies
 
   // Update parent with data
   useEffect(() => {

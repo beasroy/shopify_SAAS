@@ -4,6 +4,7 @@ import { GoogleAdsApi } from "google-ads-api";
 import { config } from 'dotenv';
 import NodeCache from 'node-cache';
 import axios from 'axios';
+import Brand from '../models/Brand.js';
 
 const cache = new NodeCache({ stdTTL: 604800, checkperiod: 600 });
 config();
@@ -22,19 +23,19 @@ const createGoogleAdsClient = (refreshToken) => {
 
 export const getGoogleAdAccounts = async (req, res) => {
     try {
-        const userId = req.user._id;
-        if (!userId) {
-            return res.status(400).json({ message: 'User ID is required.' });
+        const {brandId} = req.params;
+        if (!brandId) {
+            return res.status(400).json({ message: 'Brand ID is required.' });
         }
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            return res.status(404).json({ message: 'Brand not found.' });
         }
-        if (user.method !== 'google' && !user.googleAdsRefreshToken) {
-            return res.status(403).json({ message: 'This user is not using Google authentication.' });
+        if (!brand.googleAdsRefreshToken) {
+            return res.status(403).json({ message: 'This brand does not have a Google Ads refresh token.' });
         }
 
-        const cacheKey = `google_ads_accounts_${userId}`;
+        const cacheKey = `google_ads_accounts_${brandId}`;
 
         // Check cache
         const cachedAdAccounts = cache.get(cacheKey);
@@ -45,10 +46,10 @@ export const getGoogleAdAccounts = async (req, res) => {
             console.log('No cached data found for key:', cacheKey);
         }
 
-        const client = createGoogleAdsClient(user.googleAdsRefreshToken);
+        const client = createGoogleAdsClient(brand.googleAdsRefreshToken);
 
         // Get list of accessible customers
-        const customersResponse = await client.listAccessibleCustomers(user.googleAdsRefreshToken);
+        const customersResponse = await client.listAccessibleCustomers(brand.googleAdsRefreshToken);
         console.log('Accessible customers:', customersResponse);
 
         if (!customersResponse?.resource_names?.length) {
@@ -65,7 +66,7 @@ export const getGoogleAdAccounts = async (req, res) => {
             try {
                 const customer = client.Customer({
                     customer_id: customerId,
-                    refresh_token: user.googleAdsRefreshToken,
+                    refresh_token: brand.googleAdsRefreshToken,
                 });
                 const query = `
                     SELECT
@@ -102,8 +103,7 @@ export const getGoogleAdAccounts = async (req, res) => {
 
         // Check if refresh token is expired
         if (error.message?.includes('invalid_grant')) {
-            console.log('Refresh token expired. Prompting user to reauthenticate.');
-            await User.findByIdAndUpdate(req.body.userId, { googleAdsRefreshToken: null });
+            console.log('Refresh token expired. Prompting brand to reauthenticate.');
             return res.status(401).json({
                 message: 'Your Google session has expired. Please log in again.',
                 code: 'TOKEN_EXPIRED',
@@ -128,20 +128,20 @@ export const getGoogleAdAccounts = async (req, res) => {
 
 export const getGa4PropertyIds = async (req, res) => {
     try {
-        const userId = req.user._id;
-        if (!userId) {
-            return res.status(400).json({ message: 'User ID is required.' });
+        const {brandId} = req.params;
+        if (!brandId) {
+            return res.status(400).json({ message: 'Brand ID is required.' });
         }
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
-        }
-
-        if (user.method !== 'google' && user.googleAnalyticsRefreshToken == null) {
-            return res.status(403).json({ message: 'This user is not using Google authentication.' });
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            return res.status(404).json({ message: 'Brand not found.' });
         }
 
-        const cacheKey = `ga4_properties_${userId}`;
+        if (!brand.googleAnalyticsRefreshToken) {
+            return res.status(403).json({ message: 'This brand does not have a Google Analytics refresh token.' });
+        }
+
+        const cacheKey = `ga4_properties_${brandId}`;
 
         const cachedProperties = cache.get(cacheKey);
         if (cachedProperties) {
@@ -158,7 +158,7 @@ export const getGa4PropertyIds = async (req, res) => {
             process.env.GOOGLE_REDIRECT_URI
         );
 
-        oauth2Client.setCredentials({ refresh_token: user.googleAnalyticsRefreshToken });
+        oauth2Client.setCredentials({ refresh_token: brand.googleAnalyticsRefreshToken });
 
 
         const analyticsAdmin = google.analyticsadmin({ version: 'v1alpha', auth: oauth2Client });
@@ -196,7 +196,7 @@ export const getGa4PropertyIds = async (req, res) => {
             console.log('Refresh token expired. Prompting user to reauthenticate.');
 
             // Invalidate the user's refresh token in the database
-            await User.findByIdAndUpdate(req.body.userId, { googleAnalyticsRefreshToken: null });
+            //await User.findByIdAndUpdate(req.body.userId, { googleAnalyticsRefreshToken: null });
 
             return res.status(401).json({
                 message: 'Your Google session has expired. Please log in again to continue.',
@@ -209,31 +209,29 @@ export const getGa4PropertyIds = async (req, res) => {
 
 export const getFbAdAccountIds = async (req, res) => {
     try {
-        const userId = req.user._id;
-
-        if (!userId) {
-            return res.status(400).json({ message: 'User ID is required.' });
+        const {brandId} = req.params;
+        if (!brandId) {
+            return res.status(400).json({ message: 'Brand ID is required.' });
         }
 
-        const cacheKey = `fb_ad_accounts_${userId}`;
+        const cacheKey = `fb_ad_accounts_${brandId}`;
 
         const cachedFbAdAccounts = cache.get(cacheKey);
         if (cachedFbAdAccounts) {
             return res.status(200).json({ adAccounts: cachedFbAdAccounts, fromCache: true });
         }
 
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            return res.status(404).json({ message: 'Brand not found.' });
         }
 
-        if (user.fbAccessToken == null) {
-            return res.status(403).json({ message: 'This user is not using Facebook authentication.' });
+        if (brand.fbAccessToken == null) {
+            return res.status(403).json({ message: 'This brand does not have a Facebook access token.' });
         }
 
         // Construct the Graph API request URL
-        const url = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${user.fbAccessToken}`;
+        const url = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
 
         // Make the request to Facebook Graph API
         const response = await axios.get(url);

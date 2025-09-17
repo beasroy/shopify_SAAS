@@ -53,8 +53,6 @@ export default function PlatformModal({
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
-  const user = useSelector((state: RootState) => state.user.user);
-  const userId = user?.id;
   const dispatch = useDispatch();
   const brands = useSelector((state: RootState) => state.brand.brands);
 
@@ -124,19 +122,19 @@ export default function PlatformModal({
 
         switch (platform.toLowerCase()) {
           case 'google ads':
-            endpoint = '/api/setup/google-accounts';
+            endpoint = `/api/setup/google-accounts/${brandId}`;
             accountsSetter = setGoogleAdsAccounts;
             break;
           case 'google analytics':
-            endpoint = '/api/setup/ga4-propertyIds';
+            endpoint = `/api/setup/ga4-propertyIds/${brandId}`;
             accountsSetter = setGoogleAnalyticsAccounts;
             break;
           case 'facebook':
-            endpoint = '/api/setup/fb-ad-accounts';
+            endpoint = `/api/setup/fb-ad-accounts/${brandId}`;
             accountsSetter = setFacebookAdsAccounts;
             break;
         }
-        console.log(`Calling API: ${baseURL}${endpoint} with userId: ${userId}`);
+        console.log(`Calling API: ${baseURL}${endpoint} with brandId: ${brandId}`);
 
         if (!endpoint) {
           throw new Error('Invalid platform');
@@ -164,7 +162,7 @@ export default function PlatformModal({
     };
 
     fetchAccounts();
-  }, [platform, userId, open]);
+  }, [platform, brandId, open]);
 
   const handleError = (error: unknown, setShowLoginButton: (value: boolean) => void) => {
     const axiosError = error as AxiosError;

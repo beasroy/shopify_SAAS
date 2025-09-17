@@ -4,7 +4,7 @@ import { GoogleAdsApi } from "google-ads-api";
 import { config } from 'dotenv';
 import NodeCache from 'node-cache';
 import axios from 'axios';
-import Brand from '../models/Brand.js';
+import Brand from '../models/Brands.js';
 
 const cache = new NodeCache({ stdTTL: 604800, checkperiod: 600 });
 config();

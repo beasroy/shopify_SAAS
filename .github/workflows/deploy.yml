@@ -23,66 +23,31 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Navigate to project directory
+            echo "=== Pulling latest code ==="
             cd ~/shopify_SAAS
-            
-            # Pull latest changes
             git pull origin main
             
-            # Deploy server
-            echo "=== Deploying Server ==="
+            # Restart backend server with PM2
+            echo "=== Restarting Server ==="
             cd ~/shopify_SAAS/server
-            
-            # Always run npm install for server (or check if package.json exists)
-            if [ -f package.json ]; then
-              echo "Installing server dependencies..."
-              npm install --production
-            else
-              echo "No package.json found in server directory"
-            fi
-            
-            # Restart server with PM2 
+            npm install 
             cd ~
             pm2 restart ecosystem.config.js
-            
-            # Deploy client
-            echo "=== Deploying Client ==="
-            
-            # Check if client directory exists
-            if [ -d ~/shopify_SAAS/client ]; then
-              cd ~/shopify_SAAS/client
-              if [ -f package.json ]; then
-                echo "Installing client dependencies..."
-                npm install --production
-                
-              else
-                echo "No package.json found in client directory"
-              fi
-              
-              # Copy the pre-built dist files
-              if [ -d dist ]; then
-                sudo cp -rf dist/* /usr/share/nginx/html/shopify_client/
-                # Reload nginx
-                sudo systemctl reload nginx
-                sudo systemctl restart nginx
-              else
-                echo "Build failed or dist folder not found!"
-              fi
-              
-              cd ~
-              pm2 restart ecosystem.config.js
+
+            # Update frontend (dist folder)
+            echo "=== Updating Frontend ==="
+            if [ -d ~/shopify_SAAS/client/dist ]; then
+              sudo cp -rf ~/shopify_SAAS/client/dist/* /home/ec2-user/shopify_SAAS/client/dist/
+              sudo systemctl reload nginx
+              echo "Frontend updated successfully!"
             else
-              echo "Client directory does not exist in ~/shopify_SAAS/"
-              echo "Available directories:"
-              ls -la ~/shopify_SAAS/
+              echo "dist folder not found!"
             fi
           
       - name: Notify on Success
         if: success()
-        run: |
-          echo "Deployment completed successfully!"
+        run: echo "Deployment completed successfully!"
           
       - name: Notify on Failure
         if: failure()
-        run: |
-          echo "Deployment failed!"
+        run: echo "Deployment failed!"

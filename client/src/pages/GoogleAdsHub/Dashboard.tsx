@@ -13,7 +13,7 @@ import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
 import Keyword from './components/Keyword';
 import Product from './components/Product';
-import Footer from '../LandingPage/components/Footer';
+
 
 
 
@@ -121,7 +121,6 @@ const GoogleAdsDashboard: React.FC = () => {
             </div>
           </>
         )}
-        <Footer />
       </div>
       <HelpDeskModal />
     </div>

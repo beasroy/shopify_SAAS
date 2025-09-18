@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
 import { config } from 'dotenv';
 import NodeCache from 'node-cache';

@@ -215,33 +215,29 @@ export async function getGoogleAccessToken(refreshToken) {
 export async function getAnalyticsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const userId = req.user._id;
 
     // Validate input
-    if (!brandId || !userId) {
+    if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID and User ID are required.'
+        message: 'Brand ID is required.'
       });
     }
 
     // Find brand and user
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
     // Check if brand and user exist
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found'
+        message: 'Brand not found.'
       });
     }
 
     // Get GA4 Property ID and Refresh Token
     const propertyId = brand.ga4Account?.PropertyID;
-    const refreshToken = user.googleAnalyticsRefreshToken;
+    const refreshToken = brand.googleAnalyticsRefreshToken;
 
     // Validate Google Analytics access
     if (!propertyId) {
@@ -252,7 +248,7 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     if (!refreshToken || refreshToken.trim() === '') {
-      console.warn(`No refresh token found for User ID: ${userId}`);
+      console.warn(`No refresh token found for Brand ID: ${brandId}`);
       return res.status(403).json({
         success: false,
         error: 'Access to Google Analytics API is forbidden.'
@@ -485,22 +481,18 @@ export async function getAnalyticsSummary(req, res) {
 export async function getFacebookAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const userId = req.user.id;
 
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found'
+        message: 'Brand not found.'
       });
     }
 
     const adAccountIds = brand.fbAdAccounts;
-    const accessToken = user.fbAccessToken;
+    const accessToken = brand.fbAccessToken;
 
     if (!adAccountIds || adAccountIds.length === 0) {
       return res.status(404).json({
@@ -512,7 +504,7 @@ export async function getFacebookAdsSummary(req, res) {
     if (!accessToken) {
       return res.status(403).json({
         success: false,
-        message: 'User does not have a valid Facebook access token.',
+        message: 'Brand does not have a valid Facebook access token.',
       });
     }
 
@@ -763,18 +755,13 @@ export async function getFacebookAdsSummary(req, res) {
 export async function getGoogleAdsSummary(req, res) {
   try {
     const { brandId } = req.params;
-    const userId = req.user.id;
+    
+    const brand = await Brand.findById(brandId).lean();
 
-    // Run these database queries in parallel
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
-
-    if (!brand || !user) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found'
+        message: 'Brand not found.'
       });
     }
 
@@ -786,11 +773,11 @@ export async function getGoogleAdsSummary(req, res) {
       });
     }
 
-    const refreshToken = user.googleAdsRefreshToken;
+    const refreshToken = brand.googleAdsRefreshToken;
     if (!refreshToken) {
       return res.status(403).json({
         success: false,
-        message: 'User does not have a valid Google refresh token.'
+        message: 'Brand does not have a valid Google refresh token.'
       });
     }
 

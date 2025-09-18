@@ -6,7 +6,6 @@ import axios from "axios";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
-import User from "../models/User.js";
 import RefundCache from '../models/RefundCache.js';
 
 
@@ -110,7 +109,8 @@ export const fetchTotalSales = async (brandId) => {
                   // Check if refund already exists in cache
                   const existingRefund = await RefundCache.findOne({ 
                     refundId: refund.id,
-                    brandId: brandId 
+                    brandId: brandId ,
+                 
                   });
                   
                   if (!existingRefund) {
@@ -276,24 +276,21 @@ export const fetchTotalSales = async (brandId) => {
   }
 };
 
-export const fetchFBAdReport = async (brandId, userId) => {
+export const fetchFBAdReport = async (brandId) => {
   try {
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean(),
-    ])
-    if (!brand || !user) {
+    const brand = await Brand.findById(brandId).lean();
+    if (!brand) {
       return {
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found.',
+        message: 'Brand not found.',
       };
     }
 
-    const accessToken = user.fbAccessToken;
+    const accessToken = brand.fbAccessToken;
     if (!accessToken) {
       return {
         success: false,
-        message: 'No Facebook accesstoken found for this User.',
+        message: 'No Facebook accesstoken found for this brand.',
         data: [],
       };
     }
@@ -383,25 +380,22 @@ const client = new GoogleAdsApi({
   client_secret: process.env.GOOGLE_CLIENT_SECRET,
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
 });
-export const getGoogleAdData = async (brandId, userId) => {
+export const getGoogleAdData = async (brandId) => {
   try {
-    const [brand, user] = await Promise.all([
-      Brand.findById(brandId).lean(),
-      User.findById(userId).lean()
-    ]);
+    const brand = await Brand.findById(brandId).lean();
 
-    if (!brand || !user) {
+    if (!brand) {
       return {
         success: false,
-        message: !brand ? 'Brand not found.' : 'User not found.',
+        message: 'Brand not found.',
       };
     }
 
-    const refreshToken = user.googleAdsRefreshToken;
+    const refreshToken = brand.googleAdsRefreshToken;
     if (!refreshToken) {
       return {
         success: false,
-        message: 'No Google refreshtoken found for this User.',
+        message: 'No Google refreshtoken found for this brand.',
         data: [],
       };
     }
@@ -520,12 +514,12 @@ export const getGoogleAdData = async (brandId, userId) => {
 };
 
 
-export const addReportData = async (brandId, userId) => {
+export const addReportData = async (brandId) => {
   try {
-    const fbDataResult = await fetchFBAdReport(brandId, userId);
+    const fbDataResult = await fetchFBAdReport(brandId);
     const fbData = fbDataResult.data ? fbDataResult.data : [];
 
-    const googleDataResult = await getGoogleAdData(brandId, userId);
+    const googleDataResult = await getGoogleAdData(brandId);
     const googleData = googleDataResult.data ? googleDataResult.data : [];
 
     // Initialize totals
@@ -612,74 +606,26 @@ export const calculateMetricsForAllBrands = async () => {
       logger.info(`\n=== Processing brand: ${brandIdString} ===`);
 
       try {
-        // Debug: Log the exact query we're about to make
-        logger.info('Searching for user with brand ID (string):', brandIdString);
-        // Get all users and manually check brands
-        const allUsers = await User.find({});
-        logger.info('Total users in database:', allUsers.length);
+        const result = await addReportData(brandIdString);
 
-        const usersWithBrand = allUsers.filter(user =>
-          user.brands && user.brands.includes(brandIdString)
-        );
-        logger.info('Users with matching brand (manual check):', usersWithBrand.length);
-
-        if (usersWithBrand.length > 0) {
-          logger.info('Found matching users brands arrays:');
-          usersWithBrand.forEach(user => {
-            logger.info(`User ${user._id}: ${JSON.stringify(user.brands)}`);
-          });
-        }
-
-        if (usersWithBrand.length === 0) {
-          logger.warn(`No user found for brand ${brandIdString}`);
+        if (result.success) {
+          logger.info(`Successfully processed brand ${brandIdString}`);
+          return {
+            brandId: brandIdString,
+            status: 'success',
+            message: result.message
+          };
+        } else {
+          logger.warn(`Failed to process brand ${brandIdString}: ${result.message}`);
           return {
             brandId: brandIdString,
             status: 'failed',
-            error: 'No user with access found'
+            error: result.message
           };
         }
 
-        // Try each user until one succeeds
-        let lastError = null;
-        for (const userWithAccess of usersWithBrand) {
-          try {
-            const userId = userWithAccess._id.toString();
-            logger.info(`Attempting with user ${userId} for brand ${brandIdString}`);
-
-            const result = await addReportData(brandIdString, userId);
-
-            if (result.success) {
-              logger.info(`Successfully processed brand ${brandIdString} with user ${userId}`);
-              return {
-                brandId: brandIdString,
-                status: 'success',
-                userId
-              };
-            }
-
-            // If this user failed, store error and continue to next user
-            lastError = result.message;
-            logger.warn(`Failed with user ${userId}, trying next user if available. Error: ${result.message}`);
-
-          } catch (error) {
-            lastError = error.message;
-            logger.warn(`Error with user ${userWithAccess._id}: ${error.message}`);
-            continue;
-          }
-        }
-
-        // If we get here, all users failed
-        logger.error(`All users failed for brand ${brandIdString}. Last error: ${lastError}`);
-        return {
-          brandId: brandIdString,
-          status: 'failed',
-          error: `All available users failed. Last error: ${lastError}`,
-          attemptedUsers: usersWithBrand.length
-        };
-
       } catch (error) {
         logger.error(`Error processing brand ${brandIdString}: ${error.message}`);
-        logger.error('Full error:', error);
         return {
           brandId: brandIdString,
           status: 'error',
@@ -687,6 +633,8 @@ export const calculateMetricsForAllBrands = async () => {
         };
       }
     });
+
+
 
     const settledResults = await Promise.allSettled(metricsPromises);
 
@@ -708,9 +656,9 @@ export const calculateMetricsForAllBrands = async () => {
       details: settledResults
     };
 
+ 
   } catch (error) {
     logger.error('Error processing metrics for all brands:', error);
-    logger.error('Full error:', error);
     return {
       success: false,
       error: error.message

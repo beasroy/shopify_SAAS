@@ -13,10 +13,10 @@ router.get('/:brandId',verifyAuth, getMetricsbyID);
 // API endpoint to check refund cache
 router.post('/refund-cache/:brandId', checkRefundCache);
 
-router.delete('/delete/byDate', verifyAuth, async (req, res) => {
+router.delete('/delete/byDate', async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        const userId = req.user._id;
+      
 
         if (!startDate) {
             return res.status(400).json({ message: 'startDate is required' });
@@ -90,12 +90,12 @@ router.delete('/delete/byDate', verifyAuth, async (req, res) => {
 router.delete('/delete/:brandId', verifyAuth, async (req, res) => {
     try {
         const { brandId } = req.params;
-        const userId = req.user._id;
+  
         
         // Log the deletion attempt
         console.log('\n=== AdMetrics Delete Operation ===');
         console.log('Type: Delete by Brand');
-        console.log('User ID:', userId);
+      
         console.log('Brand ID:', brandId);
         console.log('Timestamp:', new Date().toISOString());
         

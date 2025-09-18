@@ -9,10 +9,9 @@ import {
   Store,
   CalendarRange,
   LineChart,
-  Target,
   Plus,
   Home,
-  BarChart3,
+  BarChart3,Crown
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -27,7 +26,6 @@ import { baseURL } from "@/data/constant.ts"
 import type { IBrand } from "@/interfaces"
 import {  WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
-import { Crown } from 'lucide-react';
 import PricingModal from "../../pages/Pricing/Pricing.tsx"
 
 interface DashboardItem {
@@ -172,7 +170,7 @@ export default function CollapsibleSidebar() {
       ],
     },
     { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
-    { name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
+    //{ name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 
   const isItemDisabled = (item: DashboardItem | SubItem): boolean => {

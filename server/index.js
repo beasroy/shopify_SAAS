@@ -27,7 +27,7 @@ import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
-//import { monthlyFetchTotalSales } from "./Report/NewMonthlyReport.js";
+import { monthlyFetchTotalSales } from "./Report/MonthlyReport.js";
 //import { getGoogleAdData } from "./Report/Report.js";
 
 
@@ -103,9 +103,9 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("686fdb9b5e5aeabe99e78885","67eb85f2f583a37ca251622a")
+//calculateMetricsForSingleBrand("68ca95ad548d518de4fca1af","68ca95ad548d518de4fca1ac")
 
-//monthlyFetchTotalSales("68a83aba20bd25c55bf936bb","2025-02-28","2025-02-28")
+//monthlyFetchTotalSales("68ca95ad548d518de4fca1af","2025-09-17","2025-09-17")
 
 // getGoogleAdData("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
 // .then(console.log)

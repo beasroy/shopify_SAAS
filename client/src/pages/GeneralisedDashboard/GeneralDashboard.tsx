@@ -6,7 +6,6 @@ import SummaryDashboard from "./dashboard";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
 import { RootState } from "@/store";
 import { useNavigate } from "react-router-dom";
-import Footer from "../LandingPage/components/Footer";
 
 const GeneralDashboard: React.FC = () => {
     const user = useSelector((state: RootState) => state.user.user);
@@ -26,7 +25,6 @@ const GeneralDashboard: React.FC = () => {
               <CollapsibleSidebar />
               <div className="flex-1 h-screen overflow-auto">
                 <SummaryDashboard />
-                <Footer />
               </div>
     
               <HelpDeskModal />

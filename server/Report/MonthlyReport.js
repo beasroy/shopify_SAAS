@@ -463,13 +463,25 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         
         console.log(`Orders in target range: ${ordersInRange}/${orders.length}`);
         
-        return Object.values(dailySalesMap).map(day => {
+    
+        
+        // Apply refund amounts to daily sales map
+        Object.keys(refundAmountsFromCache).forEach(date => {
+            if (dailySalesMap[date]) {
+                dailySalesMap[date].refundAmount = refundAmountsFromCache[date].totalReturn;
+                console.log(`Applied refunds for ${date}: totalReturn=${refundAmountsFromCache[date].totalReturn}`);
+            }
+        });
+        
+        console.log(`Refunds found in cache for target range: ${Object.keys(refundAmountsFromCache).length} dates`);        return Object.values(dailySalesMap).map(day => {
             const grossSales = Number(day.grossSales);
             const discountAmount = Number(day.discountAmount);
             const refundAmount = Number(day.refundAmount);
             const totalPrice = Number(day.totalPrice);
             const subtotalPrice = Number(day.subtotalPrice);
             const totalTaxes = Number(day.totalTaxes || 0);
+
+            console.log(`Day: ${day.date}, Gross Sales: ${grossSales}, Discount Amount: ${discountAmount}, Refund Amount: ${refundAmount}, Total Price: ${totalPrice}, Subtotal Price: ${subtotalPrice}, Total Taxes: ${totalTaxes}`);
            
             
             return {
@@ -497,7 +509,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
     }
 };
 
-export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate) => {
+export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
     try {
         // Validate and convert input dates to Moment objects
         const start = moment(startDate);
@@ -507,15 +519,12 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
             throw new Error('Invalid date format provided');
         }
 
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return {
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
                 data: []
             };
         }
@@ -529,7 +538,7 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
             };
         }
 
-        const accessToken = user.fbAccessToken;
+        const accessToken = brand.fbAccessToken;
         if (!accessToken) {
             return {
                 success: false,
@@ -663,25 +672,22 @@ export const monthlyFetchFBAdReport = async (brandId, userId, startDate, endDate
     }
 };
 
-export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) => {
+export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
     try {
-        const [brand, user] = await Promise.all([
-            Brand.findById(brandId).lean(),
-            User.findById(userId).lean(),
-        ]);
+        const brand = await Brand.findById(brandId).lean();
 
-        if (!brand || !user) {
+        if (!brand) {
             return {
                 success: false,
-                message: !brand ? 'Brand not found.' : 'User not found.',
+                message: 'Brand not found.',
             };
         }
 
-        const refreshToken = user.googleAdsRefreshToken;
+        const refreshToken = brand.googleAdsRefreshToken;
         if (!refreshToken) {
             return {
                 success: false,
-                message: 'No refresh token found for this user.',
+                message: 'No refresh token found for this brand.',
                 data: [],
             };
         }
@@ -828,9 +834,9 @@ export const monthlyGoogleAdData = async (brandId, userId, startDate, endDate) =
     }
 };
 
-export const monthlyAddReportData = async (brandId, startDate, endDate, userId, refundOnlyStartDate = null) => {
+export const monthlyAddReportData = async (brandId, startDate, endDate, refundOnlyStartDate = null) => {
     try {
-        if (!brandId || !startDate || !endDate || !userId) {
+        if (!brandId || !startDate || !endDate) {
             throw new Error('Missing required parameters');
         }
 
@@ -869,7 +875,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                 try {
                     // Parallel fetch of all data sources
                     const [fbDataResult, shopifySalesData, googleDataResult] = await Promise.all([
-                        monthlyFetchFBAdReport(brandId, userId, chunk.start, chunk.end)
+                        monthlyFetchFBAdReport(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching FB data:', err);
                                 return { data: [] };
@@ -879,7 +885,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, userId, 
                                 console.error('Error fetching Shopify data:', err);
                                 return [];
                             }),
-                        monthlyGoogleAdData(brandId, userId, chunk.start, chunk.end)
+                        monthlyGoogleAdData(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching Google data:', err);
                                 return { data: [] };
@@ -1074,7 +1080,7 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     return entry;
 };
 
-export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, userId) => {
+export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate) => {
     try {
         const brands = await Brand.find({});
         console.log(`Found ${brands.length} brands for metrics calculation.`);
@@ -1084,7 +1090,7 @@ export const monthlyCalculateMetricsForAllBrands = async (startDate, endDate, us
             console.log(`Starting metrics processing for brand: ${brandIdString}`);
 
             try {
-                const result = await monthlyAddReportData(brandIdString, startDate, endDate, userId, startDate, endDate);
+                const result = await monthlyAddReportData(brandIdString, startDate, endDate);
                 if (result.success) {
                     console.log(`Metrics successfully saved for brand ${brandIdString}`);
                 } else {
@@ -1172,7 +1178,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         console.log('Starting monthlyAddReportData with extended refund caching...');
         
         // Use the extended date range for refund caching but only create metrics for the target range
-        const result = await monthlyAddReportData(brandId, startDate, endDate, userId, refundOnlyStartDate);
+        const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
         console.log('monthlyAddReportData result:', result);
 
         if (result.success) {
@@ -1276,7 +1282,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             if (existingMetrics.length === 0) {
                 console.log('No existing metrics found for new store. Triggering full calculation...');
                 // If no existing metrics, trigger full calculation
-                const result = await monthlyAddReportData(brandId, startDate, endDate, userId, refundOnlyStartDate);
+                const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
                 
                 if (result.success) {
                     console.log(`Full metrics calculation completed for brand ${brandId} with new store`);
@@ -1402,7 +1408,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             if (existingMetrics.length === 0) {
                 console.log('No existing metrics found for new ad accounts. Triggering full calculation...');
                 // If no existing metrics, trigger full calculation
-                const result = await monthlyAddReportData(brandId, startDate, endDate, userId, refundOnlyStartDate);
+                const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
                 
                 if (result.success) {
                     console.log(`Full metrics calculation completed for brand ${brandId} with new ad accounts`);
@@ -1438,7 +1444,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             let fbData = [];
             if (newFbAccounts.length > 0) {
                 console.log('Fetching data for new Facebook ad accounts...');
-                const fbResult = await monthlyFetchFBAdReport(brandId, userId, startDate, endDate);
+                const fbResult = await monthlyFetchFBAdReport(brandId, startDate, endDate);
                 if (fbResult.success && fbResult.data.length > 0) {
                     // Filter to only include new accounts
                     fbData = fbResult.data.filter(entry => 
@@ -1452,7 +1458,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             let googleData = [];
             if (newGoogleAccounts.length > 0) {
                 console.log('Fetching data for new Google ad accounts...');
-                const googleResult = await monthlyGoogleAdData(brandId, userId, startDate, endDate);
+                const googleResult = await monthlyGoogleAdData(brandId, startDate, endDate);
                 if (googleResult.success && googleResult.data.length > 0) {
                     googleData = googleResult.data;
                     console.log(`Got ${googleData.length} Google entries`);
@@ -1576,12 +1582,10 @@ const getRefundAmountsFromCache = async (brandId, startDate, endDate) => {
         const refunds = await RefundCache.find({
             brandId: brandId,
             refundCreatedAt: {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate)
+                $gte: moment(startDate).startOf('day').utc().toDate(),
+                $lte: moment(endDate).endOf('day').utc().toDate()
             }
-        });
-        
-        console.log(`Found ${refunds.length} refunds in cache for the date range`);
+        });        console.log(`Found ${refunds.length} refunds in cache for the date range`);
         
         const result = refunds.reduce((acc, refund) => {
             const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');

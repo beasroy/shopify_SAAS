@@ -656,6 +656,9 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
             currentChunkStart = chunkEnd.clone().add(1, 'days');
         }
 
+        console.log(`Facebook Ad data processed: ${results.length} dates`);
+        console.log(results);
+
         return {
             success: true,
             data: results
@@ -983,6 +986,9 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, refundOn
 
                     // Perform bulk write
                     if (entries.length > 0) {
+                        console.log(`🔍 DEBUG: About to bulk write ${entries.length} entries for chunk ${chunk.start} to ${chunk.end}`);
+                        console.log(`🔍 DEBUG: Sample entry:`, JSON.stringify(entries[0], null, 2));
+                        
                         const bulkOps = entries.map(entry => ({
                             updateOne: {
                                 filter: { brandId: entry.brandId, date: entry.date },
@@ -990,9 +996,12 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, refundOn
                                 upsert: true
                             }
                         }));
+                        console.log(`🔍 DEBUG: Bulk ops sample:`, JSON.stringify(bulkOps[0], null, 2));
 
                         await AdMetrics.bulkWrite(bulkOps, { ordered: false });
                         console.log(`Bulk upserted ${bulkOps.length} metrics entries for chunk ${chunk.start} to ${chunk.end}`);
+                    }else {
+                        console.log(`⚠️ No entries to save for chunk ${chunk.start} to ${chunk.end}`)
                     }
 
                     return {

@@ -28,6 +28,7 @@ import ShopifyAuth from "./Auth/Shopify.tsx";
 import PricingCallback from './Auth/PricingSuccess.tsx';
 import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.tsx';
 import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
+import CreativesLibrary from './pages/CreativesLibrary/CreativesLibrary.tsx';
 
 
 
@@ -61,6 +62,7 @@ function App() {
                 <Route path ="/terms-and-conditions" element={<TermsAndConditions />} />
                 <Route path = "/meta-campaigns/:brandId" element={<CampaignPage />} />
                 <Route path = "/meta-interest/:brandId" element={<InterestPage />} />
+                <Route path = "/creatives-library/:brandId" element={<CreativesLibrary />} />
                 <Route path = "/pricing_callback" element={<PricingCallback />} />
                 <Route path = "/first-time-brand-setup" element={<BrandSetupDashboard />} />
               </Routes>

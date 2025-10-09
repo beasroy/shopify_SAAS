@@ -1,7 +1,7 @@
 import axios from 'axios';
 import moment from 'moment';
 import Brand from '../models/Brands.js';
-import User from '../models/User.js';
+
 
 const recalculateDerivedMetrics = (campaign) => {
   const spend = campaign["Amount spend"] || 0;
@@ -363,7 +363,7 @@ export const handleCampaignData = async (req, res) => {
     if (!accessToken) {
       return res.status(403).json({
         success: false,
-        message: 'User does not have a valid Facebook access token.',
+        message: 'Brand does not have a valid Facebook access token.',
       });
     }
 

@@ -18,6 +18,7 @@ import metaRoutes from "./routes/meta.js"
 import googleRoutes from "./routes/google.js"
 import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
+import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
@@ -26,9 +27,14 @@ import shopifyAppRoutes from "./routes/app_sync.js"
 import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
+import creativeRoutes from "./routes/creative.js"
+
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { monthlyFetchTotalSales } from "./Report/MonthlyReport.js";
+import { monthlyFetchFBAdReport } from "./Report/MonthlyReport.js";
+
 //import { getGoogleAdData } from "./Report/Report.js";
+
 
 
 const app = express();
@@ -89,27 +95,33 @@ dataOperationRouter.use("/meta",metaRoutes);
 dataOperationRouter.use("/google",googleRoutes);
 dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
+dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
 dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 dataOperationRouter.use("/cache",cacheRoutes)
+dataOperationRouter.use("/ads",creativeRoutes)
+
 
 
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');
 } else {
   setupCronJobs();
+  metricsCronJob.start(); // Start metrics caching cron job
   console.log('Cron jobs initialized in production environment');
 }
 
-//calculateMetricsForSingleBrand("68ca95ad548d518de4fca1af","68ca95ad548d518de4fca1ac")
+calculateMetricsForSingleBrand("68dfb7e4e78884ea57ff7b53","68dfb7e4e78884ea57ff7b50")
 
 //monthlyFetchTotalSales("68ca95ad548d518de4fca1af","2025-09-17","2025-09-17")
 
 // getGoogleAdData("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
 // .then(console.log)
 // .catch(console.error)
+
+//monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
 
 const PORT = process.env.PORT || 5000;
 

@@ -36,15 +36,16 @@ const GoogleCallback = () => {
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {
                     try {
+                     
+                        // If we have a brandId, proceed with normal token update
                         const response = await axios.put(
                             `${baseURL}${url}/${type}?brandId=${selectedBrandId}`,
-                            {}, // Empty body since we're using query params
+                            {}, // Empty body since we are using query params
                             { 
                                 params: { [type]: token },
                                 withCredentials: true 
                             }
-                        );
-                        
+                        );                        
                         if (response.data.success) {
                             console.log(`${type} token updated successfully`);
                             // Reset all token errors when a token is successfully updated

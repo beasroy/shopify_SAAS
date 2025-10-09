@@ -108,8 +108,7 @@ dataOperationRouter.use("/ads",creativeRoutes)
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');
 } else {
-  setupCronJobs();
-  metricsCronJob.start(); // Start metrics caching cron job
+  setupCronJobs(); // Start metrics caching cron job
   console.log('Cron jobs initialized in production environment');
 }
 

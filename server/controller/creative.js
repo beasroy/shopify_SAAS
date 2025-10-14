@@ -5,74 +5,6 @@ import { connection as redis } from "../config/redis.js";
 // Cache TTL in seconds (1 hour for creative data)
 const CACHE_TTL = 3600;
 
-// Helper function to control concurrency
-const pLimit = (concurrency) => {
-  const queue = [];
-  let activeCount = 0;
-
-  const run = async (fn) => {
-    activeCount++;
-    try {
-      return await fn();
-    } finally {
-      activeCount--;
-      if (queue.length > 0) {
-        const next = queue.shift();
-        run(next.fn).then(next.resolve, next.reject);
-      }
-    }
-  };
-
-  return (fn) => {
-    return new Promise((resolve, reject) => {
-      if (activeCount < concurrency) {
-        run(fn).then(resolve, reject);
-      } else {
-        queue.push({ fn, resolve, reject });
-      }
-    });
-  };
-};
-
-// Optimized: Process ad into creative format
-const processAdToCreative = (ad) => {
-  const creative = ad.adcreatives?.data?.[0]?.object_story_spec;
-  const creativeId = ad.adcreatives?.data?.[0]?.id || null;
-  const insights = ad.insights?.data?.[0] || {};
-  const roasObj = insights.purchase_roas?.find(r => r.action_type === "purchase");
-  const roas = roasObj ? parseFloat(roasObj.value) : 0;
-  const orders = insights.actions?.find(a => a.action_type === "purchase")?.value || 0;
-
-  let creativeType = "unknown";
-  let creativeUrl = null;
-  let thumbnailUrl = ad.adcreatives?.data?.[0]?.thumbnail_url || null;
-  let videoId = null;
-
-  if (creative?.video_data) {
-    creativeType = "video";
-    videoId = creative.video_data.video_id;
-    creativeUrl = videoId;
-  } else if (creative?.link_data?.picture) {
-    creativeType = "image";
-    creativeUrl = creative.link_data.picture;
-  }
-
-  return {
-    ad_id: ad.id,
-    ad_name: ad.name,
-    creative_type: creativeType,
-    creative_url: creativeUrl,
-    thumbnail_url: thumbnailUrl,
-    spend: parseFloat(insights.spend || 0),
-    ctr: parseFloat(insights.ctr || 0),
-    clicks: parseInt(insights.clicks || 0, 10),
-    roas,
-    orders: parseInt(orders, 10),
-    videoId, // Temporary field for video processing
-    creativeId // Temporary field for thumbnail fetching
-  };
-};
-
 // Optimized: Fetch video sources in parallel batches
 const fetchVideoSourcesBatch = async (videoIds, accessToken) => {
   if (!videoIds.length) return new Map();
@@ -214,7 +146,7 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
         const batchRequests = chunk.map(adId => ({
           method: "GET",
           // Request insights with video metrics including hook rate (3-second video views)
-          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions&time_range={'since':'${startDate}','until':'${endDate}'}`
+          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`
         }));
 
         const { data: batchResponse } = await axios.post(
@@ -438,19 +370,18 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
     
     console.log(`✅ Fetched ${allAds.length} total ads (hasMore: ${hasMorePages}, nextCursor: ${nextCursor ? 'yes' : 'no'})`);
 
-    // 🔹 Step 4: Process all ads into creatives (without insights first)
-    const allCreatives = allAds.map(processAdToCreative);
+    // 🔹 Step 4: Extract IDs directly from ads (no processing yet)
+    const videoIds = [];
+    const creativeIds = [];
+    const adIds = allAds.map(ad => ad.id);
     
-    // Extract IDs for batch requests
-    const videoIds = allCreatives
-      .filter(c => c.videoId)
-      .map(c => c.videoId);
-    
-    const creativeIds = allCreatives
-      .filter(c => c.creativeId)
-      .map(c => c.creativeId);
-    
-    const adIds = allCreatives.map(c => c.ad_id);
+    allAds.forEach(ad => {
+      const creativeData = ad.adcreatives?.data?.[0];
+      if (creativeData?.id) creativeIds.push(creativeData.id);
+      if (creativeData?.object_story_spec?.video_data?.video_id) {
+        videoIds.push(creativeData.object_story_spec.video_data.video_id);
+      }
+    });
 
     console.log(`🎥 Fetching details for ${videoIds.length} videos...`);
     console.log(`🖼️  Fetching custom thumbnails for ${creativeIds.length} creatives (${thumbnailWidth}x${thumbnailHeight})...`);
@@ -467,56 +398,69 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
     console.log(`✅ Fetched ${thumbnailMap.size} custom thumbnails`);
     console.log(`✅ Fetched ${insightsMap.size} insights`);
 
-    // 🔹 Step 6: Merge video details, custom thumbnails, and insights (O(1) lookup with Map)
-    allCreatives.forEach(creative => {
-      // Merge video data
-      if (creative.videoId) {
-        const video = videoMap.get(creative.videoId);
-        if (video) {
-          creative.creative_url = video.source;
-          creative.thumbnail_url = video.thumbnail || creative.thumbnail_url;
-        }
-        delete creative.videoId; // Clean up temporary field
-      }
+    // 🔹 Step 6: Process ads into creatives WITH all data already fetched
+    const allCreatives = allAds.map(ad => {
+      const creativeData = ad.adcreatives?.data?.[0];
+      const creative = creativeData?.object_story_spec;
+      const creativeId = creativeData?.id;
+      const insights = insightsMap.get(ad.id) || {};
       
-      // Merge custom thumbnail
-      if (creative.creativeId) {
-        const customThumbnail = thumbnailMap.get(creative.creativeId);
-        if (customThumbnail) {
-          creative.thumbnail_url = customThumbnail;
-        }
-        delete creative.creativeId; // Clean up temporary field
-      }
-      
-      // Merge insights data
-      const insights = insightsMap.get(creative.ad_id) || {};
-      
-      // Helper function to get action count
+      // Helper to get action count
       const getActionCount = (actionType) => {
         const action = insights.actions?.find(a => a.action_type === actionType);
         return action ? parseInt(action.value, 10) : 0;
       };
       
-      // Update metrics from insights
-      creative.spend = parseFloat(insights.spend || 0);
-      creative.ctr = parseFloat(insights.ctr || 0);
-      creative.clicks = parseInt(insights.clicks || 0, 10);
+      // Determine type and URLs
+      let creativeType = "unknown";
+      let creativeUrl = null;
+      let thumbnailUrl = null;
       
-      // ROAS
-      const roasObj = insights.purchase_roas?.find(r => r.action_type === "purchase");
-      creative.roas = roasObj ? parseFloat(roasObj.value) : 0;
+      if (creative?.video_data) {
+        creativeType = "video";
+        const videoId = creative.video_data.video_id;
+        const video = videoMap.get(videoId);
+        creativeUrl = video?.source || videoId;
+        thumbnailUrl = video?.thumbnail || null;
+      } else if (creative?.link_data?.picture) {
+        creativeType = "image";
+        creativeUrl = creative.link_data.picture;
+      }
       
-      // Orders
-      creative.orders = getActionCount('purchase');
+      // Get custom thumbnail
+      if (creativeId && thumbnailMap.has(creativeId)) {
+        thumbnailUrl = thumbnailMap.get(creativeId);
+      }
       
-      // Hook Rate - video_view / impressions * 100
+      // Calculate metrics
+      const spend = parseFloat(insights.spend || 0);
       const impressions = parseInt(insights.impressions || 0, 10);
       const videoViews = getActionCount('video_view');
       const hookRate = impressions > 0 ? (videoViews / impressions) * 100 : 0;
       
-      creative.hook_rate = parseFloat(hookRate.toFixed(2));
-      creative.impressions = impressions;
-      creative.video_views = videoViews;
+      // Get revenue from purchase action value
+      const revenueObj = insights.action_values?.find((action) => action.action_type === 'purchase') || null;
+      const revenue = revenueObj ? parseFloat(revenueObj.value) : 0;
+      
+      // Calculate ROAS = revenue / spend
+      const roas = spend > 0 ? revenue / spend : 0;
+      
+      return {
+        ad_id: ad.id,
+        ad_name: ad.name,
+        creative_type: creativeType,
+        creative_url: creativeUrl,
+        thumbnail_url: thumbnailUrl,
+        spend,
+        ctr: parseFloat(insights.ctr || 0),
+        clicks: parseInt(insights.clicks || 0, 10),
+        roas: parseFloat(roas.toFixed(2)),
+        orders: getActionCount('purchase'),
+        hook_rate: parseFloat(hookRate.toFixed(2)),
+        impressions,
+        video_views: videoViews,
+        revenue
+      };
     });
   
     const fetchTime = Date.now() - startTime;

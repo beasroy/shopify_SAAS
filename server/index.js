@@ -28,10 +28,13 @@ import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
 import creativeRoutes from "./routes/creative.js"
+import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { monthlyFetchTotalSales } from "./Report/MonthlyReport.js";
 import { monthlyFetchFBAdReport } from "./Report/MonthlyReport.js";
+import { initializeShopifyWorkers } from "./workers/initializeShopifyWorkers.js";
+import { initShopifyDailySync } from "./cron/shopifyDailySync.js";
 
 //import { getGoogleAdData } from "./Report/Report.js";
 
@@ -102,6 +105,7 @@ dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)
 dataOperationRouter.use("/cache",cacheRoutes)
 dataOperationRouter.use("/ads",creativeRoutes)
+dataOperationRouter.use("/",shopifyWebhookRoutes)
 
 
 
@@ -137,5 +141,19 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on ${isDevelopment ? 'http' : 'https'}://0.0.0.0:${PORT}`);
   console.log(`Socket.IO server is ready for real-time notifications`);
   console.log(`Redis notification subscriber is ready to receive worker notifications`);
+  
+  // Initialize Shopify workers
+  initializeShopifyWorkers();
+  
+  // Initialize Shopify daily sync cron
+  initShopifyDailySync();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  const { shutdownShopifyWorkers } = await import('./workers/initializeShopifyWorkers.js');
+  await shutdownShopifyWorkers();
+  process.exit(0);
 });
 

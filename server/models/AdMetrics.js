@@ -3,8 +3,12 @@ import mongoose from 'mongoose';
 const admetricsSchema = new mongoose.Schema({
     brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: true }, 
     date: { type: Date, required: true },
-    totalSales: { type: Number, default: 0},
-    refundAmount: { type: Number, default: 0},
+    
+    // Shopify metrics
+    totalSales: { type: Number, default: 0},      // Gross revenue
+    refundAmount: { type: Number, default: 0},    // Total refunds (net = totalSales - refundAmount)
+    
+    // Ad platform metrics
     metaSpend: { type: Number, default: 0 }, 
     metaRevenue: { type: Number, default: 0 },
     googleSpend: { type: Number, default: 0 },

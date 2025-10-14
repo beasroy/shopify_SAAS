@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Image as ImageIcon,
-  TrendingUp,
   ExternalLink,
   Play,
   Pause,
@@ -112,15 +110,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
             </div>
           )}
 
-          {/* ROAS Badge (if > 0) */}
-          {creative.roas > 0 && (
-            <div className="absolute top-3 right-3">
-              <Badge className="bg-orange-600 hover:bg-orange-700">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {creative.roas.toFixed(2)}x
-              </Badge>
-            </div>
-          )}
+       
         </div>
 
         {/* Content Section */}

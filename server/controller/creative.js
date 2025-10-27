@@ -145,7 +145,6 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
       try {
         const batchRequests = chunk.map(adId => ({
           method: "GET",
-          // Request insights with video metrics including hook rate (3-second video views)
           relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`
         }));
 
@@ -162,8 +161,6 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
               const body = JSON.parse(item.body);
               const insightData = body.data?.[0] || {};
               
-              // Extract ad ID from the response or use a mapping
-              // We'll need to track which request corresponds to which ad
               insights.push({
                 data: insightData
               });
@@ -266,35 +263,21 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
 
     console.log(`🚀 Fetching creatives for ${adAccountIds.length} ad accounts (includeAllAds: ${includeAllAds}, limit: ${limit}/account, cursor: ${after ? 'yes' : 'first'})...`);
 
-    // 🔹 Step 1: Create batch requests using cursor-based pagination
-    // Facebook uses 'after' cursor for pagination, not offset
-    // Two modes:
-    // 1. includeAllAds=false (default): Only return ads with insights data in date range
-    // 2. includeAllAds=true: Return ALL ads regardless of date range activity
     
     const batchRequests = adAccountIds.map((accId, idx) => {
       let request;
       const afterParam = after ? `&after=${after}` : '';
       
       if (includeAllAds) {
-        // Fetch ALL ads without insights and without custom thumbnails
-        // We'll fetch custom thumbnails in a separate batch request
         request = {
           method: "GET",
           relative_url: `${accId}/ads?fields=id,name,status,effective_status,adcreatives{id,object_story_spec,image_url}&limit=${limit}${afterParam}`
         };
       } else {
-        // Default mode: Get ads with basic info and cursor pagination
         request = {
         method: "GET",
           relative_url: `${accId}/ads?fields=id,name,adcreatives{id,object_story_spec,image_url}&limit=${limit}${afterParam}`
         };
-      }
-      
-      // Log first request for debugging
-      if (idx === 0) {
-        console.log(`📤 Sample request URL: ${request.relative_url}`);
-        console.log(`📐 Will request custom thumbnails: ${thumbnailWidth}x${thumbnailHeight}`);
       }
       
       return request;
@@ -327,10 +310,10 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
     console.log(`✅ Fetched initial batch for ${batchResponse.length} accounts`);
 
     // Debug: Log first response to see what Facebook returned
-    if (batchResponse.length > 0 && batchResponse[0].body) {
-      const firstResponse = JSON.parse(batchResponse[0].body);
-      console.log(`📊 First account sample:`, JSON.stringify(firstResponse, null, 2).substring(0, 500));
-    }
+    // if (batchResponse.length > 0 && batchResponse[0].body) {
+    //   const firstResponse = JSON.parse(batchResponse[0].body);
+    //   console.log(`📊 First account sample:`, JSON.stringify(firstResponse, null, 2).substring(0, 500));
+    // }
 
     // 🔹 Step 3: Process all accounts and extract cursors
     const accountPromises = batchResponse.map(async (item, index) => {
@@ -383,9 +366,7 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
       }
     });
 
-    console.log(`🎥 Fetching details for ${videoIds.length} videos...`);
-    console.log(`🖼️  Fetching custom thumbnails for ${creativeIds.length} creatives (${thumbnailWidth}x${thumbnailHeight})...`);
-    console.log(`📊 Fetching insights for ${adIds.length} ads...`);
+   
 
     // 🔹 Step 5: Fetch video details, custom thumbnails, and insights in parallel
     const [videoMap, thumbnailMap, insightsMap] = await Promise.all([

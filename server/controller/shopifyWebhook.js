@@ -1,9 +1,6 @@
 import { shopifyOrderQueue } from '../config/shopifyQueues.js';
 
-/**
- * Handle Order Created Webhook
- * Just queues the job and returns immediately
- */
+
 export const handleOrderCreated = async (req, res) => {
   try {
     const order = req.body;

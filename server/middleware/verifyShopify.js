@@ -1,9 +1,6 @@
 import crypto from 'crypto';
 
-/**
- * Verify Shopify webhook signature
- * Ensures webhook is actually from Shopify
- */
+
 export const verifyShopifyWebhook = (req, res, next) => {
   try {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];

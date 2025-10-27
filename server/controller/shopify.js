@@ -371,7 +371,7 @@ export const getReturningCustomerRates = async (req, res) => {
       endDateTime = moment(now).endOf('month');
     }
 
-    const CHUNK_SIZE_DAYS = 31; 
+    const   CHUNK_SIZE_DAYS = 31; 
     let allOrders = [];
     let currentStart = startDateTime.clone();
     const finalEnd = endDateTime.clone();

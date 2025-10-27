@@ -502,7 +502,6 @@ export const getShopifyAuthUrl = (req, res) => {
         return res.status(400).json({ error: 'Shop name is required' });
     }
 
-    // Remove .myshopify.com if present
     const cleanShop = shop.replace('.myshopify.com', '');
 
     const SCOPES = "read_all_orders,read_analytics, write_returns, read_returns, write_reports, read_reports, write_orders, read_orders, write_customers, read_customers, write_products, read_products"

@@ -28,7 +28,7 @@ function ShopifyAuth() {
         }
 
         // Send all parameters to the backend for validation and auth URL generation
-        const response = await axios.post(`${baseURL}/api/auth/shopify-install`, params);
+        const response = await axios.post(`${baseURL}/api/auth/shopify`, params);
         
         if (response.data && response.data.success && response.data.authUrl) {
           // Redirect the browser to Shopify's OAuth page

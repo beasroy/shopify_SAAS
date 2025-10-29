@@ -252,12 +252,6 @@ const SummaryDashboard: React.FC = () => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
 
-  useEffect(() => {
-    if(!user?.brands || user.brands.length === 0){
-      navigate("/brand-setup");
-    }
-  }, [user, navigate]);
-
   if (loading) {
     return <Loader isLoading={loading} />;
   }

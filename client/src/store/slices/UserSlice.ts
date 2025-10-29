@@ -7,7 +7,7 @@ interface User {
   brands: string[];
   isClient: boolean;
   isAdmin: boolean;
-  metgod: string;
+  method: string;
   loginCount: number;
 }
 

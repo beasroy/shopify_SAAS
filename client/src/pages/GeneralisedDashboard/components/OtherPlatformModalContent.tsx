@@ -52,7 +52,7 @@ export default function OtherPlatformModalContent({
   const [loading, setLoading] = useState(false);
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL
 
-  const user = useSelector((state: RootState) => state.user.user);
+  const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId);
 
   // Check URL parameters for modal opening
   useEffect(() => {
@@ -89,10 +89,10 @@ export default function OtherPlatformModalContent({
     const fetchGoogleAdsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user?.id;
-        const response = await axios.post(
-          `${baseURL}/api/setup/google-accounts`,
-          { userId },
+
+        const response = await axios.get(
+          `${baseURL}/api/setup/google-accounts/${selectedBrandId}`,
+   
           { withCredentials: true }
         );
 
@@ -114,10 +114,10 @@ export default function OtherPlatformModalContent({
     const fetchGoogleAnalyticsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user?.id;
-        const response = await axios.post(
-          `${baseURL}/api/setup/ga4-propertyIds`,
-          { userId },
+   
+        const response = await axios.get(
+          `${baseURL}/api/setup/ga4-propertyIds/${selectedBrandId}`,
+
           { withCredentials: true }
         );
 
@@ -137,10 +137,10 @@ export default function OtherPlatformModalContent({
     const fetchFacebookAdsAccounts = async () => {
       setLoading(true); // Start loading
       try {
-        const userId = user?.id;
-        const response = await axios.post(
-          `${baseURL}/api/setup/fb-ad-accounts`,
-          { userId },
+
+        const response = await axios.get(
+          `${baseURL}/api/setup/fb-ad-accounts/${selectedBrandId}`,
+
           { withCredentials: true }
         );
 
@@ -155,7 +155,7 @@ export default function OtherPlatformModalContent({
     if (platform.toLowerCase() === 'google ads') fetchGoogleAdsAccounts();
     if (platform.toLowerCase() === 'google analytics') fetchGoogleAnalyticsAccounts();
     if (platform.toLowerCase() === 'facebook') fetchFacebookAdsAccounts();
-  }, [platform, user]);
+  }, [platform, selectedBrandId]);
 
   const handleError = (error: any) => {
     // Axios error handling

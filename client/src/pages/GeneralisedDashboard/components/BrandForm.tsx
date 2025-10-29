@@ -23,6 +23,7 @@ import { RootState } from "@/store"
 import { useNavigate } from "react-router-dom"
 import { setUser } from "@/store/slices/UserSlice"
 import { setBrandFormData, clearBrandFormData } from "@/store/slices/BrandFormSlice"
+import { setSelectedBrandId } from "@/store/slices/BrandSlice"
 import { useBrandRefresh } from '@/hooks/useBrandRefresh';
 
 const platforms = [
@@ -66,6 +67,7 @@ export default function BrandSetup() {
   const navigate = useNavigate();
   const { toast } = useToast()
   const user = useSelector((state: RootState) => state.user.user)
+  const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId)
   
   const formData = useSelector((state: RootState) => state.brandForm)
   const [brandName, setBrandName] = useState(formData.brandName || "")
@@ -78,6 +80,7 @@ export default function BrandSetup() {
   const [fbAdId, setFBAdId] = useState<string[]>(formData.fbAdId || [])
   const [shop, setShop] = useState<string>(formData.shop || "")
   const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
+  const [isCreatingBrand, setIsCreatingBrand] = useState(false)
   const { refreshBrands } = useBrandRefresh();
 
   useEffect(() => {
@@ -175,29 +178,31 @@ export default function BrandSetup() {
     }
   }
 
-  const canSubmit = () => {
-    return !!brandName && Object.keys(connectedAccounts).length > 0
+  const canCreateBrand = () => {
+    return !!brandName.trim()
   }
 
-  const handleSubmit = async () => {
+  const canSubmit = () => {
+    return !!selectedBrandId && Object.keys(connectedAccounts).length > 0
+  }
+
+  const handleCreateBrand = async () => {
     if (!brandName.trim()) {
       toast({ description: 'Please enter a brand name', variant: "destructive" });
       return;
     }
 
-    const payload = {
-      name: brandName,
-      googleAdAccount: googleAdsConnections.map(connection => ({
-        clientId: connection.clientId,
-        managerId: connection.managerId || ''
-      })),
-      ga4Account: { PropertyID: ga4Id || '' },
-      fbAdAccounts: fbAdId.map((accountId) => accountId),
-      shopifyAccount: { shopName: shop || '', shopifyAccessToken: shopifyAccessToken || '' }
-    };
-
+    setIsCreatingBrand(true);
     try {
-      // First create the brand
+      // Create a basic brand first
+      const payload = {
+        name: brandName,
+        googleAdAccount: [],
+        ga4Account: {},
+        fbAdAccounts: [],
+        shopifyAccount: {}
+      };
+
       const brandResponse = await axios.post(
         `${baseURL}/api/brands/add`,
         payload,
@@ -206,7 +211,10 @@ export default function BrandSetup() {
 
       const newBrandId = brandResponse.data.brand._id;
 
-      // Then add the brand to user
+      // Set the newly created brand as selected
+      dispatch(setSelectedBrandId(newBrandId));
+
+      // Add the brand to user
       if (user) {
         await axios.post(
           `${baseURL}/api/users/add-brand`,
@@ -216,30 +224,66 @@ export default function BrandSetup() {
           },
           { withCredentials: true }
         );
-      }
-      
-      // Update local state
-      const updatedUser = user ? {
-        ...user,
-        brands: [...user.brands, newBrandId]
-      } : null;
 
-      if (updatedUser) {
+        // Update local user state to include the new brand
+        const updatedUser = {
+          ...user,
+          brands: [...user.brands, newBrandId]
+        };
         dispatch(setUser(updatedUser));
+      }
+
+      toast({ description: 'Brand created successfully! Now you can connect platforms.', variant: "default" });
+
+    } catch (error) {
+      console.error(error);
+      toast({ description: 'Error creating brand. Please try again.', variant: "destructive" });
+    } finally {
+      setIsCreatingBrand(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedBrandId) {
+      toast({ description: 'Please create a brand first', variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Update the existing brand with platform connections
+      const payload = {
+        googleAdAccount: googleAdsConnections.map(connection => ({
+          clientId: connection.clientId,
+          managerId: connection.managerId || ''
+        })),
+        ga4Account: { PropertyID: ga4Id || '' },
+        fbAdAccounts: fbAdId.map((accountId) => accountId),
+        shopifyAccount: { shopName: shop || '', shopifyAccessToken: shopifyAccessToken || '' }
+      };
+
+      await axios.patch(
+        `${baseURL}/api/brands/update/${selectedBrandId}`,
+        payload,
+        { withCredentials: true }
+      );
+      
+   
+  
         // Clear form data from Redux after successful submission
         dispatch(clearBrandFormData());
         
         // Refresh the brands list to show the new brand
         await refreshBrands();
         
+        // Redirect to dashboard after successful brand setup
         navigate('/dashboard');
-      }
+      
 
       toast({ description: 'Brand setup completed successfully!', variant: "default" });
 
     } catch (error) {
       console.error(error);
-      toast({ description: 'Error creating brand. Please try again.', variant: "destructive" });
+      toast({ description: 'Error updating brand. Please try again.', variant: "destructive" });
     }
   };
 
@@ -264,13 +308,30 @@ export default function BrandSetup() {
             <Label htmlFor="brandName" className="text-sm font-medium text-gray-700">
               Brand Name
             </Label>
-            <Input
-              id="brandName"
-              placeholder="Enter your brand name"
-              value={brandName}
-              onChange={(e) => setBrandName(e.target.value)}
-              className="w-full"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="brandName"
+                placeholder="Enter your brand name"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                className="flex-1"
+                disabled={!!selectedBrandId}
+              />
+              {!selectedBrandId && (
+                <Button 
+                  onClick={handleCreateBrand}
+                  disabled={!canCreateBrand() || isCreatingBrand}
+                  className="px-6"
+                >
+                  {isCreatingBrand ? 'Creating...' : 'Create Brand'}
+                </Button>
+              )}
+            </div>
+            {selectedBrandId && (
+              <p className="text-sm text-green-600 font-medium">
+                ✓ Brand "{brandName}" created successfully! You can now connect platforms.
+              </p>
+            )}
           </div>
 
           {/* Platform Connections */}
@@ -285,13 +346,18 @@ export default function BrandSetup() {
                 >
                   <DialogTrigger asChild>
                     <button
-                      className={`relative group p-6 rounded-xl ${platform.color} ring-1 ${platform.ringColor} transition-all duration-200 hover:scale-[1.02] w-full text-left`}
+                      className={`relative group p-6 rounded-xl ${platform.color} ring-1 ${platform.ringColor} transition-all duration-200 hover:scale-[1.02] w-full text-left ${
+                        !selectedBrandId ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      disabled={!selectedBrandId}
                     >
                       <div className="flex items-start gap-4">
                         <platform.icon width="2rem" height="2rem" />
                         <div className="flex-1">
                           <h3 className={`font-semibold ${platform.textColor}`}>{platform.name}</h3>
-                          <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {!selectedBrandId ? 'Create a brand first to connect platforms' : platform.description}
+                          </p>
                         </div>
                         {isConnected(platform.name) ? (
                           <Check className="h-5 w-5 text-green-500" />
@@ -342,7 +408,7 @@ export default function BrandSetup() {
 
           {/* Submit Button */}
           <Button className="w-full" disabled={!canSubmit()} onClick={handleSubmit}>
-            Complete Setup
+            {!selectedBrandId ? 'Create Brand First' : 'Complete Setup'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

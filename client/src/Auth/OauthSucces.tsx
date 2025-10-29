@@ -119,11 +119,12 @@ const GoogleCallback = () => {
 
                         dispatch(setUser(user));
 
+                        // For Google/Normal login users, check if they have brands
                         if (!user.brands || user.brands.length === 0) {
-                            console.log('No brands found, redirecting to /first-time-brand-setup');
-                            navigate('/first-time-brand-setup');
+                            console.log('No brands found, redirecting to brand setup');
+                            navigate('/brand-setup');
                         } else {
-                            console.log('Brands found, redirecting to /dashboard');
+                            console.log('Brands found, redirecting to dashboard');
                             navigate('/dashboard');
                         }
                         return;
@@ -172,11 +173,13 @@ const GoogleCallback = () => {
                         dispatch(setBrands(brands));
                         dispatch(setSelectedBrandId(brands[0]._id));
                         await refreshBrands();  
+                        
+                        // For Shopify login users, check if they have brands
                         if (!user.brands || user.brands.length === 0) {
-                            console.log('No brands found, redirecting to /brand-setup');
+                            console.log('No brands found, redirecting to brand setup');
                             navigate('/brand-setup');
                         } else {
-                            console.log('Brands found, redirecting to /dashboard');
+                            console.log('Brands found, redirecting to dashboard');
                             navigate('/dashboard');
                         }
                         return;

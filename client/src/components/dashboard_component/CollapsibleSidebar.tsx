@@ -98,6 +98,7 @@ export default function CollapsibleSidebar() {
       if (response.status === 200) {
         dispatch(clearUser())
         dispatch(resetBrand())
+        console.log("Logged out redirected to home page")
         navigate("/")
         setIsInitialLoad(true)
       }

@@ -205,23 +205,20 @@ const CreativesLibrary: React.FC = () => {
     );
   }
 
-  if (initialLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader isLoading={true} />
-      </div>
-    );
-  }
-
+ 
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-    <div className="flex-1 h-screen overflow-auto mx-auto p-6 space-y-6">
-    
-
-    
 
 
+      <div className="flex-1 h-screen overflow-auto mx-auto p-6 space-y-6">
+
+      {initialLoading ? (
+      <div>
+        <Loader isLoading={true} />
+      </div>
+    ) : (
+      <>
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
@@ -339,8 +336,10 @@ const CreativesLibrary: React.FC = () => {
           </CardContent>
         </Card>
       )}
+      </>
+    )}
     </div>
-    </div>
+  </div>
   );
 };
 

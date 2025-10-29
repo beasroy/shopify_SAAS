@@ -237,8 +237,6 @@ export const updateBrands = async (req, res) => {
     }
 };
 
-
-
 export const filterBrands = async (req, res) => {
     try {
         const { brandIds } = req.body;

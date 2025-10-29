@@ -34,7 +34,7 @@ export default function PricingModal({ open, onOpenChange }: PricingModalProps) 
   const [loading, setLoading] = useState(true)
 
   const selectedBrand = brands.find((brand) => brand._id === selectedBrandId)
-  const shopifyStoreName = selectedBrand?.shopifyAccount?.shopName.replace(".myshopify.com", "") || ""
+  const shopifyStoreName = selectedBrand?.shopifyAccount?.shopName?.replace(".myshopify.com", "") || ""
   const handle = apphandle || "parallels"
 
   const brandId = useSelector((state:RootState)=>state.brand.selectedBrandId);

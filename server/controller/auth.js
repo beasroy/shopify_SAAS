@@ -2,9 +2,8 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
-import { LoginTicket, OAuth2Client } from 'google-auth-library';
+import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis'
-import crypto from 'crypto';
 import axios from 'axios';
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
@@ -435,10 +434,10 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
       if (!brandId) {
         return res.status(400).json({
           success: false,
-          message: "Brand ID is required for this token type.",
+          message: "Brand ID is required for this token type. Please create a brand first.",
         });
       }
-  
+
       // 🔎 Check ownership
       const ownsBrand = user.brands.includes(brandId);
       if (!ownsBrand) {
@@ -474,11 +473,11 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         update,
         { new: true }
       );
-  
+
       if (!updatedBrand) {
         return res.status(404).json({ success: false, message: "Brand not found" });
       }
-  
+
       return res.status(200).json({
         success: true,
         message: `${type} updated successfully for brand ${brandId}`,

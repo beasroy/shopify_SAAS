@@ -11,27 +11,22 @@ function ShopifyAuth() {
   useEffect(() => {
     async function handleShopifyRedirect() {
       try {
-        // Get all URL parameters
         const searchParams = new URLSearchParams(location.search);
         const params: Record<string, string> = {};
         
-        // Extract all parameters from the URL
         for (const [key, value] of searchParams.entries()) {
           params[key] = value;
         }
         
-        // Ensure we have the required shop parameter
         if (!params.shop) {
           setError('Shop parameter is missing');
           setLoading(false);
           return;
         }
 
-        // Send all parameters to the backend for validation and auth URL generation
         const response = await axios.post(`${baseURL}/api/auth/shopify`, params);
         
         if (response.data && response.data.success && response.data.authUrl) {
-          // Redirect the browser to Shopify's OAuth page
           window.location.href = response.data.authUrl;
         } else {
           setError('Failed to get authorization URL');
@@ -74,7 +69,7 @@ function ShopifyAuth() {
     </div>;
   }
 
-  return null; // This component should redirect before rendering
+  return null;
 }
 
 export default ShopifyAuth;

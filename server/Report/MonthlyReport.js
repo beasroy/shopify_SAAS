@@ -6,7 +6,6 @@ import axios from "axios";
 import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
 import moment from 'moment-timezone';
-import RefundCache from '../models/RefundCache.js';
 import { createRedisConnection } from '../config/redis.js';
 config();
 
@@ -43,7 +42,7 @@ function getRefundAmount(refund) {
     };
 }
 
-async function processOrderForDay(order, acc, storeTimezone, brandId) {
+async function processOrderForDay(order, acc, storeTimezone) {
     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
     
     // Only process orders that are in the target date range
@@ -53,6 +52,7 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
         const discountAmount = Number(order.total_discounts || 0);
         let grossSales = 0;
         let totalTaxes = 0;
+        let refundAmount = 0;
         
         // Check if this order has refunds
         const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
@@ -75,47 +75,26 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
         } else {
             grossSales = subtotalPrice + discountAmount;
         }
+        
+        // Calculate refund amount directly from order refunds and apply to order date
+        if (hasRefunds) {
+            for (const refund of order.refunds) {
+                const { totalReturn } = getRefundAmount(refund);
+                refundAmount += totalReturn;
+            }
+            console.log(`Order ${order.id} has refunds - deducting ${refundAmount} from ${orderDate}`);
+        }
+        
         acc[orderDate].grossSales += grossSales;
         acc[orderDate].totalTaxes += totalTaxes;
         acc[orderDate].discountAmount += discountAmount;
         acc[orderDate].subtotalPrice += subtotalPrice;
         acc[orderDate].totalPrice += totalPrice;
+        acc[orderDate].refundAmount += refundAmount;
         acc[orderDate][order.cancelled_at ? 'cancelledOrderCount' : 'orderCount']++;
         
         if (hasRefunds) {
             console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
-        }
-    }
-    
-    // Cache refunds for this order if they exist (synchronously)
-    if (order.refunds && Array.isArray(order.refunds)) {
-        for (const refund of order.refunds) {
-            try {
-                // Check if refund already exists in cache
-                const existingRefund = await RefundCache.findOne({ 
-                    refundId: refund.id,
-                    brandId: brandId 
-                });
-                
-                if (!existingRefund) {
-                    const { totalReturn } = getRefundAmount(refund);
-                    
-                    const refundCache = new RefundCache({
-                        refundId: refund.id,
-                        orderId: order.id,
-                        refundCreatedAt: new Date(refund.created_at),
-                        orderCreatedAt: new Date(order.created_at),
-                        totalReturn: totalReturn,
-                        rawData: JSON.stringify(refund),
-                        brandId: brandId
-                    });
-                    
-                    await refundCache.save();
-                    console.log(`Cached refund ${refund.id} for order ${order.id}`);
-                }
-            } catch (error) {
-                console.error(`Error caching refund ${refund.id}:`, error);
-            }
         }
     }
 }
@@ -265,13 +244,10 @@ async function fetchAllOrdersChunked(shopify, extendedStartDate, originalEndDate
 }
 
 
-export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refundOnlyStartDate = null) => {
+export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
     try {
         console.log('Fetching orders...');
         console.log('Date range:', { startDate, endDate });
-        if (refundOnlyStartDate) {
-            console.log('Refund-only period:', { refundOnlyStartDate, startDate });
-        }
         
         const brand = await Brand.findById(brandId);
         if (!brand) throw new Error('Brand not found.');
@@ -335,32 +311,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         const originalStartDate = moment.tz(startDate, storeTimezone);
         const originalEndDate = moment.tz(endDate, storeTimezone);
         
-        // Determine the actual fetch start date (for refund caching)
-        const fetchStartDate = refundOnlyStartDate ? moment.tz(refundOnlyStartDate, storeTimezone) : originalStartDate;
-        
-    
-        
-        // Check if refunds are already cached for the extended period
-        let needToFetchOrders = true;
-        if (refundOnlyStartDate) {
-            const existingRefunds = await RefundCache.countDocuments({
-                brandId: brandId,
-                refundCreatedAt: {
-                    $gte: new Date(refundOnlyStartDate),
-                    $lte: new Date(endDate)
-                }
-            });
-            
-            console.log(`Found ${existingRefunds} existing refunds in cache for extended period`);
-            
-            // If we have a reasonable number of refunds cached, skip fetching orders
-            if (existingRefunds > 0) {
-                console.log('Refunds already cached, skipping order fetching for extended period');
-                needToFetchOrders = false;
-            }
-        }
-        
-        // Initialize daily sales map for target date range only
+        // Initialize daily sales map for target date range
         const dailySalesMap = {};
         let currentDay = originalStartDate.clone().startOf('day');
         const endMoment = originalEndDate.clone().endOf('day');
@@ -380,80 +331,38 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
             currentDay.add(1, 'day');
         }
         
-        let orders = [];
+        // Test order check (optimized)
+        const isTestOrder = (order) => order.test;
         
-        if (needToFetchOrders) {
-            // Test order check (optimized)
-            const isTestOrder = (order) => order.test;
-            
-            console.log('🔄 Starting to fetch orders from Shopify...');
-            
-            // Fetch all orders from extended date range (for refund caching)
-            try {
-                orders = await fetchAllOrdersChunked(shopify, fetchStartDate, originalEndDate, storeTimezone, isTestOrder);
-                console.log('✅ Orders fetched successfully:', orders.length);
-            } catch (ordersError) {
-                console.error('❌ Error fetching orders:', {
-                    error: ordersError.message,
-                    code: ordersError.code,
-                    statusCode: ordersError.statusCode
-                });
-                throw new Error(`Failed to fetch orders from Shopify: ${ordersError.message}`);
-            }
-            
-            console.log('Total orders fetched:', orders.length);
-            console.log('Test orders filtered out:', orders.filter(order => order.test).length);
-            
-            // Process orders for sales data and cache refunds
-            let totalRefundsCached = 0;
-            for (const order of orders) {
-                await processOrderForDay(order, dailySalesMap, storeTimezone, brandId);
-                if (order.refunds && order.refunds.length > 0) {
-                    totalRefundsCached += order.refunds.length;
-                }
-            }
-            
-            console.log(`Total refunds processed during order processing: ${totalRefundsCached}`);
-        } else {
-            // Only fetch orders for the target date range since refunds are already cached
-            const isTestOrder = (order) => order.test;
-            
-            console.log('🔄 Fetching orders for target date range only...');
-            
-            try {
-                orders = await fetchAllOrdersChunked(shopify, originalStartDate, originalEndDate, storeTimezone, isTestOrder);
-                console.log('✅ Orders fetched successfully for target range:', orders.length);
-            } catch (ordersError) {
-                console.error('❌ Error fetching orders for target range:', {
-                    error: ordersError.message,
-                    code: ordersError.code,
-                    statusCode: ordersError.statusCode
-                });
-                throw new Error(`Failed to fetch orders for target range: ${ordersError.message}`);
-            }
-            
-            console.log('Total orders fetched (target range only):', orders.length);
-            console.log('Test orders filtered out:', orders.filter(order => order.test).length);
-            
-            // Process orders for sales data only (refunds already cached)
-            for (const order of orders) {
-                await processOrderForDay(order, dailySalesMap, storeTimezone, brandId);
+        console.log('🔄 Starting to fetch orders from Shopify...');
+        
+        // Fetch all orders from the target date range
+        let orders = [];
+        try {
+            orders = await fetchAllOrdersChunked(shopify, originalStartDate, originalEndDate, storeTimezone, isTestOrder);
+            console.log('✅ Orders fetched successfully:', orders.length);
+        } catch (ordersError) {
+            console.error('❌ Error fetching orders:', {
+                error: ordersError.message,
+                code: ordersError.code,
+                statusCode: ordersError.statusCode
+            });
+            throw new Error(`Failed to fetch orders from Shopify: ${ordersError.message}`);
+        }
+        
+        console.log('Total orders fetched:', orders.length);
+        console.log('Test orders filtered out:', orders.filter(order => order.test).length);
+        
+        // Process orders for sales data and refunds (refunds are applied to order creation date)
+        let totalRefundsProcessed = 0;
+        for (const order of orders) {
+            await processOrderForDay(order, dailySalesMap, storeTimezone);
+            if (order.refunds && order.refunds.length > 0) {
+                totalRefundsProcessed += order.refunds.length;
             }
         }
         
-        // Fetch refund amounts from cache for the target date range
-        const refundAmountsFromCache = await getRefundAmountsFromCache(brandId, originalStartDate.format('YYYY-MM-DD'), originalEndDate.format('YYYY-MM-DD'));
-        
-        console.log(`Refunds found in cache for target range: ${Object.keys(refundAmountsFromCache).length} dates`);
-        
-        // Apply refund amounts from cache to daily sales data
-        Object.keys(refundAmountsFromCache).forEach(date => {
-            if (dailySalesMap[date]) {
-                const refundData = refundAmountsFromCache[date];
-                dailySalesMap[date].refundAmount = refundData.totalReturn;
-                console.log(`Applied refunds for ${date}: totalReturn=${refundData.totalReturn}`);
-            }
-        });
+        console.log(`Total refunds processed: ${totalRefundsProcessed}`);
         
         // Log summary of data processing
         const ordersInRange = orders.filter(order => {
@@ -463,17 +372,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate, refund
         
         console.log(`Orders in target range: ${ordersInRange}/${orders.length}`);
         
-    
-        
-        // Apply refund amounts to daily sales map
-        Object.keys(refundAmountsFromCache).forEach(date => {
-            if (dailySalesMap[date]) {
-                dailySalesMap[date].refundAmount = refundAmountsFromCache[date].totalReturn;
-                console.log(`Applied refunds for ${date}: totalReturn=${refundAmountsFromCache[date].totalReturn}`);
-            }
-        });
-        
-        console.log(`Refunds found in cache for target range: ${Object.keys(refundAmountsFromCache).length} dates`);        return Object.values(dailySalesMap).map(day => {
+        return Object.values(dailySalesMap).map(day => {
             const grossSales = Number(day.grossSales);
             const discountAmount = Number(day.discountAmount);
             const refundAmount = Number(day.refundAmount);
@@ -837,7 +736,7 @@ export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
     }
 };
 
-export const monthlyAddReportData = async (brandId, startDate, endDate, refundOnlyStartDate = null) => {
+export const monthlyAddReportData = async (brandId, startDate, endDate) => {
     try {
         if (!brandId || !startDate || !endDate) {
             throw new Error('Missing required parameters');
@@ -852,9 +751,6 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, refundOn
         }
 
         console.log(`Processing range: ${currentStart.format('YYYY-MM-DD')} to ${finalEnd.format('YYYY-MM-DD')}`);
-        if (refundOnlyStartDate) {
-            console.log(`Extended refund caching from: ${refundOnlyStartDate}`);
-        }
 
         // Create chunks of 4 months
         const chunks = [];
@@ -883,7 +779,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate, refundOn
                                 console.error('Error fetching FB data:', err);
                                 return { data: [] };
                             }),
-                        monthlyFetchTotalSales(brandId, chunk.start, chunk.end, refundOnlyStartDate)
+                        monthlyFetchTotalSales(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching Shopify data:', err);
                                 return [];
@@ -1154,13 +1050,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         startDate.setDate(1); // Set to first day of the month
         startDate.setHours(0, 0, 0, 0);
 
-        // Calculate 6 months prior to start date for refund caching
-        const refundOnlyStartDate = new Date(startDate);
-        refundOnlyStartDate.setMonth(refundOnlyStartDate.getMonth() - 6);
-        refundOnlyStartDate.setHours(0, 0, 0, 0);
-
         console.log(`Date range for ad metrics: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-        console.log(`Extended refund caching from: ${refundOnlyStartDate.toISOString()}`);
         console.log(`Calculating metrics from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
 
         // Check if brand exists
@@ -1184,10 +1074,10 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
             return result;
         }
 
-        console.log('Starting monthlyAddReportData with extended refund caching...');
+        console.log('Starting monthlyAddReportData...');
         
-        // Use the extended date range for refund caching but only create metrics for the target range
-        const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
+        // Calculate metrics for the date range
+        const result = await monthlyAddReportData(brandId, startDate, endDate);
         console.log('monthlyAddReportData result:', result);
 
         if (result.success) {
@@ -1262,18 +1152,8 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
         startDate.setFullYear(startDate.getFullYear() - 2);
         startDate.setHours(0, 0, 0, 0);
 
-        // Calculate 6 months prior to start date for refund caching (only if new store)
-        const refundOnlyStartDate = newStore ? new Date(startDate) : null;
-        if (refundOnlyStartDate) {
-            refundOnlyStartDate.setMonth(refundOnlyStartDate.getMonth() - 6);
-            refundOnlyStartDate.setHours(0, 0, 0, 0);
-        }
-
         console.log(`Brand creation date: ${brandCreatedAt.toISOString()}`);
         console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-        if (newStore) {
-            console.log(`Extended refund caching from: ${refundOnlyStartDate.toISOString()}`);
-        }
 
         // CASE 1: New Store - Only update Shopify data
         if (newStore) {
@@ -1291,7 +1171,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             if (existingMetrics.length === 0) {
                 console.log('No existing metrics found for new store. Triggering full calculation...');
                 // If no existing metrics, trigger full calculation
-                const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
+                const result = await monthlyAddReportData(brandId, startDate, endDate);
                 
                 if (result.success) {
                     console.log(`Full metrics calculation completed for brand ${brandId} with new store`);
@@ -1318,7 +1198,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
 
             // Fetch new Shopify sales data
             console.log('Fetching Shopify sales data for new store...');
-            const shopifySalesData = await monthlyFetchTotalSales(brandId, startDate, endDate, refundOnlyStartDate);
+            const shopifySalesData = await monthlyFetchTotalSales(brandId, startDate, endDate);
             
             if (!shopifySalesData || shopifySalesData.length === 0) {
                 console.log('No Shopify sales data returned, skipping update');
@@ -1417,7 +1297,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             if (existingMetrics.length === 0) {
                 console.log('No existing metrics found for new ad accounts. Triggering full calculation...');
                 // If no existing metrics, trigger full calculation
-                const result = await monthlyAddReportData(brandId, startDate, endDate, refundOnlyStartDate);
+                const result = await monthlyAddReportData(brandId, startDate, endDate);
                 
                 if (result.success) {
                     console.log(`Full metrics calculation completed for brand ${brandId} with new ad accounts`);
@@ -1583,38 +1463,6 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
     }
 };
 
-// Function to get refund amounts from cache for a specific date range
-const getRefundAmountsFromCache = async (brandId, startDate, endDate) => {
-    try {
-        console.log(`Fetching refunds from cache for brand ${brandId} from ${startDate} to ${endDate}`);
-        
-        const refunds = await RefundCache.find({
-            brandId: brandId,
-            refundCreatedAt: {
-                $gte: moment(startDate).startOf('day').utc().toDate(),
-                $lte: moment(endDate).endOf('day').utc().toDate()
-            }
-        });        console.log(`Found ${refunds.length} refunds in cache for the date range`);
-        
-        const result = refunds.reduce((acc, refund) => {
-            const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
-            if (!acc[refundDate]) {
-                acc[refundDate] = {
-                    totalReturn: 0
-                };
-            }
-            acc[refundDate].totalReturn += refund.totalReturn || 0;
-            console.log(`Processing refund ${refund.refundId} for date ${refundDate}: totalReturn=${refund.totalReturn}`);
-            return acc;
-        }, {});
-        
-        console.log(`Processed refunds for ${Object.keys(result).length} unique dates`);
-        return result;
-    } catch (error) {
-        console.error('Error fetching refund amounts from cache:', error);
-        return {};
-    }
-};
 
 
 

@@ -14,265 +14,123 @@ config();
 
 // Helper function to calculate refund amounts (same as MonthlyReport.js)
 function getRefundAmount(refund) {
-    // Product-only refund (for net sales)
-    const productReturn = refund?.refund_line_items
-        ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
-        : 0;
+  // Product-only refund (for net sales)
+  const productReturn = refund?.refund_line_items
+    ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+    : 0;
 
-    // Total return (product + adjustments, for total returns)
-    let adjustmentsTotal = 0;
-    if (refund?.order_adjustments) {
-        adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
-    }
-    const totalReturn = productReturn - adjustmentsTotal;
+  // Total return (product + adjustments, for total returns)
+  let adjustmentsTotal = 0;
+  if (refund?.order_adjustments) {
+    adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+  }
+  const totalReturn = productReturn - adjustmentsTotal;
 
-    return {
-        totalReturn    // for total returns
-    };
+  return {
+    totalReturn    // for total returns
+  };
 }
 
 export const fetchTotalSales = async (brandId) => {
   try {
     console.log('Fetching yesterday\'s orders...');
-
     const brand = await Brand.findById(brandId);
-    if (!brand) {
-      throw new Error('Brand not found.');
-    }
-
+    if (!brand) throw new Error('Brand not found.');
     const access_token = brand.shopifyAccount?.shopifyAccessToken;
-    if (!access_token) {
-      throw new Error('Access token is missing or invalid.');
-    }
-
+    if (!access_token) throw new Error('Access token is missing or invalid.');
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) throw new Error('Shop name is missing or invalid.');
     const shopify = new Shopify({
-      shopName: brand.shopifyAccount?.shopName,
+      shopName: shopName,
       accessToken: access_token,
-      apiVersion: '2023-07'
+      apiVersion: '2023-07',
     });
-
-    // Get store timezone from Shopify shop data
+    // Get store timezone
     const shopData = await shopify.shop.get();
     const storeTimezone = shopData.iana_timezone || 'UTC';
-
-    // Calculate yesterday's start and end in store's timezone
+    // Calculate yesterday range in store's timezone
     const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
-
-
-    // Initialize yesterday's data structure
+    // Prepare sales map for yesterday
+    const dateStr = yesterday.format('YYYY-MM-DD');
     const yesterdaySales = {
-      date: yesterday.format('YYYY-MM-DD'),
+      date: dateStr,
       grossSales: 0,
-      subtotalPrice: 0,
-      totalPrice: 0,
       refundAmount: 0,
-      discountAmount: 0,
-      totalTaxes: 0,
       orderCount: 0,
-      cancelledOrderCount: 0
     };
-
-    // Process orders for yesterday only
-    const processOrdersForTimeRange = async (startTime, endTime) => {
-      let pageInfo = null;
-      let retryCount = 0;
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY = 5000;
-
-      do {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const params = {
-            status: 'any',
-            created_at_min: startTime,
-            created_at_max: endTime,
-            limit: 250
-          };
-          if (pageInfo) {
-            params.page_info = pageInfo;
-          }
-          const response = await shopify.order.list(params);
-          if (!response || !Array.isArray(response)) {
-            console.warn('Unexpected response format:', response);
-            break;
-          }
-          const validOrders = response.filter(order => !order.test);
-          console.log(`Fetched ${validOrders.length} valid orders (${response.length - validOrders.length} test orders skipped)`);
-          
-          // Process refunds for each order
-          for (const order of validOrders) {
-            if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
-              for (const refund of order.refunds) {
-                try {
-                  // Check if refund already exists in cache
-                  const existingRefund = await RefundCache.findOne({ 
-                    refundId: refund.id,
-                    brandId: brandId ,
-                 
-                  });
-                  
-                  if (!existingRefund) {
-                    // Use the helper function to calculate refund amounts
-                    const { totalReturn } = getRefundAmount(refund);
-                    
-                    const refundCache = new RefundCache({
-                      refundId: refund.id,
-                      orderId: order.id,
-                      refundCreatedAt: new Date(refund.created_at),
-                      orderCreatedAt: new Date(order.created_at),
-                      totalReturn: totalReturn,
-                      rawData: JSON.stringify(refund),
-                      brandId: brandId
-                    });
-                    
-                    await refundCache.save();
-                    console.log(`Cached refund ${refund.id} for order ${order.id}`);
-                  }
-                } catch (error) {
-                  console.error(`Error caching refund ${refund.id}:`, error);
-                }
-              }
+    // Shopify order fetch & pagination
+    let pageInfo = null;
+    do {
+      const params = {
+        status: 'any',
+        created_at_min: startOfYesterday.toISOString(),
+        created_at_max: endOfYesterday.toISOString(),
+        limit: 250,
+      };
+      if (pageInfo) params.page_info = pageInfo;
+      const response = await shopify.order.list(params);
+      if (!response || !Array.isArray(response) || response.length === 0) break;
+      for (const order of response) {
+        let grossSales = 0;
+        let totalTaxes = 0;
+        let subtotalPrice = Number(order.subtotal_price || 0);
+        let discountAmount = Number(order.total_discounts || 0);
+        let refundAmount = 0;
+        const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
+        if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+          grossSales = order.line_items.reduce((sum, item) => {
+            const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
+            const unitTotal = unitPrice * Number(item.quantity);
+            let taxTotal = 0;
+            if (!hasRefunds && item.tax_lines && Array.isArray(item.tax_lines)) {
+              taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
             }
-          }
-          
-          for (const order of validOrders) {
-            const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-            if (orderDate === yesterday.format('YYYY-MM-DD')) {
-                const totalPrice = Number(order.total_price || 0);
-                const subtotalPrice = Number(order.subtotal_price || 0);
-                const discountAmount = Number(order.total_discounts || 0);
-                let grossSales = 0;
-                let totalTaxes = 0;
-                
-                // Check if this order has refunds
-                const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
-                
-                if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
-                  grossSales = order.line_items.reduce((sum, item) => {
-                    const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
-                    const unitTotal = unitPrice * Number(item.quantity);
-                    let taxTotal = 0;
-                    
-                    // Only include taxes if the order has no refunds
-                    if (!hasRefunds && item.tax_lines && Array.isArray(item.tax_lines)) {
-                      taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
-                    }
-                    
-                    totalTaxes += taxTotal;
-                    const netItemTotal = unitTotal - taxTotal;
-                    return sum + netItemTotal;
-                  }, 0);
-                } else {
-                  grossSales = subtotalPrice + discountAmount;
-                }
-                
-                yesterdaySales.grossSales += grossSales;
-                yesterdaySales.totalPrice += totalPrice;
-                yesterdaySales.discountAmount += discountAmount;
-                yesterdaySales.orderCount += 1;
-                yesterdaySales.totalTaxes += totalTaxes;
-                yesterdaySales.subtotalPrice += subtotalPrice;
-           
-                if (order.cancelled_at || order.cancel_reason) {
-                  yesterdaySales.cancelledOrderCount += 1;
-                }
-                
-                if (hasRefunds) {
-                  console.log(`Order ${order.id} has refunds - excluded taxes from calculation`);
-                }
-              
-            }
-          }
-          const linkHeader = response.headers?.link;
-          if (linkHeader) {
-            const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
-            pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
-          } else {
-            pageInfo = null;
-          }
-          retryCount = 0;
-        } catch (error) {
-          console.error('Error fetching orders:', error);
-          if (error.statusCode === 429) {
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            continue;
-          }
-          if (error.statusCode === 400 && pageInfo) {
-            console.log('Bad request with page_info, restarting chunk');
-            pageInfo = null;
-            retryCount++;
-            if (retryCount >= MAX_RETRIES) {
-              console.error('Max retries reached for time range');
-              break;
-            }
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            continue;
-          }
-          throw error;
+            totalTaxes += taxTotal;
+            const netItemTotal = unitTotal - taxTotal;
+            return sum + netItemTotal;
+          }, 0);
+        } else {
+          grossSales = subtotalPrice + discountAmount;
         }
-      } while (pageInfo);
-    };
-
-    // Process orders for yesterday
-    await processOrdersForTimeRange(startOfYesterday.toISOString(), endOfYesterday.toISOString());
-
-    // Get refund amounts from cache for yesterday
-    const refundCacheData = await RefundCache.find({
-      brandId: brandId,
-      refundCreatedAt: {
-        $gte: startOfYesterday.toDate(),
-        $lte: endOfYesterday.toDate()
+        if (hasRefunds) {
+          for (const refund of order.refunds) {
+            const productReturn = refund?.refund_line_items
+              ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+              : 0;
+            let adjustmentsTotal = 0;
+            if (refund?.order_adjustments) {
+              adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+            }
+            const totalReturn = productReturn - adjustmentsTotal;
+            refundAmount += totalReturn;
+          }
+        }
+        yesterdaySales.grossSales += grossSales;
+        yesterdaySales.refundAmount += refundAmount;
+        yesterdaySales.orderCount++;
       }
-    });
-
-    console.log(`Found ${refundCacheData.length} refunds in cache for yesterday`);
-
-    // Calculate refund amounts from cache (same logic as MonthlyReport.js)
-    const refundAmountsFromCache = refundCacheData.reduce((acc, refund) => {
-      const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
-      if (!acc[refundDate]) {
-        acc[refundDate] = {
-          totalReturn: 0
-        };
+      // Shopify pagination
+      const linkHeader = response.headers?.link;
+      if (linkHeader) {
+        const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
+        pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
+      } else {
+        pageInfo = null;
       }
-      acc[refundDate].totalReturn += refund.totalReturn || 0;
-      return acc;
-    }, {});
-
-    // Apply refund amounts to yesterday's sales
-    const yesterdayDate = yesterday.format('YYYY-MM-DD');
-    if (refundAmountsFromCache[yesterdayDate]) {
-      const refundData = refundAmountsFromCache[yesterdayDate];
-      yesterdaySales.refundAmount = refundData.totalReturn;
-      console.log(`Applied refunds for ${yesterdayDate}: totalReturn=${refundData.totalReturn}`);
-    } else {
-      yesterdaySales.refundAmount = 0;
-      console.log(`No refunds found in cache for ${yesterdayDate}`);
-    }
-
-    // Calculate final amounts
-    const dailySales = [{
-      date: yesterdaySales.date,
-      grossSales: Number(yesterdaySales.grossSales.toFixed(2)),
-      totalSales: Number((yesterdaySales.totalPrice - yesterdaySales.refundAmount).toFixed(2)),
-      subtotalSales: Number(yesterdaySales.subtotalPrice.toFixed(2)),
-      refundAmount: Number(yesterdaySales.refundAmount.toFixed(2)),
-      discountAmount: Number(yesterdaySales.discountAmount.toFixed(2)),
-      totalTaxes: Number(yesterdaySales.totalTaxes.toFixed(2)),
+    } while (pageInfo);
+    // Return array for compatibility
+    return [{
+      grossSales: yesterdaySales.grossSales,
+      totalSales: yesterdaySales.grossSales - yesterdaySales.refundAmount,
+      refundAmount: yesterdaySales.refundAmount,
       orderCount: yesterdaySales.orderCount,
-      cancelledOrderCount: yesterdaySales.cancelledOrderCount
+      date: yesterdaySales.date,
     }];
-
-    console.log('Yesterday\'s sales summary:', dailySales[0]);
-    console.log('Total Price', yesterdaySales.totalPrice)
-    console.log(`Refund cache entries for yesterday: ${refundCacheData.length}`);
-
-    return dailySales;
   } catch (error) {
     console.error('Error in fetchTotalSales:', error);
-    throw new Error(`Failed to fetch total sales: ${error.message}`);
+    throw error;
   }
 };
 
@@ -401,15 +259,15 @@ export const getGoogleAdData = async (brandId) => {
     }
 
     // Check if brand has Google Ad accounts
-    if (!brand.googleAdAccount ||  brand.googleAdAccount.length === 0) {
+    if (!brand.googleAdAccount || brand.googleAdAccount.length === 0) {
       return {
         success: false,
-        message: 'No Google Ads accounts found for this brand.',    
+        message: 'No Google Ads accounts found for this brand.',
         data: [],
       };
     }
 
-  
+
 
     const startDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
     const endDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
@@ -422,7 +280,7 @@ export const getGoogleAdData = async (brandId) => {
     for (const adAccount of brand.googleAdAccount) {
       const adAccountId = adAccount.clientId;
       const managerId = adAccount.managerId;
-      
+
       try {
         const customer = client.Customer({
           customer_id: adAccountId,
@@ -499,7 +357,7 @@ export const getGoogleAdData = async (brandId) => {
       }
     };
 
-  
+
     return {
       success: true,
       data: result,
@@ -546,7 +404,7 @@ export const addReportData = async (brandId) => {
     }
 
     // Destructure the sales data - using direct array access since we expect one day of data
-    const { totalSales, refundAmount} = salesData[0];
+    const { grossSales, totalSales, refundAmount } = salesData[0];
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
@@ -558,7 +416,7 @@ export const addReportData = async (brandId) => {
     const googleSales = parseFloat(googleData.googleSales) || 0;
     const adSales = metaSales + googleSales; // Total sales from ads
     const grossROI = totalSpend > 0 ? adSales / totalSpend : 0;
-  
+
 
 
     const metricsEntry = new AdMetrics({
@@ -656,7 +514,7 @@ export const calculateMetricsForAllBrands = async () => {
       details: settledResults
     };
 
- 
+
   } catch (error) {
     logger.error('Error processing metrics for all brands:', error);
     return {

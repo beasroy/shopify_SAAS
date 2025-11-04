@@ -1,7 +1,6 @@
 import AdMetrics from "../models/AdMetrics.js";
 import mongoose from "mongoose";
-import RefundCache from '../models/RefundCache.js';
-import moment from 'moment-timezone';
+
 
 export const getMetricsbyID = async (req, res) => {
     const { brandId } = req.params;
@@ -110,95 +109,7 @@ export const getMetricsbyID = async (req, res) => {
 };
 
 
-export const checkRefundCache = async (req, res) => {
-    try {
-        const { brandId } = req.params;
-        const { refundDate} = req.body;
-
-        if (!brandId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Brand ID is required'
-            });
-        }
-
-        let query = { brandId };
-
-        // If specific refund date is provided
-        if (refundDate) {
-            const startOfDay = moment(refundDate).startOf('day').toDate();
-            const endOfDay = moment(refundDate).endOf('day').toDate();
-            query.refundCreatedAt = {
-                $gte: startOfDay,
-                $lte: endOfDay
-            };
-        }
-     
-
-        const refunds = await RefundCache.find(query).sort({ refundCreatedAt: -1 });
-
-        // Group refunds by date for easier analysis
-        const refundsByDate = refunds.reduce((acc, refund) => {
-            const refundDate = moment(refund.refundCreatedAt).format('YYYY-MM-DD');
-            
-            if (!acc[refundDate]) {
-                acc[refundDate] = {
-                    refundDate,
-                   
-                    totalRefundAmount: 0,
-                    refundCount: 0,
-                    refunds: []
-                };
-            }
-            
-           
-            acc[refundDate].totalRefundAmount += refund.totalReturn || 0;
-            acc[refundDate].refundCount += 1;
-            acc[refundDate].refunds.push({
-                refundId: refund.refundId,
-                orderId: refund.orderId,
-               
-                totalReturn: refund.totalReturn,
-                refundCreatedAt: refund.refundCreatedAt,
-                orderCreatedAt: refund.orderCreatedAt
-            });
-            
-            return acc;
-        }, {});
-
-        // Calculate summary statistics
-        const totalRefunds = refunds.length;
-       
-        const totalRefundAmount = refunds.reduce((sum, refund) => sum + (refund.totalReturn || 0), 0);
-
-        res.json({
-            success: true,
-            data: {
-                summary: {
-                    totalRefunds,
-                    totalRefundAmount,
-                    dateRange: refundDate || 'All dates'
-                },
-                refundsByDate: Object.values(refundsByDate),
-                rawRefunds: refunds.map(refund => ({
-                    refundId: refund.refundId,
-                    orderId: refund.orderId,
-                    totalReturn: refund.totalReturn,
-                    refundCreatedAt: refund.refundCreatedAt,
-                    orderCreatedAt: refund.orderCreatedAt
-                }))
-            }
-        });
-
-    } catch (error) {
-        console.error('Error checking refund cache:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error checking refund cache',
-            error: error.message
-        });
-    }
-}; 
+ 
 
 
 

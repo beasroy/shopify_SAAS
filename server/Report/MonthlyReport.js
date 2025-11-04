@@ -7,6 +7,7 @@ import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
 import moment from 'moment-timezone';
 import { createRedisConnection } from '../config/redis.js';
+import { ensureOrderRefundExists, updateOrderRefund, getRefundsForDateRange } from '../utils/refundHelpers.js';
 config();
 
 // Redis publisher for notifications
@@ -42,7 +43,7 @@ function getRefundAmount(refund) {
     };
 }
 
-async function processOrderForDay(order, acc, storeTimezone) {
+async function processOrderForDay(order, acc, storeTimezone, brandId) {
     const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
     
     // Only process orders that are in the target date range
@@ -83,6 +84,20 @@ async function processOrderForDay(order, acc, storeTimezone) {
                 refundAmount += totalReturn;
             }
             console.log(`Order ${order.id} has refunds - deducting ${refundAmount} from ${orderDate}`);
+        }
+        
+
+        if (brandId) {
+            try {
+                // First ensure the order entry exists (with or without refunds)
+                await ensureOrderRefundExists(brandId, order.id, order.created_at);
+                // If there are refunds, update the refund amount
+                if (refundAmount > 0) {
+                    await updateOrderRefund(brandId, order.id, refundAmount);
+                }
+            } catch (error) {
+                console.error(`Error storing order refund info for order ${order.id}:`, error);
+            }
         }
         
         acc[orderDate].grossSales += grossSales;
@@ -356,7 +371,7 @@ export const monthlyFetchTotalSales = async (brandId, startDate, endDate) => {
         // Process orders for sales data and refunds (refunds are applied to order creation date)
         let totalRefundsProcessed = 0;
         for (const order of orders) {
-            await processOrderForDay(order, dailySalesMap, storeTimezone);
+            await processOrderForDay(order, dailySalesMap, storeTimezone, brandId);
             if (order.refunds && order.refunds.length > 0) {
                 totalRefundsProcessed += order.refunds.length;
             }
@@ -742,6 +757,12 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
             throw new Error('Missing required parameters');
         }
 
+        // Fetch brand to get timezone and other settings
+        const brand = await Brand.findById(brandId);
+        if (!brand) {
+            throw new Error('Brand not found');
+        }
+
         const currentStart = moment(startDate);
         const finalEnd = moment(endDate);
 
@@ -798,15 +819,37 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
 
                     // Create lookup maps for faster data access
                     const metricsByDate = new Map();
+                    
+                    // Get refunds from OrderRefund model for this date range
+                    const storeTimezone = brand.shopifyAccount?.timezone || 'UTC';
+                    const refundsFromModel = await getRefundsForDateRange(brandId, chunk.start, chunk.end, storeTimezone);
+                    
                     const shopifySalesMap = new Map(
-                        shopifyData.map(sale => [
-                            sale.date,
-                            {
-                                totalSales: parseFloat(sale.totalSales) || 0,
-                                refundAmount: parseFloat(sale.refundAmount) || 0,
-                            }
-                        ])
+                        shopifyData.map(sale => {
+                            const date = sale.date;
+                            // Get refund amount from OrderRefund model (includes both historical refunds and webhook refunds)
+                            // Note: Don't use sale.refundAmount as it's already stored in OrderRefund model
+                            const refundAmount = refundsFromModel.get(date) || 0;
+                            
+                            return [
+                                date,
+                                {
+                                    totalSales: parseFloat(sale.totalSales) || 0,
+                                    refundAmount: refundAmount,
+                                }
+                            ];
+                        })
                     );
+                    
+                    // Also add refunds for dates that might not be in shopifyData but have webhook refunds
+                    refundsFromModel.forEach((refundAmount, date) => {
+                        if (!shopifySalesMap.has(date)) {
+                            shopifySalesMap.set(date, {
+                                totalSales: 0,
+                                refundAmount: refundAmount,
+                            });
+                        }
+                    });
 
                     // Initialize metricsByDate with Shopify data
                     shopifySalesMap.forEach((value, date) => {
@@ -1205,12 +1248,19 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                 return { success: true, message: 'No Shopify sales data to update' };
             }
 
+            // Get refunds from OrderRefund model (includes both historical refunds and webhook refunds)
+            const storeTimezone = brand.shopifyAccount?.timezone || 'UTC';
+            const refundsFromModel = await getRefundsForDateRange(brandId, startDate, endDate, storeTimezone);
+
             // Create a map of Shopify data by date for easy lookup
             const shopifyDataMap = new Map();
             shopifySalesData.forEach(sale => {
+                // Use refunds from OrderRefund model (single source of truth)
+                // Don't use sale.refundAmount as it's already stored in OrderRefund model
+                const refundAmount = refundsFromModel.get(sale.date) || 0;
                 shopifyDataMap.set(sale.date, {
                     totalSales: parseFloat(sale.totalSales) || 0,
-                    refundAmount: parseFloat(sale.refundAmount) || 0
+                    refundAmount: refundAmount
                 });
             });
 
@@ -1505,4 +1555,81 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
 // }
 
 
+export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
+    try {
+        if (!brandId || !startDate || !endDate) {
+            throw new Error('Missing required parameters: brandId, startDate, and endDate are required');
+        }
+
+        // Validate date formats
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            throw new Error('Invalid date format. Please use YYYY-MM-DD format');
+        }
+
+        console.log(`Calculating Monthly AOV for brand ${brandId} from ${startDate} to ${endDate}`);
+
+        // Fetch daily sales data (uses same calculation as monthly report)
+        const dailySalesData = await monthlyFetchTotalSales(brandId, startDate, endDate);
+
+        if (!Array.isArray(dailySalesData) || dailySalesData.length === 0) {
+            return [];
+        }
+
+        // Group daily data by month and aggregate
+        const monthlyData = new Map();
+
+        for (const day of dailySalesData) {
+            // Extract month from date (YYYY-MM-DD -> YYYY-MM)
+            const monthKey = day.date.substring(0, 7); // 'YYYY-MM'
+
+            if (!monthlyData.has(monthKey)) {
+                monthlyData.set(monthKey, {
+                    month: monthKey,
+                    totalRevenue: 0,
+                    orderCount: 0
+                });
+            }
+
+            const monthData = monthlyData.get(monthKey);
+            // totalSales is already calculated as (totalPrice - refundAmount) in monthlyFetchTotalSales
+            monthData.totalRevenue += Number(day.totalSales) || 0;
+            monthData.orderCount += Number(day.orderCount) || 0;
+        }
+
+        // Calculate AOV for each month and format response
+        const monthlyAOV = Array.from(monthlyData.values())
+            .map(monthData => {
+                const { month, totalRevenue, orderCount } = monthData;
+                
+                // Calculate AOV: Total Revenue ÷ Number of Orders
+                // If orderCount is 0, AOV should be 0 (avoid division by zero)
+                const aov = orderCount > 0 ? totalRevenue / orderCount : 0;
+
+                return {
+                    month: month, // Format: YYYY-MM (e.g., "2024-08")
+                    monthName: moment(month + '-01').format('MMMM YYYY'), // e.g., "August 2024"
+                    totalRevenue: Number(totalRevenue.toFixed(2)),
+                    orderCount: orderCount,
+                    aov: Number(aov.toFixed(2))
+                };
+            })
+            // Sort by month (chronological order)
+            .sort((a, b) => a.month.localeCompare(b.month));
+
+        console.log(`✅ Calculated Monthly AOV for ${monthlyAOV.length} month(s)`);
+
+        return monthlyAOV;
+
+    } catch (error) {
+        console.error('❌ Error calculating Monthly AOV:', {
+            error: error.message,
+            stack: error.stack,
+            brandId: brandId,
+            startDate: startDate,
+            endDate: endDate
+        });
+        throw new Error(`Failed to calculate Monthly AOV: ${error.message}`);
+    }
+};
 

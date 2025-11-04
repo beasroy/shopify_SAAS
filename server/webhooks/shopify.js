@@ -1,7 +1,6 @@
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
 import Subscription from '../models/Subscription.js';
-import RefundCache from '../models/RefundCache.js';
 
 import crypto from 'crypto';
 import axios from 'axios';
@@ -383,26 +382,15 @@ export const app_uninstalled = async (req, res) => {
 export const refundsCreated = async (req, res) => {
   try {
     const refund = req.body;
-    const { totalReturn } = getRefundAmount(refund);
     const shopDomain = req.headers['x-shopify-shop-domain'];
-    const brand = await Brand.findOne({ 'shopifyAccount.shopName': shopDomain });
-    const brandId = brand ? brand._id : null;
-
-    // Get order information from the refund
-    const orderId = refund.order_id;
-    const orderCreatedAt = refund.order_created_at || refund.created_at; // Fallback to refund date if order date not available
-
-    const refundCache = new RefundCache({
-      refundId: refund.id,
-      orderId: orderId,
-      refundCreatedAt: new Date(refund.created_at),
-      orderCreatedAt: new Date(orderCreatedAt),
-      totalReturn: totalReturn,
-      rawData: JSON.stringify(refund),
-      brandId: brandId
-    });
-    await refundCache.save();
-    res.status(200).send('Refund cached');
+    
+    // Import the refund helper function
+    const { processRefundWebhook } = await import('../utils/refundHelpers.js');
+    
+    // Process the refund webhook (calculates amount, fetches order, updates OrderRefund and AdMetrics)
+    await processRefundWebhook(refund, shopDomain);
+    
+    res.status(200).send('Refund processed');
   } catch (error) {
     console.error('Error in refundsCreated webhook:', error);
     res.status(500).send('Error');

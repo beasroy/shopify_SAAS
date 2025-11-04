@@ -7,7 +7,7 @@ import { createServer } from 'http';
 import { initializeSocket } from './config/socket.js';
 import { initializeNotificationSubscriber } from './config/redis.js';
 import authRoutes from "./routes/auth.js"
-import spotifyRoutes from "./routes/shopify.js"
+// import spotifyRoutes from "./routes/shopify.js"
 import analyticsRoutes from "./routes/analytics.js"  
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
@@ -31,10 +31,11 @@ import creativeRoutes from "./routes/creative.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+import { getRefundsForDateRange } from "./utils/refundHelpers.js";
 import { monthlyFetchTotalSales } from "./Report/MonthlyReport.js";
 import { monthlyFetchFBAdReport } from "./Report/MonthlyReport.js";
-import { initializeShopifyWorkers } from "./workers/initializeShopifyWorkers.js";
-import { initShopifyDailySync } from "./cron/shopifyDailySync.js";
+
+
 
 //import { getGoogleAdData } from "./Report/Report.js";
 
@@ -46,8 +47,7 @@ const server = createServer(app);
 // Initialize Socket.IO
 initializeSocket(server);
 
-// Initialize Redis notification subscriber
-initializeNotificationSubscriber();
+
 
 dotenv.config();
              
@@ -85,7 +85,7 @@ const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);
 
 dataOperationRouter.use("/auth",authRoutes);
-dataOperationRouter.use("/shopify",spotifyRoutes);
+// dataOperationRouter.use("/shopify",spotifyRoutes);
 dataOperationRouter.use("/analytics",analyticsRoutes);
 dataOperationRouter.use("/brands",brandRoutes);
 dataOperationRouter.use("/metrics",fbMetricrRoutes);
@@ -116,7 +116,8 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("68e8bffe11ea9da7f62ad6cd","68e8bec711ea9da7f62ad6c6")
+//calculateMetricsForSingleBrand("68dd05b6e78884ea57ff736a","68dd05b6e78884ea57ff7367")
+//getRefundsForDateRange("68d10cabe78884ea57ff5be3","2025-07-30","2025-07-30")
 
 //monthlyFetchTotalSales("68ca95ad548d518de4fca1af","2025-09-17","2025-09-17")
 
@@ -142,11 +143,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.IO server is ready for real-time notifications`);
   console.log(`Redis notification subscriber is ready to receive worker notifications`);
   
-  // Initialize Shopify workers
-  initializeShopifyWorkers();
-  
-  // Initialize Shopify daily sync cron
-  initShopifyDailySync();
+
 });
 
 // Graceful shutdown

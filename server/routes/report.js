@@ -1,7 +1,9 @@
 import express from 'express';
-import { getMetricsbyID, checkRefundCache } from '../controller/report.js';
+import { getMetricsbyID,  } from '../controller/report.js';
 import AdMetrics from '../models/AdMetrics.js';
+import OrderRefund from '../models/OrderRefund.js';
 //import {calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js"
+import { calculateMonthlyAOV } from '../Report/MonthlyReport.js';
 import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
@@ -11,7 +13,7 @@ const router = express.Router();
 
 router.get('/:brandId',verifyAuth, getMetricsbyID);
 // API endpoint to check refund cache
-router.post('/refund-cache/:brandId', checkRefundCache);
+// router.post('/refund-cache/:brandId', checkRefundCache);
 
 router.delete('/delete/byDate', async (req, res) => {
     try {
@@ -93,27 +95,39 @@ router.delete('/delete/:brandId', verifyAuth, async (req, res) => {
   
         
         // Log the deletion attempt
-        console.log('\n=== AdMetrics Delete Operation ===');
+        console.log('\n=== AdMetrics & OrderRefund Delete Operation ===');
         console.log('Type: Delete by Brand');
       
         console.log('Brand ID:', brandId);
         console.log('Timestamp:', new Date().toISOString());
         
-        const result = await AdMetrics.deleteMany({ brandId });
+        // Delete both AdMetrics and OrderRefund records
+        const [adMetricsResult, orderRefundResult] = await Promise.all([
+            AdMetrics.deleteMany({ brandId }),
+            OrderRefund.deleteMany({ brandId })
+        ]);
         
-        if (result.deletedCount === 0) {
+        const totalDeleted = adMetricsResult.deletedCount + orderRefundResult.deletedCount;
+        
+        if (totalDeleted === 0) {
             console.log('Result: No records found for deletion');
             return res.status(404).json({ message: 'No records found for this brand' });
         }
 
         // Log the deletion result
         console.log('Result: Success');
-        console.log('Records Deleted:', result.deletedCount);
+        console.log('AdMetrics Records Deleted:', adMetricsResult.deletedCount);
+        console.log('OrderRefund Records Deleted:', orderRefundResult.deletedCount);
+        console.log('Total Records Deleted:', totalDeleted);
         console.log('===============================\n');
         
         res.status(200).json({ 
-            message: 'AdMetrics data deleted successfully', 
-            deletedCount: result.deletedCount 
+            message: 'AdMetrics and OrderRefund data deleted successfully', 
+            deletedCount: {
+                adMetrics: adMetricsResult.deletedCount,
+                orderRefund: orderRefundResult.deletedCount,
+                total: totalDeleted
+            }
         });
     } catch (error) {
         console.error('\n=== Delete Operation Error ===');
@@ -444,6 +458,90 @@ router.post('/monthly', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch sales data',
+      error: error.message
+    });
+  }
+});
+
+// Monthly AOV endpoint
+router.post('/monthly-aov', async (req, res) => {
+  try {
+    const { brandId, startDate, endDate } = req.body;
+    
+    // Validate required parameters
+    if (!brandId || !startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: brandId, startDate, and endDate are required'
+      });
+    }
+    
+    // Validate date formats
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Please use YYYY-MM-DD format'
+      });
+    }
+    
+    // Validate date range
+    const startMoment = moment(startDate);
+    const endMoment = moment(endDate);
+    
+    if (!startMoment.isValid() || !endMoment.isValid()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date values provided'
+      });
+    }
+    
+    if (startMoment.isAfter(endMoment)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be before or equal to end date'
+      });
+    }
+    
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: 'Brand not found.'
+      });
+    }
+
+    // Calculate monthly AOV
+    const monthlyAOV = await calculateMonthlyAOV(brandId, startDate, endDate);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Monthly AOV calculated successfully',
+      data: monthlyAOV,
+      totalMonths: monthlyAOV.length
+    });
+    
+  } catch (error) {
+    console.error('Error calculating Monthly AOV:', error);
+    
+    if (error.message.includes('Brand not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes('Missing required parameters') || 
+        error.message.includes('Invalid date format')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to calculate Monthly AOV',
       error: error.message
     });
   }

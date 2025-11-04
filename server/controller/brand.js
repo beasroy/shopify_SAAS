@@ -1,7 +1,7 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
-import RefundCache from "../models/RefundCache.js";
+
 import { metricsQueue } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
 
@@ -266,14 +266,7 @@ export const deleteBrand = async (req, res) => {
             return res.status(404).json({ error: 'Brand not found.' });
         }
 
-        // Delete related data from RefundCache collection
-        try {
-            const refundCacheResult = await RefundCache.deleteMany({ brandId: brandId });
-            console.log(`Deleted ${refundCacheResult.deletedCount} refund cache entries for brand ${brandId}`);
-        } catch (refundCacheError) {
-            console.error(`Error deleting refund cache data for brand ${brandId}:`, refundCacheError);
-        }
-
+       
         // Delete related data from AdMetrics collection
         try {
             const adMetricsResult = await AdMetrics.deleteMany({ brandId: brandId });

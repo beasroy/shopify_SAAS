@@ -252,6 +252,39 @@ export const getFbAdAccountIds = async (req, res) => {
     }
 };
 
+// Function to clear Facebook ad accounts cache for a specific brand
+export const clearFbAdAccountCache = async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        if (!brandId) {
+            return res.status(400).json({ message: 'Brand ID is required.' });
+        }
+
+        const cacheKey = `fb_ad_accounts_${brandId}`;
+        const deleted = cache.del(cacheKey);
+        
+        if (deleted) {
+            return res.status(200).json({ 
+                message: 'Cache cleared successfully.', 
+                brandId,
+                cacheKey 
+            });
+        } else {
+            return res.status(404).json({ 
+                message: 'Cache entry not found.', 
+                brandId,
+                cacheKey 
+            });
+        }
+    } catch (error) {
+        console.error('Error clearing Facebook Ad Accounts cache:', error.message);
+        res.status(500).json({ 
+            message: 'Error clearing cache.', 
+            error: error.message 
+        });
+    }
+};
+
 
 
 

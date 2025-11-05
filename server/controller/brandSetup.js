@@ -230,19 +230,42 @@ export const getFbAdAccountIds = async (req, res) => {
         }
 
         // Construct the Graph API request URL
-        const url = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
+        const baseUrl = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
 
-        // Make the request to Facebook Graph API
-        const response = await axios.get(url);
+        // Array to collect all ad accounts from all pages
+        let allAdAccounts = [];
+        let nextUrl = baseUrl;
 
-        if (response.data && response.data.adaccounts) {
-            const adAccounts = response.data.adaccounts.data.map(account => ({
-                id: account.id,
-                adname: account.name,
-            }));
+        // Paginate through all pages
+        do {
+            const response = await axios.get(nextUrl);
 
-            cache.set(cacheKey, adAccounts, 604800); // 7 days TTL
-            return res.status(200).json({ adAccounts: adAccounts, fromCache: false });
+            if (response.data && response.data.adaccounts && response.data.adaccounts.data) {
+                const pageAccounts = response.data.adaccounts.data.map(account => ({
+                    id: account.id,
+                    adname: account.name,
+                }));
+
+                allAdAccounts = allAdAccounts.concat(pageAccounts);
+
+                // Check if there's a next page
+                if (response.data.adaccounts.paging && response.data.adaccounts.paging.next) {
+                    nextUrl = response.data.adaccounts.paging.next;
+                } else {
+                    nextUrl = null;
+                }
+            } else {
+                // If no adaccounts in response, check if it's an error
+                if (!response.data.adaccounts) {
+                    break;
+                }
+                nextUrl = null;
+            }
+        } while (nextUrl);
+
+        if (allAdAccounts.length > 0) {
+            cache.set(cacheKey, allAdAccounts, 604800); // 7 days TTL
+            return res.status(200).json({ adAccounts: allAdAccounts, fromCache: false });
         } else {
             return res.status(404).json({ message: 'No ad accounts found for the user.' });
         }

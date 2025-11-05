@@ -28,6 +28,7 @@ import webhookRoutes from "./routes/webhook.js"
 import pricingRoutes from "./routes/pricing.js"
 import cacheRoutes from "./routes/cache.js"
 import creativeRoutes from "./routes/creative.js"
+import shopifyRoutes from "./routes/shopify.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
@@ -106,7 +107,7 @@ dataOperationRouter.use("/pricing",pricingRoutes)
 dataOperationRouter.use("/cache",cacheRoutes)
 dataOperationRouter.use("/ads",creativeRoutes)
 dataOperationRouter.use("/",shopifyWebhookRoutes)
-
+dataOperationRouter.use("/shopify",shopifyRoutes)
 
 
 if (isDevelopment) {
@@ -116,10 +117,10 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-//calculateMetricsForSingleBrand("68dd05b6e78884ea57ff736a","68dd05b6e78884ea57ff7367")
-//getRefundsForDateRange("68d10cabe78884ea57ff5be3","2025-07-30","2025-07-30")
+calculateMetricsForSingleBrand("68dd1be0e78884ea57ff74d4","68dd1be0e78884ea57ff74d1")
+//getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
 
-//monthlyFetchTotalSales("68ca95ad548d518de4fca1af","2025-09-17","2025-09-17")
+//monthlyFetchTotalSales("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
 
 // getGoogleAdData("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
 // .then(console.log)

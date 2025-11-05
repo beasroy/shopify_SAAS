@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import EcommerceMetricsPage from '@/pages/ReportPage/component/EcommerceMetricsPage';
 import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
@@ -41,7 +41,7 @@ const ReportsPage: React.FC = () => {
     to: date.to ? new Date(date.to) : undefined
   }), [date.from, date.to]);
 
-  const [activeTab, setActiveTab] = useState('daily');
+  const [activeTab, setActiveTab] = useState('month wise');
   const [isFullScreen, setIsFullScreen] = useState(false);
   
   // Memoize the dateRange to prevent unnecessary re-renders
@@ -53,7 +53,18 @@ const ReportsPage: React.FC = () => {
     'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'
   ];
 
-  const availableColumns = ['Date', 'Month','Day', ...baseColumns];
+  // Get columns based on active tab - AOV and Avg Items/Order are only available for monthly metrics
+  const getColumnsForTab = useCallback((tab: string) => {
+    if (tab === 'month wise') {
+      return [...baseColumns, 'AOV', 'Avg Items/Order'];
+    }
+    return baseColumns;
+  }, []);
+
+  const availableColumns = useMemo(() => {
+    const columns = getColumnsForTab(activeTab);
+    return ['Date', 'Month','Day', ...columns];
+  }, [activeTab, getColumnsForTab]);
 
   // Single column state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -82,27 +93,33 @@ const ReportsPage: React.FC = () => {
     ];
   };
 
-  // Update the useEffect to handle view presets
+  // Update the useEffect to handle view presets and AOV column visibility
   useEffect(() => {
     const timeColumn = activeTab === 'month wise' ? 'Month' : activeTab === 'day wise' ? 'Day' : 'Date';
+    const columnsForTab = getColumnsForTab(activeTab);
     
-    if (visibleColumns[0] !== timeColumn) {
-      // Keep all current columns but replace the first one (time column)
-      const newColumns = [timeColumn, ...visibleColumns.slice(1)];
-      const newOrder = [timeColumn, ...columnOrder.slice(1)];
-      
+    // Build new columns with time column and appropriate columns for the tab
+    const newColumns = [timeColumn, ...columnsForTab];
+    const newOrder = [timeColumn, ...columnsForTab];
+    
+    // Only update if columns have changed
+    const currentColumnsString = JSON.stringify(visibleColumns);
+    const newColumnsString = JSON.stringify(newColumns);
+    
+    if (currentColumnsString !== newColumnsString) {
       setVisibleColumns(newColumns);
       setColumnOrder(newOrder);
     }
-  }, [activeTab]);
+  }, [activeTab, getColumnsForTab]);
   
   // Refresh trigger state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const tabs = [
+    { label: 'Monthly Metrics', value: 'month wise' },
     { label: 'Daily Metrics', value: 'daily' },
     { label: 'Day wise Metrics', value: 'day wise' },
-    { label: 'Monthly Metrics', value: 'month wise' },
+   
   ];
 
   const handleTabChange = (value: string) => {
@@ -221,7 +238,7 @@ const ReportsPage: React.FC = () => {
                   {isLoading ? (
                     <TableSkeleton />
                   ) : (
-                    <section className="h-full overflow-auto">
+                    <section className="w-full">
                       {activeTab === 'daily' && (
                         <EcommerceMetricsPage 
                           key="daily-metrics"

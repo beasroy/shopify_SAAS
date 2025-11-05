@@ -6,6 +6,7 @@ import axios from "axios";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
+import { ensureOrderRefundExists, setOrderRefund } from '../utils/refundHelpers.js';
 
 
 
@@ -94,6 +95,7 @@ export const fetchTotalSales = async (brandId) => {
         } else {
           grossSales = subtotalPrice + discountAmount;
         }
+        let refundCount = 0;
         if (hasRefunds) {
           for (const refund of order.refunds) {
             const productReturn = refund?.refund_line_items
@@ -105,8 +107,22 @@ export const fetchTotalSales = async (brandId) => {
             }
             const totalReturn = productReturn - adjustmentsTotal;
             refundAmount += totalReturn;
+            refundCount += 1;
           }
         }
+
+        // Update orderRefund table (same as historical sync)
+        try {
+          // First ensure the order entry exists (with or without refunds)
+          await ensureOrderRefundExists(brandId, order.id, order.created_at);
+          // If there are refunds, SET the total refund amount (don't add, replace)
+          if (refundAmount > 0) {
+            await setOrderRefund(brandId, order.id, refundAmount, refundCount);
+          }
+        } catch (error) {
+          console.error(`Error storing order refund info for order ${order.id}:`, error);
+        }
+
         yesterdaySales.grossSales += grossSales;
         yesterdaySales.refundAmount += refundAmount;
         yesterdaySales.orderCount++;
@@ -523,6 +539,7 @@ export const calculateMetricsForAllBrands = async () => {
     };
   }
 };
+
 
 
 

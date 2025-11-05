@@ -63,9 +63,41 @@ export const ensureOrderRefundExists = async (brandId, orderId, orderCreatedAt) 
 };
 
 /**
- * Update OrderRefund entry for an order
- * Aggregates multiple refunds per order
+ * Set OrderRefund entry for an order (used during historical sync)
+ * Sets the total refund amount from all refunds in the order
+ * This should be used when processing historical orders where we have the complete refund picture
+ */
+export const setOrderRefund = async (brandId, orderId, totalRefundAmount, refundCount = 1) => {
+  try {
+    // Find existing refund entry for this order
+    const orderRefund = await OrderRefund.findOne({
+      brandId,
+      orderId
+    });
+
+    if (!orderRefund) {
+      throw new Error(`OrderRefund entry not found for order ${orderId}. Order must be synced first.`);
+    }
+
+    // Set the total refund amount (don't add, replace)
+    orderRefund.refundAmount = totalRefundAmount;
+    orderRefund.refundCount = refundCount;
+    orderRefund.lastRefundAt = new Date();
+    await orderRefund.save();
+    console.log(`✅ Set OrderRefund for order ${orderId}: Total refund = ${orderRefund.refundAmount}`);
+    
+    return orderRefund;
+  } catch (error) {
+    console.error(`Error setting OrderRefund for order ${orderId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Update OrderRefund entry for an order (used for webhook refunds)
+ * Aggregates multiple refunds per order - ADDS to existing amount
  * Note: This assumes the OrderRefund entry already exists (created during historical sync)
+ * Use this for incremental webhook updates, not for historical sync
  */
 export const updateOrderRefund = async (brandId, orderId, refundAmount) => {
   try {

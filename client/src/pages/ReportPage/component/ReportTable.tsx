@@ -10,6 +10,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ShopifyLogo, Ga4Logo } from "@/data/logo"
 
 export type FunnelRow = {
   id: string
@@ -23,6 +24,8 @@ export type FunnelRow = {
   checkoutRate: string
   purchases: number
   purchaseRate: string
+  aov?: number
+  averageItemsPerOrder?: number
 }
 
 type ColumnDef<T extends keyof FunnelRow = keyof FunnelRow> = {
@@ -45,11 +48,29 @@ const allColumns: ColumnDef[] = [
   { key: "checkoutRate", header: "Checkout Rate", width: 150, minWidth: 130, align: "right" },
   { key: "purchases", header: "Purchases", width: 130, minWidth: 110, align: "right" },
   { key: "purchaseRate", header: "Purchase Rate", width: 150, minWidth: 130, align: "right" },
+  { key: "aov", header: "AOV", width: 120, minWidth: 110, align: "right" },
+  { key: "averageItemsPerOrder", header: "Avg Items/Order", width: 150, minWidth: 130, align: "right" },
 ]
 
 function clamp(n: number, min: number, max?: number) {
   if (max != null) return Math.min(Math.max(n, min), max)
   return Math.max(n, min)
+}
+
+// Helper function to get logo for a column
+function getColumnLogo(key: keyof FunnelRow): React.ReactNode | null {
+  // Shopify logo for AOV and Avg Items/Order
+  if (key === 'aov' || key === 'averageItemsPerOrder') {
+    return <ShopifyLogo width="1rem" height="1rem" />
+  }
+  
+  // Analytics logo for other columns except month/day/date
+  if (key !== 'month' && key !== 'day' && key !== 'date') {
+    return <Ga4Logo width="1rem" height="1rem" />
+  }
+  
+  // No logo for month/day/date columns
+  return null
 }
 
 type DragState = {
@@ -90,7 +111,9 @@ export default function ReportTable({
       'Checkouts': 'checkouts',
       'Checkout Rate': 'checkoutRate',
       'Purchases': 'purchases',
-      'Purchase Rate': 'purchaseRate'
+      'Purchase Rate': 'purchaseRate',
+      'AOV': 'aov',
+      'Avg Items/Order': 'averageItemsPerOrder'
     };
     
     // Filter and reorder columns based on column management
@@ -118,16 +141,107 @@ export default function ReportTable({
 }, [visibleColumns, columnOrder]);
 
   const [widths, setWidths] = React.useState<number[]>([])
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = React.useState<number>(0)
+  const columnsKeyRef = React.useRef<string>('')
+  const hasInitializedRef = React.useRef<boolean>(false)
 
-  // Update widths when columns change
+  // Measure container width
   React.useEffect(() => {
-    setWidths(columns.map((c) => c.width));
-  }, [columns]);
+    const measureContainer = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth)
+      }
+    }
+    
+    measureContainer()
+    window.addEventListener('resize', measureContainer)
+    return () => window.removeEventListener('resize', measureContainer)
+  }, [])
+
+  // Calculate initial widths to fill container width
+  React.useEffect(() => {
+    if (columns.length === 0) return
+    
+    const currentColumnsKey = columns.map(c => c.key).join(',')
+    
+    // If columns changed, reset initialization
+    if (currentColumnsKey !== columnsKeyRef.current) {
+      columnsKeyRef.current = currentColumnsKey
+      hasInitializedRef.current = false
+    }
+    
+    // Only initialize once when container is measured or columns change
+    if (!hasInitializedRef.current && containerWidth > 0) {
+      const defaultWidths = columns.map((c) => c.width)
+      const minWidths = columns.map((c) => c.minWidth || 80)
+      const totalDefaultWidth = defaultWidths.reduce((sum, w) => sum + w, 0)
+      const totalMinWidth = minWidths.reduce((sum, w) => sum + w, 0)
+      
+      // Distribute columns proportionally to fill container width
+      if (totalDefaultWidth > 0) {
+        // If minimum widths exceed container, scale them down
+        if (totalMinWidth > containerWidth) {
+          const scaleFactor = containerWidth / totalMinWidth
+          const scaledWidths = minWidths.map((w) => w * scaleFactor)
+          setWidths(scaledWidths)
+        } else {
+          // Scale default widths to fill container width
+          const scaleFactor = containerWidth / totalDefaultWidth
+          let scaledWidths = defaultWidths.map((w, index) => {
+            const scaled = w * scaleFactor
+            const minWidth = minWidths[index]
+            return Math.max(scaled, minWidth)
+          })
+          
+          // Adjust if total exceeds container due to minWidth constraints
+          let totalScaled = scaledWidths.reduce((sum, w) => sum + w, 0)
+          if (totalScaled > containerWidth) {
+            // Redistribute excess from flexible columns
+            const excess = totalScaled - containerWidth
+            const flexibleIndices: number[] = []
+            let flexibleTotal = 0
+            
+            for (let i = 0; i < scaledWidths.length; i++) {
+              const w = scaledWidths[i]
+              if (w > minWidths[i]) {
+                flexibleIndices.push(i)
+                flexibleTotal += w
+              }
+            }
+            
+            if (flexibleTotal > 0 && flexibleIndices.length > 0) {
+              scaledWidths = scaledWidths.map((w, i) => {
+                if (flexibleIndices.includes(i)) {
+                  return w - (excess * (w / flexibleTotal))
+                }
+                return w
+              })
+            }
+          }
+          
+          setWidths(scaledWidths)
+        }
+      } else {
+        setWidths(defaultWidths)
+      }
+      
+      hasInitializedRef.current = true
+    } else if (!hasInitializedRef.current) {
+      // Use default widths if container not measured yet
+      setWidths(columns.map((c) => c.width))
+    }
+  }, [columns, containerWidth])
   
   // Ensure widths array matches columns array length
   const safeWidths = React.useMemo(() => {
     return columns.map((col, index) => widths[index] || col.width);
   }, [columns, widths]);
+  
+  // Calculate total table width for footer
+  const totalTableWidth = React.useMemo(() => {
+    return safeWidths.reduce((sum, width) => sum + width, 0);
+  }, [safeWidths]);
   
   // Safety check - ensure we have valid columns
   if (!columns || columns.length === 0) {
@@ -202,9 +316,18 @@ export default function ReportTable({
 
   return (
     <div className="w-full space-y-2">
-      <div className="w-full rounded-lg border border-gray-200 bg-white">
-        <div className="overflow-auto" style={{ height: '90vh' }}>
-          <table className="w-full table-fixed border-collapse text-sm" style={{ minWidth: '800px' }}>
+      <div className="w-full rounded-lg border border-gray-200 bg-white overflow-hidden">
+        <div 
+          ref={containerRef}
+          className="overflow-x-auto overflow-y-auto" 
+          style={{ height: '90vh', width: '100%' }}
+        >
+          <table 
+            className="table-fixed border-collapse text-sm" 
+            style={{ 
+              width: `${totalTableWidth}px`
+            }}
+          >
             <colgroup>
               {safeWidths.map((w, i) => (
                 <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
@@ -221,6 +344,8 @@ export default function ReportTable({
                   
                   const isFirst = idx === 0
                   const active = resizingIndex === idx
+                  const columnLogo = getColumnLogo(col.key)
+                  
                   return (
                     <th
                       key={String(col.key)}
@@ -234,7 +359,12 @@ export default function ReportTable({
                           "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {columnLogo && (
+                          <span className="flex-shrink-0">
+                            {columnLogo}
+                          </span>
+                        )}
                         <span className="truncate">{col.header}</span>
                       </div>
 
@@ -308,7 +438,10 @@ export default function ReportTable({
           </table>
 
           {/* Footer: rows per page + pagination - Inside scrollable area */}
-          <div className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4">
+          <div 
+            className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4"
+            style={{ width: `${totalTableWidth}px` }}
+          >
             <div className="flex items-center gap-2">
               <span className="text-gray-600">Rows per page:</span>
               <Select

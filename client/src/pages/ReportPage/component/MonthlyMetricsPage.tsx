@@ -41,6 +41,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   
 
   const [data, setData] = useState<EcommerceMetric[]>([]);
+  const [aovData, setAovData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
 
@@ -62,20 +63,59 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
-  // Transform data to match ReportTable's expected format
+  // Transform data to match ReportTable's expected format and merge AOV data
   const transformedData = useMemo(() => {
-    return data.map((item, index) => ({
-      id: `row-${index}`,
-      month: item.Month,
-      sessions: parseInt(item.Sessions) || 0,
-      addToCart: parseInt(item['Add To Cart']) || 0,
-      addToCartRate: item['Add To Cart Rate'] || '0%',
-      checkouts: parseInt(item['Checkouts']) || 0,
-      checkoutRate: item['Checkout Rate'] || '0%',
-      purchases: parseInt(item['Purchases']) || 0,
-      purchaseRate: item['Purchase Rate'] || '0%'
-    }));
-  }, [data]);
+    // Create maps of AOV data by month for quick lookup
+    const aovMap = new Map<string, number>();
+    const avgItemsMap = new Map<string, number>();
+    console.log('AOV Data for mapping:', aovData);
+    aovData.forEach((aovItem) => {
+      // Match by monthName (e.g., "Nov-2025") or month (e.g., "2025-11")
+      let monthKey = '';
+      if (aovItem.monthName) {
+        monthKey = aovItem.monthName;
+        aovMap.set(monthKey, aovItem.aov || 0);
+        avgItemsMap.set(monthKey, aovItem.averageItemsPerOrder || 0);
+        console.log(`Mapped AOV: ${aovItem.monthName} = ${aovItem.aov}, Avg Items = ${aovItem.averageItemsPerOrder}`);
+      }
+      if (aovItem.month) {
+        // Convert "2025-11" to "Nov-2025" format for matching
+        const date = new Date(aovItem.month + '-01');
+        const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
+        monthKey = monthName;
+        aovMap.set(monthKey, aovItem.aov || 0);
+        avgItemsMap.set(monthKey, aovItem.averageItemsPerOrder || 0);
+        console.log(`Mapped AOV from month: ${aovItem.month} -> ${monthName} = ${aovItem.aov}, Avg Items = ${aovItem.averageItemsPerOrder}`);
+      }
+    });
+
+    console.log('Ecommerce Data months:', data.map(item => item.Month));
+    console.log('AOV Map keys:', Array.from(aovMap.keys()));
+
+    return data.map((item, index) => {
+      // Try to match AOV and Avg Items by month name
+      const monthName = item.Month;
+      const aov = aovMap.get(monthName) || 0;
+      const averageItemsPerOrder = avgItemsMap.get(monthName) || 0;
+      if (aov > 0) {
+        console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
+      }
+
+      return {
+        id: `row-${index}`,
+        month: item.Month,
+        sessions: parseInt(item.Sessions) || 0,
+        addToCart: parseInt(item['Add To Cart']) || 0,
+        addToCartRate: item['Add To Cart Rate'] || '0%',
+        checkouts: parseInt(item['Checkouts']) || 0,
+        checkoutRate: item['Checkout Rate'] || '0%',
+        purchases: parseInt(item['Purchases']) || 0,
+        purchaseRate: item['Purchase Rate'] || '0%',
+        aov: aov,
+        averageItemsPerOrder: averageItemsPerOrder
+      };
+    });
+  }, [data, aovData]);
 
 
 
@@ -110,16 +150,41 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         });
       }
 
-      // Only fetch if we have at least one date range
-      if (dateRanges.length > 0) {
-        const DailyAnalyticsResponse = await axiosInstance.post(
-          `/api/analytics/monthAtcReport/${brandId}`,
-          {
-            dateRanges: dateRanges,
-          },
-          { withCredentials: true }
-        );
+      // Fetch both ecommerce metrics and AOV data in parallel
+      const promises = [];
 
+      // Fetch ecommerce metrics if we have at least one date range
+      if (dateRanges.length > 0) {
+        promises.push(
+          axiosInstance.post(
+            `/api/analytics/monthAtcReport/${brandId}`,
+            {
+              dateRanges: dateRanges,
+            },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      // Fetch AOV data for primary date range
+      if (startDate && endDate) {
+        promises.push(
+          axiosInstance.post(
+            `/api/shopify/aov/${brandId}`,
+            {
+              startDate: startDate,
+              endDate: endDate
+            },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      const results = await Promise.all(promises);
+
+      // Process ecommerce metrics response
+      if (results[0]) {
+        const DailyAnalyticsResponse = results[0];
         const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
     
         // More flexible data handling
@@ -133,11 +198,22 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           } else {
             // Daily data scenario
             setData(fetchedRanges[0]?.data || []);
-        
           }
-
-       
         }
+      }
+
+      // Process AOV response
+      if (results[1]) {
+        const aovResponse = results[1];
+        console.log('AOV API Response:', aovResponse.data);
+        if (aovResponse.data.success && aovResponse.data.data) {
+          console.log('AOV Data:', aovResponse.data.data);
+          setAovData(aovResponse.data.data);
+        } else {
+          console.warn('AOV data not in expected format:', aovResponse.data);
+        }
+      } else {
+        console.warn('No AOV response received');
       }
 
     } catch (error) {
@@ -145,7 +221,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, axiosInstance]);
 
   // Fetch data when dates or brandId change
   useEffect(() => {

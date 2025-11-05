@@ -2,8 +2,6 @@ import express from 'express';
 import { getMetricsbyID,  } from '../controller/report.js';
 import AdMetrics from '../models/AdMetrics.js';
 import OrderRefund from '../models/OrderRefund.js';
-//import {calculateMetricsForSingleBrand} from "../Report/MonthlyReport.js"
-import { calculateMonthlyAOV } from '../Report/MonthlyReport.js';
 import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
@@ -463,89 +461,6 @@ router.post('/monthly', async (req, res) => {
   }
 });
 
-// Monthly AOV endpoint
-router.post('/monthly-aov', async (req, res) => {
-  try {
-    const { brandId, startDate, endDate } = req.body;
-    
-    // Validate required parameters
-    if (!brandId || !startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required parameters: brandId, startDate, and endDate are required'
-      });
-    }
-    
-    // Validate date formats
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date format. Please use YYYY-MM-DD format'
-      });
-    }
-    
-    // Validate date range
-    const startMoment = moment(startDate);
-    const endMoment = moment(endDate);
-    
-    if (!startMoment.isValid() || !endMoment.isValid()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date values provided'
-      });
-    }
-    
-    if (startMoment.isAfter(endMoment)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Start date must be before or equal to end date'
-      });
-    }
-    
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({
-        success: false,
-        message: 'Brand not found.'
-      });
-    }
-
-    // Calculate monthly AOV
-    const monthlyAOV = await calculateMonthlyAOV(brandId, startDate, endDate);
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Monthly AOV calculated successfully',
-      data: monthlyAOV,
-      totalMonths: monthlyAOV.length
-    });
-    
-  } catch (error) {
-    console.error('Error calculating Monthly AOV:', error);
-    
-    if (error.message.includes('Brand not found')) {
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-    }
-    
-    if (error.message.includes('Missing required parameters') || 
-        error.message.includes('Invalid date format')) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to calculate Monthly AOV',
-      error: error.message
-    });
-  }
-});
 
 
 export default router;

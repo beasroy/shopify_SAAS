@@ -232,36 +232,67 @@ export const getFbAdAccountIds = async (req, res) => {
         // Construct the Graph API request URL
         const baseUrl = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
 
+      
+
         // Array to collect all ad accounts from all pages
         let allAdAccounts = [];
         let nextUrl = baseUrl;
+        let pageCount = 0;
 
         // Paginate through all pages
         do {
+            pageCount++;
+            console.log(`Fetching page ${pageCount}, URL: ${nextUrl}`);
+            
             const response = await axios.get(nextUrl);
+            let pageAccounts = [];
+            let paging = null;
 
-            if (response.data && response.data.adaccounts && response.data.adaccounts.data) {
-                const pageAccounts = response.data.adaccounts.data.map(account => ({
+            // Handle two different response structures:
+            // 1. Initial request: response.data.adaccounts.data (nested structure)
+            // 2. Paginated requests: response.data (direct array) with response.paging
+            if (response.data && response.data.adaccounts) {
+                // Initial request structure
+                if (response.data.adaccounts.data && Array.isArray(response.data.adaccounts.data)) {
+                    pageAccounts = response.data.adaccounts.data.map(account => ({
+                        id: account.id,
+                        adname: account.name,
+                    }));
+                }
+                paging = response.data.adaccounts.paging;
+            } else if (response.data && Array.isArray(response.data)) {
+                // Paginated request structure (direct array)
+                pageAccounts = response.data.map(account => ({
                     id: account.id,
                     adname: account.name,
                 }));
+                paging = response.paging;
+            } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+                // Alternative paginated structure
+                pageAccounts = response.data.data.map(account => ({
+                    id: account.id,
+                    adname: account.name,
+                }));
+                paging = response.data.paging || response.paging;
+            }
 
+            // Add accounts from current page
+            if (pageAccounts.length > 0) {
                 allAdAccounts = allAdAccounts.concat(pageAccounts);
+                console.log(`Page ${pageCount}: Found ${pageAccounts.length} accounts. Total so far: ${allAdAccounts.length}`);
+            }
 
-                // Check if there's a next page
-                if (response.data.adaccounts.paging && response.data.adaccounts.paging.next) {
-                    nextUrl = response.data.adaccounts.paging.next;
-                } else {
-                    nextUrl = null;
-                }
+            // Check if there's a next page using cursor-based pagination
+            if (paging && paging.next) {
+                nextUrl = paging.next;
+                console.log(`Page ${pageCount}: Next page URL found: ${nextUrl}`);
             } else {
-                // If no adaccounts in response, check if it's an error
-                if (!response.data.adaccounts) {
-                    break;
-                }
+                console.log(`Page ${pageCount}: No more pages. Pagination complete.`);
                 nextUrl = null;
             }
         } while (nextUrl);
+
+        console.log(`Pagination complete. Total accounts fetched: ${allAdAccounts.length} across ${pageCount} page(s)`);
 
         if (allAdAccounts.length > 0) {
             cache.set(cacheKey, allAdAccounts, 604800); // 7 days TTL

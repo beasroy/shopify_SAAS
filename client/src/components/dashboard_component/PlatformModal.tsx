@@ -139,8 +139,8 @@ export default function PlatformModal({
         if (!endpoint) {
           throw new Error('Invalid platform');
         }
-        const response = await axios.post(
-          `${baseURL}${endpoint}`,{},
+        const response = await axios.get(
+          `${baseURL}${endpoint}`,
           { withCredentials: true }
         );
 

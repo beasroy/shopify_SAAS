@@ -275,8 +275,8 @@ export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
                     totalRevenue: Number(totalRevenue.toFixed(2)),
                     orderCount: orderCount,
                     totalItems: totalItems,
-                    aov: Number(aov.toFixed(2)),
-                    averageItemsPerOrder: Number(averageItemsPerOrder.toFixed(2))
+                    aov: Math.round(aov),
+                    averageItemsPerOrder: Math.round(averageItemsPerOrder)
                 };
             })
             .sort((a, b) => a.month.localeCompare(b.month));
@@ -307,6 +307,174 @@ export const getAov = async( req,res)=>{
     res.status(200).json({ success: true, data: aov });
   } catch (error) {
     console.error('Error fetching AOV:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// Get total revenue for D2C calculator
+export const getTotalRevenue = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate } = req.body;
+
+    if (!brandId || !startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required parameters: brandId, startDate, and endDate are required' 
+      });
+    }
+
+    // Validate date formats
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid date format. Please use YYYY-MM-DD format' 
+      });
+    }
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found.' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Access token is missing or invalid.' 
+      });
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Shop name is missing or invalid.' 
+      });
+    }
+
+    const shopify = new Shopify({
+      shopName: shopName,
+      accessToken: access_token,
+      apiVersion: '2024-04'
+    });
+
+    // Get store timezone
+    let shopData;
+    try {
+      shopData = await shopify.shop.get();
+    } catch (shopError) {
+      if (shopError.statusCode === 404) {
+        const shopifyFallback = new Shopify({
+          shopName: shopName,
+          accessToken: access_token,
+          apiVersion: '2024-01'
+        });
+        shopData = await shopifyFallback.shop.get();
+      } else {
+        throw shopError;
+      }
+    }
+
+    const storeTimezone = shopData.iana_timezone || 'UTC';
+    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+
+    // Fetch AdMetrics data for revenue (up to yesterday - already calculated and cached)
+    const today = moment.tz(storeTimezone).startOf('day');
+    const yesterday = today.clone().subtract(1, 'day').endOf('day');
+    const adMetricsEndDate = moment.min(yesterday, endMoment);
+    
+    const adMetrics = await AdMetrics.find({
+      brandId,
+      date: {
+        $gte: startMoment.toDate(),
+        $lte: adMetricsEndDate.toDate()
+      }
+    }).sort({ date: 1 });
+
+    // Calculate total revenue from AdMetrics (up to yesterday)
+    let totalRevenue = 0;
+    adMetrics.forEach(metric => {
+      // totalSales already has refunds deducted in AdMetrics
+      totalRevenue += Number(metric.totalSales) || 0;
+    });
+
+    // If end date includes today, fetch today's sales from Shopify
+    if (endMoment.isSameOrAfter(today)) {
+      const startTime = today.clone().startOf('day').tz(storeTimezone).utc().format();
+      const endTime = endMoment.clone().endOf('day').tz(storeTimezone).utc().format();
+
+      let pageInfo = null;
+      do {
+        const params = {
+          limit: 250,
+          fields: 'id,created_at,test,total_price,refunds',
+          status: 'any',
+          created_at_min: startTime,
+          created_at_max: endTime
+        };
+
+        if (pageInfo) {
+          params.page_info = pageInfo;
+          delete params.created_at_min;
+          delete params.created_at_max;
+        }
+
+        const orders = await shopify.order.list(params);
+        
+        if (!orders || orders.length === 0) break;
+
+        // Process orders
+        for (const order of orders) {
+          if (!order.test) {
+            let orderTotal = Number(order.total_price || 0);
+            
+            // Subtract refunds if any
+            if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
+              let refundAmount = 0;
+              for (const refund of order.refunds) {
+                if (refund.refund_line_items) {
+                  refundAmount += refund.refund_line_items.reduce((sum, item) => {
+                    return sum + Number(item.subtotal || 0) + Number(item.total_tax || 0);
+                  }, 0);
+                }
+                if (refund.order_adjustments) {
+                  refundAmount -= refund.order_adjustments.reduce((sum, adj) => {
+                    return sum + Number(adj.amount || 0);
+                  }, 0);
+                }
+              }
+              orderTotal -= refundAmount;
+            }
+            
+            totalRevenue += orderTotal;
+          }
+        }
+
+        // Parse pagination
+        const linkHeader = orders.headers?.link;
+        if (linkHeader) {
+          const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+          pageInfo = match ? match[1] : null;
+        } else {
+          pageInfo = null;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 300)); // Rate limiting
+      } while (pageInfo);
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      data: { 
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        currency: shopData.currency || 'USD'
+      } 
+    });
+  } catch (error) {
+    console.error('Error fetching total revenue:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }

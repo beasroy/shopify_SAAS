@@ -29,6 +29,7 @@ import PricingCallback from './Auth/PricingSuccess.tsx';
 import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.tsx';
 import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
 import CreativesLibrary from './pages/CreativesLibrary/CreativesLibrary.tsx';
+import D2CCalculator from './pages/D2CCalculator/D2CCalculator.tsx';
 
 
 
@@ -65,6 +66,7 @@ function App() {
                 <Route path = "/creatives-library/:brandId" element={<CreativesLibrary />} />
                 <Route path = "/pricing_callback" element={<PricingCallback />} />
                 <Route path = "/first-time-brand-setup" element={<BrandSetupDashboard />} />
+                <Route path = "/d2c-calculator/:brandId" element={<D2CCalculator />} />
               </Routes>
             </TutorialManager>
             </AutoLogout>

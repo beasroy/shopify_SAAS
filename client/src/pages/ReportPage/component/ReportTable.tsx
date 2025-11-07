@@ -9,6 +9,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ShopifyLogo, Ga4Logo } from "@/data/logo"
 
@@ -159,78 +165,107 @@ export default function ReportTable({
     return () => window.removeEventListener('resize', measureContainer)
   }, [])
 
-  // Calculate initial widths to fill container width
+  // Calculate widths to fill container width - recalculate on resize
   React.useEffect(() => {
-    if (columns.length === 0) return
+    if (columns.length === 0 || containerWidth === 0) return
     
     const currentColumnsKey = columns.map(c => c.key).join(',')
     
-    // If columns changed, reset initialization
+    // If columns changed, reset to allow recalculation
     if (currentColumnsKey !== columnsKeyRef.current) {
       columnsKeyRef.current = currentColumnsKey
       hasInitializedRef.current = false
     }
     
-    // Only initialize once when container is measured or columns change
-    if (!hasInitializedRef.current && containerWidth > 0) {
-      const defaultWidths = columns.map((c) => c.width)
-      const minWidths = columns.map((c) => c.minWidth || 80)
-      const totalDefaultWidth = defaultWidths.reduce((sum, w) => sum + w, 0)
-      const totalMinWidth = minWidths.reduce((sum, w) => sum + w, 0)
-      
-      // Distribute columns proportionally to fill container width
-      if (totalDefaultWidth > 0) {
-        // If minimum widths exceed container, scale them down
-        if (totalMinWidth > containerWidth) {
-          const scaleFactor = containerWidth / totalMinWidth
-          const scaledWidths = minWidths.map((w) => w * scaleFactor)
-          setWidths(scaledWidths)
-        } else {
-          // Scale default widths to fill container width
-          const scaleFactor = containerWidth / totalDefaultWidth
-          let scaledWidths = defaultWidths.map((w, index) => {
-            const scaled = w * scaleFactor
-            const minWidth = minWidths[index]
-            return Math.max(scaled, minWidth)
-          })
+    // Always recalculate when container width changes (including resize)
+    const defaultWidths = columns.map((c) => c.width)
+    const minWidths = columns.map((c) => c.minWidth || 80)
+    const totalDefaultWidth = defaultWidths.reduce((sum, w) => sum + w, 0)
+    const totalMinWidth = minWidths.reduce((sum, w) => sum + w, 0)
+    
+    // Distribute columns proportionally to fill container width
+    if (totalDefaultWidth > 0) {
+      // If minimum widths exceed container, scale them down
+      if (totalMinWidth > containerWidth) {
+        const scaleFactor = containerWidth / totalMinWidth
+        const scaledWidths = minWidths.map((w) => w * scaleFactor)
+        setWidths(scaledWidths)
+      } else {
+        // Scale default widths to fill container width
+        const scaleFactor = containerWidth / totalDefaultWidth
+        let scaledWidths = defaultWidths.map((w, index) => {
+          const scaled = w * scaleFactor
+          const minWidth = minWidths[index]
+          return Math.max(scaled, minWidth)
+        })
+        
+        // Adjust if total exceeds container due to minWidth constraints
+        let totalScaled = scaledWidths.reduce((sum, w) => sum + w, 0)
+        if (totalScaled > containerWidth) {
+          // Redistribute excess from flexible columns
+          const excess = totalScaled - containerWidth
+          const flexibleIndices: number[] = []
+          let flexibleTotal = 0
           
-          // Adjust if total exceeds container due to minWidth constraints
-          let totalScaled = scaledWidths.reduce((sum, w) => sum + w, 0)
-          if (totalScaled > containerWidth) {
-            // Redistribute excess from flexible columns
-            const excess = totalScaled - containerWidth
-            const flexibleIndices: number[] = []
-            let flexibleTotal = 0
-            
-            for (let i = 0; i < scaledWidths.length; i++) {
-              const w = scaledWidths[i]
-              if (w > minWidths[i]) {
-                flexibleIndices.push(i)
-                flexibleTotal += w
-              }
-            }
-            
-            if (flexibleTotal > 0 && flexibleIndices.length > 0) {
-              scaledWidths = scaledWidths.map((w, i) => {
-                if (flexibleIndices.includes(i)) {
-                  return w - (excess * (w / flexibleTotal))
-                }
-                return w
-              })
+          for (let i = 0; i < scaledWidths.length; i++) {
+            const w = scaledWidths[i]
+            if (w > minWidths[i]) {
+              flexibleIndices.push(i)
+              flexibleTotal += w
             }
           }
           
-          setWidths(scaledWidths)
+          if (flexibleTotal > 0 && flexibleIndices.length > 0) {
+            scaledWidths = scaledWidths.map((w, i) => {
+              if (flexibleIndices.includes(i)) {
+                return w - (excess * (w / flexibleTotal))
+              }
+              return w
+            })
+          }
+        } else if (totalScaled < containerWidth) {
+          // If total is less than container, distribute the remaining space
+          const remaining = containerWidth - totalScaled
+          const flexibleIndices: number[] = []
+          let flexibleTotal = 0
+          
+          for (let i = 0; i < scaledWidths.length; i++) {
+            const w = scaledWidths[i]
+            if (w > minWidths[i]) {
+              flexibleIndices.push(i)
+              flexibleTotal += w
+            }
+          }
+          
+          // If no flexible columns, add to all columns proportionally
+          if (flexibleIndices.length === 0) {
+            const perColumn = remaining / scaledWidths.length
+            scaledWidths = scaledWidths.map(w => w + perColumn)
+          } else if (flexibleTotal > 0) {
+            // Distribute remaining to flexible columns proportionally
+            scaledWidths = scaledWidths.map((w, i) => {
+              if (flexibleIndices.includes(i)) {
+                return w + (remaining * (w / flexibleTotal))
+              }
+              return w
+            })
+          }
         }
-      } else {
-        setWidths(defaultWidths)
+        
+        // Final normalization to ensure exact sum equals containerWidth
+        const finalTotal = scaledWidths.reduce((sum, w) => sum + w, 0)
+        if (Math.abs(finalTotal - containerWidth) > 0.1) {
+          const adjustment = (containerWidth - finalTotal) / scaledWidths.length
+          scaledWidths = scaledWidths.map(w => w + adjustment)
+        }
+        
+        setWidths(scaledWidths)
       }
-      
-      hasInitializedRef.current = true
-    } else if (!hasInitializedRef.current) {
-      // Use default widths if container not measured yet
-      setWidths(columns.map((c) => c.width))
+    } else {
+      setWidths(defaultWidths)
     }
+    
+    hasInitializedRef.current = true
   }, [columns, containerWidth])
   
   // Ensure widths array matches columns array length
@@ -238,16 +273,10 @@ export default function ReportTable({
     return columns.map((col, index) => widths[index] || col.width);
   }, [columns, widths]);
   
-  // Calculate total table width for footer
+  // Calculate total table width - should match container width after normalization
   const totalTableWidth = React.useMemo(() => {
     return safeWidths.reduce((sum, width) => sum + width, 0);
   }, [safeWidths]);
-  
-  // Safety check - ensure we have valid columns
-  if (!columns || columns.length === 0) {
-    console.error('No valid columns available, rendering empty table');
-    return <div>No columns available</div>;
-  }
   
   const dragRef = React.useRef<DragState | null>(null)
   const [resizingIndex, setResizingIndex] = React.useState<number | null>(null)
@@ -314,59 +343,73 @@ export default function ReportTable({
     return v as string
   }
 
-  return (
-    <div className="w-full space-y-2">
-      <div className="w-full rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div 
-          ref={containerRef}
-          className="overflow-x-auto overflow-y-auto" 
-          style={{ height: '90vh', width: '100%' }}
-        >
-          <table 
-            className="table-fixed border-collapse text-sm" 
-            style={{ 
-              width: `${totalTableWidth}px`
-            }}
-          >
-            <colgroup>
-              {safeWidths.map((w, i) => (
-                <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
-              ))}
-            </colgroup>
+  // Safety check - ensure we have valid columns
+  if (!columns || columns.length === 0) {
+    console.error('No valid columns available, rendering empty table');
+    return <div>No columns available</div>;
+  }
 
-            <thead className="bg-gray-100 sticky top-0 z-50">
-              <tr className="text-gray-600">
-                {columns.map((col, idx) => {
-                  if (!col || !col.key) {
-                    console.error('Invalid column at index', idx, col);
-                    return null;
-                  }
-                  
-                  const isFirst = idx === 0
-                  const active = resizingIndex === idx
-                  const columnLogo = getColumnLogo(col.key)
-                  
-                  return (
-                    <th
-                      key={String(col.key)}
-                      scope="col"
-                      className={cn(
-                        "relative h-11 align-middle border-b border-l last:border-r",
-                        active ? "border-blue-500" : "border-gray-200",
-                        "px-3 text-left font-medium bg-gray-100",
-                        col.align === "right" && "text-right",
-                        isFirst &&
-                          "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        {columnLogo && (
-                          <span className="flex-shrink-0">
-                            {columnLogo}
-                          </span>
+  return (
+    <TooltipProvider>
+      <div className="w-full space-y-2">
+        <div className="w-full rounded-lg border border-gray-200 bg-white overflow-hidden">
+          <div 
+            ref={containerRef}
+            className="overflow-x-auto overflow-y-auto" 
+            style={{ height: '90vh', width: '100%' }}
+          >
+            <table 
+              className="table-fixed border-collapse text-sm w-full" 
+              style={{ 
+                minWidth: `${totalTableWidth}px`
+              }}
+            >
+              <colgroup>
+                {safeWidths.map((w, i) => (
+                  <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
+                ))}
+              </colgroup>
+
+              <thead className="bg-gray-100 sticky top-0 z-50">
+                <tr className="text-gray-600">
+                  {columns.map((col, idx) => {
+                    if (!col || !col.key) {
+                      console.error('Invalid column at index', idx, col);
+                      return null;
+                    }
+                    
+                    const isFirst = idx === 0
+                    const active = resizingIndex === idx
+                    const columnLogo = getColumnLogo(col.key)
+                    
+                    return (
+                      <th
+                        key={String(col.key)}
+                        scope="col"
+                        className={cn(
+                          "relative h-11 align-middle border-b border-l last:border-r",
+                          active ? "border-blue-500" : "border-gray-200",
+                          "px-3 text-left font-medium bg-gray-100",
+                          col.align === "right" && "text-right",
+                          isFirst &&
+                            "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                         )}
-                        <span className="truncate">{col.header}</span>
-                      </div>
+                      >
+                        <div className="flex items-center gap-2">
+                          {columnLogo && (
+                            <span className="flex-shrink-0">
+                              {columnLogo}
+                            </span>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="truncate cursor-help">{col.header}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              <p>{col.header}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
 
                       {/* Resize handle with blue active state */}
                       <div
@@ -439,8 +482,7 @@ export default function ReportTable({
 
           {/* Footer: rows per page + pagination - Inside scrollable area */}
           <div 
-            className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4"
-            style={{ width: `${totalTableWidth}px` }}
+            className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4 w-full"
           >
             <div className="flex items-center gap-2">
               <span className="text-gray-600">Rows per page:</span>
@@ -496,6 +538,7 @@ export default function ReportTable({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }

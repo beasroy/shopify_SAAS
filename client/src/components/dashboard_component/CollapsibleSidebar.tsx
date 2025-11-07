@@ -11,7 +11,7 @@ import {
   LineChart,
   Plus,
   Home,
-  BarChart3,Crown, Clapperboard
+  BarChart3,Crown, Clapperboard, Calculator
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -150,6 +150,7 @@ export default function CollapsibleSidebar() {
   const allDashboards = [
     { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
     { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
+    { name: "D2C Calculator", path: `/d2c-calculator/${selectedBrandId}`, icon: <Calculator size={20} /> },
     { name: "Creatives Library", path: `/creatives-library/${selectedBrandId}`, icon: <Clapperboard size={20} /> },
     { name: "Ad Metrics", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
     {

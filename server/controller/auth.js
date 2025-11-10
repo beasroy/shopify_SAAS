@@ -501,7 +501,23 @@ export const getShopifyAuthUrl = (req, res) => {
         return res.status(400).json({ error: 'Shop name is required' });
     }
 
-    const cleanShop = shop.replace('.myshopify.com', '');
+    let cleanShop = shop.trim();
+    
+
+    if (cleanShop.includes('admin.shopify.com/store/')) {
+        const urlParts = cleanShop.split('/store/');
+        if (urlParts.length > 1) {
+            cleanShop = urlParts[urlParts.length - 1].split('/')[0].split('?')[0];
+        }
+    }
+
+    else if (cleanShop.includes('.myshopify.com')) {
+        cleanShop = cleanShop.replace('.myshopify.com', '').split('/')[0];
+    }
+    
+    else {
+        cleanShop = cleanShop.split('/')[0].split('?')[0];
+    }
 
     const SCOPES = "read_all_orders,read_analytics, write_returns, read_returns, write_reports, read_reports, write_orders, read_orders, write_customers, read_customers, write_products, read_products"
     let redirectUri;

@@ -2,10 +2,11 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
-import { Eye, EyeOff, Mail, Lock, User, Store } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Store, HelpCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "../hooks/use-toast"
 import { FcGoogle } from "react-icons/fc"
 import { useDispatch, useSelector } from "react-redux"
@@ -213,7 +214,26 @@ export default function AuthForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {isShopifyLogin ? (
               <div className="space-y-2">
-                <Label htmlFor="shop">Shopify Store Name</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="shop">Shopify Store Name</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs p-3">
+                        <div className="space-y-2 text-xs">
+                          <p className="font-semibold mb-2">How to get your store name:</p>
+                          <ul className="list-disc list-inside space-y-1.5 ml-1">
+                            <li>Visit your store URL and add <code className="bg-muted px-1 py-0.5 rounded text-[10px] text-black">/admin</code>, then paste the full URL</li>
+                            <li>Or paste just the store name (last part of the URL)</li>
+                            <li>Or enter: <code className="bg-muted px-1 py-0.5 rounded text-[10px] text-black">storename.myshopify.com</code></li>
+                          </ul>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <div className="relative">
                   <Store className="absolute left-3 top-3 h-5 w-5" />
                   <Input

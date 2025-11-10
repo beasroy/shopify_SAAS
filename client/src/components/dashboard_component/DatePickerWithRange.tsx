@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { createSelector } from "@reduxjs/toolkit"
 import { CalendarIcon } from "lucide-react"
-import { addDays, endOfYear, format, startOfYear, subDays, subMonths, subYears, parse } from "date-fns"
+import { addDays,startOfMonth, endOfMonth, endOfYear, format, startOfYear, subDays, subMonths, subYears, parse } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,8 +20,8 @@ type DatePickerWithRangeProps = {
 
 // Memoized selector
 const selectDateRange = createSelector(
-  (state: RootState) => state.date.from,
-  (state: RootState) => state.date.to,
+  (state: RootState) => state.date?.from,
+  (state: RootState) => state.date?.to,
   (from, to) => ({
     from,
     to,
@@ -162,6 +162,7 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
       { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
       { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 29), dates.today) },
       { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.today) },
+      { label: "Last Month", fn: () => setPresetRange(startOfMonth(subMonths(dates.today, 1)), endOfMonth(subMonths(dates.today, 1))) },
       { label: "Last 3 Months", fn: () => setPresetRange(subMonths(dates.today, 3), dates.today) },
       { label: "Last 6 Months", fn: () => setPresetRange(subMonths(dates.today, 6), dates.today) },
       { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter, dates.endOfThisQuarter) },

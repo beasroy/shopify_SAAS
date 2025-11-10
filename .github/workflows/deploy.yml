@@ -36,6 +36,8 @@ jobs:
 
             # Update frontend (dist folder)
             echo "=== Updating Frontend ==="
+            cd ~/shopify_SAAS/client
+            npm install
             if [ -d ~/shopify_SAAS/client/dist ]; then
               sudo cp -rf ~/shopify_SAAS/client/dist/* /home/ec2-user/shopify_SAAS/client/dist/
               sudo systemctl reload nginx

@@ -18,20 +18,36 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { useParams } from "react-router-dom";
 
+export interface CarouselImage {
+  url: string;
+  link?: string | null;
+  name?: string | null;
+  description?: string | null;
+}
+
 export interface Creative {
   ad_id: string;
   ad_name: string;
-  creative_type: "video" | "image" | "unknown";
+  creative_type: "video" | "image" | "carousel" | "unknown";
   creative_url: string;
   thumbnail_url: string;
+  carousel_images?: CarouselImage[] | null;
   spend: number;
   ctr: number;
+  cpc?: number;
+  cpp?: number;
   clicks: number;
   roas: number;
   orders: number;
   hook_rate: number;
   impressions?: number;
   video_views?: number;
+  revenue?: number;
+  engagementRate?: number;
+  frequency?: number;
+  video_p25_watched?: number;
+  video_p50_watched?: number;
+  video_p100_watched?: number;
 }
 
 interface CreativesResponse {
@@ -266,7 +282,7 @@ const CreativesLibrary: React.FC = () => {
       {/* Creatives Grid */}
       {creatives.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
             {creatives.map((creative) => {
               // Attach ref to last UNFILTERED card for infinite scroll
               // We need to find the actual last creative in the full array, not the filtered one
@@ -277,6 +293,7 @@ const CreativesLibrary: React.FC = () => {
                 <div
                   key={creative.ad_id}
                   ref={shouldAttachRef ? lastCardRef : null}
+                  className="h-full"
                 >
                   <CreativeCard creative={creative} />
                 </div>

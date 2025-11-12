@@ -174,6 +174,135 @@ const fetchCarouselImages = async (imageHashes, accessToken, adAccountIds) => {
   return imageMap;
 };
 
+// Fetch ad IDs that have activity in the time range from account insights (with limit and pagination)
+const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDate, endDate, limit = null, after = null) => {
+  if (!adAccountIds.length) return { adIds: [], nextCursor: null, hasMore: false };
+
+  const adIds = [];
+  let accountCursors = {};
+  if (after) {
+    try {
+      accountCursors = JSON.parse(Buffer.from(after, 'base64').toString());
+    } catch (error) {
+      console.error('Error parsing cursor:', error.message);
+      accountCursors = {};
+    }
+  }
+  let remainingLimit = limit || Infinity;
+  const nextCursors = {};
+
+  // Process each account separately to handle pagination
+  for (const accId of adAccountIds) {
+    try {
+      // Get cursor for this account if it exists
+      const accountCursor = accountCursors[accId] || null;
+      let nextUrl = accountCursor 
+        ? accountCursor 
+        : `${accId}/insights?level=ad&fields=ad_id&time_range={'since':'${startDate}','until':'${endDate}'}&limit=25`;
+      
+      let pageCount = 0;
+      let accountHasMore = false;
+      let lastNextUrl = null;
+      let hasFetchedAtLeastOnePage = false;
+
+      // Continue fetching until we have enough or there's no more data
+      while (nextUrl) {
+        // Stop if we've reached the limit AND we've fetched at least one page
+        // This ensures we always check for paging.next on the last page we fetch
+        if (remainingLimit <= 0 && hasFetchedAtLeastOnePage) {
+          break;
+        }
+        
+        pageCount++;
+        hasFetchedAtLeastOnePage = true;
+        
+        try {
+          let response;
+          // Check if nextUrl is a full URL or relative path
+          if (nextUrl.startsWith('http')) {
+            // Full URL from paging.next
+            response = await axios.get(nextUrl);
+          } else {
+            // Relative path - construct full URL
+            response = await axios.get(
+              `https://graph.facebook.com/v24.0/${nextUrl}`,
+              { params: { access_token: accessToken } }
+            );
+          }
+
+          const { data } = response;
+
+          // Extract ad IDs from current page
+          if (data.data && Array.isArray(data.data)) {
+            for (const insight of data.data) {
+              if (insight.ad_id && remainingLimit > 0) {
+                adIds.push(insight.ad_id);
+                remainingLimit--;
+              }
+            }
+          }
+
+          // Always check for next page to know if there's more data available
+          if (data.paging && data.paging.next) {
+            lastNextUrl = data.paging.next; // Store the next URL
+            accountHasMore = true;
+            // Continue to next page only if we haven't reached the limit
+            if (remainingLimit > 0) {
+              nextUrl = data.paging.next;
+            } else {
+              // We've reached the limit, but there's more data - stop here
+              nextUrl = null;
+            }
+          } else {
+            nextUrl = null;
+            accountHasMore = false;
+            lastNextUrl = null;
+          }
+        } catch (error) {
+          console.error(`Error fetching insights page ${pageCount} for account ${accId}:`, error.message);
+          break; // Move to next account if this one fails
+        }
+      }
+
+      // Store cursor for this account if there's more data available
+      // Use lastNextUrl if we stopped due to limit, or nextUrl if we're continuing
+      if (accountHasMore && (lastNextUrl || nextUrl)) {
+        nextCursors[accId] = lastNextUrl || nextUrl;
+      }
+      
+      // If we've reached the limit, we can stop processing other accounts
+      // (but we've already checked if this account has more data)
+      if (remainingLimit <= 0) {
+        // Check if other accounts have cursors from previous requests
+        // If they do, they might have more data
+        for (const otherAccId of adAccountIds) {
+          if (otherAccId !== accId && accountCursors[otherAccId]) {
+            // This account has a cursor from a previous request, so there might be more data
+            // We don't need to fetch it now, but we should indicate there's more
+            if (!nextCursors[otherAccId]) {
+              // Keep the existing cursor for this account
+              nextCursors[otherAccId] = accountCursors[otherAccId];
+            }
+          }
+        }
+        break; // Stop processing more accounts since we've reached the limit
+      }
+    } catch (error) {
+      console.error(`Error processing account ${accId}:`, error.message);
+      // Continue with next account
+    }
+  }
+
+  // Create next cursor if there are more pages
+  const hasMore = Object.keys(nextCursors).length > 0;
+  const nextCursor = hasMore 
+    ? Buffer.from(JSON.stringify(nextCursors)).toString('base64')
+    : null;
+
+  console.log(`✅ Fetched ${adIds.length} ad IDs from ${adAccountIds.length} accounts (limit: ${limit || 'unlimited'}, hasMore: ${hasMore})`);
+  return { adIds, nextCursor, hasMore };
+};
+
 const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
   if (!adIds.length) return new Map();
 
@@ -199,13 +328,14 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
         );
 
         const insights = [];
-        batchResponse.forEach(item => {
+        batchResponse.forEach((item, index) => {
           try {
             if (item.code === 200 && item.body) {
               const body = JSON.parse(item.body);
               const insightData = body.data?.[0] || {};
               
               insights.push({
+                adId: chunk[index],
                 data: insightData
               });
             }
@@ -223,12 +353,65 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
   );
 
   const insightsMap = new Map();
-  uniqueAdIds.forEach((adId, index) => {
-    const insightData = insightsArrays.flat()[index]?.data || {};
-    insightsMap.set(adId, insightData);
+  insightsArrays.flat().forEach(insight => {
+    if (insight.adId && insight.data) {
+      insightsMap.set(insight.adId, insight.data);
+    }
   });
 
   return insightsMap;
+};
+
+// Fetch ads with creatives for specific ad IDs (no pagination - already limited at ad IDs level)
+const fetchAdsByIds = async (adIds, accessToken) => {
+  if (!adIds.length) return { ads: [] };
+
+  const uniqueAdIds = [...new Set(adIds)];
+
+  // Split into chunks of 50 for batch API
+  const chunks = [];
+  for (let i = 0; i < uniqueAdIds.length; i += 50) {
+    chunks.push(uniqueAdIds.slice(i, i + 50));
+  }
+
+  const allBatchResponses = await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const batchRequests = chunk.map(adId => ({
+          method: "GET",
+          relative_url: `${adId}?fields=id,name,status,effective_status,adcreatives{id,object_story_spec{link_data{child_attachments{image_hash,link,name,description}},video_data{video_id}},image_url,thumbnail_url}`
+        }));
+
+        const { data } = await axios.post(
+          `https://graph.facebook.com/v24.0/`,
+          { batch: JSON.stringify(batchRequests) },
+          { params: { access_token: accessToken } }
+        );
+        return data;
+      } catch (error) {
+        console.error("Error fetching ads batch:", error.message);
+        return [];
+      }
+    })
+  );
+
+  const batchResponse = allBatchResponses.flat();
+  const ads = [];
+
+  batchResponse.forEach(item => {
+    try {
+      if (item.code === 200 && item.body) {
+        const body = JSON.parse(item.body);
+        if (body.id) {
+          ads.push(body);
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing ad response:", error.message);
+    }
+  });
+
+  return { ads };
 };
 
 export const getBrandCreativesBatch = async (req, res) => {
@@ -303,95 +486,48 @@ export const getBrandCreativesBatch = async (req, res) => {
       });
     }
 
-    console.log(`🚀 Fetching creatives for ${adAccountIds.length} ad accounts (limit: ${limit}/account, cursor: ${after ? 'yes' : 'first'})...`);
+    console.log(`🚀 Fetching ad IDs with activity in time range ${startDate} to ${endDate}...`);
 
-    
-    const batchRequests = adAccountIds.map((accId, idx) => {
-      const afterParam = after ? `&after=${after}` : '';
-       const request = {
-          method: "GET",
-          // Note: time_range doesn't work on /ads endpoint, so we fetch all ads and filter by insights later
-          relative_url: `${accId}/ads?fields=id,name,status,effective_status,adcreatives{id,object_story_spec{link_data{child_attachments{image_hash,link,name,description}},video_data{video_id}},image_url,thumbnail_url}&limit=${limit * 2}${afterParam}`
-        };
-     
-      return request;
-    });
+    // 🔹 Step 1: Fetch ad IDs that have activity in the time range from account insights (with limit)
+    const totalLimit = limit * adAccountIds.length;
+    const { adIds, nextCursor: adIdsNextCursor, hasMore: adIdsHasMore } = await fetchAdIdsFromAccountInsights(
+      adAccountIds, 
+      accessToken, 
+      startDate, 
+      endDate,
+      totalLimit,
+      after
+    );
+    console.log(`✅ Found ${adIds.length} ads with activity in the time range (hasMore: ${adIdsHasMore})`);
 
-    // Split batch requests into chunks of 50 (Facebook batch API limit)
-    const batchChunks = [];
-    for (let i = 0; i < batchRequests.length; i += 50) {
-      batchChunks.push(batchRequests.slice(i, i + 50));
+    if (adIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        brandId,
+        total_creatives: 0,
+        creatives: [],
+        hasMore: adIdsHasMore,
+        nextCursor: adIdsNextCursor,
+        fetchTime: Date.now() - startTime,
+        stats: {
+          accountsProcessed: adAccountIds.length,
+          totalAds: 0,
+          totalAdIdsFound: 0,
+          videosProcessed: 0
+        }
+      });
     }
 
-    // 🔹 Step 2: Fetch all batch chunks in parallel
-    const allBatchResponses = await Promise.all(
-      batchChunks.map(async (chunk) => {
-        try {
-          const { data } = await axios.post(
-            `https://graph.facebook.com/v24.0/`,
-            { batch: JSON.stringify(chunk) },
-        { params: { access_token: accessToken } }
-      );
-          return data;
-        } catch (error) {
-          console.error("Error in batch request:", error.message);
-          return [];
-        }
-      })
-    );
-
-    const batchResponse = allBatchResponses.flat();
-    console.log(`✅ Fetched initial batch for ${batchResponse.length} accounts`);
-
-    // Debug: Log first response to see what Facebook returned
-    // if (batchResponse.length > 0 && batchResponse[0].body) {
-    //   const firstResponse = JSON.parse(batchResponse[0].body);
-    //   console.log(`📊 First account sample:`, JSON.stringify(firstResponse, null, 2).substring(0, 500));
-    // }
-
-    // 🔹 Step 3: Process all accounts and extract cursors
-    const accountPromises = batchResponse.map(async (item, index) => {
-      if (!item.body) {
-        console.warn(`⚠️  Account ${index + 1}: No body in response`);
-        return { ads: [], hasMore: false, cursor: null };
-      }
-
-      try {
-        const parsedBody = JSON.parse(item.body);
-        
-        // Check for errors in response
-        if (parsedBody.error) {
-          console.error(`❌ Account ${index + 1} error:`, parsedBody.error);
-          return { ads: [], hasMore: false, cursor: null };
-        }
-        
-        const accountAds = parsedBody.data || [];
-        const hasMore = !!parsedBody.paging?.next;
-        // Extract cursor from paging.cursors.after
-        const cursor = parsedBody.paging?.cursors?.after || null;
-        
-        console.log(`📊 Account ${index + 1}: Found ${accountAds.length} ads, hasMore: ${hasMore}, cursor: ${cursor ? 'yes' : 'no'}`);
-
-        return { ads: accountAds, hasMore, cursor };
-      } catch (error) {
-        console.error("Error processing account:", error.message);
-        return { ads: [], hasMore: false, cursor: null };
-      }
-    });
-
-    const accountResults = await Promise.all(accountPromises);
-    const allAds = accountResults.flatMap(result => result.ads);
-    const hasMorePages = accountResults.some(result => result.hasMore);
-    // Get cursor from first account (assuming all accounts paginate similarly)
-    const nextCursor = accountResults.find(result => result.cursor)?.cursor || null;
+    // 🔹 Step 2: Fetch ads with creatives for those ad IDs (no pagination needed - we already limited at ad IDs level)
+    const { ads: allAds } = await fetchAdsByIds(adIds, accessToken);
     
-    console.log(`✅ Fetched ${allAds.length} total ads (hasMore: ${hasMorePages}, nextCursor: ${nextCursor ? 'yes' : 'no'})`);
+    console.log(`✅ Fetched ${allAds.length} ads with creatives`);
 
-    // 🔹 Step 4: Extract IDs and image hashes from ads
+    // 🔹 Step 3: Extract IDs and image hashes from ads
     const videoIds = [];
     const creativeIds = [];
     const imageHashes = [];
-    const adIds = allAds.map(ad => ad.id);
+    const fetchedAdIds = allAds.map(ad => ad.id);
     
     allAds.forEach(ad => {
       const creativeData = ad.adcreatives?.data?.[0];
@@ -410,19 +546,17 @@ export const getBrandCreativesBatch = async (req, res) => {
       }
     });
 
-   
-
-    // 🔹 Step 5: Fetch video details, custom thumbnails, carousel images, and insights in parallel
+    // 🔹 Step 4: Fetch video details, custom thumbnails, carousel images, and insights in parallel
     const [videoMap, thumbnailMap, carouselImageMap, insightsMap] = await Promise.all([
       fetchVideoSourcesBatch(videoIds, accessToken),
       fetchCreativeThumbnails(creativeIds, accessToken, thumbnailWidth, thumbnailHeight),
       fetchCarouselImages(imageHashes, accessToken, adAccountIds),
-      fetchAdInsightsBatch(adIds, accessToken, startDate, endDate)
+      fetchAdInsightsBatch(fetchedAdIds, accessToken, startDate, endDate)
     ]);
     
 
 
-   
+    // 🔹 Step 5: Process all ads and build creatives array
     const allCreatives = allAds
       .map(ad => {
         const creativeData = ad.adcreatives?.data?.[0];
@@ -430,14 +564,8 @@ export const getBrandCreativesBatch = async (req, res) => {
         const creativeId = creativeData?.id;
         const insights = insightsMap.get(ad.id) || {};
         
- 
         const spend = parseFloat(insights.spend || 0);
         const impressions = parseInt(insights.impressions || 0, 10);
-        
-     
-        if (spend === 0 ) {
-          return null;
-        }
         
         // Helper to get action count
         const getActionCount = (actionType) => {
@@ -565,16 +693,10 @@ export const getBrandCreativesBatch = async (req, res) => {
           video_p50_watched: videoP50Watched,
           video_p100_watched: videoP100Watched
         };
-      })
-      .filter(creative => creative !== null); // Remove null entries (ads with no activity)
+      });
     
-    const filteredCount = allAds.length - allCreatives.length;
-    if (filteredCount > 0) {
-      console.log(`🔍 Filtered out ${filteredCount} ads with no activity during ${startDate} to ${endDate}`);
-    }
-    
-    // Limit to requested amount after filtering
-    const limitedCreatives = allCreatives.slice(0, limit * adAccountIds.length);
+    // All ads already have activity in the time range, so no filtering needed
+    const limitedCreatives = allCreatives;
     console.log(`✅ Returning ${limitedCreatives.length} creatives with activity during the time range`);
   
     const fetchTime = Date.now() - startTime;
@@ -585,14 +707,14 @@ export const getBrandCreativesBatch = async (req, res) => {
         brandId,
       limit,
         total_creatives: limitedCreatives.length,
-      hasMore: hasMorePages,
-      nextCursor: nextCursor,  // Send cursor to frontend for next request
+      hasMore: adIdsHasMore,
+      nextCursor: adIdsNextCursor,  // Send cursor to frontend for next request (from ad IDs pagination)
       creatives: limitedCreatives,
       fetchTime,
       stats: {
         accountsProcessed: adAccountIds.length,
         totalAds: allAds.length,
-        adsFiltered: filteredCount,
+        totalAdIdsFound: adIds.length,
         videosProcessed: videoMap.size
       }
     };

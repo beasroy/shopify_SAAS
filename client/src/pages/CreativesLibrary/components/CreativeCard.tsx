@@ -106,22 +106,28 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                 {/* Carousel Navigation */}
                 {carouselImages.length > 1 && (
                   <>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={handleCarouselPrev}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={handleCarouselNext}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-8 h-8">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="!w-8 !h-8 !rounded-full bg-black/50 hover:!bg-black/70 hover:!w-8 hover:!h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto !border-0 !p-0 !m-0 !min-w-[2rem] !min-h-[2rem] !max-w-[2rem] !max-h-[2rem] flex-shrink-0"
+                        onClick={handleCarouselPrev}
+                        style={{ transform: 'none', width: '2rem', height: '2rem' }}
+                      >
+                        <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                      </Button>
+                    </div>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-8 h-8">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="!w-8 !h-8 !rounded-full bg-black/50 hover:!bg-black/70 hover:!w-8 hover:!h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto !border-0 !p-0 !m-0 !min-w-[2rem] !min-h-[2rem] !max-w-[2rem] !max-h-[2rem] flex-shrink-0"
+                        onClick={handleCarouselNext}
+                        style={{ transform: 'none', width: '2rem', height: '2rem' }}
+                      >
+                        <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                      </Button>
+                    </div>
                     
                     {/* Carousel Indicators */}
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
@@ -146,11 +152,11 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                 )}
                 
                 {/* Zoom Button */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none z-10">
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full pointer-events-auto"
                     onClick={handleShowFullImage}
                   >
                     <Maximize2 className="w-5 h-5" />
@@ -337,39 +343,45 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                 <img
                   src={carouselImages[carouselIndex]?.url}
                   alt={carouselImages[carouselIndex]?.name || creative.ad_name}
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  className="max-w-full max-h-full object-contain rounded-lg pointer-events-none"
                   onClick={(e) => e.stopPropagation()}
                 />
                 {carouselImages.length > 1 && (
                   <>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCarouselPrev(e);
-                      }}
-                    >
-                      <ChevronLeft className="w-6 h-6" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCarouselNext(e);
-                      }}
-                    >
-                      <ChevronRight className="w-6 h-6" />
-                    </Button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-12 h-12">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="!w-12 !h-12 !rounded-full bg-black/50 hover:!bg-black/70 hover:!w-12 hover:!h-12 text-white pointer-events-auto !border-0 !p-0 !m-0 !min-w-[3rem] !min-h-[3rem] !max-w-[3rem] !max-h-[3rem] flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCarouselPrev(e);
+                        }}
+                        style={{ transform: 'none', width: '3rem', height: '3rem' }}
+                      >
+                        <ChevronLeft className="w-6 h-6 flex-shrink-0" />
+                      </Button>
+                    </div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-12 h-12">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="!w-12 !h-12 !rounded-full bg-black/50 hover:!bg-black/70 hover:!w-12 hover:!h-12 text-white pointer-events-auto !border-0 !p-0 !m-0 !min-w-[3rem] !min-h-[3rem] !max-w-[3rem] !max-h-[3rem] flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCarouselNext(e);
+                        }}
+                        style={{ transform: 'none', width: '3rem', height: '3rem' }}
+                      >
+                        <ChevronRight className="w-6 h-6 flex-shrink-0" />
+                      </Button>
+                    </div>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30 pointer-events-auto">
                       {carouselImages.map((img, index) => (
                         <button
                           key={img.url || `modal-carousel-${index}`}
                           className={cn(
-                            "h-2 rounded-full transition-all",
+                            "h-2 rounded-full transition-all cursor-pointer",
                             index === carouselIndex 
                               ? "w-8 bg-white" 
                               : "w-2 bg-white/50"
@@ -396,7 +408,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
             <Button
               variant="secondary"
               size="icon"
-              className="absolute top-4 right-4"
+              className="absolute top-4 right-4 z-40"
               onClick={() => setShowFullImage(false)}
             >
               ✕

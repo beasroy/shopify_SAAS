@@ -17,6 +17,13 @@ import CreativeCard from "./components/CreativeCard";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { useParams } from "react-router-dom";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface CarouselImage {
   url: string;
@@ -75,6 +82,7 @@ const CreativesLibrary: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [formatFilter, setFormatFilter] = useState<"all" | "image" | "video" | "carousel">("all");
   const { brandId } = useParams();
   
   // Ref for infinite scroll observer
@@ -187,7 +195,7 @@ const CreativesLibrary: React.FC = () => {
 
     observerRef.current = observer;
 
-    // Observe the last card
+    // Observe the last card (works with filtered results too)
     const currentLastCard = lastCardRef.current;
     if (currentLastCard) {
       console.log("👀 Observing last card for infinite scroll");
@@ -201,14 +209,26 @@ const CreativesLibrary: React.FC = () => {
       }
       observer.disconnect();
     };
-  }, [creatives.length, hasMore, loading, nextCursor]); // Re-run when these change
+  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter]); // Re-run when these change
 
   const handleRefresh = () => {
     fetchCreatives(null, true);
   };
 
-
-  // Filter creatives based on search and type
+  // Filter creatives based on search and format
+  const filteredCreatives = useMemo(() => {
+    return creatives.filter((creative) => {
+      // Filter by search term
+      const matchesSearch = searchTerm === "" || 
+        creative.ad_name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filter by format
+      const matchesFormat = formatFilter === "all" || 
+        creative.creative_type === formatFilter;
+      
+      return matchesSearch && matchesFormat;
+    });
+  }, [creatives, searchTerm, formatFilter]);
 
 
   if (!brandId) {
@@ -250,19 +270,26 @@ const CreativesLibrary: React.FC = () => {
 
             {/* Filter by type */}
             <div className="flex gap-2">
-             
-              <DatePickerWithRange
-  
-      
-  />
-  <Button
-    onClick={handleRefresh}
-    variant="outline"
-    size="icon"
-    disabled={loading}
-  >
-    <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-  </Button>   
+              <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as "all" | "image" | "video" | "carousel")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="image">Image</SelectItem>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="carousel">Carousel</SelectItem>
+                </SelectContent>
+              </Select>
+              <DatePickerWithRange />
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="icon"
+                disabled={loading}
+              >
+                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              </Button>   
             </div>
           </div>
       
@@ -283,11 +310,11 @@ const CreativesLibrary: React.FC = () => {
       {creatives.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-            {creatives.map((creative) => {
-              // Attach ref to last UNFILTERED card for infinite scroll
-              // We need to find the actual last creative in the full array, not the filtered one
-              const isActualLastCreative = creative.ad_id === creatives[creatives.length - 1]?.ad_id;
-              const shouldAttachRef = isActualLastCreative && !searchTerm; // Enable on all tabs, disable only for search
+            {filteredCreatives.map((creative, index) => {
+              // Attach ref to last FILTERED card for infinite scroll
+              // This allows infinite scroll to work even when filters are active
+              const isLastFilteredCreative = index === filteredCreatives.length - 1;
+              const shouldAttachRef = isLastFilteredCreative && hasMore && !loading;
               
               return (
                 <div
@@ -311,31 +338,56 @@ const CreativesLibrary: React.FC = () => {
             </div>
           )}
 
-          {/* Info message when searching */}
-          {searchTerm && (
+          {/* Info message when filtering */}
+          {(searchTerm || formatFilter !== "all") && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
-                Showing {creatives.length} search results from {creatives.length} loaded ads. Clear search to enable infinite scroll.
+                Showing {filteredCreatives.length} of {creatives.length} loaded ads
+                {searchTerm && ` matching "${searchTerm}"`}
+                {formatFilter !== "all" && ` (${formatFilter} format)`}
+                {hasMore && ". Keep scrolling to load more!"}
               </p>
             </div>
           )}
 
-          {/* Info message when filtering by type */}
-          {!searchTerm  && (
+          {/* Info message when no filters */}
+          {!searchTerm && formatFilter === "all" && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
-                Showing {creatives.length} loaded ads. keep scrolling to load more!
+                Showing {creatives.length} loaded ads. Keep scrolling to load more!
               </p>
             </div>
           )}
 
           {/* End Message */}
-          {!hasMore && creatives.length > 0 && !searchTerm && (
+          {!hasMore && creatives.length > 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                🎉 You've reached the end! All {creatives.length} ads loaded.
+                🎉 You've reached the end! 
+                {searchTerm || formatFilter !== "all" 
+                  ? ` Showing ${filteredCreatives.length} of ${creatives.length} loaded ads.`
+                  : ` All ${creatives.length} ads loaded.`}
               </p>
             </div>
+          )}
+
+          {/* No results message when filters are active */}
+          {filteredCreatives.length === 0 && (searchTerm || formatFilter !== "all") && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Film className="w-16 h-16 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No Creatives Found</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    {searchTerm && formatFilter !== "all"
+                      ? `No ${formatFilter} creatives found matching "${searchTerm}". Try adjusting your filters.`
+                      : searchTerm
+                      ? `No creatives found matching "${searchTerm}". Try adjusting your search.`
+                      : `No ${formatFilter} creatives found. Try selecting a different format.`}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </>
       ) : (

@@ -81,7 +81,16 @@ export default function BrandSetup() {
   const [shop, setShop] = useState<string>(formData.shop || "")
   const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
   const [isCreatingBrand, setIsCreatingBrand] = useState(false)
+  const [newlyCreatedBrandId, setNewlyCreatedBrandId] = useState<string | null>(null)
   const { refreshBrands } = useBrandRefresh();
+
+  // Clear selectedBrandId when component mounts for new brand creation
+  // This ensures users with existing brands can create a new brand without the input being disabled
+  useEffect(() => {
+    // Clear selectedBrandId when starting a new brand setup (this page is for creating new brands)
+    dispatch(setSelectedBrandId(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -183,7 +192,7 @@ export default function BrandSetup() {
   }
 
   const canSubmit = () => {
-    return !!selectedBrandId && Object.keys(connectedAccounts).length > 0
+    return !!newlyCreatedBrandId && Object.keys(connectedAccounts).length > 0
   }
 
   const handleCreateBrand = async () => {
@@ -213,6 +222,7 @@ export default function BrandSetup() {
 
       // Set the newly created brand as selected
       dispatch(setSelectedBrandId(newBrandId));
+      setNewlyCreatedBrandId(newBrandId);
 
       // Add the brand to user
       if (user) {
@@ -244,7 +254,9 @@ export default function BrandSetup() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedBrandId) {
+    const brandIdToUpdate = newlyCreatedBrandId || selectedBrandId;
+    
+    if (!brandIdToUpdate) {
       toast({ description: 'Please create a brand first', variant: "destructive" });
       return;
     }
@@ -262,7 +274,7 @@ export default function BrandSetup() {
       };
 
       await axios.patch(
-        `${baseURL}/api/brands/update/${selectedBrandId}`,
+        `${baseURL}/api/brands/update/${brandIdToUpdate}`,
         payload,
         { withCredentials: true }
       );
@@ -315,9 +327,9 @@ export default function BrandSetup() {
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
                 className="flex-1"
-                disabled={!!selectedBrandId}
+                disabled={!!newlyCreatedBrandId}
               />
-              {!selectedBrandId && (
+              {!newlyCreatedBrandId && (
                 <Button 
                   onClick={handleCreateBrand}
                   disabled={!canCreateBrand() || isCreatingBrand}
@@ -327,7 +339,7 @@ export default function BrandSetup() {
                 </Button>
               )}
             </div>
-            {selectedBrandId && (
+            {newlyCreatedBrandId && brandName && (
               <p className="text-sm text-green-600 font-medium">
                 ✓ Brand "{brandName}" created successfully! You can now connect platforms.
               </p>
@@ -347,16 +359,16 @@ export default function BrandSetup() {
                   <DialogTrigger asChild>
                     <button
                       className={`relative group p-6 rounded-xl ${platform.color} ring-1 ${platform.ringColor} transition-all duration-200 hover:scale-[1.02] w-full text-left ${
-                        !selectedBrandId ? 'opacity-50 cursor-not-allowed' : ''
+                        !newlyCreatedBrandId ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
-                      disabled={!selectedBrandId}
+                      disabled={!newlyCreatedBrandId}
                     >
                       <div className="flex items-start gap-4">
                         <platform.icon width="2rem" height="2rem" />
                         <div className="flex-1">
                           <h3 className={`font-semibold ${platform.textColor}`}>{platform.name}</h3>
                           <p className="text-sm text-gray-600 mt-1">
-                            {!selectedBrandId ? 'Create a brand first to connect platforms' : platform.description}
+                            {!newlyCreatedBrandId ? 'Create a brand first to connect platforms' : platform.description}
                           </p>
                         </div>
                         {isConnected(platform.name) ? (
@@ -408,7 +420,7 @@ export default function BrandSetup() {
 
           {/* Submit Button */}
           <Button className="w-full" disabled={!canSubmit()} onClick={handleSubmit}>
-            {!selectedBrandId ? 'Create Brand First' : 'Complete Setup'}
+            {!newlyCreatedBrandId ? 'Create Brand First' : 'Complete Setup'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

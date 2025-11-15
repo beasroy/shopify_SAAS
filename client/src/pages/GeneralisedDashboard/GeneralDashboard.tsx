@@ -16,11 +16,6 @@ const GeneralDashboard: React.FC = () => {
             return;
         }
 
-        // If user has no brands, redirect to brand setup
-        if (!user.brands || user.brands.length === 0) {
-            navigate('/brand-setup');
-            return;
-        }
     }, [user, navigate]);
 
     // If user is not authenticated or has no brands, don't render anything

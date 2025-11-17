@@ -318,7 +318,7 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
       try {
         const batchRequests = chunk.map(adId => ({
           method: "GET",
-          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values,cpc,cpp,frequency,video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,cost_per_action_type&time_range={'since':'${startDate}','until':'${endDate}'}`
+          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values,cpc,frequency,video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,cost_per_action_type&time_range={'since':'${startDate}','until':'${endDate}'}`
         }));
 
         const { data: batchResponse } = await axios.post(
@@ -668,6 +668,8 @@ export const getBrandCreativesBatch = async (req, res) => {
         const videoP25Watched = getVideoWatchCount(insights.video_p25_watched_actions);
         const videoP50Watched = getVideoWatchCount(insights.video_p50_watched_actions);
         const videoP100Watched = getVideoWatchCount(insights.video_p100_watched_actions);
+
+        const orders = getActionCount('purchase');
         
         return {
           ad_id: ad.id,
@@ -679,10 +681,10 @@ export const getBrandCreativesBatch = async (req, res) => {
           spend,
           ctr: parseFloat(insights.ctr || 0),
           cpc: parseFloat(insights.cpc || 0),
-          cpp: parseFloat(insights.cpp || 0),
+          cpp: parseFloat(spend / orders || 0),
           clicks: parseInt(insights.clicks || 0, 10),
           roas: parseFloat(roas.toFixed(2)),
-          orders: getActionCount('purchase'),
+          orders,
           hook_rate: parseFloat(hookRate.toFixed(2)),
           impressions,
           video_views: videoViews,

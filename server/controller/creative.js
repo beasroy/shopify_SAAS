@@ -669,11 +669,18 @@ export const getBrandCreativesBatch = async (req, res) => {
         const videoP50Watched = getVideoWatchCount(insights.video_p50_watched_actions);
         const videoP100Watched = getVideoWatchCount(insights.video_p100_watched_actions);
 
+        const videoP25WatchedRate = impressions > 0 ? (videoP25Watched / impressions) * 100 : 0;
+        const videoP50WatchedRate = impressions > 0 ? (videoP50Watched / impressions) * 100 : 0;
+        const videoP100WatchedRate = impressions > 0 ? (videoP100Watched / impressions) * 100 : 0;
+    
+
         const orders = getActionCount('purchase');
+        const cpp = spend > 0 ? spend / orders : 0;
         
         return {
           ad_id: ad.id,
           ad_name: ad.name,
+          ad_status: ad.effective_status,
           creative_type: creativeType,
           creative_url: creativeUrl,
           thumbnail_url: thumbnailUrl,
@@ -681,7 +688,7 @@ export const getBrandCreativesBatch = async (req, res) => {
           spend,
           ctr: parseFloat(insights.ctr || 0),
           cpc: parseFloat(insights.cpc || 0),
-          cpp: parseFloat(spend / orders || 0),
+          cpp: parseFloat(cpp),
           clicks: parseInt(insights.clicks || 0, 10),
           roas: parseFloat(roas.toFixed(2)),
           orders,
@@ -693,7 +700,10 @@ export const getBrandCreativesBatch = async (req, res) => {
           frequency,
           video_p25_watched: videoP25Watched,
           video_p50_watched: videoP50Watched,
-          video_p100_watched: videoP100Watched
+          video_p100_watched: videoP100Watched,
+          video_p25_watched_rate: videoP25WatchedRate,
+          video_p50_watched_rate: videoP50WatchedRate,
+          video_p100_watched_rate: videoP100WatchedRate
         };
       });
     

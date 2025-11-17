@@ -21,7 +21,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
   const [showFullImage, setShowFullImage] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const videoRef = React.useRef<HTMLVideoElement>(null);
-  
+
   const carouselImages = creative.carousel_images || [];
   const hasCarousel = creative.creative_type === "carousel" && carouselImages.length > 0;
 
@@ -84,7 +84,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
 
   return (
     <>
-      <div 
+      <div
         className={cn(
           "flex flex-col border border-border rounded-lg bg-card overflow-hidden",
           "hover:border-primary/30 hover:shadow-lg transition-all duration-200",
@@ -93,6 +93,21 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
       >
         {/* Media Section - Top */}
         <div className="relative w-full aspect-square bg-muted overflow-hidden">
+          {/* Ad Status Label - Top Left Corner */}
+          <div className="absolute top-2 left-2 z-30">
+            <span className={cn(
+              "inline-block text-[10px] px-2 py-0.5 rounded-full font-medium shadow-sm",
+              creative.ad_status === "ACTIVE" || creative.ad_status === "active"
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : creative.ad_status === "PAUSED" || creative.ad_status === "paused"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : creative.ad_status === "DELETED" || creative.ad_status === "deleted" || creative.ad_status === "ARCHIVED" || creative.ad_status === "archived"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            )}>
+              {creative.ad_status || "Unknown"}
+            </span>
+          </div>
           {hasCarousel ? (
             <>
               {/* Carousel */}
@@ -102,7 +117,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                   alt={carouselImages[carouselIndex]?.name || creative.ad_name}
                   className="w-full h-full object-cover transition-opacity duration-300"
                 />
-                
+
                 {/* Carousel Navigation */}
                 {carouselImages.length > 1 && (
                   <>
@@ -128,7 +143,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                         <ChevronRight className="w-4 h-4 flex-shrink-0" />
                       </Button>
                     </div>
-                    
+
                     {/* Carousel Indicators */}
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                       {carouselImages.map((img, index) => (
@@ -136,8 +151,8 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                           key={img.url || `carousel-${index}`}
                           className={cn(
                             "h-1.5 rounded-full transition-all",
-                            index === carouselIndex 
-                              ? "w-6 bg-white" 
+                            index === carouselIndex
+                              ? "w-6 bg-white"
                               : "w-1.5 bg-white/50"
                           )}
                           onClick={(e) => {
@@ -150,7 +165,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                     </div>
                   </>
                 )}
-                
+
                 {/* Zoom Button */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none z-10">
                   <Button
@@ -219,22 +234,22 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
           <div className="mb-3">
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold line-clamp-2 flex-1 leading-tight">
-            {creative.ad_name}
+                {creative.ad_name}
               </h3>
               <span className={cn(
                 "inline-block text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0",
-                creative.creative_type === "video" 
+                creative.creative_type === "video"
                   ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                   : creative.creative_type === "image"
-                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                  : creative.creative_type === "carousel"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    : creative.creative_type === "carousel"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
               )}>
                 {creative.creative_type === "video" ? "Video" : creative.creative_type === "image" ? "Image" : creative.creative_type === "carousel" ? "Carousel" : "Unknown"}
               </span>
             </div>
-        </div>
+          </div>
 
           {/* Metrics - Clean table layout */}
           <div className="space-y-1 flex-1 text-xs">
@@ -294,39 +309,50 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
               </span>
             </div>
 
-          
-              <>
-                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">Video Views</span>
-                  <span className="font-semibold">{formatNumber(creative.video_views)}</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">25% Watched</span>
-                  <span className="font-semibold">{formatNumber(creative.video_p25_watched)}</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">50% Watched</span>
-                  <span className="font-semibold">{formatNumber(creative.video_p50_watched)}</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">100% Watched</span>
-                  <span className="font-semibold">{formatNumber(creative.video_p100_watched)}</span>
-                </div>
-              </>
+
+
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">Video Views</span>
+              <span className="font-semibold">{formatNumber(creative.video_views)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">25% Watched</span>
+              <span className="font-semibold">{formatNumber(creative.video_p25_watched)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">50% Watched</span>
+              <span className="font-semibold">{formatNumber(creative.video_p50_watched)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">100% Watched</span>
+              <span className="font-semibold">{formatNumber(creative.video_p100_watched)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">25% Watched Rate</span>
+              <span className="font-semibold">{formatPercentage(creative.video_p25_watched_rate)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">50% Watched Rate</span>
+              <span className="font-semibold">{formatPercentage(creative.video_p50_watched_rate)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground">100% Watched Rate</span>
+              <span className="font-semibold">{formatPercentage(creative.video_p100_watched_rate)}</span>
+            </div>
 
           </div>
 
           {/* Footer */}
           <div className="mt-3 pt-2 border-t">
-          <Button
-            variant="outline"
-            size="sm"
+            <Button
+              variant="outline"
+              size="sm"
               className="w-full text-xs h-7"
-            onClick={() => window.open(creative.creative_url || creative.thumbnail_url, '_blank')}
-          >
+              onClick={() => window.open(creative.creative_url || creative.thumbnail_url, '_blank')}
+            >
               <ExternalLink className="w-3 h-3 mr-1.5" />
-            View Full Size
-          </Button>
+              View Full Size
+            </Button>
           </div>
         </div>
       </div>
@@ -382,8 +408,8 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                           key={img.url || `modal-carousel-${index}`}
                           className={cn(
                             "h-2 rounded-full transition-all cursor-pointer",
-                            index === carouselIndex 
-                              ? "w-8 bg-white" 
+                            index === carouselIndex
+                              ? "w-8 bg-white"
                               : "w-2 bg-white/50"
                           )}
                           onClick={(e) => {
@@ -398,12 +424,12 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
                 )}
               </div>
             ) : (
-            <img
-              src={creative.creative_url || creative.thumbnail_url}
-              alt={creative.ad_name}
-              className="max-w-full max-h-full object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()}
-            />
+              <img
+                src={creative.creative_url || creative.thumbnail_url}
+                alt={creative.ad_name}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
             )}
             <Button
               variant="secondary"

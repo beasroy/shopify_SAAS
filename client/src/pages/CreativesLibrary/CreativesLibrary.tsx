@@ -35,6 +35,7 @@ export interface CarouselImage {
 export interface Creative {
   ad_id: string;
   ad_name: string;
+  ad_status: string;
   creative_type: "video" | "image" | "carousel" | "unknown";
   creative_url: string;
   thumbnail_url: string;
@@ -55,6 +56,9 @@ export interface Creative {
   video_p25_watched?: number;
   video_p50_watched?: number;
   video_p100_watched?: number;
+  video_p25_watched_rate?: number;
+  video_p50_watched_rate?: number;
+  video_p100_watched_rate?: number;
 }
 
 interface CreativesResponse {
@@ -83,6 +87,7 @@ const CreativesLibrary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState<"all" | "image" | "video" | "carousel">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED">("all");
   const { brandId } = useParams();
   
   // Ref for infinite scroll observer
@@ -209,13 +214,13 @@ const CreativesLibrary: React.FC = () => {
       }
       observer.disconnect();
     };
-  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter]); // Re-run when these change
+  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter]); // Re-run when these change
 
   const handleRefresh = () => {
     fetchCreatives(null, true);
   };
 
-  // Filter creatives based on search and format
+  // Filter creatives based on search, format, and status
   const filteredCreatives = useMemo(() => {
     return creatives.filter((creative) => {
       // Filter by search term
@@ -226,9 +231,13 @@ const CreativesLibrary: React.FC = () => {
       const matchesFormat = formatFilter === "all" || 
         creative.creative_type === formatFilter;
       
-      return matchesSearch && matchesFormat;
+      // Filter by status (case-insensitive)
+      const matchesStatus = statusFilter === "all" || 
+        creative.ad_status?.toUpperCase() === statusFilter.toUpperCase();
+      
+      return matchesSearch && matchesFormat && matchesStatus;
     });
-  }, [creatives, searchTerm, formatFilter]);
+  }, [creatives, searchTerm, formatFilter, statusFilter]);
 
 
   if (!brandId) {
@@ -279,6 +288,18 @@ const CreativesLibrary: React.FC = () => {
                   <SelectItem value="image">Image</SelectItem>
                   <SelectItem value="video">Video</SelectItem>
                   <SelectItem value="carousel">Carousel</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="PAUSED">Paused</SelectItem>
+                  <SelectItem value="DELETED">Deleted</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
                 </SelectContent>
               </Select>
               <DatePickerWithRange />
@@ -339,19 +360,20 @@ const CreativesLibrary: React.FC = () => {
           )}
 
           {/* Info message when filtering */}
-          {(searchTerm || formatFilter !== "all") && (
+          {(searchTerm || formatFilter !== "all" || statusFilter !== "all") && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
                 Showing {filteredCreatives.length} of {creatives.length} loaded ads
                 {searchTerm && ` matching "${searchTerm}"`}
                 {formatFilter !== "all" && ` (${formatFilter} format)`}
+                {statusFilter !== "all" && ` (${statusFilter.toLowerCase()} status)`}
                 {hasMore && ". Keep scrolling to load more!"}
               </p>
             </div>
           )}
 
           {/* Info message when no filters */}
-          {!searchTerm && formatFilter === "all" && (
+          {!searchTerm && formatFilter === "all" && statusFilter === "all" && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
                 Showing {creatives.length} loaded ads. Keep scrolling to load more!
@@ -364,7 +386,7 @@ const CreativesLibrary: React.FC = () => {
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 🎉 You've reached the end! 
-                {searchTerm || formatFilter !== "all" 
+                {searchTerm || formatFilter !== "all" || statusFilter !== "all"
                   ? ` Showing ${filteredCreatives.length} of ${creatives.length} loaded ads.`
                   : ` All ${creatives.length} ads loaded.`}
               </p>
@@ -372,18 +394,22 @@ const CreativesLibrary: React.FC = () => {
           )}
 
           {/* No results message when filters are active */}
-          {filteredCreatives.length === 0 && (searchTerm || formatFilter !== "all") && (
+          {filteredCreatives.length === 0 && (searchTerm || formatFilter !== "all" || statusFilter !== "all") && (
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12">
                   <Film className="w-16 h-16 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No Creatives Found</h3>
                   <p className="text-muted-foreground text-center max-w-md">
-                    {searchTerm && formatFilter !== "all"
-                      ? `No ${formatFilter} creatives found matching "${searchTerm}". Try adjusting your filters.`
+                    {searchTerm && (formatFilter !== "all" || statusFilter !== "all")
+                      ? `No creatives found matching "${searchTerm}"${formatFilter !== "all" ? ` (${formatFilter} format)` : ""}${statusFilter !== "all" ? ` (${statusFilter.toLowerCase()} status)` : ""}. Try adjusting your filters.`
                       : searchTerm
                       ? `No creatives found matching "${searchTerm}". Try adjusting your search.`
-                      : `No ${formatFilter} creatives found. Try selecting a different format.`}
+                      : formatFilter !== "all" && statusFilter !== "all"
+                      ? `No ${formatFilter} creatives with ${statusFilter.toLowerCase()} status found. Try selecting different filters.`
+                      : formatFilter !== "all"
+                      ? `No ${formatFilter} creatives found. Try selecting a different format.`
+                      : `No ${statusFilter.toLowerCase()} creatives found. Try selecting a different status.`}
                   </p>
                 </div>
               </CardContent>

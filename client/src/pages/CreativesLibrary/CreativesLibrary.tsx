@@ -10,7 +10,8 @@ import {
   Film, 
   Search,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ListFilter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CreativeCard from "./components/CreativeCard";
@@ -24,6 +25,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export interface CarouselImage {
   url: string;
@@ -61,6 +74,46 @@ export interface Creative {
   video_p100_watched_rate?: number;
 }
 
+// KPI Configuration
+export interface KPIConfig {
+  key: string;
+  label: string;
+  category: "financial" | "performance" | "engagement" | "video";
+}
+
+export const AVAILABLE_KPIS: KPIConfig[] = [
+  // Financial Metrics
+  { key: "spend", label: "Spend", category: "financial" },
+  { key: "revenue", label: "Revenue", category: "financial" },
+  { key: "roas", label: "ROAS", category: "financial" },
+  { key: "cpc", label: "CPC", category: "financial" },
+  { key: "cpp", label: "CPP", category: "financial" },
+  { key: "orders", label: "Orders", category: "financial" },
+  // Performance Metrics
+  { key: "impressions", label: "Impressions", category: "performance" },
+  { key: "clicks", label: "Clicks", category: "performance" },
+  { key: "ctr", label: "CTR", category: "performance" },
+  { key: "frequency", label: "Frequency", category: "performance" },
+  // Engagement Metrics
+  { key: "hook_rate", label: "Hook Rate", category: "engagement" },
+  { key: "engagementRate", label: "Engagement Rate", category: "engagement" },
+  // Video Metrics
+  { key: "video_views", label: "Video Views", category: "video" },
+  { key: "video_p25_watched", label: "25% Watched", category: "video" },
+  { key: "video_p50_watched", label: "50% Watched", category: "video" },
+  { key: "video_p100_watched", label: "100% Watched", category: "video" },
+  { key: "video_p25_watched_rate", label: "25% Watched Rate", category: "video" },
+  { key: "video_p50_watched_rate", label: "50% Watched Rate", category: "video" },
+  { key: "video_p100_watched_rate", label: "100% Watched Rate", category: "video" },
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  financial: "Financial Metrics",
+  performance: "Performance Metrics",
+  engagement: "Engagement Metrics",
+  video: "Video Metrics",
+};
+
 interface CreativesResponse {
   success: boolean;
   brandId: string;
@@ -88,6 +141,9 @@ const CreativesLibrary: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState<"all" | "image" | "video" | "carousel">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED">("all");
+  const [selectedKPIs, setSelectedKPIs] = useState<Set<string>>(
+    new Set(AVAILABLE_KPIS.map(kpi => kpi.key))
+  );
   const { brandId } = useParams();
   
   // Ref for infinite scroll observer
@@ -239,6 +295,41 @@ const CreativesLibrary: React.FC = () => {
     });
   }, [creatives, searchTerm, formatFilter, statusFilter]);
 
+  // Handle KPI selection
+  const handleKPIToggle = (kpiKey: string) => {
+    setSelectedKPIs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(kpiKey)) {
+        newSet.delete(kpiKey);
+      } else {
+        newSet.add(kpiKey);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllKPIs = () => {
+    setSelectedKPIs(new Set(AVAILABLE_KPIS.map(kpi => kpi.key)));
+  };
+
+  const handleDeselectAllKPIs = () => {
+    setSelectedKPIs(new Set());
+  };
+
+  // Group KPIs by category
+  const kpisByCategory = useMemo(() => {
+    const grouped: Record<string, KPIConfig[]> = {
+      financial: [],
+      performance: [],
+      engagement: [],
+      video: [],
+    };
+    for (const kpi of AVAILABLE_KPIS) {
+      grouped[kpi.category].push(kpi);
+    }
+    return grouped;
+  }, []);
+
 
   if (!brandId) {
     return (
@@ -303,6 +394,161 @@ const CreativesLibrary: React.FC = () => {
                 </SelectContent>
               </Select>
               <DatePickerWithRange />
+              
+              {/* Metrics Selector */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="relative"
+                  >
+                    <ListFilter className="w-4 h-4 mr-2" />
+                    Metrics
+                    {selectedKPIs.size > 0 && selectedKPIs.size < AVAILABLE_KPIS.length && (
+                      <Badge 
+                        variant="secondary" 
+                        className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]"
+                      >
+                        {selectedKPIs.size}
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Select Metrics</SheetTitle>
+                    <SheetDescription>
+                      Choose which metrics to display on creative cards
+                    </SheetDescription>
+                  </SheetHeader>
+                  
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={handleSelectAllKPIs}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={handleDeselectAllKPIs}
+                      >
+                        Deselect All
+                      </Button>
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Financial Metrics */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-foreground">
+                        {CATEGORY_LABELS.financial}
+                      </Label>
+                      <div className="space-y-2 pl-2">
+                        {kpisByCategory.financial.map((kpi) => (
+                          <div key={kpi.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={kpi.key}
+                              checked={selectedKPIs.has(kpi.key)}
+                              onCheckedChange={() => handleKPIToggle(kpi.key)}
+                            />
+                            <Label
+                              htmlFor={kpi.key}
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              {kpi.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Performance Metrics */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-foreground">
+                        {CATEGORY_LABELS.performance}
+                      </Label>
+                      <div className="space-y-2 pl-2">
+                        {kpisByCategory.performance.map((kpi) => (
+                          <div key={kpi.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={kpi.key}
+                              checked={selectedKPIs.has(kpi.key)}
+                              onCheckedChange={() => handleKPIToggle(kpi.key)}
+                            />
+                            <Label
+                              htmlFor={kpi.key}
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              {kpi.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Engagement Metrics */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-foreground">
+                        {CATEGORY_LABELS.engagement}
+                      </Label>
+                      <div className="space-y-2 pl-2">
+                        {kpisByCategory.engagement.map((kpi) => (
+                          <div key={kpi.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={kpi.key}
+                              checked={selectedKPIs.has(kpi.key)}
+                              onCheckedChange={() => handleKPIToggle(kpi.key)}
+                            />
+                            <Label
+                              htmlFor={kpi.key}
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              {kpi.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Video Metrics */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-foreground">
+                        {CATEGORY_LABELS.video}
+                      </Label>
+                      <div className="space-y-2 pl-2">
+                        {kpisByCategory.video.map((kpi) => (
+                          <div key={kpi.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={kpi.key}
+                              checked={selectedKPIs.has(kpi.key)}
+                              onCheckedChange={() => handleKPIToggle(kpi.key)}
+                            />
+                            <Label
+                              htmlFor={kpi.key}
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              {kpi.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
               <Button
                 onClick={handleRefresh}
                 variant="outline"
@@ -343,7 +589,7 @@ const CreativesLibrary: React.FC = () => {
                   ref={shouldAttachRef ? lastCardRef : null}
                   className="h-full"
                 >
-                  <CreativeCard creative={creative} />
+                  <CreativeCard creative={creative} selectedKPIs={selectedKPIs} />
                 </div>
               );
             })}

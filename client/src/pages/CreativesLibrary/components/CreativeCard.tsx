@@ -14,9 +14,15 @@ import type { Creative } from "../CreativesLibrary";
 
 interface CreativeCardProps {
   creative: Creative;
+  selectedKPIs?: Set<string>;
 }
 
-const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
+const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) => {
+  // Helper function to check if a KPI should be displayed
+  const shouldShowKPI = (kpiKey: string) => {
+    if (!selectedKPIs) return true; // Show all if no selection provided
+    return selectedKPIs.has(kpiKey);
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -254,92 +260,135 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative }) => {
           {/* Metrics - Clean table layout */}
           <div className="space-y-1 flex-1 text-xs">
             {/* Financial Metrics */}
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Spend</span>
-              <span className="font-semibold">{formatCurrency(creative.spend)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Revenue</span>
-              <span className="font-semibold">{formatCurrency(creative.revenue)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">ROAS</span>
-              <span className="font-semibold">{formatRatio(creative.roas)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">CPC</span>
-              <span className="font-semibold">{formatCurrency(creative.cpc)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">CPP</span>
-              <span className="font-semibold">{formatCurrency(creative.cpp)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Orders</span>
-              <span className="font-semibold">{formatNumber(creative.orders)}</span>
-            </div>
+            {shouldShowKPI("spend") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Spend</span>
+                <span className="font-semibold">{formatCurrency(creative.spend)}</span>
+              </div>
+            )}
+            {shouldShowKPI("revenue") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Revenue</span>
+                <span className="font-semibold">{formatCurrency(creative.revenue)}</span>
+              </div>
+            )}
+            {shouldShowKPI("roas") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">ROAS</span>
+                <span className="font-semibold">{formatRatio(creative.roas)}</span>
+              </div>
+            )}
+            {shouldShowKPI("cpc") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">CPC</span>
+                <span className="font-semibold">{formatCurrency(creative.cpc)}</span>
+              </div>
+            )}
+            {shouldShowKPI("cpp") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">CPP</span>
+                <span className="font-semibold">{formatCurrency(creative.cpp)}</span>
+              </div>
+            )}
+            {shouldShowKPI("orders") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Orders</span>
+                <span className="font-semibold">{formatNumber(creative.orders)}</span>
+              </div>
+            )}
 
             {/* Performance Metrics */}
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Impressions</span>
-              <span className="font-semibold">{formatNumber(creative.impressions)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Clicks</span>
-              <span className="font-semibold">{formatNumber(creative.clicks)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">CTR</span>
-              <span className="font-semibold">{formatPercentage(creative.ctr)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Frequency</span>
-              <span className="font-semibold">{formatNumber(creative.frequency, 2)}</span>
-            </div>
+            {shouldShowKPI("impressions") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Impressions</span>
+                <span className="font-semibold">{formatNumber(creative.impressions)}</span>
+              </div>
+            )}
+            {shouldShowKPI("clicks") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Clicks</span>
+                <span className="font-semibold">{formatNumber(creative.clicks)}</span>
+              </div>
+            )}
+            {shouldShowKPI("ctr") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">CTR</span>
+                <span className="font-semibold">{formatPercentage(creative.ctr)}</span>
+              </div>
+            )}
+            {shouldShowKPI("frequency") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Frequency</span>
+                <span className="font-semibold">{formatNumber(creative.frequency, 2)}</span>
+              </div>
+            )}
 
             {/* Engagement Metrics */}
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Hook Rate</span>
-              <span className="font-semibold">{formatPercentage(creative.hook_rate)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Engagement Rate</span>
-              <span className="font-semibold">
-                {creative.engagementRate !== undefined ? formatPercentage(creative.engagementRate * 100) : '-'}
-              </span>
-            </div>
+            {shouldShowKPI("hook_rate") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Hook Rate</span>
+                <span className="font-semibold">{formatPercentage(creative.hook_rate)}</span>
+              </div>
+            )}
+            {shouldShowKPI("engagementRate") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Engagement Rate</span>
+                <span className="font-semibold">
+                  {creative.engagementRate !== undefined ? formatPercentage(creative.engagementRate * 100) : '-'}
+                </span>
+              </div>
+            )}
 
+            {/* Video Metrics */}
+            {shouldShowKPI("video_views") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">Video Views</span>
+                <span className="font-semibold">{formatNumber(creative.video_views)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p25_watched") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">25% Watched</span>
+                <span className="font-semibold">{formatNumber(creative.video_p25_watched)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p50_watched") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">50% Watched</span>
+                <span className="font-semibold">{formatNumber(creative.video_p50_watched)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p100_watched") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">100% Watched</span>
+                <span className="font-semibold">{formatNumber(creative.video_p100_watched)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p25_watched_rate") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">25% Watched Rate</span>
+                <span className="font-semibold">{formatPercentage(creative.video_p25_watched_rate)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p50_watched_rate") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">50% Watched Rate</span>
+                <span className="font-semibold">{formatPercentage(creative.video_p50_watched_rate)}</span>
+              </div>
+            )}
+            {shouldShowKPI("video_p100_watched_rate") && (
+              <div className="flex justify-between items-center py-1 border-b border-border/50">
+                <span className="text-muted-foreground">100% Watched Rate</span>
+                <span className="font-semibold">{formatPercentage(creative.video_p100_watched_rate)}</span>
+              </div>
+            )}
 
-
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">Video Views</span>
-              <span className="font-semibold">{formatNumber(creative.video_views)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">25% Watched</span>
-              <span className="font-semibold">{formatNumber(creative.video_p25_watched)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">50% Watched</span>
-              <span className="font-semibold">{formatNumber(creative.video_p50_watched)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">100% Watched</span>
-              <span className="font-semibold">{formatNumber(creative.video_p100_watched)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">25% Watched Rate</span>
-              <span className="font-semibold">{formatPercentage(creative.video_p25_watched_rate)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">50% Watched Rate</span>
-              <span className="font-semibold">{formatPercentage(creative.video_p50_watched_rate)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
-              <span className="text-muted-foreground">100% Watched Rate</span>
-              <span className="font-semibold">{formatPercentage(creative.video_p100_watched_rate)}</span>
-            </div>
-
+            {/* Show message if no metrics selected */}
+            {selectedKPIs?.size === 0 && (
+              <div className="flex items-center justify-center py-4 text-muted-foreground text-xs">
+                No metrics selected
+              </div>
+            )}
           </div>
 
           {/* Footer */}

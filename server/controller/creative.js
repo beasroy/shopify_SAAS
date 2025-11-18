@@ -764,7 +764,7 @@ export const clearCreativesCache = async (req, res) => {
       
       if (keys.length > 0) {
         await redis.del(...keys);
-        console.log(`🗑️  Cleared ${keys.length} cache entries for brand ${brandId}`);
+        console.log(`Cleared ${keys.length} cache entries for brand ${brandId}`);
         return res.status(200).json({
           success: true,
           message: `Cleared ${keys.length} cache entries`,

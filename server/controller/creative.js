@@ -680,7 +680,8 @@ export const getBrandCreativesBatch = async (req, res) => {
         return {
           ad_id: ad.id,
           ad_name: ad.name,
-          ad_status: ad.effective_status,
+          ad_effective_status: ad.effective_status,
+          ad_status: ad.status,
           creative_type: creativeType,
           creative_url: creativeUrl,
           thumbnail_url: thumbnailUrl,

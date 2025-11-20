@@ -19,25 +19,81 @@ export const oauth2Client = new OAuth2Client(
 );
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
-export const getGoogleAuthURL = (req, res) => {
-    const { context, source } = req.query;
+export const getGoogleAuthURL = async (req, res) => {
+    try {
+        const { context, source, brandId } = req.query;
 
-    const scopes = [
-        'https://www.googleapis.com/auth/adwords',
-        'https://www.googleapis.com/auth/analytics.readonly',
-        'https://www.googleapis.com/auth/analytics.edit',
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/userinfo.profile'
-    ];
+        const scopes = [
+            'https://www.googleapis.com/auth/adwords',
+            'https://www.googleapis.com/auth/analytics.readonly',
+            'https://www.googleapis.com/auth/analytics.edit',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile'
+        ];
 
-    const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: scopes,
-        prompt: 'consent',
-        state: JSON.stringify({ context: context || 'default', source: source || '/dashboard' }),
-    });
+        // Check if user has a refresh token based on context
+        let hasRefreshToken = false;
 
-    res.status(200).json({ authUrl: url });
+        if (context === 'googleAdSetup' || context === 'googleAnalyticsSetup') {
+            // For Google Ads or Analytics setup, check Brand model
+            if (brandId) {
+                try {
+                    const brand = await Brand.findById(brandId).lean();
+                    if (brand) {
+                        if (context === 'googleAdSetup' && brand.googleAdsRefreshToken) {
+                            hasRefreshToken = true;
+                        } else if (context === 'googleAnalyticsSetup' && brand.googleAnalyticsRefreshToken) {
+                            hasRefreshToken = true;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking brand refresh token:', error);
+                    // Continue with consent prompt if check fails
+                }
+            }
+        } else if (context === 'userLogin') {
+            // For user login, check User model
+            const token = req.cookies.token;
+            if (token) {
+                try {
+                    const decoded = jwt.verify(token, SECRET_KEY);
+                    const user = await User.findById(decoded.id).lean();
+                    if (user && user.googleLoginRefreshToken) {
+                        hasRefreshToken = true;
+                    }
+                } catch (error) {
+                    console.error('Error checking user refresh token:', error);
+                    // Continue with consent prompt if check fails
+                }
+            }
+        }
+
+        // Only prompt for consent if refresh token doesn't exist
+        const authUrlConfig = {
+            access_type: 'offline',
+            scope: scopes,
+            state: JSON.stringify({ context: context || 'default', source: source || '/dashboard' }),
+        };
+
+        // Add prompt: 'consent' only if refresh token doesn't exist
+        if (!hasRefreshToken) {
+            authUrlConfig.prompt = 'consent';
+        }
+
+        const url = oauth2Client.generateAuthUrl(authUrlConfig);
+
+        res.status(200).json({ 
+            authUrl: url,
+            hasRefreshToken, // Optional: return this for debugging/frontend info
+        });
+    } catch (error) {
+        console.error('Error generating Google Auth URL:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate Google Auth URL',
+            error: error.message
+        });
+    }
 };
 
 export const handleGoogleCallback = async (req, res) => {

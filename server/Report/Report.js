@@ -185,7 +185,7 @@ export const fetchFBAdReport = async (brandId) => {
     //Prepare batch requests
     const batchRequests = adAccountIds.map((accountId) => ({
       method: 'GET',
-      relative_url: `${accountId}/insights?fields=spend,purchase_roas&time_range={'since':'${startDate}','until':'${endDate}'}`,
+      relative_url: `${accountId}/insights?fields=spend,action_values&time_range={'since':'${startDate}','until':'${endDate}'}`,
     }));
 
     const response = await axios.post(
@@ -212,26 +212,18 @@ export const fetchFBAdReport = async (brandId) => {
           const formattedResult = {
             adAccountId: accountId,
             spend: insight.spend || '0',
-            purchase_roas: (insight.purchase_roas && insight.purchase_roas.length > 0)
-              ? insight.purchase_roas.map(roas => ({
-                action_type: roas.action_type || 'N/A', // Fallback for missing data
-                value: roas.value || '0', // Fallback for missing data
-              }))
-              : [], // Return an empty array if no ROAS data
+            revenue: insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0',
           };
-
           return formattedResult;
         }
+      } else {
+        return {
+          adAccountId: accountId,
+          spend: '0',
+          revenue: '0',
+        };
       }
-
-      // If no data or error occurred, return a message for that account
-      return {
-        adAccountId: accountId,
-        message: `Ad Account ${accountId} has no data for the given date.`,
-      };
     });
-
-
     const finalResponse = {
       success: true,
       data: results
@@ -398,18 +390,16 @@ export const addReportData = async (brandId) => {
 
     // Initialize totals
     let totalMetaSpend = 0;
-    let totalMetaROAS = 0;
+    let totalMetaRevenue = 0;
 
     if (fbData.length > 0) {
       fbData.forEach(account => {
         totalMetaSpend += parseFloat(account.spend) || 0;
-        totalMetaROAS += account.purchase_roas
-          ? account.purchase_roas.reduce((acc, roas) => acc + (parseFloat(roas.value) || 0), 0)
-          : 0;
+        totalMetaRevenue += parseFloat(account.revenue) || 0;
       });
     } else {
       totalMetaSpend = 0;
-      totalMetaROAS = 0;
+      totalMetaRevenue = 0;
     }
 
     // Fetch Shopify sales data
@@ -420,17 +410,17 @@ export const addReportData = async (brandId) => {
     }
 
     // Destructure the sales data - using direct array access since we expect one day of data
-    const { grossSales, totalSales, refundAmount } = salesData[0];
+    const { totalSales, refundAmount } = salesData[0];
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
-    const metaROAS = parseFloat(totalMetaROAS.toFixed(2));
+    const metaRevenue = parseFloat(totalMetaRevenue.toFixed(2));
     const googleSpend = parseFloat(googleData.googleSpend) || 0;
     const googleROAS = parseFloat(googleData.googleRoas) || 0;
     const totalSpend = metaSpend + googleSpend;
-    const metaSales = metaSpend * metaROAS;
+
     const googleSales = parseFloat(googleData.googleSales) || 0;
-    const adSales = metaSales + googleSales; // Total sales from ads
+    const adSales = metaRevenue + googleSales; // Total sales from ads
     const grossROI = totalSpend > 0 ? adSales / totalSpend : 0;
 
 
@@ -439,7 +429,7 @@ export const addReportData = async (brandId) => {
       brandId,
       date: moment().subtract(1, "days").toDate(),
       metaSpend,
-      metaROAS,
+      metaRevenue,
       googleSpend,
       googleROAS,
       totalSales,

@@ -1,0 +1,60 @@
+2025-12-10T18:17:45.189Z [debug]: Order 5825545666795 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.190Z [debug]: Order 5825546748139 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.190Z [debug]: Order 5825571848427 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.190Z [debug]: Order 5825629421803 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.190Z [debug]: Order 5825796505835 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.191Z [debug]: Order 5825963098347 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.191Z [debug]: Order 5825989443819 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.191Z [debug]: Order 5825993605355 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.191Z [debug]: Order 5825996488939 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.191Z [debug]: Order 5826002354411 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.192Z [debug]: Order 5826011824363 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.352Z [debug]: Order 5826028208363 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:17:45.353Z [debug]: Order 5826039775467 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.353Z [debug]: Order 5826046427371 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.353Z [debug]: Order 5826059960555 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.354Z [debug]: Order 5826061598955 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.354Z [debug]: Order 5826070905067 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.354Z [debug]: Order 5826089189611 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.354Z [debug]: Order 5826091876587 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.355Z [debug]: Order 5826112028907 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.355Z [debug]: Order 5826116321515 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.513Z [debug]: Order 5826136703211 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:17:45.514Z [debug]: Order 5826138702059 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.514Z [debug]: Order 5826144436459 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.514Z [debug]: Order 5826156200171 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.514Z [debug]: Order 5826163114219 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.515Z [debug]: Order 5826171109611 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.515Z [debug]: Order 5826182545643 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.515Z [debug]: Order 5826187722987 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.515Z [debug]: Order 5826190180587 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.516Z [debug]: Order 5826197618923 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.516Z [debug]: Order 5826208170219 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.516Z [debug]: Order 5826218623211 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.516Z [debug]: Order 5826219081963 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.517Z [debug]: Order 5826227536107 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.517Z [debug]: Order 5826233958635 (Date: 2024-07-20): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.517Z [debug]: Order 5826244083947 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.517Z [debug]: Order 5826257387755 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.517Z [debug]: Order 5826262302955 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826275836139 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826304377067 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826325020907 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826327052523 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826350481643 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.518Z [debug]: Order 5826355265771 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.679Z [debug]: Order 5826375876843 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:17:45.680Z [debug]: Order 5826413592811 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.681Z [debug]: Order 5826426568939 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.681Z [debug]: Order 5826443575531 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.838Z [debug]: Order 5826453176555 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:17:45.839Z [debug]: Order 5826477293803 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.839Z [debug]: Order 5826477457643 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.839Z [debug]: Order 5826484109547 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:17:45.998Z [debug]: Order 5826537849067 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:17:45.999Z [debug]: Order 5826542534891 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.999Z [debug]: Order 5826556657899 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:17:45.999Z [debug]: Order 5826603811051 (Date: 2024-07-20): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:16:26.505Z [debug]: Order 5977711640883 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-11T04:16:26.506Z [debug]: Order 5977895076147 (Date: 2024-07-20): Payment Gateways: [PortOne Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:16:26.506Z [debug]: Order 5977960284467 (Date: 2024-07-20): Payment Gateways: [Cash on Delivery (COD), manual] | isCOD: true | isPrepaid: false | Cancelled: false

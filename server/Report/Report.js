@@ -1,58 +1,63 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
-import Shopify from 'shopify-api-node'
 import moment from "moment-timezone";
 import axios from "axios";
 import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
 import { ensureOrderRefundExists, setOrderRefund } from '../utils/refundHelpers.js';
+import { 
+  ORDERS_QUERY, 
+  makeGraphQLRequest,
+  convertGraphQLOrderToRESTFormat,
+  calculateGrossSalesAndTaxes,
+  calculateRefundAmount
+} from './MonthlyReportGraphQL.js';
 
 
 
 
 config();
 
-// Helper function to calculate refund amounts (same as MonthlyReport.js)
-function getRefundAmount(refund) {
-  // Product-only refund (for net sales)
-  const productReturn = refund?.refund_line_items
-    ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
-    : 0;
-
-  // Total return (product + adjustments, for total returns)
-  let adjustmentsTotal = 0;
-  if (refund?.order_adjustments) {
-    adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
-  }
-  const totalReturn = productReturn - adjustmentsTotal;
-
-  return {
-    totalReturn    // for total returns
-  };
-}
-
 export const fetchTotalSales = async (brandId) => {
   try {
-    console.log('Fetching yesterday\'s orders...');
+    console.log('Fetching yesterday\'s orders using GraphQL...');
     const brand = await Brand.findById(brandId);
     if (!brand) throw new Error('Brand not found.');
     const access_token = brand.shopifyAccount?.shopifyAccessToken;
     if (!access_token) throw new Error('Access token is missing or invalid.');
     const shopName = brand.shopifyAccount?.shopName;
     if (!shopName) throw new Error('Shop name is missing or invalid.');
-    const shopify = new Shopify({
-      shopName: shopName,
-      accessToken: access_token,
-      apiVersion: '2023-07',
-    });
-    // Get store timezone
-    const shopData = await shopify.shop.get();
+    
+    // Ensure shopName doesn't have protocol
+    const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const apiVersion = '2024-04';
+    
+    // Get store timezone and data
+    let shopData;
+    try {
+      const shopResponse = await axios.get(
+        `https://${cleanShopName}/admin/api/${apiVersion}/shop.json`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': access_token,
+          },
+          timeout: 30000,
+        }
+      );
+      shopData = shopResponse.data.shop;
+    } catch (error) {
+      console.error('Error fetching shop data:', error);
+      throw new Error(`Failed to connect to Shopify: ${error.message}`);
+    }
+    
     const storeTimezone = shopData.iana_timezone || 'UTC';
+    
     // Calculate yesterday range in store's timezone
     const yesterday = moment.tz(storeTimezone).subtract(1, 'days');
     const startOfYesterday = yesterday.clone().startOf('day');
     const endOfYesterday = yesterday.clone().endOf('day');
+    
     // Prepare sales map for yesterday
     const dateStr = yesterday.format('YYYY-MM-DD');
     const yesterdaySales = {
@@ -61,81 +66,86 @@ export const fetchTotalSales = async (brandId) => {
       refundAmount: 0,
       orderCount: 0,
     };
-    // Shopify order fetch & pagination
-    let pageInfo = null;
-    do {
-      const params = {
-        status: 'any',
-        created_at_min: startOfYesterday.toISOString(),
-        created_at_max: endOfYesterday.toISOString(),
-        limit: 250,
+    
+    // Fetch orders using GraphQL with pagination
+    let hasNextPage = true;
+    let cursor = null;
+    const seenOrderIds = new Set();
+    
+    while (hasNextPage) {
+      const startTime = startOfYesterday.utc().toISOString();
+      const endTime = endOfYesterday.clone().add(1, 'day').startOf('day').utc().toISOString();
+      const queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
+      
+      const variables = {
+        first: 50,
+        after: cursor,
+        query: queryString,
       };
-      if (pageInfo) params.page_info = pageInfo;
-      const response = await shopify.order.list(params);
-      if (!response || !Array.isArray(response) || response.length === 0) break;
-      for (const order of response) {
-        let grossSales = 0;
-        let totalTaxes = 0;
-        let subtotalPrice = Number(order.subtotal_price || 0);
-        let discountAmount = Number(order.total_discounts || 0);
-        let refundAmount = 0;
-        const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
-        if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
-          grossSales = order.line_items.reduce((sum, item) => {
-            const unitPrice = item.price_set ? Number(item.price_set.shop_money?.amount) : Number(item.original_price ?? item.price);
-            const unitTotal = unitPrice * Number(item.quantity);
-            let taxTotal = 0;
-            if (!hasRefunds && item.tax_lines && Array.isArray(item.tax_lines)) {
-              taxTotal = item.tax_lines.reduce((taxSum, tax) => taxSum + Number(tax.price || 0), 0);
-            }
-            totalTaxes += taxTotal;
-            const netItemTotal = unitTotal - taxTotal;
-            return sum + netItemTotal;
-          }, 0);
-        } else {
-          grossSales = subtotalPrice + discountAmount;
+      
+      try {
+        const data = await makeGraphQLRequest(cleanShopName, access_token, ORDERS_QUERY, variables);
+        
+        if (!data?.orders?.edges || data.orders.edges.length === 0) {
+          break;
         }
-        let refundCount = 0;
-        if (hasRefunds) {
-          for (const refund of order.refunds) {
-            const productReturn = refund?.refund_line_items
-              ? refund.refund_line_items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
-              : 0;
-            let adjustmentsTotal = 0;
-            if (refund?.order_adjustments) {
-              adjustmentsTotal = refund.order_adjustments.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
-            }
-            const totalReturn = productReturn - adjustmentsTotal;
-            refundAmount += totalReturn;
-            refundCount += 1;
+        
+        // Process orders
+        for (const edge of data.orders.edges) {
+          const graphQLOrder = edge.node;
+          const orderId = Number.parseInt(graphQLOrder.legacyResourceId, 10);
+          
+          // Skip test orders
+          if (graphQLOrder.test) {
+            continue;
           }
-        }
-
-        // Update orderRefund table (same as historical sync)
-        try {
-          // First ensure the order entry exists (with or without refunds)
-          await ensureOrderRefundExists(brandId, order.id, order.created_at);
-          // If there are refunds, SET the total refund amount (don't add, replace)
-          if (refundAmount > 0) {
-            await setOrderRefund(brandId, order.id, refundAmount, refundCount);
+          
+          // Check for duplicates
+          if (seenOrderIds.has(orderId)) {
+            console.log(`⚠️  Duplicate order detected: ${orderId}. Skipping.`);
+            continue;
           }
-        } catch (error) {
-          console.error(`Error storing order refund info for order ${order.id}:`, error);
+          seenOrderIds.add(orderId);
+          
+          // Convert GraphQL order to REST-like format
+          const order = convertGraphQLOrderToRESTFormat(graphQLOrder);
+          
+          // Calculate gross sales and taxes
+          const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
+          const { grossSales } = calculateGrossSalesAndTaxes(order, hasRefunds);
+          
+          // Calculate refund amount
+          const { refundAmount, refundCount } = calculateRefundAmount(order);
+          
+          // Update orderRefund table
+          try {
+            await ensureOrderRefundExists(brandId, order.id, order.created_at);
+            if (refundAmount > 0) {
+              await setOrderRefund(brandId, order.id, refundAmount, refundCount);
+            }
+          } catch (error) {
+            console.error(`Error storing order refund info for order ${order.id}:`, error);
+          }
+          
+          // Accumulate sales data
+          yesterdaySales.grossSales += grossSales;
+          yesterdaySales.refundAmount += refundAmount;
+          yesterdaySales.orderCount++;
         }
-
-        yesterdaySales.grossSales += grossSales;
-        yesterdaySales.refundAmount += refundAmount;
-        yesterdaySales.orderCount++;
+        
+        // Check pagination
+        hasNextPage = data.orders.pageInfo.hasNextPage;
+        cursor = data.orders.pageInfo.endCursor;
+        
+        // Rate limiting - wait between requests
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error('Error fetching orders via GraphQL:', error);
+        throw error;
       }
-      // Shopify pagination
-      const linkHeader = response.headers?.link;
-      if (linkHeader) {
-        const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
-        pageInfo = nextLink ? nextLink.match(/page_info=([^&>]*)/)?.[1] : null;
-      } else {
-        pageInfo = null;
-      }
-    } while (pageInfo);
+    }
+    
     // Return array for compatibility
     return [{
       grossSales: yesterdaySales.grossSales,

@@ -6,26 +6,48 @@ import moment from 'moment-timezone';
 /**
  * Calculate total refund amount from refund payload
  * Based on the refunds/create webhook payload structure
+ * Formula: subtotal + discount + tax + shipping
  */
 export const calculateRefundAmount = (refundPayload) => {
-  let totalRefund = 0;
-
-  // Sum refund line items (product refunds)
+  // 1. Calculate subtotal from refund line items (product price after discount, before tax)
+  let subtotal = 0;
   if (Array.isArray(refundPayload.refund_line_items)) {
     refundPayload.refund_line_items.forEach(item => {
-      const subtotal = Number(item.subtotal || 0);
-      const tax = Number(item.total_tax || 0);
-      totalRefund += subtotal + tax;
+      subtotal += Number(item.subtotal || 0);
     });
   }
 
-  // Subtract order adjustments (these are typically negative values for shipping refunds, etc.)
-  if (Array.isArray(refundPayload.order_adjustments)) {
-    refundPayload.order_adjustments.forEach(adjustment => {
-      // Order adjustments are typically negative, so subtract (add negative)
-      totalRefund -= Number(adjustment.amount || 0);
+  // 2. Calculate tax from refund line items
+  let tax = 0;
+  if (Array.isArray(refundPayload.refund_line_items)) {
+    refundPayload.refund_line_items.forEach(item => {
+      tax += Number(item.total_tax || 0);
     });
   }
+
+  // 3. Calculate discount and shipping from order adjustments
+  // Order adjustments can include discount refunds and shipping refunds
+  // Amounts are typically negative, so we subtract to add them
+  let discount = 0;
+  let shipping = 0;
+  
+  if (Array.isArray(refundPayload.order_adjustments)) {
+    refundPayload.order_adjustments.forEach(adjustment => {
+      const amount = Number(adjustment.amount || 0);
+      const reason = (adjustment.reason || '').toLowerCase();
+      
+      // Shipping adjustments are typically negative, so subtract to add
+      if (reason.includes('shipping') || reason.includes('delivery')) {
+        shipping -= amount; // Subtract negative to add positive
+      } else {
+        // Other adjustments (discounts, etc.) - subtract negative to add positive
+        discount -= amount;
+      }
+    });
+  }
+
+  // 4. Total refund = subtotal + discount + tax + shipping
+  const totalRefund = subtotal + discount + tax + shipping;
 
   return Math.max(0, totalRefund); // Ensure non-negative
 };

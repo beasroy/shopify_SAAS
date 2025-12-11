@@ -1,0 +1,59 @@
+2025-12-10T18:18:20.957Z [debug]: Order 5967789490411 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.149Z [debug]: Order 5967845261547 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery, cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:21.149Z [debug]: Order 5967848046827 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.150Z [debug]: Order 5967863120107 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.150Z [debug]: Order 5968131064043 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.150Z [debug]: Order 5968281207019 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.150Z [debug]: Order 5968285794539 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.151Z [debug]: Order 5968291561707 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.151Z [debug]: Order 5968296345835 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.151Z [debug]: Order 5968306045163 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.151Z [debug]: Order 5968327082219 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.152Z [debug]: Order 5968330522859 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.152Z [debug]: Order 5968349495531 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.152Z [debug]: Order 5968354705643 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.340Z [debug]: Order 5968374989035 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery, cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:21.530Z [debug]: Order 5968381083883 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:21.531Z [debug]: Order 5968386719979 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.531Z [debug]: Order 5968387244267 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.532Z [debug]: Order 5968387637483 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.532Z [debug]: Order 5968405856491 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.532Z [debug]: Order 5968422142187 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.532Z [debug]: Order 5968433086699 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.533Z [debug]: Order 5968435249387 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.724Z [debug]: Order 5968453304555 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery, cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:21.724Z [debug]: Order 5968453763307 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.725Z [debug]: Order 5968464576747 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.725Z [debug]: Order 5968468017387 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.725Z [debug]: Order 5968469623019 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.725Z [debug]: Order 5968471621867 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968472342763 (Date: 2024-10-26): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968473030891 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968473325803 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968489480427 (Date: 2024-10-26): Payment Gateways: [] | isCOD: false | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968499179755 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.726Z [debug]: Order 5968511238379 (Date: 2024-10-26): Payment Gateways: [] | isCOD: false | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968514253035 (Date: 2024-10-26): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968529096939 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968541745387 (Date: 2024-10-26): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968562749675 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968582082795 (Date: 2024-10-26): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.727Z [debug]: Order 5968651485419 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.728Z [debug]: Order 5968673734891 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.728Z [debug]: Order 5968718823659 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.918Z [debug]: Order 5968733274347 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery, cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:21.919Z [debug]: Order 5968734978283 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.919Z [debug]: Order 5968789405931 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.919Z [debug]: Order 5968803594475 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.920Z [debug]: Order 5968804544747 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:21.920Z [debug]: Order 5968811491563 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:18:21.920Z [debug]: Order 5968872276203 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:22.109Z [debug]: Order 5968878895339 (Date: 2024-10-26): Payment Gateways: [GoKwik Cash On Delivery, cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:18:22.109Z [debug]: Order 5968882335979 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:22.110Z [debug]: Order 5968925688043 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:18:22.110Z [debug]: Order 5968939450603 (Date: 2024-10-26): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:16:22.051Z [debug]: Order 6102611558707 (Date: 2024-10-26): Payment Gateways: [CCAvenue] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:16:22.051Z [debug]: Order 6102618571059 (Date: 2024-10-26): Payment Gateways: [PortOne Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:16:22.051Z [debug]: Order 6102785491251 (Date: 2024-10-26): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-11T04:16:22.051Z [debug]: Order 6102840803635 (Date: 2024-10-26): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-11T04:16:22.052Z [debug]: Order 6102900572467 (Date: 2024-10-26): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false

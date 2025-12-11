@@ -575,7 +575,7 @@ export const getShopifyAuthUrl = (req, res) => {
         cleanShop = cleanShop.split('/')[0].split('?')[0];
     }
 
-    const SCOPES = "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products"
+    const SCOPES = "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory"
     let redirectUri;
     if (flowType === 'brandSetup') {
         redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;

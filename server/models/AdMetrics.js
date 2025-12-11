@@ -7,6 +7,8 @@ const admetricsSchema = new mongoose.Schema({
     // Shopify metrics
     totalSales: { type: Number, default: 0},      // Gross revenue
     refundAmount: { type: Number, default: 0},    // Total refunds (net = totalSales - refundAmount)
+    codOrderCount: { type: Number, default: 0 },  // Number of COD orders
+    prepaidOrderCount: { type: Number, default: 0 }, // Number of prepaid orders
     
     // Ad platform metrics
     metaSpend: { type: Number, default: 0 }, 

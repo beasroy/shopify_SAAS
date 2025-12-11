@@ -1,0 +1,25 @@
+2025-12-10T18:22:50.980Z [debug]: Order 6223135703275 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:50.980Z [debug]: Order 6223757541611 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.980Z [debug]: Order 6223849357547 (Date: 2025-04-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.980Z [debug]: Order 6223849881835 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6223862366443 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6223878521067 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6223981510891 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6224035381483 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6224045932779 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.981Z [debug]: Order 6224102031595 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:50.982Z [debug]: Order 6224159113451 (Date: 2025-04-23): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.982Z [debug]: Order 6224205250795 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:50.982Z [debug]: Order 6224211706091 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:51.166Z [debug]: Order 6224214458603 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:22:51.348Z [debug]: Order 6224237002987 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:22:51.349Z [debug]: Order 6224243458283 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:51.349Z [debug]: Order 6224380887275 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:51.350Z [debug]: Order 6224429711595 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:51.350Z [debug]: Order 6224441901291 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:51.350Z [debug]: Order 6224527851755 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:22:51.350Z [debug]: Order 6224532930795 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:22:51.532Z [debug]: Order 6224599351531 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:22:51.533Z [debug]: Order 6224740581611 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:17:03.954Z [debug]: Order 6394345685299 (Date: 2025-04-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:17:03.954Z [debug]: Order 6394574799155 (Date: 2025-04-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false

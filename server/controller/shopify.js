@@ -3,6 +3,8 @@ import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import AdMetrics from '../models/AdMetrics.js';
 import moment from 'moment-timezone';
+import axios from 'axios';
+import { ORDERS_QUERY, makeGraphQLRequest } from '../Report/MonthlyReportGraphQL.js';
 
 export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
     try {
@@ -310,6 +312,240 @@ export const getAov = async( req,res)=>{
     res.status(500).json({ success: false, error: error.message });
   }
 }
+
+/**
+ * Get monthly COD and prepaid order counts
+ * Fetches from AdMetrics (historical) and GraphQL (today's data)
+ */
+export const getMonthlyPaymentOrders = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate } = req.body;
+
+    if (!brandId || !startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required parameters: brandId, startDate, and endDate are required' 
+      });
+    }
+
+    // Validate date formats
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid date format. Please use YYYY-MM-DD format' 
+      });
+    }
+
+    console.log(`📊 Fetching monthly payment orders for brand ${brandId} from ${startDate} to ${endDate}`);
+
+    // Get brand to access Shopify credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(400).json({ success: false, error: 'Access token is missing or invalid' });
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      return res.status(400).json({ success: false, error: 'Shop name is missing or invalid' });
+    }
+
+    // Get store timezone
+    const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const apiVersion = '2024-04';
+    
+    let shopData;
+    try {
+      const shopResponse = await axios.get(
+        `https://${cleanShopName}/admin/api/${apiVersion}/shop.json`,
+        {
+          headers: { 'X-Shopify-Access-Token': access_token },
+          timeout: 30000,
+        }
+      );
+      shopData = shopResponse.data.shop;
+    } catch (error) {
+      return res.status(500).json({ 
+        success: false, 
+        error: `Failed to fetch shop data: ${error.message}` 
+      });
+    }
+
+    const storeTimezone = shopData.iana_timezone || 'UTC';
+
+    // Convert dates to moment objects
+    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+
+    // Get today's date in store timezone
+    const today = moment.tz(storeTimezone).startOf('day');
+    const yesterday = today.clone().subtract(1, 'day').endOf('day');
+
+    // Determine date range for AdMetrics (up to yesterday)
+    const adMetricsEndDate = moment.min(yesterday, endMoment);
+    
+    // Fetch AdMetrics data for COD/prepaid counts (up to yesterday)
+    const adMetrics = await AdMetrics.find({
+      brandId,
+      date: {
+        $gte: startMoment.toDate(),
+        $lte: adMetricsEndDate.toDate()
+      }
+    }).sort({ date: 1 });
+
+    // Group AdMetrics by month and aggregate COD/prepaid counts
+    const monthlyData = new Map();
+
+    adMetrics.forEach(metric => {
+      const metricDate = moment.tz(metric.date, storeTimezone);
+      const monthKey = metricDate.format('YYYY-MM');
+
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          codOrderCount: 0,
+          prepaidOrderCount: 0
+        });
+      }
+
+      const monthData = monthlyData.get(monthKey);
+      monthData.codOrderCount += Number(metric.codOrderCount) || 0;
+      monthData.prepaidOrderCount += Number(metric.prepaidOrderCount) || 0;
+    });
+
+    // Fetch today's payment gateway data using GraphQL if needed
+    const needsTodayData = endMoment.isSameOrAfter(today);
+    
+    if (needsTodayData) {
+      console.log('🔄 Fetching today\'s payment gateway data using GraphQL...');
+      try {
+        const startTimeISO = today.clone().startOf('day').utc().toISOString();
+        const endTimeISO = endMoment.clone().add(1, 'day').startOf('day').utc().toISOString();
+        
+        // Use a simplified GraphQL query just for payment gateways
+        const PAYMENT_GATEWAY_QUERY = `
+          query getOrders($first: Int!, $after: String, $query: String!) {
+            orders(first: $first, after: $after, query: $query) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              edges {
+                node {
+                  id
+                  legacyResourceId
+                  createdAt
+                  test
+                  cancelledAt
+                  paymentGatewayNames
+                }
+              }
+            }
+          }
+        `;
+
+        let hasNextPage = true;
+        let cursor = null;
+        const queryString = `created_at:>=${startTimeISO} AND created_at:<${endTimeISO}`;
+
+        while (hasNextPage) {
+          const variables = {
+            first: 50,
+            after: cursor,
+            query: queryString,
+          };
+
+          const data = await makeGraphQLRequest(cleanShopName, access_token, PAYMENT_GATEWAY_QUERY, variables);
+
+          if (!data?.orders?.edges || data.orders.edges.length === 0) {
+            break;
+          }
+
+          // Process orders for payment gateway tracking
+          for (const edge of data.orders.edges) {
+            const order = edge.node;
+            
+            // Skip test orders
+            if (order.test) {
+              continue;
+            }
+
+            const orderDate = moment.tz(order.createdAt, storeTimezone);
+            const monthKey = orderDate.format('YYYY-MM');
+            
+            // Skip cancelled orders for COD/prepaid count
+            if (order.cancelledAt) {
+              continue;
+            }
+
+            // Track COD and prepaid orders
+            const paymentGateways = order.paymentGatewayNames || [];
+            const isCOD = paymentGateways.some(gateway => 
+              gateway && (gateway.toLowerCase().includes('cod') || 
+                          gateway.toLowerCase().includes('cash_on_delivery'))
+                          || gateway.toLowerCase().includes('cash on delivery'))
+            ;
+            const isPrepaid = !isCOD && paymentGateways.length > 0;
+
+            if (!monthlyData.has(monthKey)) {
+              monthlyData.set(monthKey, {
+                month: monthKey,
+                codOrderCount: 0,
+                prepaidOrderCount: 0
+              });
+            }
+
+            if (isCOD) {
+              monthlyData.get(monthKey).codOrderCount += 1;
+            } else if (isPrepaid) {
+              monthlyData.get(monthKey).prepaidOrderCount += 1;
+            }
+          }
+
+          hasNextPage = data.orders.pageInfo.hasNextPage;
+          cursor = data.orders.pageInfo.endCursor;
+          await new Promise(resolve => setTimeout(resolve, 500)); // Rate limiting
+        }
+
+        console.log('✅ Payment gateway data fetched successfully');
+      } catch (error) {
+        console.error('⚠️ Error fetching payment gateway data:', error.message);
+        // Continue with historical data from AdMetrics
+      }
+    }
+
+    // Format response
+    const monthlyPaymentOrders = Array.from(monthlyData.entries())
+      .map(([monthKey, monthData]) => ({
+        month: monthKey,
+        monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+        codOrderCount: monthData.codOrderCount,
+        prepaidOrderCount: monthData.prepaidOrderCount,
+        totalOrderCount: monthData.codOrderCount + monthData.prepaidOrderCount
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    console.log(`✅ Fetched payment orders for ${monthlyPaymentOrders.length} month(s)`);
+
+    res.status(200).json({ 
+      success: true, 
+      data: monthlyPaymentOrders 
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching monthly payment orders:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
 
 // Get total revenue for D2C calculator
 export const getTotalRevenue = async (req, res) => {
@@ -649,6 +885,88 @@ export const getTotalRevenue = async (req, res) => {
 //     res.status(500).json({ success: false, error: error.message });
 //   }
 // };
+
+/**
+ * Test endpoint to fetch and inspect GraphQL order data
+ */
+export const testGraphQLOrders = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, limit = 5 } = req.query; // limit defaults to 5 orders
+
+    if (!brandId) {
+      return res.status(400).json({ success: false, error: 'Brand ID is required' });
+    }
+
+    // Get brand to access Shopify credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(400).json({ success: false, error: 'Access token is missing or invalid' });
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      return res.status(400).json({ success: false, error: 'Shop name is missing or invalid' });
+    }
+
+    // Build query string
+    let queryString = '';
+    if (startDate && endDate) {
+      const startTime = moment(startDate).startOf('day').utc().toISOString();
+      const endTime = moment(endDate).add(1, 'day').startOf('day').utc().toISOString();
+      queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
+    } else {
+      // Default to last 7 days if no dates provided
+      const endTime = moment().utc().toISOString();
+      const startTime = moment().subtract(7, 'days').utc().toISOString();
+      queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
+    }
+
+    console.log('🧪 Testing GraphQL Orders Query:', {
+      brandId,
+      shopName,
+      queryString,
+      limit: Number.parseInt(limit, 10)
+    });
+
+    // Make GraphQL request
+    const variables = {
+      first: Number.parseInt(limit, 10),
+      after: null,
+      query: queryString,
+    };
+
+    const data = await makeGraphQLRequest(shopName, access_token, ORDERS_QUERY, variables);
+
+    // Return raw data for inspection
+    const orders = data?.orders?.edges?.map(edge => edge.node) || [];
+    
+    res.json({
+      success: true,
+      data: {
+        query: queryString,
+        pagination: data?.orders?.pageInfo || {},
+        ordersCount: orders.length,
+        orders: orders,
+        // Also return first order in detail for easier inspection
+        firstOrderDetail: orders[0] || null,
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error testing GraphQL orders:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
 
 
 

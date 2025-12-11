@@ -6,6 +6,7 @@ import axios from "axios";
 import AdMetrics from "../models/AdMetrics.js";
 import { GoogleAdsApi } from "google-ads-api";
 import moment from 'moment-timezone';
+import { monthlyFetchTotalSalesGraphQL } from './MonthlyReportGraphQL.js';
 import { createRedisConnection } from '../config/redis.js';
 import { ensureOrderRefundExists, setOrderRefund, getRefundsForDateRange } from '../utils/refundHelpers.js';
 config();
@@ -803,7 +804,7 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
                                 console.error('Error fetching FB data:', err);
                                 return { data: [] };
                             }),
-                        monthlyFetchTotalSales(brandId, chunk.start, chunk.end)
+                        monthlyFetchTotalSalesGraphQL(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching Shopify data:', err);
                                 return [];
@@ -837,8 +838,10 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
                             return [
                                 date,
                                 {
-                                    totalSales: parseFloat(sale.totalSales) || 0,
+                                    totalSales: Number.parseFloat(sale.totalSales) || 0,
                                     refundAmount: refundAmount,
+                                    codOrderCount: Number.parseInt(sale.codOrderCount, 10) || 0,
+                                    prepaidOrderCount: Number.parseInt(sale.prepaidOrderCount, 10) || 0,
                                 }
                             ];
                         })
@@ -850,6 +853,8 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
                             shopifySalesMap.set(date, {
                                 totalSales: 0,
                                 refundAmount: refundAmount,
+                                codOrderCount: 0,
+                                prepaidOrderCount: 0,
                             });
                         }
                     });
@@ -919,7 +924,8 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
                         const shopifyData = shopifySalesMap.get(date) || {
                             totalSales: 0,
                             refundAmount: 0,
-                  
+                            codOrderCount: 0,
+                            prepaidOrderCount: 0,
                         };
                         const entryObj = createMetricsEntry(brandId, date, metrics, shopifyData).toObject();
                         delete entryObj._id;
@@ -1003,10 +1009,10 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
     });
 
     const { totalMetaSpend, totalMetaRevenue, googleSpend, googleROAS, googleSales } = metrics;
-    const { totalSales, refundAmount} = shopifyData;
+    const { totalSales, refundAmount, codOrderCount = 0, prepaidOrderCount = 0 } = shopifyData;
 
-    const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
-    const metaRevenue = parseFloat(totalMetaRevenue.toFixed(2));
+    const metaSpend = Number.parseFloat(totalMetaSpend.toFixed(2));
+    const metaRevenue = Number.parseFloat(totalMetaRevenue.toFixed(2));
     const totalSpend = metaSpend + googleSpend;
     
     const adTotalSales = metaRevenue + googleSales;
@@ -1023,6 +1029,8 @@ const createMetricsEntry = (brandId, date, metrics, shopifyData) => {
         googleSales,
         totalSales,
         refundAmount,
+        codOrderCount: Number.parseInt(codOrderCount, 10) || 0,
+        prepaidOrderCount: Number.parseInt(prepaidOrderCount, 10) || 0,
         totalSpend: totalSpend.toFixed(2),
         grossROI: grossROI.toFixed(2),
     });

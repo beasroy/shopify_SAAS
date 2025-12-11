@@ -1,0 +1,46 @@
+2025-12-10T18:23:18.358Z [debug]: Order 6075050590443 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.358Z [debug]: Order 6075125203179 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.359Z [debug]: Order 6075231469803 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.359Z [debug]: Order 6075429945579 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.359Z [debug]: Order 6075439710443 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.359Z [debug]: Order 6075485847787 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.359Z [debug]: Order 6075492958443 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.360Z [debug]: Order 6075498627307 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.360Z [debug]: Order 6075510817003 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.360Z [debug]: Order 6075519402219 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.548Z [debug]: Order 6075534704875 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.548Z [debug]: Order 6075538899179 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.549Z [debug]: Order 6075546468587 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.549Z [debug]: Order 6075547910379 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.745Z [debug]: Order 6075548827883 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-10T18:23:18.746Z [debug]: Order 6075585429739 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075588247787 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075596275947 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075616526571 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075618132203 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075622129899 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.747Z [debug]: Order 6075632124139 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075642446059 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075646673131 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075666661611 (Date: 2025-01-23): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075670266091 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075677966571 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075689599211 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.748Z [debug]: Order 6075704901867 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075711914219 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075722399979 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075730624747 (Date: 2025-01-23): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075745239275 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075759198443 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075759788267 (Date: 2025-01-23): Payment Gateways: [Cash On Delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075766898923 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.749Z [debug]: Order 6075832860907 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.957Z [debug]: Order 6075838005483 (Date: 2025-01-23): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.958Z [debug]: Order 6075904917739 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.958Z [debug]: Order 6075905474795 (Date: 2025-01-23): Payment Gateways: [Cashfree Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.958Z [debug]: Order 6075917959403 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-10T18:23:18.958Z [debug]: Order 6075924185323 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:17:02.406Z [debug]: Order 6253917962547 (Date: 2025-01-23): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-11T04:17:02.406Z [debug]: Order 6253938606387 (Date: 2025-01-23): Payment Gateways: [PortOne Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-11T04:17:02.581Z [debug]: Order 6254239875379 (Date: 2025-01-23): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-11T04:17:02.582Z [debug]: Order 6254334771507 (Date: 2025-01-23): Payment Gateways: [Ecom360 - Prepaid] | isCOD: false | isPrepaid: true | Cancelled: false

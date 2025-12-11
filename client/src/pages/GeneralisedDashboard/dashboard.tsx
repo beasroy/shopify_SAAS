@@ -18,6 +18,7 @@ import ConversionFunnelCard from "./components/ConversionFunnelCard";
 import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
+import PaymentOrdersCard from "./components/PaymentOrdersCard";
 
 
 
@@ -347,17 +348,13 @@ const SummaryDashboard: React.FC = () => {
               />
             )}
 
-            {/* Google Ads Hub - Coming Soon */}
-            <DashboardCard
-              title="Google Ads Hub"
-              icon={<GoogleLogo width="1.25rem" height="1.25rem" />}
-              onNavigate={() => navigate('/google-ads-hub')}
-            >
-              <div className="text-center py-8 text-slate-400">
-                <p className="text-sm">Coming soon</p>
-                <p className="text-xs mt-1">Campaign performance overview</p>
-              </div>
-            </DashboardCard>
+            {/* Payment Orders Card - COD vs Prepaid */}
+            {brandId && (
+              <PaymentOrdersCard 
+                onNavigate={() => navigate(`/reports/${brandId}`)}
+                brandId={brandId}
+              />
+            )}
           </div>
         </div>
       </div>

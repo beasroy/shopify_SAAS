@@ -42,6 +42,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
   const [data, setData] = useState<EcommerceMetric[]>([]);
   const [aovData, setAovData] = useState<any[]>([]);
+  const [paymentOrdersData, setPaymentOrdersData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { brandId } = useParams();
 
@@ -63,7 +64,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
 
-  // Transform data to match ReportTable's expected format and merge AOV data
+  // Transform data to match ReportTable's expected format and merge AOV and payment orders data
   const transformedData = useMemo(() => {
     // Create maps of AOV data by month for quick lookup
     const aovMap = new Map<string, number>();
@@ -89,16 +90,47 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       }
     });
 
+    // Create maps of payment orders data by month for quick lookup
+    const codOrderMap = new Map<string, number>();
+    const prepaidOrderMap = new Map<string, number>();
+    console.log('Payment Orders Data for mapping:', paymentOrdersData);
+    paymentOrdersData.forEach((paymentItem) => {
+      // Match by monthName (e.g., "Nov-2025") or month (e.g., "2025-11")
+      let monthKey = '';
+      if (paymentItem.monthName) {
+        monthKey = paymentItem.monthName;
+        codOrderMap.set(monthKey, paymentItem.codOrderCount || 0);
+        prepaidOrderMap.set(monthKey, paymentItem.prepaidOrderCount || 0);
+        console.log(`Mapped Payment Orders: ${paymentItem.monthName} = COD: ${paymentItem.codOrderCount}, Prepaid: ${paymentItem.prepaidOrderCount}`);
+      }
+      if (paymentItem.month) {
+        // Convert "2025-11" to "Nov-2025" format for matching
+        const date = new Date(paymentItem.month + '-01');
+        const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
+        monthKey = monthName;
+        codOrderMap.set(monthKey, paymentItem.codOrderCount || 0);
+        prepaidOrderMap.set(monthKey, paymentItem.prepaidOrderCount || 0);
+        console.log(`Mapped Payment Orders from month: ${paymentItem.month} -> ${monthName} = COD: ${paymentItem.codOrderCount}, Prepaid: ${paymentItem.prepaidOrderCount}`);
+      }
+    });
+
     console.log('Ecommerce Data months:', data.map(item => item.Month));
     console.log('AOV Map keys:', Array.from(aovMap.keys()));
+    console.log('Payment Orders Map keys:', Array.from(codOrderMap.keys()));
 
     return data.map((item, index) => {
       // Try to match AOV and Avg Items by month name
       const monthName = item.Month;
       const aov = aovMap.get(monthName) || 0;
       const averageItemsPerOrder = avgItemsMap.get(monthName) || 0;
+      const codOrderCount = codOrderMap.get(monthName) || 0;
+      const prepaidOrderCount = prepaidOrderMap.get(monthName) || 0;
+      
       if (aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
+      }
+      if (codOrderCount > 0 || prepaidOrderCount > 0) {
+        console.log(`Matched Payment Orders for ${monthName}: COD: ${codOrderCount}, Prepaid: ${prepaidOrderCount}`);
       }
 
       return {
@@ -112,10 +144,12 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         purchases: parseInt(item['Purchases']) || 0,
         purchaseRate: item['Purchase Rate'] || '0%',
         aov: aov,
-        averageItemsPerOrder: averageItemsPerOrder
+        averageItemsPerOrder: averageItemsPerOrder,
+        codOrderCount: codOrderCount,
+        prepaidOrderCount: prepaidOrderCount
       };
     });
-  }, [data, aovData]);
+  }, [data, aovData, paymentOrdersData]);
 
 
 
@@ -180,6 +214,20 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         );
       }
 
+      // Fetch payment orders data (COD and Prepaid) for primary date range
+      if (startDate && endDate) {
+        promises.push(
+          axiosInstance.post(
+            `/api/shopify/payment-orders/${brandId}`,
+            {
+              startDate: startDate,
+              endDate: endDate
+            },
+            { withCredentials: true }
+          )
+        );
+      }
+
       const results = await Promise.all(promises);
 
       // Process ecommerce metrics response
@@ -214,6 +262,20 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         }
       } else {
         console.warn('No AOV response received');
+      }
+
+      // Process payment orders response (COD and Prepaid)
+      if (results[2]) {
+        const paymentOrdersResponse = results[2];
+        console.log('Payment Orders API Response:', paymentOrdersResponse.data);
+        if (paymentOrdersResponse.data.success && paymentOrdersResponse.data.data) {
+          console.log('Payment Orders Data:', paymentOrdersResponse.data.data);
+          setPaymentOrdersData(paymentOrdersResponse.data.data);
+        } else {
+          console.warn('Payment orders data not in expected format:', paymentOrdersResponse.data);
+        }
+      } else {
+        console.warn('No payment orders response received');
       }
 
     } catch (error) {

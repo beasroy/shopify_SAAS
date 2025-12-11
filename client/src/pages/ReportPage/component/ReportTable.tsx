@@ -32,6 +32,8 @@ export type FunnelRow = {
   purchaseRate: string
   aov?: number
   averageItemsPerOrder?: number
+  codOrderCount?: number
+  prepaidOrderCount?: number
 }
 
 type ColumnDef<T extends keyof FunnelRow = keyof FunnelRow> = {
@@ -56,6 +58,8 @@ const allColumns: ColumnDef[] = [
   { key: "purchaseRate", header: "Purchase Rate", width: 150, minWidth: 130, align: "right" },
   { key: "aov", header: "AOV", width: 120, minWidth: 110, align: "right" },
   { key: "averageItemsPerOrder", header: "Avg Items/Order", width: 150, minWidth: 130, align: "right" },
+  { key: "codOrderCount", header: "COD Orders", width: 130, minWidth: 110, align: "right" },
+  { key: "prepaidOrderCount", header: "Prepaid Orders", width: 150, minWidth: 130, align: "right" },
 ]
 
 function clamp(n: number, min: number, max?: number) {
@@ -65,8 +69,8 @@ function clamp(n: number, min: number, max?: number) {
 
 // Helper function to get logo for a column
 function getColumnLogo(key: keyof FunnelRow): React.ReactNode | null {
-  // Shopify logo for AOV and Avg Items/Order
-  if (key === 'aov' || key === 'averageItemsPerOrder') {
+  // Shopify logo for AOV, Avg Items/Order, COD Orders, and Prepaid Orders
+  if (key === 'aov' || key === 'averageItemsPerOrder' || key === 'codOrderCount' || key === 'prepaidOrderCount') {
     return <ShopifyLogo width="1rem" height="1rem" />
   }
   
@@ -119,7 +123,9 @@ export default function ReportTable({
       'Purchases': 'purchases',
       'Purchase Rate': 'purchaseRate',
       'AOV': 'aov',
-      'Avg Items/Order': 'averageItemsPerOrder'
+      'Avg Items/Order': 'averageItemsPerOrder',
+      'COD Orders': 'codOrderCount',
+      'Prepaid Orders': 'prepaidOrderCount'
     };
     
     // Filter and reorder columns based on column management

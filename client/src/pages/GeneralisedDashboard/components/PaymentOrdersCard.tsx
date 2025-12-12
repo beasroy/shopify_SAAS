@@ -83,12 +83,12 @@ function PaymentOrdersCard({ onNavigate, brandId, startDate, endDate }: PaymentO
     {
       name: 'COD Orders',
       value: totalCOD,
-      color: '#3674B5' // blue-800
+      color: '#155E95' // blue-800
     },
     {
       name: 'Prepaid Orders',
       value: totalPrepaid,
-      color: '#A5BFCC' // blue-500
+      color: '#80C4E9' // blue-500
     }
   ];
 

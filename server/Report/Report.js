@@ -63,8 +63,11 @@ export const fetchTotalSales = async (brandId) => {
     const yesterdaySales = {
       date: dateStr,
       grossSales: 0,
+      totalPrice: 0,
       refundAmount: 0,
       orderCount: 0,
+      codOrderCount: 0,
+      prepaidOrderCount: 0,
     };
     
     // Fetch orders using GraphQL with pagination
@@ -117,6 +120,18 @@ export const fetchTotalSales = async (brandId) => {
           // Calculate refund amount
           const { refundAmount, refundCount } = calculateRefundAmount(order);
           
+          // Get total price from order
+          const totalPrice = Number(order.total_price || 0);
+          
+          // Track payment gateway types (COD and Prepaid)
+          const paymentGateways = order.payment_gateway_names || [];
+          const isCOD = paymentGateways.some(gateway => 
+            gateway && (gateway.toLowerCase().includes('cod') || 
+                        gateway.toLowerCase().includes('cash on delivery') ||
+                        gateway.toLowerCase().includes('cash_on_delivery'))
+          );
+          const isPrepaid = !isCOD && paymentGateways.length > 0;
+          
           // Update orderRefund table
           try {
             await ensureOrderRefundExists(brandId, order.id, order.created_at);
@@ -129,8 +144,18 @@ export const fetchTotalSales = async (brandId) => {
           
           // Accumulate sales data
           yesterdaySales.grossSales += grossSales;
+          yesterdaySales.totalPrice += totalPrice;
           yesterdaySales.refundAmount += refundAmount;
           yesterdaySales.orderCount++;
+          
+          // Track COD and prepaid orders (only count non-cancelled orders)
+          if (!order.cancelled_at) {
+            if (isCOD) {
+              yesterdaySales.codOrderCount++;
+            } else if (isPrepaid) {
+              yesterdaySales.prepaidOrderCount++;
+            }
+          }
         }
         
         // Check pagination
@@ -147,11 +172,14 @@ export const fetchTotalSales = async (brandId) => {
     }
     
     // Return array for compatibility
+    // Total sales calculation: totalPrice - refundAmount (as per MonthlyReportGraphQL.js)
     return [{
       grossSales: yesterdaySales.grossSales,
-      totalSales: yesterdaySales.grossSales - yesterdaySales.refundAmount,
+      totalSales: yesterdaySales.totalPrice - yesterdaySales.refundAmount,
       refundAmount: yesterdaySales.refundAmount,
       orderCount: yesterdaySales.orderCount,
+      codOrderCount: yesterdaySales.codOrderCount,
+      prepaidOrderCount: yesterdaySales.prepaidOrderCount,
       date: yesterdaySales.date,
     }];
   } catch (error) {
@@ -420,7 +448,7 @@ export const addReportData = async (brandId) => {
     }
 
     // Destructure the sales data - using direct array access since we expect one day of data
-    const { totalSales, refundAmount } = salesData[0];
+    const { totalSales, refundAmount, codOrderCount = 0, prepaidOrderCount = 0 } = salesData[0];
 
     // Calculate metrics
     const metaSpend = parseFloat(totalMetaSpend.toFixed(2));
@@ -444,6 +472,8 @@ export const addReportData = async (brandId) => {
       googleROAS,
       totalSales,
       refundAmount,
+      codOrderCount: Number.parseInt(codOrderCount, 10) || 0,
+      prepaidOrderCount: Number.parseInt(prepaidOrderCount, 10) || 0,
       totalSpend: totalSpend.toFixed(2),
       grossROI: grossROI.toFixed(2),
     });

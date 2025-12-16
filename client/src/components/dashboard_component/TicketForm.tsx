@@ -101,10 +101,27 @@ function TicketForm({ onClose }: TicketFormProps) {
 
     try {
       // Use brandName from Redux if form.brandName is empty
-      const submitData = {
-        ...form,
-        brandName: form.brandName || brandName || ""
+      const finalBrandName = (form.brandName || brandName || "").trim();
+      
+      // Final validation before submit
+      if (!finalBrandName) {
+        setErrors({ brandName: "Brand name is required" });
+        setSubmitting(false);
+        return;
       }
+
+      const submitData = {
+        brandName: finalBrandName,
+        description: form.description.trim(),
+        departmentId: form.departmentId
+      };
+
+      console.log('Submitting ticket with data:', {
+        brandName: submitData.brandName,
+        hasDescription: !!submitData.description,
+        departmentId: submitData.departmentId
+      });
+
       const response = await axios.post(`${baseURL}/api/zoho/create-ticket`, submitData,{withCredentials: true})
 
       if (response.data.success) {

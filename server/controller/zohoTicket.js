@@ -289,8 +289,22 @@ export const createTicket = async (req, res) => {
     try {
         const { brandName, description, departmentId } = req.body;
 
+        // Log received data for debugging
+        console.log('Received ticket creation request:', {
+            brandName: brandName,
+            hasDescription: !!description,
+            departmentId: departmentId,
+            brandNameType: typeof brandName,
+            brandNameLength: brandName?.length
+        });
+
         // Validate required fields
         if (!brandName || !description || !departmentId) {
+            console.error('Validation failed:', {
+                brandName: !!brandName,
+                description: !!description,
+                departmentId: !!departmentId
+            });
             return res.status(400).json({
                 success: false,
                 message: 'Brand name, description, and department are required'
@@ -306,23 +320,49 @@ export const createTicket = async (req, res) => {
         const firstName = userName.split(' ')[0] || 'Customer';
         const lastName = userName.split(' ').slice(1).join(' ') || 'User';
 
+        // Ensure brandName is a string and not empty
+        const safeBrandName = (brandName && typeof brandName === 'string' && brandName.trim()) 
+            ? brandName.trim() 
+            : 'Unknown Brand';
+
+        // Create subject - ensure it's always a valid non-empty string
+        const subject = `Requirement Request - ${safeBrandName}`.trim();
+        
+        // Validate subject is not empty
+        if (!subject || subject.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Subject cannot be empty'
+            });
+        }
+
         // Create ticket with contact information
         // Zoho will automatically create or find the contact based on email
+        const ticketData = {
+            subject: subject,
+            departmentId: departmentId,
+            description: description,
+            contact: {
+                firstName: firstName,
+                lastName: lastName,
+                email: userEmail
+            },
+            cf: {
+                cf_brand: safeBrandName
+            }
+        };
+
+        // Log the ticket data for debugging (remove sensitive data in production)
+        console.log('Creating ticket with data:', {
+            subject: ticketData.subject,
+            departmentId: ticketData.departmentId,
+            hasDescription: !!ticketData.description,
+            contactEmail: ticketData.contact.email
+        });
+
         const ticketResponse = await axios.post(
             'https://desk.zoho.com/api/v1/tickets',
-            {
-                subject: `Requirement Request - ${brandName}`,
-                departmentId: departmentId,
-                description: description,
-                contact: {
-                    firstName: firstName,
-                    lastName: lastName,
-                    email: userEmail
-                },
-                cf: {
-                    cf_brand: brandName
-                }
-            },
+            ticketData,
             {
                 headers: {
                     'Authorization': `Zoho-oauthtoken ${accessToken}`,
@@ -337,7 +377,16 @@ export const createTicket = async (req, res) => {
             message: 'Ticket created successfully'
         });
     } catch (error) {
-        console.error('Error creating ticket:', error.response?.data || error.message);
+        console.error('Error creating ticket:', {
+            message: error.message,
+            responseData: error.response?.data,
+            status: error.response?.status,
+            requestData: {
+                brandName: req.body?.brandName,
+                hasDescription: !!req.body?.description,
+                departmentId: req.body?.departmentId
+            }
+        });
         res.status(500).json({
             success: false,
             message: 'Failed to create ticket',

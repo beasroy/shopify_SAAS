@@ -1,0 +1,3 @@
+2025-12-16T04:47:15.935Z [debug]: Order 6271328157889 (Date: 2025-01-07): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:47:15.935Z [debug]: Order 6271530860737 (Date: 2025-01-07): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:47:15.936Z [debug]: Order 6271533023425 (Date: 2025-01-07): Payment Gateways: [cash_on_delivery, manual] | isCOD: true | isPrepaid: false | Cancelled: false

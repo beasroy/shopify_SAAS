@@ -1,0 +1,6 @@
+2025-12-16T04:45:33.354Z [debug]: Order 5969938612417 (Date: 2024-07-02): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-16T04:45:33.354Z [debug]: Order 5970039210177 (Date: 2024-07-02): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:45:33.354Z [debug]: Order 5970109366465 (Date: 2024-07-02): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:45:33.354Z [debug]: Order 5970225332417 (Date: 2024-07-02): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:45:33.354Z [debug]: Order 5970276679873 (Date: 2024-07-02): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:45:33.355Z [debug]: Order 5970391761089 (Date: 2024-07-02): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false

@@ -1,0 +1,10 @@
+2025-12-16T04:45:39.714Z [debug]: Order 5750258630849 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-16T04:45:39.877Z [debug]: Order 5750341632193 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:39.877Z [debug]: Order 5750396977345 (Date: 2024-02-09): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:45:40.044Z [debug]: Order 5750457663681 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:40.045Z [debug]: Order 5750469492929 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-16T04:45:40.223Z [debug]: Order 5750625894593 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:40.394Z [debug]: Order 5750630645953 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:40.566Z [debug]: Order 5750645162177 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:40.741Z [debug]: Order 5750763290817 (Date: 2024-02-09): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:45:40.741Z [debug]: Order 5750837870785 (Date: 2024-02-09): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false

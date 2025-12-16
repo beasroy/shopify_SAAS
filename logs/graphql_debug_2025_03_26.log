@@ -1,0 +1,6 @@
+2025-12-16T04:47:22.255Z [debug]: Order 6391227121857 (Date: 2025-03-26): Payment Gateways: [] | isCOD: false | isPrepaid: false | Cancelled: false
+2025-12-16T04:47:22.255Z [debug]: Order 6391518200001 (Date: 2025-03-26): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:47:22.255Z [debug]: Order 6391606673601 (Date: 2025-03-26): Payment Gateways: [giftCard] | isCOD: false | isPrepaid: true | Cancelled: true
+2025-12-16T04:47:22.255Z [debug]: Order 6391783784641 (Date: 2025-03-26): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-16T04:47:22.450Z [debug]: Order 6391790174401 (Date: 2025-03-26): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-16T04:47:22.450Z [debug]: Order 6391927734465 (Date: 2025-03-26): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false

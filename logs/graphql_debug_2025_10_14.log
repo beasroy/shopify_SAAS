@@ -1,3 +1,0 @@
-2025-12-16T04:47:19.969Z [debug]: Order 6752167461057 (Date: 2025-10-14): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-16T04:47:19.970Z [debug]: Order 6752256983233 (Date: 2025-10-14): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-16T04:47:19.970Z [debug]: Order 6752374816961 (Date: 2025-10-14): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false

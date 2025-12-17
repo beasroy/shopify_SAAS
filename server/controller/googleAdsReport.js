@@ -123,9 +123,9 @@ export async function fetchSearchTermMetrics(req, res) {
                     if (!monthlyData.has(month)) {
                         monthlyData.set(month, {
                             Month: moment(month).format('YYYYMM'),
-                            Cost: 0,
-                            Clicks: 0,
-                            Conversions: 0,
+                            "Cost": 0,
+                            "Clicks": 0,
+                            "Conversions": 0,
                             "Conversion Value": 0,
                             "Conv. Value/ Cost": 0,
                             "Conversion Rate": 0,
@@ -135,9 +135,9 @@ export async function fetchSearchTermMetrics(req, res) {
                     const monthData = monthlyData.get(month);
 
                     // Update the monthly data values
-                    monthData.Cost += (metrics.cost_micros / 1_000_000);
-                    monthData.Clicks += metrics.clicks;
-                    monthData.Conversions += metrics.conversions;
+                    monthData["Cost"] += (metrics.cost_micros / 1_000_000);
+                    monthData["Clicks"] += metrics.clicks;
+                    monthData["Conversions"] += metrics.conversions;
                     monthData["Conversion Value"] += metrics.conversions_value;
                     monthData["Conv. Value/ Cost"] += metrics.conversions_value_per_cost;
                     monthData["Conversion Rate"] += metrics.conversions_from_interactions_rate * 100;
@@ -196,10 +196,10 @@ export async function fetchSearchTermMetrics(req, res) {
                 });
             }
         }
-
+        console.log("allAccountsData", allAccountsData[0]["searchTerms"]);
         return res.json({
             success: true,
-            data: allAccountsData
+            data: allAccountsData[0]["searchTerms"]
         });
     } catch (error) {
         console.error("Failed to fetch Google Ads search term metrics:", error);

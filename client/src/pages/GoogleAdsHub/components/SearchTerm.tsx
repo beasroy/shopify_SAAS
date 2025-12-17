@@ -16,18 +16,19 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import Loader from "@/components/dashboard_component/loader";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import { selectGoogleAdsTokenError } from "@/store/slices/TokenSllice";
+import NewConversionTable from "@/pages/ConversionReportPage/components/ConversionTable";
 
 type AdAccountData = {
   accountId: string;
   accountName: string;
-  searchTerms: Array<{
+  // searchTerms: Array<{
     "Search Term": string;
     "Total Cost": number;
     "Conv. Value / Cost": number;
     "Total Conv. Value": number;
-    MonthlyData?: Array<{ Month: string; [key: string]: any }>;
+    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
     [key: string]: any;
-  }>;
+  // }>;
   error?: string;
 };
 
@@ -38,9 +39,12 @@ export type ApiResponse = {
 
 interface SearchtermBasedReportsProps {
   dateRange: DateRange | undefined;
+  refreshTrigger: number
+  currentFilter: string[] | undefined;
+  onDataUpdate: (data: any[], tabType: string) => void;
 }
 
-const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -51,7 +55,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
-  const locale = useSelector((state:RootState)=>state.locale.locale)
+  const locale = useSelector((state: RootState) => state.locale.locale)
 
   const user = useSelector((state: RootState) => state.user.user, shallowEqual);
   const { brandId } = useParams();
@@ -66,7 +70,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   const componentId = 'google-ads-search-term'; // Add a unique component identifier
 
   // Get filters from Redux
-  const filters = useSelector((state: RootState) => 
+  const filters = useSelector((state: RootState) =>
     state.conversionFilters[componentId] || {}, shallowEqual
   );
 
@@ -77,13 +81,13 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
           "Total Cost": "costFilter",
           "Conv. Value / Cost": "convValuePerCostFilter",
         }[column] || column;
-  
+
         acc[apiColumnName] = filter;
       }
       return acc;
     }, {});
   }, [filters]); // Only re-compute when filters change
-  
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -91,9 +95,9 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
         userId: user?.id,
         startDate,
         endDate,
-        ...transformedFilters, 
+        ...transformedFilters,
       });
-  
+      console.log("---->", response.data);
       setApiResponse({
         reportType: "Search Term",
         data: response.data?.data || [],
@@ -104,12 +108,12 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
       setLoading(false);
     }
   }, [brandId, startDate, endDate, user?.id, transformedFilters]);
-  
+
   useEffect(() => {
     fetchData();
     const intervalId = setInterval(fetchData, 15 * 60 * 1000); // Refresh every 15 minutes
     return () => clearInterval(intervalId);
-  }, [fetchData]);
+  }, [fetchData, refreshTrigger]);
 
   useEffect(() => {
     if (propDateRange) {
@@ -134,93 +138,120 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   };
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Search Term";
+  const primaryColumn = "Search Term";   // "Conv. Value / Cost"
+
   const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
   const monthlyDataKey = "MonthlyData";
-  const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
+  // const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
   const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
   console.log(googleAdsTokenError);
+  // console.log("---->",monthlyMetrics);
+
+  if (loading) {
+    return <Loader isLoading={loading} />;
+  }
+
+  console.log("apiResponse", apiResponse?.data);
 
   return (
-<>
-{googleAdsTokenError ? (
-           <NoAccessPage
-           platform="Google Ads"
-           message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
-           icon={<Target className="w-8 h-8 text-red-500" />}
-           loginOptions={[
-             {
-               label: "Connect Google Ads",
-               context: "googleAdSetup",
-               provider: "google"
-             }
-           ]}
-         />
-        ) : loading ? (
-      <Loader isLoading={loading}/>
-      ) : (
-        apiResponse?.data && apiResponse.data.map((account, _) => (
-          <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
-          <Card key={account.accountId} className="mb-4">
-
-            <CardContent>
-                 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
-                <span className="mr-2"><GoogleLogo /></span> 
-                <span className="">{account.accountName}</span>
-              </h3>
-              <div className="flex flex-wrap items-center gap-3">
-              {isFullScreen && 
-                <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                  <DatePickerWithRange />
-                </div>
-              }
-              <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-              <FilterConversions 
-                componentId={componentId}
-                availableColumns={["Total Cost", "Conv. Value / Cost"]}
-              />
-              <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
-            </div>
-            </div>
-              
-              {account.error ? (
-                <p className="text-red-500">Error: {account.error}</p>
-              ) : account.searchTerms.length === 0 ? (
-                <p className="text-gray-500">No search term data available for this account</p>
-              ) : (
-                <div className="rounded-md overflow-hidden">
-                  <ConversionTable
-                    data={account.searchTerms}
-                    primaryColumn={primaryColumn}
-                    secondaryColumns={secondaryColumns}
-                    monthlyDataKey={monthlyDataKey}
-                    monthlyMetrics={monthlyMetrics}
-                    isFullScreen={isFullScreen}
-                    locale={locale}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        ))
-      )}
-
-      {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
-        <Card>
-          <CardContent>
-            <p className="text-gray-500 text-center py-4">No search term data available</p>
-          </CardContent>
-        </Card>
-      )}
+    <>
+      <div className="rounded-md overflow-hidden">
+        <NewConversionTable
+          // data={mapSearchTermsForTable(apiResponse?.data || [])}
+          data={apiResponse?.data || []}
+          primaryColumn={primaryColumn}
+          secondaryColumns={secondaryColumns}
+          monthlyDataKey={monthlyDataKey}
+          // monthlyMetrics={monthlyMetrics}
+          isFullScreen={isFullScreen}
+          locale={locale}
+        // filter={currentFilter}
+        />
+      </div>
     </>
-  );
+  )
+
+  // return (
+  //   <>
+  //     {googleAdsTokenError ? (
+  //       <NoAccessPage
+  //         platform="Google Ads"
+  //         message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
+  //         icon={<Target className="w-8 h-8 text-red-500" />}
+  //         loginOptions={[
+  //           {
+  //             label: "Connect Google Ads",
+  //             context: "googleAdSetup",
+  //             provider: "google"
+  //           }
+  //         ]}
+  //       />
+  //     ) : loading ? (
+  //       <Loader isLoading={loading} />
+  //     ) : (
+  //       apiResponse?.data && apiResponse.data.map((account, _) => (
+  //         <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
+  //           <Card key={account.accountId} className="mb-4">
+
+  //             <CardContent>
+
+  //               {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  //                 <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
+  //                   <span className="mr-2"><GoogleLogo /></span>
+  //                   <span className="">{account.accountName}</span>
+  //                 </h3>
+  //                 <div className="flex flex-wrap items-center gap-3">
+  //                   {isFullScreen &&
+  //                     <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+  //                       <DatePickerWithRange />
+  //                     </div>
+  //                   }
+  //                   <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+  //                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+  //                   </Button>
+  //                   <FilterConversions
+  //                     componentId={componentId}
+  //                     availableColumns={["Total Cost", "Conv. Value / Cost"]}
+  //                   />
+  //                   <Button onClick={toggleFullScreen} size="icon" variant="outline">
+  //                     {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+  //                   </Button>
+  //                 </div>
+  //               </div> */}
+
+  //               {account.error ? (
+  //                 <p className="text-red-500">Error: {account.error}</p>
+  //               // ) : account.searchTerms.length === 0 ? (
+  //               ) : !Array.isArray(account.searchTerms) || account.searchTerms.length === 0 ? (
+  //                 <p className="text-gray-500">No search term data available for this account</p>
+  //               ) : (
+  //                 <div className="rounded-md overflow-hidden">
+  //                   <NewConversionTable
+  //                     data={account.searchTerms}
+  //                     primaryColumn={primaryColumn}
+  //                     secondaryColumns={secondaryColumns}
+  //                     monthlyDataKey={monthlyDataKey}
+  //                     // monthlyMetrics={monthlyMetrics}
+  //                     isFullScreen={isFullScreen}
+  //                     locale={locale}
+  //                   />
+  //                 </div>
+  //               )}
+  //             </CardContent>
+  //           </Card>
+  //         </div>
+  //       ))
+  //     )}
+
+  //     {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
+  //       <Card>
+  //         <CardContent>
+  //           <p className="text-gray-500 text-center py-4">No search term data available</p>
+  //         </CardContent>
+  //       </Card>
+  //     )}
+  //   </>
+  // );
 };
 
 export default SearchTerm;

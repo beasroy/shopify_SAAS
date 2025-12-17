@@ -16,6 +16,7 @@ import { DatePickerWithRange } from "@/components/dashboard_component/DatePicker
 import Loader from "@/components/dashboard_component/loader";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import { selectGoogleAdsTokenError } from '@/store/slices/TokenSllice';
+import NewConversionTable from "@/pages/ConversionReportPage/components/ConversionTable";
 
 type AdAccountData = {
   accountId: string;
@@ -25,7 +26,7 @@ type AdAccountData = {
     "Total Cost": number;
     "Conv. Value / Cost": number;
     "Total Conv. Value": number;
-    MonthlyData?: Array<{ Month: string; [key: string]: any }>;
+    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
 
     [key: string]: any;
   }>;
@@ -39,9 +40,10 @@ export type ApiResponse = {
 
 interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
+  refreshTrigger: number
 }
 
-const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -52,13 +54,13 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
-  const locale = useSelector((state:RootState)=>state.locale.locale)
+  const locale = useSelector((state: RootState) => state.locale.locale)
   const dispatch = useDispatch();
   const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
   console.log(googleAdsTokenError);
-  
-  
-  const user = useSelector((state: RootState)=>state.user.user , shallowEqual)
+
+
+  const user = useSelector((state: RootState) => state.user.user, shallowEqual)
   const { brandId } = useParams();
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -70,8 +72,8 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
 
   const componentId = 'google-ads-age';
 
-  const filters = useSelector((state: RootState) => 
-    state.conversionFilters[componentId] || {} , shallowEqual
+  const filters = useSelector((state: RootState) =>
+    state.conversionFilters[componentId] || {}, shallowEqual
   );
 
   const transformedFilters = useMemo(() => {
@@ -81,7 +83,7 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
           "Total Cost": "costFilter",
           "Conv. Value / Cost": "convValuePerCostFilter",
         }[column] || column;
-  
+
         acc[apiColumnName] = filter;
       }
       return acc;
@@ -106,15 +108,15 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
     } finally {
       setLoading(false);
     }
-  }, [brandId, startDate, endDate,transformedFilters, user?.id]);
+  }, [brandId, startDate, endDate, transformedFilters, user?.id]);
 
   useEffect(() => {
     fetchData();
-    const intervalId = setInterval(fetchData, 15 * 60 * 1000); 
+    const intervalId = setInterval(fetchData, 15 * 60 * 1000);
     return () => clearInterval(intervalId);
-  }, [fetchData]);
+  }, [fetchData, refreshTrigger]);
 
- useEffect(() => {
+  useEffect(() => {
     if (propDateRange) {
       dispatch(setDate({
         from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
@@ -126,11 +128,11 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   useEffect(() => {
     if (!isFullScreen) {
       if (propDateRange) {
-      dispatch(setDate({
-        from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
-        to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
-      }));
-    }
+        dispatch(setDate({
+          from: propDateRange.from ? propDateRange.from.toISOString() : undefined, // Convert Date to string
+          to: propDateRange.to ? propDateRange.to.toISOString() : undefined // Convert Date to string
+        }));
+      }
     }
   }, [isFullScreen, propDateRange]);
 
@@ -142,75 +144,75 @@ const Age: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
   const primaryColumn = "Age Range";
   const monthlyDataKey = "MonthlyData";
   const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
-  const monthlyMetrics = ["Cost","Conv. Value/ Cost"];
+  const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
 
   return (
-<>
+    <>
       {googleAdsTokenError ? (
-           <NoAccessPage
-           platform="Google Ads"
-           message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
-           icon={<Target className="w-8 h-8 text-red-500" />}
-           loginOptions={[
-             {
-               label: "Connect Google Ads",
-               context: "googleAdSetup",
-               provider: "google"
-             }
-           ]}
-         />
-        ) : loading ? (
-        <Loader isLoading={loading}/>
+        <NoAccessPage
+          platform="Google Ads"
+          message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
+          icon={<Target className="w-8 h-8 text-red-500" />}
+          loginOptions={[
+            {
+              label: "Connect Google Ads",
+              context: "googleAdSetup",
+              provider: "google"
+            }
+          ]}
+        />
+      ) : loading ? (
+        <Loader isLoading={loading} />
       ) : (
         apiResponse?.data && apiResponse.data.map((account, _) => (
           <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
-          <Card key={account.accountId} className="mb-4">
+            <Card key={account.accountId} className="mb-4">
 
-            <CardContent>
-                 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
-                <span className="mr-2"><GoogleLogo /></span> 
-                <span className="">{account.accountName}</span>
-              </h3>
-              <div className="flex flex-wrap items-center gap-3">
-              {isFullScreen && 
-                <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                  <DatePickerWithRange />
-                </div>
-              }
-              <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-              <FilterConversions 
-                componentId={componentId}
-                availableColumns={["Total Cost", "Conv. Value / Cost"]}
-              />
-              <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
-            </div>
-            </div>
-              
-              {account.error ? (
-                <p className="text-red-500">Error: {account.error}</p>
-              ) : account.ageRanges.length === 0 ? (
-                <p className="text-gray-500">No Age data available for this account</p>
-              ) : (
-                <div className="rounded-md overflow-hidden">
-                  <ConversionTable
-                    data={account.ageRanges}
-                    primaryColumn={primaryColumn}
-                    secondaryColumns={secondaryColumns}
-                    monthlyDataKey={monthlyDataKey}
-                    monthlyMetrics={monthlyMetrics}
-                    isFullScreen={isFullScreen}
-                    locale={locale}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <CardContent>
+
+                {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
+                    <span className="mr-2"><GoogleLogo /></span>
+                    <span className="">{account.accountName}</span>
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {isFullScreen &&
+                      <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+                        <DatePickerWithRange />
+                      </div>
+                    }
+                    <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <FilterConversions
+                      componentId={componentId}
+                      availableColumns={["Total Cost", "Conv. Value / Cost"]}
+                    />
+                    <Button onClick={toggleFullScreen} size="icon" variant="outline">
+                      {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div> */}
+
+                {account.error ? (
+                  <p className="text-red-500">Error: {account.error}</p>
+                ) : account.ageRanges.length === 0 ? (
+                  <p className="text-gray-500">No Age data available for this account</p>
+                ) : (
+                  <div className="rounded-md overflow-hidden">
+                    <NewConversionTable
+                      data={account.ageRanges}
+                      primaryColumn={primaryColumn}
+                      secondaryColumns={secondaryColumns}
+                      monthlyDataKey={monthlyDataKey}
+                      // monthlyMetrics={monthlyMetrics}
+                      isFullScreen={isFullScreen}
+                      locale={locale}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         ))
       )}

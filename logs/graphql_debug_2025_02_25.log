@@ -1,0 +1,13 @@
+2025-12-17T05:37:29.622Z [debug]: Order 6345471033537 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:37:29.801Z [debug]: Order 6345488498881 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:37:29.981Z [debug]: Order 6345586278593 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:37:29.981Z [debug]: Order 6345649848513 (Date: 2025-02-25): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:08.209Z [debug]: Order 6207262163104 (Date: 2025-02-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:08.209Z [debug]: Order 6207808929952 (Date: 2025-02-25): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:08.210Z [debug]: Order 6207837405344 (Date: 2025-02-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:08.210Z [debug]: Order 6208028639392 (Date: 2025-02-25): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:08.210Z [debug]: Order 6208109215904 (Date: 2025-02-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:42.479Z [debug]: Order 6345471033537 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:25:42.659Z [debug]: Order 6345488498881 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:25:42.843Z [debug]: Order 6345586278593 (Date: 2025-02-25): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:25:42.844Z [debug]: Order 6345649848513 (Date: 2025-02-25): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false

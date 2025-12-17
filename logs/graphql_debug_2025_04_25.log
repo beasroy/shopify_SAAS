@@ -1,0 +1,18 @@
+2025-12-17T05:37:23.040Z [debug]: Order 6436588716225 (Date: 2025-04-25): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:23.040Z [debug]: Order 6437403394241 (Date: 2025-04-25): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:23.040Z [debug]: Order 6437640798401 (Date: 2025-04-25): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:23.222Z [debug]: Order 6437908283585 (Date: 2025-04-25): Payment Gateways: [gift_card] | isCOD: false | isPrepaid: true | Cancelled: true
+2025-12-17T05:50:23.223Z [debug]: Order 6284506497184 (Date: 2025-04-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:23.223Z [debug]: Order 6284800098464 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:23.223Z [debug]: Order 6285120110752 (Date: 2025-04-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:23.223Z [debug]: Order 6285132824736 (Date: 2025-04-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:23.396Z [debug]: Order 6285145145504 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:23.396Z [debug]: Order 6285206290592 (Date: 2025-04-25): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:23.396Z [debug]: Order 6285242237088 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:23.397Z [debug]: Order 6285320126624 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:23.397Z [debug]: Order 6285545373856 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:23.397Z [debug]: Order 6285571063968 (Date: 2025-04-25): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:25:34.906Z [debug]: Order 6436588716225 (Date: 2025-04-25): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:34.906Z [debug]: Order 6437403394241 (Date: 2025-04-25): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:34.907Z [debug]: Order 6437640798401 (Date: 2025-04-25): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:35.094Z [debug]: Order 6437908283585 (Date: 2025-04-25): Payment Gateways: [gift_card] | isCOD: false | isPrepaid: true | Cancelled: true

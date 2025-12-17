@@ -577,6 +577,17 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
     return;
   }
 
+  // Skip test orders completely - don't calculate anything for them
+  // This includes: no COD/prepaid counts, no refunds, no sales calculations
+  if (order.test) {
+    console.log(`Order ${order.id} (Date: ${orderDate}): Skipping test order - no calculations performed`);
+    writeDebugLog(
+      `Order ${order.id} (Date: ${orderDate}): Skipping test order - no calculations performed`,
+      orderDate
+    );
+    return;
+  }
+
   const totalPrice = Number(order.total_price || 0);
   const subtotalPrice = Number(order.subtotal_price || 0);
   const discountAmount = Number(order.total_discounts || 0);

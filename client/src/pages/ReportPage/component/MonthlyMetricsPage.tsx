@@ -44,6 +44,15 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const [aovData, setAovData] = useState<any[]>([]);
   const [paymentOrdersData, setPaymentOrdersData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiErrors, setApiErrors] = useState<{
+    ecommerce: boolean;
+    aov: boolean;
+    paymentOrders: boolean;
+  }>({
+    ecommerce: false,
+    aov: false,
+    paymentOrders: false
+  });
   const { brandId } = useParams();
 
   const date = useMemo(() => ({
@@ -66,6 +75,11 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
   // Transform data to match ReportTable's expected format and merge AOV and payment orders data
   const transformedData = useMemo(() => {
+    // If ecommerce API failed, return empty array or show error state
+    if (apiErrors.ecommerce && data.length === 0) {
+      return [];
+    }
+
     // Create maps of AOV data by month for quick lookup
     const aovMap = new Map<string, number>();
     const avgItemsMap = new Map<string, number>();
@@ -121,15 +135,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
     return data.map((item, index) => {
       // Try to match AOV and Avg Items by month name
       const monthName = item.Month;
-      const aov = aovMap.get(monthName) || 0;
-      const averageItemsPerOrder = avgItemsMap.get(monthName) || 0;
-      const codOrderCount = codOrderMap.get(monthName) || 0;
-      const prepaidOrderCount = prepaidOrderMap.get(monthName) || 0;
+      // Show undefined if API failed (will display as "-" in table), otherwise use mapped value or 0
+      const aov = apiErrors.aov ? undefined : (aovMap.get(monthName) ?? 0);
+      const averageItemsPerOrder = apiErrors.aov ? undefined : (avgItemsMap.get(monthName) ?? 0);
+      const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.get(monthName) ?? 0);
+      const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.get(monthName) ?? 0);
       
-      if (aov > 0) {
+      if (typeof aov === 'number' && aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
       }
-      if (codOrderCount > 0 || prepaidOrderCount > 0) {
+      if ((typeof codOrderCount === 'number' && codOrderCount > 0) || (typeof prepaidOrderCount === 'number' && prepaidOrderCount > 0)) {
         console.log(`Matched Payment Orders for ${monthName}: COD: ${codOrderCount}, Prepaid: ${prepaidOrderCount}`);
       }
 
@@ -149,7 +164,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         prepaidOrderCount: prepaidOrderCount
       };
     });
-  }, [data, aovData, paymentOrdersData]);
+  }, [data, aovData, paymentOrdersData, apiErrors]);
 
 
 
@@ -228,69 +243,105 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         );
       }
 
-      const results = await Promise.all(promises);
+      // Use Promise.allSettled to handle each API independently
+      const results = await Promise.allSettled(promises);
 
-      // Process ecommerce metrics response
+      // Reset error states
+      setApiErrors({
+        ecommerce: false,
+        aov: false,
+        paymentOrders: false
+      });
+
+      // Process ecommerce metrics response (index 0)
       if (results[0]) {
-        const DailyAnalyticsResponse = results[0];
-        const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
-    
-        // More flexible data handling
-        if (fetchedRanges.length > 0) {
-          // Check if the first range contains daily data or consolidated data
-          const isConsolidatedData = fetchedRanges[0].Date 
-          
-          if (isConsolidatedData) {
-            // Consolidated data scenario
-            setData(fetchedRanges);
+        if (results[0].status === 'fulfilled') {
+          const DailyAnalyticsResponse = results[0].value;
+          const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
+      
+          // More flexible data handling
+          if (fetchedRanges.length > 0) {
+            // Check if the first range contains daily data or consolidated data
+            const isConsolidatedData = fetchedRanges[0].Date 
+            
+            if (isConsolidatedData) {
+              // Consolidated data scenario
+              setData(fetchedRanges);
+            } else {
+              // Daily data scenario
+              setData(fetchedRanges[0]?.data || []);
+            }
           } else {
-            // Daily data scenario
-            setData(fetchedRanges[0]?.data || []);
+            setData([]);
           }
+        } else {
+          // Ecommerce API failed
+          console.error('Ecommerce metrics API failed:', results[0].reason);
+          setApiErrors(prev => ({ ...prev, ecommerce: true }));
+          setData([]);
         }
       }
 
-      // Process AOV response
+      // Process AOV response (index 1)
       if (results[1]) {
-        const aovResponse = results[1];
-        console.log('AOV API Response:', aovResponse.data);
-        if (aovResponse.data.success && aovResponse.data.data) {
-          console.log('AOV Data:', aovResponse.data.data);
-          setAovData(aovResponse.data.data);
+        if (results[1].status === 'fulfilled') {
+          const aovResponse = results[1].value;
+          console.log('AOV API Response:', aovResponse.data);
+          if (aovResponse.data.success && aovResponse.data.data) {
+            console.log('AOV Data:', aovResponse.data.data);
+            setAovData(aovResponse.data.data);
+          } else {
+            console.warn('AOV data not in expected format:', aovResponse.data);
+            setAovData([]);
+          }
         } else {
-          console.warn('AOV data not in expected format:', aovResponse.data);
+          // AOV API failed
+          console.error('AOV API failed:', results[1].reason);
+          setApiErrors(prev => ({ ...prev, aov: true }));
+          setAovData([]);
         }
-      } else {
-        console.warn('No AOV response received');
       }
 
-      // Process payment orders response (COD and Prepaid)
+      // Process payment orders response (index 2)
       if (results[2]) {
-        const paymentOrdersResponse = results[2];
-        console.log('Payment Orders API Response:', paymentOrdersResponse.data);
-        if (paymentOrdersResponse.data.success && paymentOrdersResponse.data.data) {
-          console.log('Payment Orders Data:', paymentOrdersResponse.data.data);
-          setPaymentOrdersData(paymentOrdersResponse.data.data);
+        if (results[2].status === 'fulfilled') {
+          const paymentOrdersResponse = results[2].value;
+          console.log('Payment Orders API Response:', paymentOrdersResponse.data);
+          if (paymentOrdersResponse.data.success && paymentOrdersResponse.data.data) {
+            console.log('Payment Orders Data:', paymentOrdersResponse.data.data);
+            setPaymentOrdersData(paymentOrdersResponse.data.data);
+          } else {
+            console.warn('Payment orders data not in expected format:', paymentOrdersResponse.data);
+            setPaymentOrdersData([]);
+          }
         } else {
-          console.warn('Payment orders data not in expected format:', paymentOrdersResponse.data);
+          // Payment Orders API failed
+          console.error('Payment Orders API failed:', results[2].reason);
+          setApiErrors(prev => ({ ...prev, paymentOrders: true }));
+          setPaymentOrdersData([]);
         }
-      } else {
-        console.warn('No payment orders response received');
       }
 
     } catch (error) {
-      console.error('Error fetching e-commerce metrics data:', error);
+      console.error('Error in fetchMetrics:', error);
+      // Set all APIs as failed if there's a general error
+      setApiErrors({
+        ecommerce: true,
+        aov: true,
+        paymentOrders: true
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, axiosInstance]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
 
   // Fetch data when dates or brandId change
   useEffect(() => {
     if (startDate && endDate) {
       fetchMetrics();
     }
-  }, [startDate, endDate, brandId]); // Only depend on what actually triggers a new fetch
+
+  }, [startDate, endDate, brandId]); 
 
   // Set up polling interval
   useEffect(() => {
@@ -301,14 +352,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
     }, 15 * 60 * 1000);
     
     return () => clearInterval(intervalId);
-  }, [startDate, endDate, brandId]); // Only depend on what affects the interval
+
+  }, [startDate, endDate, brandId]); 
 
   // Listen for refresh trigger from parent
   useEffect(() => {
     if (refreshTrigger > 0 && startDate && endDate) {
       fetchMetrics();
     }
-  }, [refreshTrigger, startDate, endDate, brandId]); // Only depend on what affects the refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger, startDate, endDate, brandId]); // fetchMetrics is memoized with useCallback, so we don't need it here
 
   if(isLoading){
     return <Loader isLoading={isLoading} />

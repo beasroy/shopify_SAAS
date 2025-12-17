@@ -1,0 +1,9 @@
+2025-12-17T05:37:25.074Z [debug]: Order 6255560458433 (Date: 2024-12-27): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:25.074Z [debug]: Order 6255590899905 (Date: 2024-12-27): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:03.366Z [debug]: Order 6130333188256 (Date: 2024-12-27): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:03.564Z [debug]: Order 6130872975520 (Date: 2024-12-27): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:50:03.565Z [debug]: Order 6131117555872 (Date: 2024-12-27): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:03.565Z [debug]: Order 6131244990624 (Date: 2024-12-27): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:03.566Z [debug]: Order 6131456573600 (Date: 2024-12-27): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:25:37.984Z [debug]: Order 6255560458433 (Date: 2024-12-27): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:37.984Z [debug]: Order 6255590899905 (Date: 2024-12-27): Payment Gateways: [Gokwik Cards] | isCOD: false | isPrepaid: true | Cancelled: false

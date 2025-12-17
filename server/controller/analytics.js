@@ -457,14 +457,14 @@ export async function getMonthlyAddToCartAndCheckouts(req, res) {
       ranges: allRangeData,
     });
   } catch (error) {
-    console.error('Error fetching daily Add to Cart and Checkout data:', error.response?.data || error.message);
+    console.error('Error fetching monthly Add to Cart and Checkout data:', error.response?.data || error.message);
     if (error.response && error.response.status === 403) {
       return res.status(403).json({
         error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.'
       });
     }
     res.status(500).json({
-      error: 'Failed to fetch daily Add to Cart and Checkout data.'
+      error: 'Failed to fetch monthly Add to Cart and Checkout data.'
     });
   }
 }

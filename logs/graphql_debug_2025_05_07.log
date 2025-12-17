@@ -1,0 +1,13 @@
+2025-12-17T05:37:23.971Z [debug]: Order 6465953005761 (Date: 2025-05-07): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:23.971Z [debug]: Order 6466182512833 (Date: 2025-05-07): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:25.386Z [debug]: Order 6303992774816 (Date: 2025-05-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:25.386Z [debug]: Order 6303994249376 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:25.387Z [debug]: Order 6304080724128 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:25.387Z [debug]: Order 6304240238752 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:25.387Z [debug]: Order 6304339886240 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:25.387Z [debug]: Order 6304376586400 (Date: 2025-05-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:25.388Z [debug]: Order 6304426164384 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:25.566Z [debug]: Order 6304576962720 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:50:25.566Z [debug]: Order 6304655868064 (Date: 2025-05-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:25:35.831Z [debug]: Order 6465953005761 (Date: 2025-05-07): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:35.832Z [debug]: Order 6466182512833 (Date: 2025-05-07): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false

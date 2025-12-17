@@ -1,0 +1,14 @@
+2025-12-17T05:35:37.620Z [debug]: Order 5854858117313 (Date: 2024-04-19): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:37.621Z [debug]: Order 5854921490625 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:37.621Z [debug]: Order 5854962712769 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:37.621Z [debug]: Order 5855087591617 (Date: 2024-04-19): Payment Gateways: [gift_card] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:37.621Z [debug]: Order 5855090901185 (Date: 2024-04-19): Payment Gateways: [gift_card, Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:37.622Z [debug]: Order 5855175999681 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:20.970Z [debug]: Order 5748444070048 (Date: 2024-04-19): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:20.970Z [debug]: Order 5749088256160 (Date: 2024-04-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:51.692Z [debug]: Order 5854858117313 (Date: 2024-04-19): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:51.693Z [debug]: Order 5854921490625 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:51.693Z [debug]: Order 5854962712769 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:51.693Z [debug]: Order 5855087591617 (Date: 2024-04-19): Payment Gateways: [gift_card] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:51.693Z [debug]: Order 5855090901185 (Date: 2024-04-19): Payment Gateways: [gift_card, Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:51.694Z [debug]: Order 5855175999681 (Date: 2024-04-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false

@@ -1,0 +1,13 @@
+2025-12-17T05:35:42.275Z [debug]: Order 5688864669889 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:42.276Z [debug]: Order 5689060229313 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:42.465Z [debug]: Order 5689306513601 (Date: 2024-01-03): Payment Gateways: [Razorpay Secure, gift_card] | isCOD: false | isPrepaid: true | Cancelled: true
+2025-12-17T05:48:19.632Z [debug]: Order 5593237815456 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.633Z [debug]: Order 5593268224160 (Date: 2024-01-03): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:19.633Z [debug]: Order 5593730351264 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.633Z [debug]: Order 5593997181088 (Date: 2024-01-03): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:19.633Z [debug]: Order 5594156761248 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.634Z [debug]: Order 5594377224352 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.634Z [debug]: Order 5594541031584 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:56.664Z [debug]: Order 5688864669889 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:56.664Z [debug]: Order 5689060229313 (Date: 2024-01-03): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:57.278Z [debug]: Order 5689306513601 (Date: 2024-01-03): Payment Gateways: [Razorpay Secure, gift_card] | isCOD: false | isPrepaid: true | Cancelled: true

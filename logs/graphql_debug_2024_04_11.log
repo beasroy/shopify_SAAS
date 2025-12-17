@@ -1,0 +1,13 @@
+2025-12-17T05:35:36.816Z [debug]: Order 5843462324417 (Date: 2024-04-11): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:36.816Z [debug]: Order 5843706478785 (Date: 2024-04-11): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:36.816Z [debug]: Order 5844410892481 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.273Z [debug]: Order 5736725414048 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.273Z [debug]: Order 5736893022368 (Date: 2024-04-11): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:19.273Z [debug]: Order 5737206284448 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.274Z [debug]: Order 5737532555424 (Date: 2024-04-11): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:19.274Z [debug]: Order 5737594323104 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.775Z [debug]: Order 5737605169312 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:19.776Z [debug]: Order 5737776677024 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:50.917Z [debug]: Order 5843462324417 (Date: 2024-04-11): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:50.917Z [debug]: Order 5843706478785 (Date: 2024-04-11): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:50.918Z [debug]: Order 5844410892481 (Date: 2024-04-11): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false

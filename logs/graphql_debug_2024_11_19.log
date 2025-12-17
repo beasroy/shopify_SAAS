@@ -1,0 +1,13 @@
+2025-12-17T05:35:41.782Z [debug]: Order 6185016426689 (Date: 2024-11-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:35:41.783Z [debug]: Order 6185190424769 (Date: 2024-11-19): Payment Gateways: [] | isCOD: false | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:41.783Z [debug]: Order 6185379659969 (Date: 2024-11-19): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.259Z [debug]: Order 6075357724832 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:48:39.260Z [debug]: Order 6075411562656 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.260Z [debug]: Order 6075451244704 (Date: 2024-11-19): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.260Z [debug]: Order 6075563475104 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.260Z [debug]: Order 6075706048672 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.260Z [debug]: Order 6075895480480 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.260Z [debug]: Order 6076083798176 (Date: 2024-11-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:57.789Z [debug]: Order 6185016426689 (Date: 2024-11-19): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:23:57.790Z [debug]: Order 6185190424769 (Date: 2024-11-19): Payment Gateways: [] | isCOD: false | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:57.790Z [debug]: Order 6185379659969 (Date: 2024-11-19): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false

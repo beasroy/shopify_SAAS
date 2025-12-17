@@ -1,0 +1,18 @@
+2025-12-17T05:37:24.476Z [debug]: Order 6642793611457 (Date: 2025-08-19): Payment Gateways: [Gokwik Netbanking] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:24.476Z [debug]: Order 6642990710977 (Date: 2025-08-19): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:24.477Z [debug]: Order 6643812204737 (Date: 2025-08-19): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:37:24.477Z [debug]: Order 6644095713473 (Date: 2025-08-19): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:19.667Z [debug]: Order 6433595424928 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:19.668Z [debug]: Order 6433929887904 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:19.668Z [debug]: Order 6433939292320 (Date: 2025-08-19): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:19.668Z [debug]: Order 6433979957408 (Date: 2025-08-19): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:19.668Z [debug]: Order 6433994014880 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:19.887Z [debug]: Order 6434002337952 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:50:19.888Z [debug]: Order 6434005352608 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.087Z [debug]: Order 6434175254688 (Date: 2025-08-19): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.088Z [debug]: Order 6434245869728 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.088Z [debug]: Order 6434451652768 (Date: 2025-08-19): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:25:37.148Z [debug]: Order 6642793611457 (Date: 2025-08-19): Payment Gateways: [Gokwik Netbanking] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:37.148Z [debug]: Order 6642990710977 (Date: 2025-08-19): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:37.148Z [debug]: Order 6643812204737 (Date: 2025-08-19): Payment Gateways: [PayGlocal: Card Payments] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:37.148Z [debug]: Order 6644095713473 (Date: 2025-08-19): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false

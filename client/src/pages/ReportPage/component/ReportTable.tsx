@@ -343,8 +343,53 @@ export default function ReportTable({
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
 
-  const renderCell = (row: FunnelRow, key: keyof FunnelRow) => {
+  const renderCell = (row: FunnelRow, key: keyof FunnelRow): React.ReactNode => {
+    // Handle COD and Prepaid Order Count - show percentage instead of count
+    if (key === 'codOrderCount' || key === 'prepaidOrderCount') {
+      const codCount = row.codOrderCount ?? 0
+      const prepaidCount = row.prepaidOrderCount ?? 0
+      const total = codCount + prepaidCount
+      
+      // If both are undefined or total is 0, show "-" or "0%"
+      if (row.codOrderCount === undefined && row.prepaidOrderCount === undefined) {
+        return "-"
+      }
+      
+      if (total === 0) {
+        return "0%"
+      }
+      
+      let percentage: number
+      let count: number
+      let label: string
+      
+      if (key === 'codOrderCount') {
+        percentage = (codCount / total) * 100
+        count = codCount
+        label = 'COD Orders'
+      } else {
+        percentage = (prepaidCount / total) * 100
+        count = prepaidCount
+        label = 'Prepaid Orders'
+      }
+      
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-default">{percentage.toFixed(1)}%</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>
+              {label}: {count.toLocaleString()}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+    
+    // Handle other columns normally
     const v = row[key]
+    if (v === undefined) return "-"
     if (typeof v === "number") return v.toLocaleString()
     return v as string
   }

@@ -1,0 +1,24 @@
+2025-12-17T05:37:22.838Z [debug]: Order 6409013264577 (Date: 2025-04-07): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:37:22.839Z [debug]: Order 6410111516865 (Date: 2025-04-07): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: true
+2025-12-17T05:37:22.839Z [debug]: Order 6410505093313 (Date: 2025-04-07): Payment Gateways: [Cashfree Payments - Cards, Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.798Z [debug]: Order 6262511009952 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262856712352 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262884860064 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262891380896 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262950264992 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262953640096 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6262968320160 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.799Z [debug]: Order 6263063019680 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263116202144 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263118790816 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263137337504 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263187603616 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263396466848 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263408296096 (Date: 2025-04-07): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263504339104 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.800Z [debug]: Order 6263538319520 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.801Z [debug]: Order 6263641931936 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:50:20.801Z [debug]: Order 6263649304736 (Date: 2025-04-07): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:25:34.685Z [debug]: Order 6409013264577 (Date: 2025-04-07): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:25:34.686Z [debug]: Order 6410111516865 (Date: 2025-04-07): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: true
+2025-12-17T06:25:34.686Z [debug]: Order 6410505093313 (Date: 2025-04-07): Payment Gateways: [Cashfree Payments - Cards, Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false

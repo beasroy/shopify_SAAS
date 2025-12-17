@@ -1,0 +1,12 @@
+2025-12-17T05:35:41.558Z [debug]: Order 6180840833217 (Date: 2024-11-16): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.062Z [debug]: Order 6070509764768 (Date: 2024-11-16): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071044341920 (Date: 2024-11-16): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071142351008 (Date: 2024-11-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071276634272 (Date: 2024-11-16): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071343415456 (Date: 2024-11-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071462363296 (Date: 2024-11-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.063Z [debug]: Order 6071591403680 (Date: 2024-11-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:48:39.064Z [debug]: Order 6071684006048 (Date: 2024-11-16): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.064Z [debug]: Order 6071700750496 (Date: 2024-11-16): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:48:39.064Z [debug]: Order 6071997005984 (Date: 2024-11-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:57.593Z [debug]: Order 6180840833217 (Date: 2024-11-16): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false

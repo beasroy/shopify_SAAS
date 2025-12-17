@@ -1,0 +1,13 @@
+2025-12-17T05:35:42.434Z [debug]: Order 5915072889025 (Date: 2024-05-31): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:42.435Z [debug]: Order 5915150647489 (Date: 2024-05-31): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:42.435Z [debug]: Order 5915169161409 (Date: 2024-05-31): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T05:35:42.435Z [debug]: Order 5915331723457 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery, manual] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T05:35:42.629Z [debug]: Order 5915352629441 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:35:42.822Z [debug]: Order 5915367866561 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T05:48:25.538Z [debug]: Order 5823204786336 (Date: 2024-05-31): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:56.317Z [debug]: Order 5915072889025 (Date: 2024-05-31): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:56.317Z [debug]: Order 5915150647489 (Date: 2024-05-31): Payment Gateways: [Gokwik UPI] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:56.318Z [debug]: Order 5915169161409 (Date: 2024-05-31): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
+2025-12-17T06:23:56.318Z [debug]: Order 5915331723457 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery, manual] | isCOD: true | isPrepaid: false | Cancelled: false
+2025-12-17T06:23:56.500Z [debug]: Order 5915352629441 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
+2025-12-17T06:23:56.682Z [debug]: Order 5915367866561 (Date: 2024-05-31): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true

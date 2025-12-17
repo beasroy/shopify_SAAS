@@ -1,6 +1,0 @@
-2025-12-17T05:35:58.508Z [debug]: Order 5788453732545 (Date: 2024-03-06): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T05:48:31.936Z [debug]: Order 5685317992608 (Date: 2024-03-06): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T05:48:31.936Z [debug]: Order 5685487632544 (Date: 2024-03-06): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:31.937Z [debug]: Order 5685532393632 (Date: 2024-03-06): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:31.937Z [debug]: Order 5685871378592 (Date: 2024-03-06): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T06:24:13.426Z [debug]: Order 5788453732545 (Date: 2024-03-06): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false

@@ -1,9 +1,0 @@
-2025-12-17T05:35:42.903Z [debug]: Order 5699121283265 (Date: 2024-01-10): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.238Z [debug]: Order 5603590832288 (Date: 2024-01-10): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T05:48:20.239Z [debug]: Order 5603894034592 (Date: 2024-01-10): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.239Z [debug]: Order 5604130881696 (Date: 2024-01-10): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.239Z [debug]: Order 5604524228768 (Date: 2024-01-10): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.240Z [debug]: Order 5604659036320 (Date: 2024-01-10): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.240Z [debug]: Order 5604671160480 (Date: 2024-01-10): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:20.240Z [debug]: Order 5604678303904 (Date: 2024-01-10): Payment Gateways: [manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T06:23:57.645Z [debug]: Order 5699121283265 (Date: 2024-01-10): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false

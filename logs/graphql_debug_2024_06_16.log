@@ -1,3 +1,0 @@
-2025-12-17T05:35:43.460Z [debug]: Order 5939142983873 (Date: 2024-06-16): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:27.011Z [debug]: Order 5847237623968 (Date: 2024-06-16): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T06:23:57.652Z [debug]: Order 5939142983873 (Date: 2024-06-16): Payment Gateways: [Razorpay Secure] | isCOD: false | isPrepaid: true | Cancelled: false

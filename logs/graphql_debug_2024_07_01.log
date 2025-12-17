@@ -1,7 +1,0 @@
-2025-12-17T05:35:44.439Z [debug]: Order 5968511271105 (Date: 2024-07-01): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
-2025-12-17T05:35:44.439Z [debug]: Order 5968675733697 (Date: 2024-07-01): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T05:48:28.213Z [debug]: Order 5871155642528 (Date: 2024-07-01): Payment Gateways: [Cards, UPI, NB by PayU India, manual] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:28.214Z [debug]: Order 5871383216288 (Date: 2024-07-01): Payment Gateways: [Cards, UPI, NB by PayU India] | isCOD: false | isPrepaid: true | Cancelled: false
-2025-12-17T05:48:28.214Z [debug]: Order 5871474901152 (Date: 2024-07-01): Payment Gateways: [Cash on Delivery (COD)] | isCOD: true | isPrepaid: false | Cancelled: false
-2025-12-17T06:23:58.590Z [debug]: Order 5968511271105 (Date: 2024-07-01): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: true
-2025-12-17T06:23:58.591Z [debug]: Order 5968675733697 (Date: 2024-07-01): Payment Gateways: [cash_on_delivery] | isCOD: true | isPrepaid: false | Cancelled: false

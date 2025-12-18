@@ -181,9 +181,9 @@ const GoogleAdsDashboard: React.FC = () => {
 
   const getPrimaryColumnForTab = (tab: string): string => {
     const columnMap: Record<string, string> = {
-      'searchTerm': 'Search Term---1',
+      'searchTerm': 'Search Term',
       'keyword': 'Keyword',
-      'age': 'Age',
+      'age': 'Age Range',
       'gender': 'Gender',
       'product': 'Product',
 
@@ -206,6 +206,8 @@ const GoogleAdsDashboard: React.FC = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    setTabData([]);
+    setCurrentFilter(undefined);
   };
 
   const getFileNameForTab = (tab: string): string => {
@@ -253,7 +255,7 @@ const GoogleAdsDashboard: React.FC = () => {
               </div>
               {/* Scrollable Content */}
               <div className="flex-1 overflow-auto">
-                
+
                 <div className='p-2 space-y-6'>
                   <Card id={`${activeTab}-report`} className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
                     <CardContent className="p-3">
@@ -262,7 +264,7 @@ const GoogleAdsDashboard: React.FC = () => {
                           <PerformanceSummary
                             data={tabData}
                             primaryColumn={getPrimaryColumnForTab(activeTab)}
-                            metricConfig={metricConfigs.sessionsAndConversion || {}}
+                            metricConfig={metricConfigs.googleAds || {}}
                             onCategoryFilter={handleCategoryFilter}
                           />
 
@@ -299,53 +301,62 @@ const GoogleAdsDashboard: React.FC = () => {
 
                       <div className="rounded-md overflow-hidden">
                         <div id={activeTab}>
-                        {activeTab === 'searchTerm' && (
-                          <SearchTerm 
-                            dateRange={{
-                              from: date.from ? new Date(date.from) : undefined,
-                              to: date.to ? new Date(date.to) : undefined
-                            }}
-                            refreshTrigger={refreshTrigger}
-                            currentFilter={currentFilter}
-                            onDataUpdate={handleTabDataUpdate}
-                          />
-                        )}
+                          {activeTab === 'searchTerm' && (
+                            <SearchTerm
+                              dateRange={{
+                                from: date.from ? new Date(date.from) : undefined,
+                                to: date.to ? new Date(date.to) : undefined
+                              }}
+                              refreshTrigger={refreshTrigger}
+                              currentFilter={currentFilter}
+                              onDataUpdate={handleTabDataUpdate}
+                            />
+                          )}
 
-                        {activeTab === 'keyword' && (
-                          <Keyword 
-                            dateRange={{
-                              from: date.from ? new Date(date.from) : undefined,
-                              to: date.to ? new Date(date.to) : undefined
-                            }}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )}
-                        {activeTab === 'age' && (
-                          <Age 
-                            dateRange={{
-                              from: date.from ? new Date(date.from) : undefined,
-                              to: date.to ? new Date(date.to) : undefined
-                            }}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )}
-                        {activeTab === 'gender' && (
-                          <Gender 
-                            dateRange={{
-                              from: date.from ? new Date(date.from) : undefined,
-                              to: date.to ? new Date(date.to) : undefined
-                            }}
-                          />
-                        )}
-                        {activeTab === 'product' && (
-                          <Product 
-                            dateRange={{
-                              from: date.from ? new Date(date.from) : undefined,
-                              to: date.to ? new Date(date.to) : undefined
-                            }}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )}
+                          {activeTab === 'keyword' && (
+                            <Keyword
+                              dateRange={{
+                                from: date.from ? new Date(date.from) : undefined,
+                                to: date.to ? new Date(date.to) : undefined
+                              }}
+                              refreshTrigger={refreshTrigger}
+                              currentFilter={currentFilter}
+                              onDataUpdate={handleTabDataUpdate}
+                            />
+                          )}
+                          {activeTab === 'age' && (
+                            <Age
+                              dateRange={{
+                                from: date.from ? new Date(date.from) : undefined,
+                                to: date.to ? new Date(date.to) : undefined
+                              }}
+                              refreshTrigger={refreshTrigger}
+                              currentFilter={currentFilter}
+                              onDataUpdate={handleTabDataUpdate}
+                            />
+                          )}
+                          {activeTab === 'gender' && (
+                            <Gender
+                              dateRange={{
+                                from: date.from ? new Date(date.from) : undefined,
+                                to: date.to ? new Date(date.to) : undefined
+                              }}
+                              refreshTrigger={refreshTrigger}
+                              currentFilter={currentFilter}
+                              onDataUpdate={handleTabDataUpdate}
+                            />
+                          )}
+                          {activeTab === 'product' && (
+                            <Product
+                              dateRange={{
+                                from: date.from ? new Date(date.from) : undefined,
+                                to: date.to ? new Date(date.to) : undefined
+                              }}
+                              refreshTrigger={refreshTrigger}
+                              currentFilter={currentFilter}
+                              onDataUpdate={handleTabDataUpdate}
+                            />
+                          )}
 
                         </div>
                       </div>

@@ -44,7 +44,7 @@ interface SearchtermBasedReportsProps {
   onDataUpdate: (data: any[], tabType: string) => void;
 }
 
-const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger }) => {
+const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger, onDataUpdate, currentFilter }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -97,7 +97,6 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
         endDate,
         ...transformedFilters,
       });
-      console.log("---->", response.data);
       setApiResponse({
         reportType: "Search Term",
         data: response.data?.data || [],
@@ -133,6 +132,13 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
     }
   }, [isFullScreen, propDateRange, dispatch]);
 
+   // Update parent with data
+   useEffect(() => {
+    if (apiResponse?.data && onDataUpdate) {
+      onDataUpdate(apiResponse.data, 'searchTerm');
+    }
+  }, [apiResponse?.data, onDataUpdate]);
+
   const handleManualRefresh = () => {
     fetchData();
   };
@@ -144,7 +150,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
   const monthlyDataKey = "MonthlyData";
   // const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
   const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
-  console.log(googleAdsTokenError);
+  // console.log(googleAdsTokenError);
   // console.log("---->",monthlyMetrics);
 
   if (loading) {
@@ -165,7 +171,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
           // monthlyMetrics={monthlyMetrics}
           isFullScreen={isFullScreen}
           locale={locale}
-        // filter={currentFilter}
+        filter={currentFilter}
         />
       </div>
     </>

@@ -40,9 +40,11 @@ export type ApiResponse = {
 interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
   refreshTrigger: number
+  currentFilter: string[] | undefined;
+  onDataUpdate: (data: any[], tabType: string) => void;
 }
 
-const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger }) => {
+const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger, currentFilter, onDataUpdate }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -70,6 +72,12 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, re
   const filters = useSelector((state: RootState) =>
     state.conversionFilters[componentId] || {}, shallowEqual
   );
+  // Update parent with data
+  useEffect(() => {
+    if (apiResponse?.data && onDataUpdate) {
+      onDataUpdate(apiResponse.data[0]?.keywords, 'keyword');
+    }
+  }, [apiResponse?.data, onDataUpdate]);
 
   const transformedFilters = useMemo(() => {
     return Object.entries(filters).reduce<Record<string, any>>((acc, [column, filter]) => {
@@ -143,87 +151,110 @@ const Keyword: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, re
   const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
   console.log(googleAdsTokenError);
 
+  console.log("apiResponse", apiResponse?.data[0]?.keywords);
 
+  if (loading) {
+    return <Loader isLoading={loading} />;
+  }
+  
   return (
     <>
-      {googleAdsTokenError ? (
-        <NoAccessPage
-          platform="Google Ads"
-          message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
-          icon={<Target className="w-8 h-8 text-red-500" />}
-          loginOptions={[
-            {
-              label: "Connect Google Ads",
-              context: "googleAdSetup",
-              provider: "google"
-            }
-          ]}
+      <div className="rounded-md overflow-hidden">
+        <NewConversionTable
+          data={apiResponse?.data[0]?.keywords || []}
+          primaryColumn={primaryColumn}
+          secondaryColumns={secondaryColumns}
+          monthlyDataKey={monthlyDataKey}
+          // monthlyMetrics={monthlyMetrics}
+          isFullScreen={isFullScreen}
+          locale={locale}
+          filter={currentFilter}
         />
-      ) : loading ? (
-        <Loader isLoading={loading} />
-      ) : (
-        apiResponse?.data && apiResponse.data.map((account, _) => (
-          <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
-            <Card key={account.accountId} className="mb-4">
-
-              <CardContent>
-
-                {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
-                    <span className="mr-2"><GoogleLogo /></span>
-                    <span className="">{account.accountName}</span>
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {isFullScreen &&
-                      <div className="transition-transform duration-300 ease-in-out hover:scale-105">
-                        <DatePickerWithRange />
-                      </div>
-                    }
-                    <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
-                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <FilterConversions
-                      componentId={componentId}
-                      availableColumns={["Total Cost", "Conv. Value / Cost"]}
-                    />
-                    <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                      {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div> */}
-
-                {account.error ? (
-                  <p className="text-red-500">Error: {account.error}</p>
-                ) : account.keywords.length === 0 ? (
-                  <p className="text-gray-500">No keyword data available for this account</p>
-                ) : (
-                  <div className="rounded-md overflow-hidden">
-                    <NewConversionTable
-                      data={account.keywords}
-                      primaryColumn={primaryColumn}
-                      secondaryColumns={secondaryColumns}
-                      monthlyDataKey={monthlyDataKey}
-                      // monthlyMetrics={monthlyMetrics}
-                      isFullScreen={isFullScreen}
-                      locale={locale}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ))
-      )}
-
-      {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
-        <Card>
-          <CardContent>
-            <p className="text-gray-500 text-center py-4">No keyword data available</p>
-          </CardContent>
-        </Card>
-      )}
+      </div>
     </>
-  );
+  )
+
+  // return (
+  //   <>
+  //     {googleAdsTokenError ? (
+  //       <NoAccessPage
+  //         platform="Google Ads"
+  //         message="Looks like we need to refresh your Google Ads connection to optimize your campaigns."
+  //         icon={<Target className="w-8 h-8 text-red-500" />}
+  //         loginOptions={[
+  //           {
+  //             label: "Connect Google Ads",
+  //             context: "googleAdSetup",
+  //             provider: "google"
+  //           }
+  //         ]}
+  //       />
+  //     ) : loading ? (
+  //       <Loader isLoading={loading} />
+  //     ) : (
+  //       apiResponse?.data && apiResponse.data.map((account, _) => (
+  //         <div className={`${isFullScreen ? 'fixed inset-0 z-50 m-0 overflow-auto bg-white' : ''}`}>
+  //           <Card key={account.accountId} className="mb-4">
+
+  //             <CardContent>
+
+  //               {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  //                 <h3 className="text-lg font-semibold mb-4 mt-2 flex items-center">
+  //                   <span className="mr-2"><GoogleLogo /></span>
+  //                   <span className="">{account.accountName}</span>
+  //                 </h3>
+  //                 <div className="flex flex-wrap items-center gap-3">
+  //                   {isFullScreen &&
+  //                     <div className="transition-transform duration-300 ease-in-out hover:scale-105">
+  //                       <DatePickerWithRange />
+  //                     </div>
+  //                   }
+  //                   <Button onClick={handleManualRefresh} disabled={loading} size="icon" variant="outline">
+  //                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+  //                   </Button>
+  //                   <FilterConversions
+  //                     componentId={componentId}
+  //                     availableColumns={["Total Cost", "Conv. Value / Cost"]}
+  //                   />
+  //                   <Button onClick={toggleFullScreen} size="icon" variant="outline">
+  //                     {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+  //                   </Button>
+  //                 </div>
+  //               </div> */}
+
+  //               {account.error ? (
+  //                 <p className="text-red-500">Error: {account.error}</p>
+  //               ) : account.keywords.length === 0 ? (
+  //                 <p className="text-gray-500">No keyword data available for this account</p>
+  //               ) : (
+  //                 <div className="rounded-md overflow-hidden">
+  //                   <NewConversionTable
+  //                     data={account.keywords}
+  //                     primaryColumn={primaryColumn}
+  //                     secondaryColumns={secondaryColumns}
+  //                     monthlyDataKey={monthlyDataKey}
+  //                     // monthlyMetrics={monthlyMetrics}
+  //                     isFullScreen={isFullScreen}
+  //                     filter={currentFilter}
+  //                     locale={locale}
+  //                   />
+  //                 </div>
+  //               )}
+  //             </CardContent>
+  //           </Card>
+  //         </div>
+  //       ))
+  //     )}
+
+  //     {apiResponse?.data && apiResponse.data.length === 0 && !loading && (
+  //       <Card>
+  //         <CardContent>
+  //           <p className="text-gray-500 text-center py-4">No keyword data available</p>
+  //         </CardContent>
+  //       </Card>
+  //     )}
+  //   </>
+  // );
 };
 
 export default Keyword;

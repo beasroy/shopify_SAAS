@@ -40,9 +40,12 @@ export type ApiResponse = {
 
 interface CityBasedReportsProps {
   dateRange: DateRange | undefined;
+  refreshTrigger: number;
+  currentFilter: string[] | undefined;
+  onDataUpdate: (data: any[], tabType: string) => void;
 }
 
-const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange }) => {
+const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger, currentFilter, onDataUpdate }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({

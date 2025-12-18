@@ -312,6 +312,16 @@ export const metricConfigs = {
         key: 'Total Purchase ROAS',
         name: 'Purchase ROAS'
       }
+    },
+    googleAds: {
+      primary: {
+        key: 'Total Cost',
+        name: 'Sessions'
+      },
+      secondary: {
+        key: 'Conv. Value / Cost',
+        name: 'Conversion'
+      }
     }
   };
 

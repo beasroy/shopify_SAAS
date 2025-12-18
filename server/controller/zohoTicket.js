@@ -1,11 +1,69 @@
 import axios from 'axios';
 import User from '../models/User.js';
 import NodeCache from 'node-cache';
+import nodemailer from 'nodemailer';
 
 const cache = new NodeCache({ stdTTL: 7 * 24 * 60 * 60, checkperiod: 60 });
 
 // Export cache instance for central management
 export { cache };
+
+// Email configuration
+const smtpConfig = {
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER || 'team@messold.com',
+        pass: process.env.EMAIL_PASS || 'hqik hgtm bcbr eign'
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+};
+
+// Function to send email notification
+async function sendTicketNotification(brandName, description, departmentName, ticketId) {
+    try {
+        const transporter = nodemailer.createTransport(smtpConfig);
+        
+        // Get admin user email
+        const adminUser = await User.findOne({ isAdmin: true });
+        if (!adminUser || !adminUser.email) {
+            console.warn('No admin user email found for ticket notification');
+            return;
+        }
+
+        const mailOptions = {
+            from: `"Ticket System" <${smtpConfig.auth.user}>`,
+            to: adminUser.email,
+            subject: `New Requirement Request: ${brandName}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #333;">New Requirement Request</h2>
+                    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Brand Name:</strong> ${brandName}</p>
+                        <p><strong>Department:</strong> ${departmentName}</p>
+                        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+                    </div>
+                    <div style="background-color: #fff; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
+                        <h3 style="color: #333; margin-top: 0;">Description:</h3>
+                        <p style="white-space: pre-wrap; color: #666;">${description}</p>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">
+                        This ticket has been created in Zoho Desk. You can view and manage it from your Zoho Desk dashboard.
+                    </p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Ticket notification email sent to ${adminUser.email}`);
+    } catch (error) {
+        console.error('Error sending ticket notification email:', error);
+        // Don't throw error - ticket creation should still succeed even if email fails
+    }
+}
 
 async function getAccessTokenWithRefreshToken(refreshToken) {
     try {
@@ -229,23 +287,82 @@ export const ListOfAgentsindepartments = async (req, res) => {
 
 export const createTicket = async (req, res) => {
     try {
+        const { brandName, description, departmentId } = req.body;
+
+        // Log received data for debugging
+        console.log('Received ticket creation request:', {
+            brandName: brandName,
+            hasDescription: !!description,
+            departmentId: departmentId,
+            brandNameType: typeof brandName,
+            brandNameLength: brandName?.length
+        });
+
+        // Validate required fields
+        if (!brandName || !description || !departmentId) {
+            console.error('Validation failed:', {
+                brandName: !!brandName,
+                description: !!description,
+                departmentId: !!departmentId
+            });
+            return res.status(400).json({
+                success: false,
+                message: 'Brand name, description, and department are required'
+            });
+        }
+
         const accessToken = await getAccessToken();
+
+        // Get user information for contact (from verifyAuth middleware)
+        const user = req.user;
+        const userEmail = user?.email || 'support@messold.com';
+        const userName = user?.username || 'Customer';
+        const firstName = userName.split(' ')[0] || 'Customer';
+        const lastName = userName.split(' ').slice(1).join(' ') || 'User';
+
+        // Ensure brandName is a string and not empty
+        const safeBrandName = (brandName && typeof brandName === 'string' && brandName.trim()) 
+            ? brandName.trim() 
+            : 'Unknown Brand';
+
+        // Create subject - ensure it's always a valid non-empty string
+        const subject = `Requirement Request - ${safeBrandName}`.trim();
+        
+        // Validate subject is not empty
+        if (!subject || subject.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Subject cannot be empty'
+            });
+        }
+
+        // Create ticket with contact information
+        // Zoho will automatically create or find the contact based on email
+        const ticketData = {
+            subject: subject,
+            departmentId: departmentId,
+            description: description,
+            contact: {
+                firstName: firstName,
+                lastName: lastName,
+                email: userEmail
+            },
+            cf: {
+                cf_brand: safeBrandName
+            }
+        };
+
+        // Log the ticket data for debugging (remove sensitive data in production)
+        console.log('Creating ticket with data:', {
+            subject: ticketData.subject,
+            departmentId: ticketData.departmentId,
+            hasDescription: !!ticketData.description,
+            contactEmail: ticketData.contact.email
+        });
 
         const ticketResponse = await axios.post(
             'https://desk.zoho.com/api/v1/tickets',
-            {
-                subject: req.body.subject,
-                departmentId: req.body.departmentId,
-                description: req.body.description,
-                contact: {
-                    firstName: req.body.firstName || 'Customer',
-                    lastName: req.body.lastName || 'Customer',
-                    email: req.body.email
-                },
-                cf: {
-                    cf_brand: req.body.brand
-                }
-            },
+            ticketData,
             {
                 headers: {
                     'Authorization': `Zoho-oauthtoken ${accessToken}`,
@@ -260,7 +377,16 @@ export const createTicket = async (req, res) => {
             message: 'Ticket created successfully'
         });
     } catch (error) {
-        console.error('Error creating ticket:', error.response?.data || error.message);
+        console.error('Error creating ticket:', {
+            message: error.message,
+            responseData: error.response?.data,
+            status: error.response?.status,
+            requestData: {
+                brandName: req.body?.brandName,
+                hasDescription: !!req.body?.description,
+                departmentId: req.body?.departmentId
+            }
+        });
         res.status(500).json({
             success: false,
             message: 'Failed to create ticket',

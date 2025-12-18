@@ -622,15 +622,6 @@ export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
             };
         }
 
-        // 
-
-        const client = new GoogleAdsApi({
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-            refresh_token: refreshToken,
-        });
-
         // Initialize a map to store metrics by date
         const metricsMap = new Map();
 
@@ -646,7 +637,16 @@ export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
 
             console.log(`Processing Google Ad Account: ${adAccountId}, Manager ID: ${managerId}`);
 
-            const customer = client.Customer({
+            // Create client for this account - will be recreated if token expires
+            let client = new GoogleAdsApi({
+                client_id: process.env.GOOGLE_CLIENT_ID,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET,
+                developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+                refresh_token: refreshToken,
+            });
+
+            // Create customer object
+            let customer = client.Customer({
                 customer_id: adAccountId,
                 refresh_token: refreshToken,
                 login_customer_id: managerId,
@@ -657,62 +657,115 @@ export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
 
             while (currentDate.isSameOrBefore(end)) {
                 const formattedDate = currentDate.format('YYYY-MM-DD');
+                let retryCount = 0;
+                const maxRetries = 2;
+                let success = false;
 
-                try {
-                    console.log(`Fetching data for account ${adAccountId} on date ${formattedDate}`);
-                    
-                    const adsReport = await customer.report({
-                        entity: "customer",
-                        attributes: ["customer.descriptive_name"],
-                        metrics: [
-                            "metrics.cost_micros",
-                            "metrics.conversions_value",
-                        ],
-                        from_date: formattedDate,
-                        to_date: formattedDate,
-                    });
-
-                    let totalSpend = 0;
-                    let totalConversionsValue = 0;
-
-                    // Process each row of the report
-                    for (const row of adsReport) {
-                        const costMicros = row.metrics.cost_micros || 0;
-                        const spend = costMicros / 1_000_000;
-                        totalSpend += spend;
-                        totalConversionsValue += row.metrics.conversions_value || 0;
-                    }
-
-                    // Update or create metrics for this date
-                    if (!metricsMap.has(formattedDate)) {
-                        metricsMap.set(formattedDate, {
-                            date: formattedDate,
-                            googleSpend: 0,
-                            googleConversionsValue: 0,
+                while (retryCount <= maxRetries && !success) {
+                    try {
+                        console.log(`Fetching data for account ${adAccountId} on date ${formattedDate}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+                        
+                        const adsReport = await customer.report({
+                            entity: "customer",
+                            attributes: ["customer.descriptive_name"],
+                            metrics: [
+                                "metrics.cost_micros",
+                                "metrics.conversions_value",
+                            ],
+                            from_date: formattedDate,
+                            to_date: formattedDate,
                         });
-                    }
 
-                    const dateMetrics = metricsMap.get(formattedDate);
-                    dateMetrics.googleSpend += totalSpend;
-                    dateMetrics.googleConversionsValue += totalConversionsValue;
+                        let totalSpend = 0;
+                        let totalConversionsValue = 0;
 
-                } catch (error) {
-                    console.error(`Error fetching data for account ${adAccountId} on date ${formattedDate}:`, error);
-                    console.error('Error details:', {
-                        code: error.code,
-                        message: error.message,
-                        details: error.details,
-                        metadata: error.metadata
-                    });
-                    
-                    // If it's an authentication error, break out of the loop for this account
-                    if (error.code === 2 || error.message.includes('invalid_request')) {
-                        console.error(`Authentication error for account ${adAccountId}, skipping remaining dates`);
+                        // Process each row of the report
+                        for (const row of adsReport) {
+                            const costMicros = row.metrics.cost_micros || 0;
+                            const spend = costMicros / 1_000_000;
+                            totalSpend += spend;
+                            totalConversionsValue += row.metrics.conversions_value || 0;
+                        }
+
+                        // Update or create metrics for this date
+                        if (!metricsMap.has(formattedDate)) {
+                            metricsMap.set(formattedDate, {
+                                date: formattedDate,
+                                googleSpend: 0,
+                                googleConversionsValue: 0,
+                            });
+                        }
+
+                        const dateMetrics = metricsMap.get(formattedDate);
+                        dateMetrics.googleSpend += totalSpend;
+                        dateMetrics.googleConversionsValue += totalConversionsValue;
+                        
+                        success = true;
+
+                    } catch (error) {
+                        const isAuthError = error.code === 2 || 
+                                          error.code === 16 || 
+                                          error.message?.includes('UNAUTHENTICATED') ||
+                                          error.message?.includes('invalid_request') ||
+                                          error.message?.includes('authentication credential');
+                        
+                        console.error(`Error fetching data for account ${adAccountId} on date ${formattedDate}:`, error);
+                        console.error('Error details:', {
+                            code: error.code,
+                            message: error.message,
+                            details: error.details,
+                            metadata: error.metadata
+                        });
+                        
+                        // If it's an authentication error, try to recreate the entire client to force fresh token refresh
+                        if (isAuthError && retryCount < maxRetries) {
+                            console.log(`Authentication error detected (code: ${error.code}). Recreating client and customer object to force token refresh...`);
+                            
+                            // Recreate the entire client - this forces a fresh token refresh
+                            client = new GoogleAdsApi({
+                                client_id: process.env.GOOGLE_CLIENT_ID,
+                                client_secret: process.env.GOOGLE_CLIENT_SECRET,
+                                developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+                                refresh_token: refreshToken,
+                            });
+                            
+                            // Recreate the customer object with the new client
+                            customer = client.Customer({
+                                customer_id: adAccountId,
+                                refresh_token: refreshToken,
+                                login_customer_id: managerId,
+                            });
+                            
+                            retryCount++;
+                            
+                            // Wait a bit before retrying to allow token refresh
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            continue;
+                        }
+                        
+                        // If it's an authentication error and we've exhausted retries, break out of the loop for this account
+                        if (isAuthError) {
+                            console.error(`Authentication error for account ${adAccountId} after ${maxRetries} retries, skipping remaining dates`);
+                            break;
+                        }
+                        
+                        // For non-auth errors, log and continue to next date
+                        console.warn(`Non-authentication error for account ${adAccountId} on date ${formattedDate}, continuing to next date`);
                         break;
                     }
-                    // Continue with other dates and accounts if one fails
+                }
+                
+                // If we broke out due to auth error after retries, exit the date loop
+                if (!success && retryCount > maxRetries) {
+                    const isAuthError = true; // We know it was auth error if we exhausted retries
+                    if (isAuthError) {
+                        break;
+                    }
                 }
 
+                // Add small delay between requests to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
                 currentDate = currentDate.add(1, 'day');
             }
         }

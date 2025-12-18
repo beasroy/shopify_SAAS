@@ -3,7 +3,8 @@ import {
 
   PlusCircle,
   
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { RootState } from "@/store";
 import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
 import { useNavigate } from "react-router-dom";
 import PlatformModal from "@/components/dashboard_component/PlatformModal";
+import TicketForm from "@/components/dashboard_component/TicketForm";
 import ConversionFunnelCard from "./components/ConversionFunnelCard";
 import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
@@ -130,6 +132,12 @@ const SummaryDashboard: React.FC = () => {
   // State for platform modal
   const [platformModalOpen, setPlatformModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+
+  // State for banner visibility
+  const [bannerVisible, setBannerVisible] = useState(true);
+
+  // State for help desk modal
+  const [helpDeskModalOpen, setHelpDeskModalOpen] = useState(false);
 
   // Check URL parameters for modal opening
   useEffect(() => {
@@ -279,6 +287,38 @@ const SummaryDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Requirements Banner */}
+        {bannerVisible && (
+          <div className="mb-6 animate-fade-up">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 relative overflow-hidden">
+              <button
+                onClick={() => setBannerVisible(false)}
+                className="absolute top-4 right-4 text-white hover:text-blue-100 transition-colors"
+                aria-label="Close banner"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="flex items-start gap-4 pr-8">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold mb-2">
+                    Have Custom Requirements?
+                  </h3>
+                  <p className="text-blue-50">
+                    If you have any requirements, fill the form and we will try to integrate in 15 days.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="bg-white text-blue-600 hover:bg-blue-50 font-medium"
+                  onClick={() => setHelpDeskModalOpen(true)}
+                >
+                  Fill Form
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Missing Platforms Section */}
         {!allConnected && (
           <div className="mb-8 animate-fade-up">
@@ -368,6 +408,15 @@ const SummaryDashboard: React.FC = () => {
           brandId={brandId}
           onSuccess={handlePlatformModalSuccess}
         />
+      )}
+
+      {/* Help Desk Modal */}
+      {helpDeskModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <TicketForm onClose={() => setHelpDeskModalOpen(false)} />
+          </div>
+        </div>
       )}
     </div>
   );

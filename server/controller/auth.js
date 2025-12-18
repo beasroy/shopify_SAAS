@@ -846,13 +846,29 @@ export const handleZohoCallback = async (req, res) => {
             }
         });
         const { refresh_token } = tokenResponse.data;
-        const isProduction = process.env.NODE_ENV === 'production';
 
+        // Store refresh token on admin user
+        const adminUser = await User.findOne({ isAdmin: true });
+        if (adminUser) {
+            adminUser.zohoRefreshToken = refresh_token;
+            await adminUser.save();
+            console.log('Zoho refresh token stored on admin user:', adminUser._id);
+        } else {
+            console.error('No admin user found to store Zoho refresh token');
+            // Still redirect but with error message
+            const isProduction = process.env.NODE_ENV === 'production';
+            const clientURL = isProduction
+                ? 'https://parallels.messold.com/callback'
+                : 'http://localhost:5173/callback';
+            return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&error=no_admin`);
+        }
+
+        const isProduction = process.env.NODE_ENV === 'production';
         const clientURL = isProduction
             ? 'https://parallels.messold.com/callback'
             : 'http://localhost:5173/callback';
 
-        return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}`);
+        return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&success=true`);
     } catch (error) {
         console.error('Token exchange error:', error.response?.data || error.message);
         res.status(500).send('Authentication failed');

@@ -22,27 +22,27 @@ export default {
   				'sans-serif'
   			],
   			'ibm-plex-mono': [
-  				'IBM Plex Mono"',
+  				'IBM Plex Mono',
   				'monospace'
   			],
   			'dm-sans': [
-  				'DM Sans"',
+  				'DM Sans',
   				'sans-serif'
   			],
   			roboto: [
-  				'Roboto"',
+  				'Roboto',
   				'sans-serif'
   			],
   			'ibm-plex-sans': [
-  				'IBM Plex Sans"',
+  				'IBM Plex Sans',
   				'sans-serif'
   			],
   			nunito: [
-  				'Nunito"',
+  				'Nunito',
   				'sans-serif'
   			],
   			'source-sans': [
-  				'Source Sans 3"',
+  				'Source Sans 3',
   				'sans-serif'
   			]
   		},

@@ -2,9 +2,17 @@
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import AdMetrics from '../models/AdMetrics.js';
+import Customer from '../models/Customer.js';
 import moment from 'moment-timezone';
 import axios from 'axios';
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { ORDERS_QUERY, makeGraphQLRequest } from '../Report/MonthlyReportGraphQL.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
     try {
@@ -299,7 +307,6 @@ export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
     }
 };
 
-
 export const getAov = async( req,res)=>{
   try {
     const { brandId } = req.params;
@@ -313,10 +320,6 @@ export const getAov = async( req,res)=>{
   }
 }
 
-/**
- * Get monthly COD and prepaid order counts
- * Fetches from AdMetrics (historical) and GraphQL (today's data)
- */
 export const getMonthlyPaymentOrders = async (req, res) => {
   try {
     const { brandId } = req.params;
@@ -715,177 +718,6 @@ export const getTotalRevenue = async (req, res) => {
   }
 }
 
-
-
-
-// export const getReturningCustomerRates = async (req, res) => {
-//   try {
-//     const { brandId } = req.params;
-//     const { startDate, endDate } = req.body;
-
-//     const brand = await Brand.findById(brandId);
-//     if (!brand) {
-//       return res.status(404).json({ success: false, message: 'Brand not found.' });
-//     }
-
-//     const access_token = brand.shopifyAccount?.shopifyAccessToken;
-//     if (!access_token) {
-//       return res.status(403).json({ success: false, message: 'Access token is missing or invalid.' });
-//     }
-
-//     const shopify = new Shopify({
-//       shopName: brand.shopifyAccount?.shopName,
-//       accessToken: access_token
-//     });
-
-//     const shopData = await shopify.shop.get();
-//     const storeTimezone = shopData.iana_timezone || 'UTC';
-
-//     let startDateTime, endDateTime;
-//     if (startDate && endDate) {
-//       startDateTime = moment.tz(startDate, storeTimezone).startOf('day');
-//       endDateTime = moment.tz(endDate, storeTimezone).endOf('day');
-//     } else {
-//       const now = moment().tz(storeTimezone);
-//       startDateTime = moment(now).startOf('month');
-//       endDateTime = moment(now).endOf('month');
-//     }
-
-//     const   CHUNK_SIZE_DAYS = 31; 
-//     let allOrders = [];
-//     let currentStart = startDateTime.clone();
-//     const finalEnd = endDateTime.clone();
-    
-//     while (currentStart.isSameOrBefore(finalEnd)) {
-//       const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
-//       const startTime = currentStart.startOf('day').toISOString();
-//       const endTime = chunkEnd.endOf('day').toISOString();
-
-//       console.log(`Fetching orders from ${currentStart.format('YYYY-MM-DD')} to ${chunkEnd.format('YYYY-MM-DD')}`);
-      
-//       let pageInfo = null;
-//       let chunkOrders = [];
-
-//       do {
-//         try {
-//           let params = {
-//             status: 'any',
-//             limit: 250,
-//             fields: 'id,customer,created_at,test',
-//             created_at_min: startTime,
-//             created_at_max: endTime
-//           };
-
-//           if (pageInfo) {
-//             params.page_info = pageInfo;
-//             delete params.created_at_min;
-//             delete params.created_at_max;
-//           }
-
-//           const orders = await shopify.order.list(params);
-
-//           if (!orders || orders.length === 0) {
-//             pageInfo = null;
-//             break;
-//           }
-
-//           chunkOrders = chunkOrders.concat(orders);
-
-//           if (orders.length === 250) {
-//             pageInfo = Buffer.from(orders[orders.length - 1].id.toString()).toString('base64');
-//             await new Promise(resolve => setTimeout(resolve, 300));
-//           } else {
-//             pageInfo = null;
-//           }
-
-//         } catch (error) {
-//           if (error.statusCode === 429) {
-//             console.log('  Rate limited, waiting 2 seconds...');
-//             await new Promise(resolve => setTimeout(resolve, 2000));
-//             continue;
-//           } else if (error.statusCode === 400) {
-//             console.error(`  Error fetching chunk (${currentStart.format('YYYY-MM-DD')} to ${chunkEnd.format('YYYY-MM-DD')}):`, error.message);
-//             break;
-//           } else {
-//             throw error;
-//           }
-//         }
-
-//       } while (pageInfo);
-      
-//       allOrders = allOrders.concat(chunkOrders);
-//       console.log(`  Fetched ${chunkOrders.length} orders for this chunk`);
-      
-//       currentStart = chunkEnd.clone().add(1, 'day');
-//       await new Promise(resolve => setTimeout(resolve, 500));
-//     }
-    
-//     console.log(`Successfully fetched a total of ${allOrders.length} orders`);
-
-//     // Get unique customers who ordered in the date range
-//     const validOrders = allOrders.filter(order => !order.test && order.customer);
-//     const customerIdsInRange = [...new Set(validOrders.map(order => order.customer.id))];
-    
-//     console.log(`Found ${customerIdsInRange.length} unique customers in the date range`);
-
-//     // Create a map of customer IDs to their creation dates from the orders
-//     const customerCreationDates = new Map();
-    
-//     validOrders.forEach(order => {
-//       const customerId = order.customer.id;
-//       if (order.customer && order.customer.created_at) {
-//         // Store the earliest creation date for each customer
-//         if (!customerCreationDates.has(customerId)) {
-//           customerCreationDates.set(customerId, order.customer.created_at);
-//         }
-//       }
-//     });
-
-//     // Now categorize customers based on their creation date
-//     let returningCustomers = 0;
-
-//     customerIdsInRange.forEach(customerId => {
-//       const customerCreatedAt = customerCreationDates.get(customerId);
-      
-//       if (customerCreatedAt) {
-//         const createdAtMoment = moment.tz(customerCreatedAt, storeTimezone);
-        
-//         // If customer was created before the date range, they're returning
-//         if (createdAtMoment.isBefore(startDateTime)) {
-//           returningCustomers++;
-//         } 
-//       } 
-//     });
-
-//     const totalCustomers = customerIdsInRange.length;
-
-//     console.log(`Total customers: ${totalCustomers}`);
-//     console.log(`Returning customers (created before date range): ${returningCustomers}`);
-
-
-//     res.json({
-//       success: true,
-//       data: {
-//         totalCustomers,
-//         returningCustomers,
-//         returningCustomerRate: totalCustomers > 0
-//           ? parseFloat(((returningCustomers / totalCustomers) * 100).toFixed(2))
-//           : 0,
-  
-//       },
-//       periodInfo: {
-//         startDate: startDateTime.format('YYYY-MM-DD'),
-//         endDate: endDateTime.format('YYYY-MM-DD'),
-//         timezone: storeTimezone
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error('Error fetching returning customer rates:', error);
-//     res.status(500).json({ success: false, error: error.message });
-//   }
-// };
-
 /**
  * Test endpoint to fetch and inspect GraphQL order data
  */
@@ -968,5 +800,572 @@ export const testGraphQLOrders = async (req, res) => {
   }
 };
 
+/**
+ * GraphQL query to fetch customers with addresses and order counts
+ */
+const CUSTOMERS_QUERY = `
+  query getCustomers($first: Int!, $after: String, $query: String) {
+    customers(first: $first, after: $after, query: $query) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacyResourceId
+          firstName
+          lastName
+          email
+          phone
+          numberOfOrders
+          defaultAddress {
+            id
+            address1
+            address2
+            city
+            provinceCode
+            zip
+            countryCode
+          }
+        }
+      }
+    }
+  }
+`;
 
+/**
+ * Fetch and sync customers from Shopify to database
+ */
+export const syncCustomers = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { query } = req.query; // Optional query filter for customers
+
+    if (!brandId) {
+      return res.status(400).json({ success: false, error: 'Brand ID is required' });
+    }
+
+    // Get brand to access Shopify credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(400).json({ success: false, error: 'Access token is missing or invalid' });
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      return res.status(400).json({ success: false, error: 'Shop name is missing or invalid' });
+    }
+
+    console.log('🔄 Syncing customers from Shopify for brand:', brandId);
+
+    let hasNextPage = true;
+    let cursor = null;
+    let totalSynced = 0;
+    let totalUpdated = 0;
+    let totalCreated = 0;
+    let totalDuplicates = 0;
+    let pageCount = 0;
+
+    // Pagination loop - fetches ALL customers by iterating through all pages
+    while (hasNextPage) {
+      pageCount++;
+      const variables = {
+        first: 200, // Fetch 200 customers per request (increased from 50 for better performance)
+        after: cursor,
+        ...(query && { query }), // Only include query if provided
+      };
+
+      console.log(`📄 Fetching page ${pageCount}${cursor ? ` (cursor: ${cursor.substring(0, 20)}...)` : ' (first page)'}`);
+
+      const data = await makeGraphQLRequest(shopName, access_token, CUSTOMERS_QUERY, variables);
+
+      if (!data?.customers?.edges || data.customers.edges.length === 0) {
+        console.log('✅ No more customers to fetch');
+        break;
+      }
+
+      console.log(`📦 Processing ${data.customers.edges.length} customers from this page...`);
+
+      // Prepare all customer data first
+      const customersToProcess = [];
+      const shopifyCustomerIds = [];
+
+      for (const edge of data.customers.edges) {
+        const customerNode = edge.node;
+        
+        // Extract customer ID (remove 'gid://shopify/Customer/' prefix)
+        const shopifyCustomerId = customerNode.legacyResourceId?.toString() || 
+                                  customerNode.id?.split('/').pop() || 
+                                  null;
+
+        if (!shopifyCustomerId) {
+          console.warn('⚠️ Skipping customer without ID:', customerNode);
+          continue;
+        }
+
+        shopifyCustomerIds.push(shopifyCustomerId);
+
+        // Use defaultAddress directly - it's the simplest and most reliable approach
+        const defaultAddress = customerNode.defaultAddress || null;
+
+        // Extract email and phone (using deprecated fields as they're still available)
+        const email = customerNode.email || '';
+        const phone = customerNode.phone || '';
+
+        // Prepare customer data
+        const customerData = {
+          brandId: brand._id,
+          shopifyCustomerId: shopifyCustomerId,
+          firstName: customerNode.firstName || '',
+          lastName: customerNode.lastName || '',
+          email: email,
+          phone: phone,
+          addressLine1: defaultAddress?.address1 || '',
+          addressLine2: defaultAddress?.address2 || '',
+          city: defaultAddress?.city || '',
+          state: defaultAddress?.provinceCode || '',
+          pin: defaultAddress?.zip || '',
+          totalOrders: customerNode.numberOfOrders || 0,
+          defaultAddressId: defaultAddress?.id || null,
+        };
+
+        customersToProcess.push(customerData);
+      }
+
+      // Bulk find existing customers (single query instead of N queries)
+      const existingCustomers = await Customer.find({
+        brandId: brand._id,
+        shopifyCustomerId: { $in: shopifyCustomerIds }
+      }).lean();
+
+      // Create a map of existing customers for quick lookup
+      const existingCustomersMap = new Map();
+      existingCustomers.forEach(customer => {
+        existingCustomersMap.set(customer.shopifyCustomerId.toString(), customer);
+      });
+
+      // Separate customers into updates and inserts
+      const customersToUpdate = [];
+      const customersToInsert = [];
+
+      for (const customerData of customersToProcess) {
+        const existingCustomer = existingCustomersMap.get(customerData.shopifyCustomerId);
+        
+        if (existingCustomer) {
+          // Customer exists - prepare update operation
+          customersToUpdate.push({
+            filter: {
+              brandId: brand._id,
+              shopifyCustomerId: customerData.shopifyCustomerId
+            },
+            update: {
+              $set: {
+                firstName: customerData.firstName,
+                lastName: customerData.lastName,
+                email: customerData.email,
+                phone: customerData.phone,
+                addressLine1: customerData.addressLine1,
+                addressLine2: customerData.addressLine2,
+                city: customerData.city,
+                state: customerData.state,
+                pin: customerData.pin,
+                totalOrders: customerData.totalOrders,
+                defaultAddressId: customerData.defaultAddressId,
+                updatedAt: new Date()
+              }
+            }
+          });
+        } else {
+          // New customer - prepare insert operation
+          customersToInsert.push(customerData);
+        }
+      }
+
+      // Execute bulk update operations
+      if (customersToUpdate.length > 0) {
+        try {
+          const updateResult = await Customer.bulkWrite(
+            customersToUpdate.map(op => ({
+              updateOne: op
+            })),
+            { ordered: false } // Continue even if some operations fail
+          );
+          totalUpdated += updateResult.modifiedCount || customersToUpdate.length;
+        } catch (error) {
+          console.error('⚠️ Error in bulk update:', error.message);
+          // Fallback to individual updates if bulk fails
+          for (const op of customersToUpdate) {
+            try {
+              await Customer.updateOne(op.filter, op.update);
+              totalUpdated++;
+            } catch (err) {
+              console.warn(`⚠️ Failed to update customer ${op.filter.shopifyCustomerId}:`, err.message);
+            }
+          }
+        }
+      }
+
+      // Execute bulk insert operations
+      if (customersToInsert.length > 0) {
+        try {
+          await Customer.insertMany(customersToInsert, {
+            ordered: false, // Continue even if some inserts fail (duplicates)
+            rawResult: false
+          });
+          totalCreated += customersToInsert.length;
+        } catch (error) {
+          // Handle partial failures (duplicates)
+          if (error.writeErrors) {
+            const duplicateErrors = error.writeErrors.filter(e => e.code === 11000);
+            totalDuplicates += duplicateErrors.length;
+            const successfulInserts = customersToInsert.length - duplicateErrors.length;
+            totalCreated += successfulInserts;
+            
+            // Try to update the duplicates
+            for (const writeError of duplicateErrors) {
+              const failedCustomer = customersToInsert[writeError.index];
+              try {
+                await Customer.updateOne(
+                  {
+                    brandId: brand._id,
+                    shopifyCustomerId: failedCustomer.shopifyCustomerId
+                  },
+                  {
+                    $set: {
+                      firstName: failedCustomer.firstName,
+                      lastName: failedCustomer.lastName,
+                      email: failedCustomer.email,
+                      phone: failedCustomer.phone,
+                      addressLine1: failedCustomer.addressLine1,
+                      addressLine2: failedCustomer.addressLine2,
+                      city: failedCustomer.city,
+                      state: failedCustomer.state,
+                      pin: failedCustomer.pin,
+                      totalOrders: failedCustomer.totalOrders,
+                      defaultAddressId: failedCustomer.defaultAddressId,
+                      updatedAt: new Date()
+                    }
+                  }
+                );
+                totalUpdated++;
+              } catch (updateErr) {
+                console.warn(`⚠️ Failed to update duplicate customer ${failedCustomer.shopifyCustomerId}:`, updateErr.message);
+              }
+            }
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      totalSynced += customersToProcess.length;
+
+      // Update pagination info for next iteration
+      hasNextPage = data.customers.pageInfo?.hasNextPage || false;
+      cursor = data.customers.pageInfo?.endCursor || null;
+      
+      console.log(`✅ Page ${pageCount} completed. Progress: ${totalSynced} customers synced so far${hasNextPage ? ` (more pages to fetch...)` : ' (all pages fetched)'}`);
+      
+      // Rate limiting - wait 500ms between requests to avoid hitting Shopify rate limits
+      if (hasNextPage) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log(`✅ Customer sync completed: ${totalSynced} total customers, ${totalCreated} created, ${totalUpdated} updated, ${totalDuplicates} duplicates detected across ${pageCount} page(s)`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Customers synced successfully',
+      data: {
+        totalSynced,
+        totalCreated,
+        totalUpdated,
+        totalDuplicates,
+        brandId
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error syncing customers:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+/**
+ * Get all customers for a brand
+ */
+export const getCustomers = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { page = 1, limit = 50, search } = req.query;
+
+    if (!brandId) {
+      return res.status(400).json({ success: false, error: 'Brand ID is required' });
+    }
+
+    // Build query
+    const query = { brandId };
+    
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (Number.parseInt(page, 10) - 1) * Number.parseInt(limit, 10);
+    const limitNum = Number.parseInt(limit, 10);
+
+    // Fetch customers
+    const customers = await Customer.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    // Get total count
+    const total = await Customer.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        customers,
+        pagination: {
+          page: Number.parseInt(page, 10),
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching customers:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete all customers for a brand
+ */
+export const deleteCustomersByBrand = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    if (!brandId) {
+      return res.status(400).json({ success: false, error: 'Brand ID is required' });
+    }
+
+    // Verify brand exists
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    console.log(`🗑️ Deleting all customers for brand: ${brand.name} (${brandId})`);
+
+    // Count customers before deletion
+    const customerCount = await Customer.countDocuments({ brandId });
+
+    if (customerCount === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No customers found for this brand',
+        data: {
+          brandId,
+          brandName: brand.name,
+          deletedCount: 0
+        }
+      });
+    }
+
+    // Delete all customers for this brand
+    const deleteResult = await Customer.deleteMany({ brandId });
+
+    console.log(`✅ Deleted ${deleteResult.deletedCount} customers for brand "${brand.name}"`);
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${deleteResult.deletedCount} customer(s) for brand "${brand.name}"`,
+      data: {
+        brandId,
+        brandName: brand.name,
+        deletedCount: deleteResult.deletedCount
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting customers:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Export customers to Excel file
+ */
+export const exportCustomersToExcel = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    if (!brandId) {
+      return res.status(400).json({ success: false, error: 'Brand ID is required' });
+    }
+
+    // Get brand to get brand name
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    // Get all customers for this brand
+    const customers = await Customer.find({ brandId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!customers || customers.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No customers found for this brand' 
+      });
+    }
+
+    // Prepare Excel data with all columns properly formatted
+    const excelData = customers.map(customer => {
+      return {
+        'Shopify Customer ID': customer.shopifyCustomerId || '',
+        'First Name': customer.firstName || '',
+        'Last Name': customer.lastName || '',
+        'Email': customer.email || '',
+        'Phone': customer.phone || '',
+        'Address Line 1': customer.addressLine1 || '',
+        'Address Line 2': customer.addressLine2 || '',
+        'City': customer.city || '',
+        'State': customer.state || '',
+        'PIN': customer.pin || '',
+        'Total Orders': customer.totalOrders || 0,
+        'Created At': customer.createdAt ? moment(customer.createdAt).format('YYYY-MM-DD HH:mm:ss') : '',
+        'Updated At': customer.updatedAt ? moment(customer.updatedAt).format('YYYY-MM-DD HH:mm:ss') : ''
+      };
+    });
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    
+    // Create worksheet with explicit options to preserve all columns
+    const worksheet = XLSX.utils.json_to_sheet(excelData, {
+      header: [
+        'Shopify Customer ID',
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'Address Line 1',
+        'Address Line 2',
+        'City',
+        'State',
+        'PIN',
+        'Total Orders',
+        'Created At',
+        'Updated At'
+      ],
+      skipHeader: false
+    });
+
+    // Set column widths for better readability
+    worksheet['!cols'] = [
+      { wch: 20 }, // Shopify Customer ID
+      { wch: 15 }, // First Name
+      { wch: 15 }, // Last Name
+      { wch: 30 }, // Email
+      { wch: 15 }, // Phone
+      { wch: 30 }, // Address Line 1
+      { wch: 30 }, // Address Line 2
+      { wch: 20 }, // City
+      { wch: 15 }, // State
+      { wch: 10 }, // PIN
+      { wch: 12 }, // Total Orders
+      { wch: 20 }, // Created At
+      { wch: 20 }  // Updated At
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Customers');
+
+    // Generate unique file name
+    const brandName = brand.name || 'Brand';
+    const sanitizedBrandName = brandName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `${sanitizedBrandName}_customers_${moment().format('YYYY-MM-DD')}.xlsx`;
+
+    // Create exports directory if it doesn't exist
+    const exportsDir = path.join(__dirname, '../public/exports');
+    if (!fs.existsSync(exportsDir)) {
+      fs.mkdirSync(exportsDir, { recursive: true });
+    }
+
+    // Generate full file path
+    const filePath = path.join(exportsDir, fileName);
+
+    // Write Excel file to disk
+    XLSX.writeFile(workbook, filePath);
+
+    // Generate download URL (adjust based on your server configuration)
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const downloadUrl = `${baseUrl}/exports/${fileName}`;
+
+    console.log(`✅ Excel export completed: ${customers.length} customers exported for brand "${brandName}"`);
+    console.log(`📥 File saved to: ${filePath}`);
+    console.log(`🔗 Download URL: ${downloadUrl}`);
+
+    // Schedule file deletion after 24 hours (optional)
+    setTimeout(() => {
+      if (fs.existsSync(filePath)) {
+        fs.unlink(filePath, (err) => {
+          if (err) {
+            console.error(`❌ Error deleting file ${fileName}:`, err);
+          } else {
+            console.log(`🗑️ Auto-deleted expired file: ${fileName}`);
+          }
+        });
+      }
+    }, 24 * 60 * 60 * 1000); // 24 hours
+
+    // Return success response with download URL
+    res.status(200).json({
+      success: true,
+      message: `Successfully exported ${customers.length} customers`,
+      downloadUrl: downloadUrl,
+      fileName: fileName,
+      expiresIn: '24 hours',
+      totalCustomers: customers.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error exporting customers to Excel:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
 

@@ -218,7 +218,9 @@ export default function NewConversionTable({
   const thresholds = useMemo(() => {
     let totalSessions = 0,
       totalConvRate = 0,
-      totalMonths = 0
+      totalMonths = 0,
+      totalCostG = 0,
+      totalConvValueCostG = 0
 
     data.forEach((row) => {
       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
@@ -230,6 +232,12 @@ export default function NewConversionTable({
             totalConvRate += Number(month["Conv. Rate"])
             totalMonths++
           }
+
+          if (typeof month["Cost"] === "number" && typeof month["Conv. Value/ Cost"] === "number") {
+            totalCostG += Number(month["Cost"])
+            totalConvValueCostG += Number(month["Conv. Value/ Cost"])
+            totalMonths++
+          }
         })
       }
     })
@@ -237,6 +245,8 @@ export default function NewConversionTable({
     return {
       avgSessions: totalMonths > 0 ? totalSessions / totalMonths : 0,
       avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
+      totalCostG: totalMonths > 0 ? totalCostG / totalMonths : 0,
+      totalConvValueCostG: totalMonths > 0 ? totalConvValueCostG / totalMonths : 0,
     }
   }, [data, monthlyDataKey])
 
@@ -283,11 +293,17 @@ export default function NewConversionTable({
     const sessions = monthData["Sessions"]
     const convRate = monthData["Conv. Rate"]
     const purchases = monthData["Purchases"]
+    const cost = monthData["Cost"]
+    const clicks = monthData["Clicks"]
+    const ConvValueCost = monthData["Conv. Value/ Cost"]
 
         return (
       <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
         <div className="space-y-1">
           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
+          {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
+          {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
+          {ConvValueCost !== undefined && <div className="text-xs truncate">Conv. Value/ Cost: {ConvValueCost.toLocaleString(locale)}</div>}
           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
           {purchases !== undefined && <div className="text-xs truncate">Purchases: {purchases.toLocaleString(locale)}</div>}
         </div>
@@ -297,7 +313,6 @@ export default function NewConversionTable({
 
   const renderSummaryCell = (row: RowData, column: string, columnIndex: number) => {
     const value = row[column]
-
     // Calculate dynamic left position based on actual column widths
     const getLeftPosition = (index: number) => {
       if (index === 0) return 0
@@ -321,7 +336,8 @@ export default function NewConversionTable({
 
     const totalPurchases =
       typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null
-
+    const conversionValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null
+   
     if (column.includes("Sessions")) {
       return (
         <td
@@ -337,7 +353,7 @@ export default function NewConversionTable({
       )
     }
 
-    if (column.includes("Rate")) {
+    if (column.includes("Rate") || column.includes("Value")) {
       return (
         <td
           className={`p-3 text-sm border-r border-b border-gray-200 ${
@@ -348,6 +364,7 @@ export default function NewConversionTable({
           <div className="text-right">
             <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
             {totalPurchases && <div className="text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
+            {conversionValue && <div className="text-xs mt-1 truncate">Total Conv Value: {conversionValue}</div>}
           </div>
         </td>
       )
@@ -416,6 +433,10 @@ export default function NewConversionTable({
       thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`
     } else if (column === "Avg Conv. Rate") {
       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`
+    }else if (column === "Total Cost") {
+      thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`
+    }else if (column === "Conv. Value / Cost") {
+      thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`
     }
 
     const isFirst = columnIndex < 3

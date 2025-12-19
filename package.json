@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "concurrently \"cd client && npm i\" \" cd server && npm i\"",
+    "dev": "concurrently \"cd server && npm run dev\" \" cd client && npm run dev\""
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

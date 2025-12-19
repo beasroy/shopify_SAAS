@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import ConversionTable from "@/pages/ConversionReportPage/components/Table";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Maximize, Minimize, RefreshCw, Target } from "lucide-react";
+import { Target } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
-import { GoogleLogo } from "@/data/logo";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
-import FilterConversions from "@/pages/ConversionReportPage/components/Filter";
 import { setDate } from "@/store/slices/DateSlice";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import Loader from "@/components/dashboard_component/loader";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import { selectGoogleAdsTokenError } from "@/store/slices/TokenSllice";
@@ -36,6 +31,7 @@ type AdAccountData = {
 export type ApiResponse = {
   reportType: string;
   data: AdAccountData[];
+  isFullScreen: boolean;
 };
 
 interface CityBasedReportsProps {
@@ -43,9 +39,10 @@ interface CityBasedReportsProps {
   refreshTrigger: number;
   currentFilter: string[] | undefined;
   onDataUpdate: (data: any[], tabType: string) => void;
+  isFullScreen: boolean;
 }
 
-const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, refreshTrigger, currentFilter, onDataUpdate }) => {
+const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, isFullScreen }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const date = useMemo(() => ({
@@ -54,15 +51,11 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, ref
   }), [dateFrom, dateTo]);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const dispatch = useDispatch();
 
 
   const user = useSelector((state: RootState) => state.user.user);
   const { brandId } = useParams();
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-  };
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
@@ -133,15 +126,12 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, ref
     }
   }, [isFullScreen, propDateRange]);
 
-  const handleManualRefresh = () => {
-    fetchData();
-  };
 
   // Extract columns dynamically from the API response
   const primaryColumn = "Gender";
   const monthlyDataKey = "MonthlyData";
   const secondaryColumns = ["Total Cost", "Conv. Value / Cost"];
-  const monthlyMetrics = ["Cost", "Conv. Value/ Cost"];
+
   const locale = useSelector((state: RootState) => state.locale.locale)
   const googleAdsTokenError = useSelector(selectGoogleAdsTokenError);
   console.log(googleAdsTokenError);

@@ -160,7 +160,7 @@ const GoogleAdsDashboard: React.FC = () => {
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
-  const [activeTab, setActiveTab] = useState('searchterm');
+  const [activeTab, setActiveTab] = useState('searchTerm');
   const containerRef = useRef<HTMLDivElement>(null);
   const brands = useSelector((state: RootState) => state.brand.brands);
   const { brandId } = useParams<{ brandId: string }>();

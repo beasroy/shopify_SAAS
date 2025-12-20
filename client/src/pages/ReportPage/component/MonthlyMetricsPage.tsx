@@ -43,15 +43,18 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const [data, setData] = useState<EcommerceMetric[]>([]);
   const [aovData, setAovData] = useState<any[]>([]);
   const [paymentOrdersData, setPaymentOrdersData] = useState<any[]>([]);
+  const [productsLaunchedData, setProductsLaunchedData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiErrors, setApiErrors] = useState<{
     ecommerce: boolean;
     aov: boolean;
     paymentOrders: boolean;
+    productsLaunched: boolean;
   }>({
     ecommerce: false,
     aov: false,
-    paymentOrders: false
+    paymentOrders: false,
+    productsLaunched: false
   });
   const { brandId } = useParams();
 
@@ -128,6 +131,27 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       }
     });
 
+    // Create maps of products launched data by month for quick lookup
+    const productsLaunchedMap = new Map<string, number>();
+    console.log('Products Launched Data for mapping:', productsLaunchedData);
+    productsLaunchedData.forEach((productsLaunchedItem) => {
+      // Match by monthName (e.g., "Nov-2025") or month (e.g., "2025-11")
+      let monthKey = '';
+      if (productsLaunchedItem.monthName) {
+        monthKey = productsLaunchedItem.monthName;
+        productsLaunchedMap.set(monthKey, productsLaunchedItem.productsLaunched || 0);
+        console.log(`Mapped Products Launched: ${productsLaunchedItem.monthName} = ${productsLaunchedItem.productsLaunched}`);
+      }
+      if (productsLaunchedItem.month) {
+        // Convert "2025-11" to "Nov-2025" format for matching
+        const date = new Date(productsLaunchedItem.month + '-01');
+        const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
+        monthKey = monthName;
+        productsLaunchedMap.set(monthKey, productsLaunchedItem.productsLaunched || 0);
+        console.log(`Mapped Products Launched from month: ${productsLaunchedItem.month} -> ${monthName} = ${productsLaunchedItem.productsLaunched}`);
+      }
+    });
+
     console.log('Ecommerce Data months:', data.map(item => item.Month));
     console.log('AOV Map keys:', Array.from(aovMap.keys()));
     console.log('Payment Orders Map keys:', Array.from(codOrderMap.keys()));
@@ -140,12 +164,15 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       const averageItemsPerOrder = apiErrors.aov ? undefined : (avgItemsMap.get(monthName) ?? 0);
       const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.get(monthName) ?? 0);
       const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.get(monthName) ?? 0);
-      
+      const productsLaunched = apiErrors.productsLaunched ? undefined : (productsLaunchedMap.get(monthName) ?? 0);
       if (typeof aov === 'number' && aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
       }
       if ((typeof codOrderCount === 'number' && codOrderCount > 0) || (typeof prepaidOrderCount === 'number' && prepaidOrderCount > 0)) {
         console.log(`Matched Payment Orders for ${monthName}: COD: ${codOrderCount}, Prepaid: ${prepaidOrderCount}`);
+      }
+      if (typeof productsLaunched === 'number' && productsLaunched > 0) {
+        console.log(`Matched Products Launched for ${monthName}: ${productsLaunched}`);
       }
 
       return {
@@ -161,7 +188,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         aov: aov,
         averageItemsPerOrder: averageItemsPerOrder,
         codOrderCount: codOrderCount,
-        prepaidOrderCount: prepaidOrderCount
+        prepaidOrderCount: prepaidOrderCount,
+        productsLaunched: productsLaunched
       };
     });
   }, [data, aovData, paymentOrdersData, apiErrors]);
@@ -243,6 +271,19 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         );
       }
 
+      if (startDate && endDate) {
+        promises.push(
+          axiosInstance.post(
+            `/api/shopify/monthly-launched-products/${brandId}`,
+            {
+              startDate: startDate,
+              endDate: endDate
+            },
+            { withCredentials: true }
+          )
+        );
+      }
+
       // Use Promise.allSettled to handle each API independently
       const results = await Promise.allSettled(promises);
 
@@ -250,7 +291,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       setApiErrors({
         ecommerce: false,
         aov: false,
-        paymentOrders: false
+        paymentOrders: false,
+        productsLaunched: false
       });
 
       // Process ecommerce metrics response (index 0)
@@ -322,13 +364,31 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         }
       }
 
+      // Process products launched response (index 3)
+      if (results[3]) {
+        if (results[3].status === 'fulfilled') {
+          const productsLaunchedResponse = results[3].value;
+          console.log('Products Launched API Response:', productsLaunchedResponse.data);
+          if (productsLaunchedResponse.data.success && productsLaunchedResponse.data.data) {
+            console.log('Products Launched Data:', productsLaunchedResponse.data.data);
+            setProductsLaunchedData(productsLaunchedResponse.data.data);
+          }
+        } else {
+          // Products Launched API failed
+          console.error('Products Launched API failed:', results[3].reason);
+          setApiErrors(prev => ({ ...prev, productsLaunched: true }));
+          setProductsLaunchedData([]);
+        }
+      }
+
     } catch (error) {
       console.error('Error in fetchMetrics:', error);
       // Set all APIs as failed if there's a general error
       setApiErrors({
         ecommerce: true,
         aov: true,
-        paymentOrders: true
+        paymentOrders: true,
+        productsLaunched: true
       });
     } finally {
       setIsLoading(false);

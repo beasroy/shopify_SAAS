@@ -7,300 +7,300 @@ import axios from 'axios';
 import { ORDERS_QUERY, makeGraphQLRequest } from '../Report/MonthlyReportGraphQL.js';
 
 export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
-    try {
-        if (!brandId || !startDate || !endDate) {
-            throw new Error('Missing required parameters: brandId, startDate, and endDate are required');
-        }
-
-        // Validate date formats
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-            throw new Error('Invalid date format. Please use YYYY-MM-DD format');
-        }
-
-        console.log(`Calculating Monthly AOV (Fast) for brand ${brandId} from ${startDate} to ${endDate}`);
-
-        // Get brand to access Shopify credentials
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            throw new Error('Brand not found.');
-        }
-
-        const access_token = brand.shopifyAccount?.shopifyAccessToken;
-        if (!access_token) {
-            throw new Error('Access token is missing or invalid.');
-        }
-
-        const shopName = brand.shopifyAccount?.shopName;
-        if (!shopName) {
-            throw new Error('Shop name is missing or invalid.');
-        }
-
-        const shopify = new Shopify({
-            shopName: shopName,
-            accessToken: access_token,
-            apiVersion: '2024-04'
-        });
-
-        // Get store timezone
-        let shopData;
-        try {
-            shopData = await shopify.shop.get();
-        } catch (shopError) {
-            if (shopError.statusCode === 404) {
-                const shopifyFallback = new Shopify({
-                    shopName: shopName,
-                    accessToken: access_token,
-                    apiVersion: '2024-01'
-                });
-                shopData = await shopifyFallback.shop.get();
-            } else {
-                throw shopError;
-            }
-        }
-
-        const storeTimezone = shopData.iana_timezone || 'UTC';
-
-        // Convert dates to moment objects
-        const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
-        const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
-
-        // Get today's date in store timezone
-        const today = moment.tz(storeTimezone).startOf('day');
-        const yesterday = today.clone().subtract(1, 'day').endOf('day');
-
-        // Determine date range for AdMetrics (up to yesterday)
-        const adMetricsEndDate = moment.min(yesterday, endMoment);
-        
-        // Fetch AdMetrics data for revenue (up to yesterday - already calculated and cached)
-        const adMetrics = await AdMetrics.find({
-            brandId,
-            date: {
-                $gte: startMoment.toDate(),
-                $lte: adMetricsEndDate.toDate()
-            }
-        }).sort({ date: 1 });
-
-        // Check if we need to fetch today's data from Shopify
-        const needsTodayData = endMoment.isSameOrAfter(today);
-
-        // Fetch order counts, today's sales, and item counts from Shopify
-        const orderCountsByMonth = new Map();
-        const todaySalesByMonth = new Map(); // For today's revenue if needed
-        const totalItemsByMonth = new Map(); // Total items ordered per month
-        let currentDate = startMoment.clone();
-
-        // Process in chunks to avoid API limits
-        const CHUNK_SIZE_DAYS = 30;
-        
-        while (currentDate.isSameOrBefore(endMoment)) {
-            const chunkEnd = moment.min(currentDate.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), endMoment);
-            const startTime = currentDate.clone().startOf('day').tz(storeTimezone).utc().format();
-            const endTime = chunkEnd.clone().endOf('day').tz(storeTimezone).utc().format();
-
-            try {
-                // Fetch orders with minimal fields - count and get today's sales
-                let pageInfo = null;
-                
-                do {
-                    const params = {
-                        limit: 250,
-                        // Fetch line_items for item count calculation, and total_price/refunds for today's sales
-                        fields: needsTodayData && currentDate.isSameOrAfter(today, 'day') 
-                            ? 'id,created_at,test,total_price,refunds,line_items' 
-                            : 'id,created_at,test,line_items', // Include line_items for item counting
-                        status: 'any'
-                    };
-
-                    if (pageInfo) {
-                        params.page_info = pageInfo;
-                    } else {
-                        params.created_at_min = startTime;
-                        params.created_at_max = endTime;
-                    }
-
-                    const orders = await shopify.order.list(params);
-                    
-                    if (!orders || orders.length === 0) break;
-
-                    // Process orders
-                    for (const order of orders) {
-                        if (!order.test) {
-                            const orderDate = moment.tz(order.created_at, storeTimezone);
-                            const monthKey = orderDate.format('YYYY-MM');
-                            
-                            // Count orders
-                            if (!orderCountsByMonth.has(monthKey)) {
-                                orderCountsByMonth.set(monthKey, 0);
-                            }
-                            orderCountsByMonth.set(monthKey, orderCountsByMonth.get(monthKey) + 1);
-
-                            // Calculate total items in this order
-                            let orderItems = 0;
-                            if (order.line_items && Array.isArray(order.line_items)) {
-                                orderItems = order.line_items.reduce((sum, item) => {
-                                    return sum + Number(item.quantity || 0);
-                                }, 0);
-                            }
-                            
-                            // Add to total items count for the month
-                            if (!totalItemsByMonth.has(monthKey)) {
-                                totalItemsByMonth.set(monthKey, 0);
-                            }
-                            totalItemsByMonth.set(monthKey, totalItemsByMonth.get(monthKey) + orderItems);
-
-                            // Calculate today's sales if needed
-                            if (needsTodayData && orderDate.isSameOrAfter(today, 'day')) {
-                                let orderTotal = Number(order.total_price || 0);
-                                
-                                // Subtract refunds if any
-                                if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
-                                    let refundAmount = 0;
-                                    for (const refund of order.refunds) {
-                                        if (refund.refund_line_items) {
-                                            refundAmount += refund.refund_line_items.reduce((sum, item) => {
-                                                return sum + Number(item.subtotal || 0) + Number(item.total_tax || 0);
-                                            }, 0);
-                                        }
-                                        if (refund.order_adjustments) {
-                                            refundAmount -= refund.order_adjustments.reduce((sum, adj) => {
-                                                return sum + Number(adj.amount || 0);
-                                            }, 0);
-                                        }
-                                    }
-                                    orderTotal -= refundAmount;
-                                }
-                                
-                                if (!todaySalesByMonth.has(monthKey)) {
-                                    todaySalesByMonth.set(monthKey, 0);
-                                }
-                                todaySalesByMonth.set(monthKey, todaySalesByMonth.get(monthKey) + orderTotal);
-                            }
-                        }
-                    }
-
-                    // Parse pagination
-                    const linkHeader = orders.headers?.link;
-                    if (linkHeader) {
-                        const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
-                        pageInfo = match ? match[1] : null;
-                    } else {
-                        pageInfo = null;
-                    }
-
-                    await new Promise(resolve => setTimeout(resolve, 300)); // Rate limiting
-                } while (pageInfo);
-
-            } catch (error) {
-                console.error(`Error fetching order data for chunk ${startTime} to ${endTime}:`, error.message);
-                // Continue with next chunk
-            }
-
-            currentDate = chunkEnd.clone().add(1, 'day');
-            await new Promise(resolve => setTimeout(resolve, 500)); // Rate limiting between chunks
-        }
-
-        // Group AdMetrics by month and aggregate revenue (up to yesterday)
-        const monthlyData = new Map();
-
-        adMetrics.forEach(metric => {
-            const metricDate = moment.tz(metric.date, storeTimezone);
-            const monthKey = metricDate.format('YYYY-MM');
-
-            if (!monthlyData.has(monthKey)) {
-                monthlyData.set(monthKey, {
-                    month: monthKey,
-                    totalRevenue: 0,
-                    orderCount: 0,
-                    totalItems: 0
-                });
-            }
-
-            const monthData = monthlyData.get(monthKey);
-            // totalSales already has refunds deducted in AdMetrics
-            monthData.totalRevenue += Number(metric.totalSales) || 0;
-        });
-
-        // Add today's sales data if needed (from Shopify)
-        todaySalesByMonth.forEach((revenue, monthKey) => {
-            if (!monthlyData.has(monthKey)) {
-                monthlyData.set(monthKey, {
-                    month: monthKey,
-                    totalRevenue: 0,
-                    orderCount: 0,
-                    totalItems: 0
-                });
-            }
-            monthlyData.get(monthKey).totalRevenue += revenue;
-        });
-
-        // Add order counts and total items from Shopify (includes today)
-        orderCountsByMonth.forEach((count, monthKey) => {
-            if (!monthlyData.has(monthKey)) {
-                monthlyData.set(monthKey, {
-                    month: monthKey,
-                    totalRevenue: 0,
-                    orderCount: 0,
-                    totalItems: 0
-                });
-            }
-            monthlyData.get(monthKey).orderCount = count;
-        });
-
-        // Add total items count from Shopify
-        totalItemsByMonth.forEach((items, monthKey) => {
-            if (!monthlyData.has(monthKey)) {
-                monthlyData.set(monthKey, {
-                    month: monthKey,
-                    totalRevenue: 0,
-                    orderCount: 0,
-                    totalItems: 0
-                });
-            }
-            monthlyData.get(monthKey).totalItems = items;
-        });
-
-        // Calculate AOV and Average Items Per Order for each month and format response
-        const monthlyAOV = Array.from(monthlyData.entries())
-            .map(([monthKey, monthData]) => {
-                const { totalRevenue, orderCount, totalItems } = monthData;
-                
-                // Calculate AOV: Total Revenue ÷ Number of Orders
-                const aov = orderCount > 0 ? totalRevenue / orderCount : 0;
-                
-                // Calculate Average Items Per Order: Total Items ÷ Number of Orders
-                const averageItemsPerOrder = orderCount > 0 ? totalItems / orderCount : 0;
-
-                return {
-                    month: monthKey,
-                    monthName: moment(monthKey + '-01').format('MMM-YYYY'),
-                    totalRevenue: Number(totalRevenue.toFixed(2)),
-                    orderCount: orderCount,
-                    totalItems: totalItems,
-                    aov: Math.round(aov),
-                    averageItemsPerOrder: Math.round(averageItemsPerOrder)
-                };
-            })
-            .sort((a, b) => a.month.localeCompare(b.month));
-
-        console.log(`✅ Calculated Monthly AOV (Fast) for ${monthlyAOV.length} month(s)`);
-
-        return monthlyAOV;
-
-    } catch (error) {
-        console.error('❌ Error calculating Monthly AOV (Fast):', {
-            error: error.message,
-            stack: error.stack,
-            brandId: brandId,
-            startDate: startDate,
-            endDate: endDate
-        });
-        throw new Error(`Failed to calculate Monthly AOV: ${error.message}`);
+  try {
+    if (!brandId || !startDate || !endDate) {
+      throw new Error('Missing required parameters: brandId, startDate, and endDate are required');
     }
+
+    // Validate date formats
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      throw new Error('Invalid date format. Please use YYYY-MM-DD format');
+    }
+
+    console.log(`Calculating Monthly AOV (Fast) for brand ${brandId} from ${startDate} to ${endDate}`);
+
+    // Get brand to access Shopify credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      throw new Error('Brand not found.');
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      throw new Error('Access token is missing or invalid.');
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      throw new Error('Shop name is missing or invalid.');
+    }
+
+    const shopify = new Shopify({
+      shopName: shopName,
+      accessToken: access_token,
+      apiVersion: '2024-04'
+    });
+
+    // Get store timezone
+    let shopData;
+    try {
+      shopData = await shopify.shop.get();
+    } catch (shopError) {
+      if (shopError.statusCode === 404) {
+        const shopifyFallback = new Shopify({
+          shopName: shopName,
+          accessToken: access_token,
+          apiVersion: '2024-01'
+        });
+        shopData = await shopifyFallback.shop.get();
+      } else {
+        throw shopError;
+      }
+    }
+
+    const storeTimezone = shopData.iana_timezone || 'UTC';
+
+    // Convert dates to moment objects
+    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+
+    // Get today's date in store timezone
+    const today = moment.tz(storeTimezone).startOf('day');
+    const yesterday = today.clone().subtract(1, 'day').endOf('day');
+
+    // Determine date range for AdMetrics (up to yesterday)
+    const adMetricsEndDate = moment.min(yesterday, endMoment);
+
+    // Fetch AdMetrics data for revenue (up to yesterday - already calculated and cached)
+    const adMetrics = await AdMetrics.find({
+      brandId,
+      date: {
+        $gte: startMoment.toDate(),
+        $lte: adMetricsEndDate.toDate()
+      }
+    }).sort({ date: 1 });
+
+    // Check if we need to fetch today's data from Shopify
+    const needsTodayData = endMoment.isSameOrAfter(today);
+
+    // Fetch order counts, today's sales, and item counts from Shopify
+    const orderCountsByMonth = new Map();
+    const todaySalesByMonth = new Map(); // For today's revenue if needed
+    const totalItemsByMonth = new Map(); // Total items ordered per month
+    let currentDate = startMoment.clone();
+
+    // Process in chunks to avoid API limits
+    const CHUNK_SIZE_DAYS = 30;
+
+    while (currentDate.isSameOrBefore(endMoment)) {
+      const chunkEnd = moment.min(currentDate.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), endMoment);
+      const startTime = currentDate.clone().startOf('day').tz(storeTimezone).utc().format();
+      const endTime = chunkEnd.clone().endOf('day').tz(storeTimezone).utc().format();
+
+      try {
+        // Fetch orders with minimal fields - count and get today's sales
+        let pageInfo = null;
+
+        do {
+          const params = {
+            limit: 250,
+            // Fetch line_items for item count calculation, and total_price/refunds for today's sales
+            fields: needsTodayData && currentDate.isSameOrAfter(today, 'day')
+              ? 'id,created_at,test,total_price,refunds,line_items'
+              : 'id,created_at,test,line_items', // Include line_items for item counting
+            status: 'any'
+          };
+
+          if (pageInfo) {
+            params.page_info = pageInfo;
+          } else {
+            params.created_at_min = startTime;
+            params.created_at_max = endTime;
+          }
+
+          const orders = await shopify.order.list(params);
+
+          if (!orders || orders.length === 0) break;
+
+          // Process orders
+          for (const order of orders) {
+            if (!order.test) {
+              const orderDate = moment.tz(order.created_at, storeTimezone);
+              const monthKey = orderDate.format('YYYY-MM');
+
+              // Count orders
+              if (!orderCountsByMonth.has(monthKey)) {
+                orderCountsByMonth.set(monthKey, 0);
+              }
+              orderCountsByMonth.set(monthKey, orderCountsByMonth.get(monthKey) + 1);
+
+              // Calculate total items in this order
+              let orderItems = 0;
+              if (order.line_items && Array.isArray(order.line_items)) {
+                orderItems = order.line_items.reduce((sum, item) => {
+                  return sum + Number(item.quantity || 0);
+                }, 0);
+              }
+
+              // Add to total items count for the month
+              if (!totalItemsByMonth.has(monthKey)) {
+                totalItemsByMonth.set(monthKey, 0);
+              }
+              totalItemsByMonth.set(monthKey, totalItemsByMonth.get(monthKey) + orderItems);
+
+              // Calculate today's sales if needed
+              if (needsTodayData && orderDate.isSameOrAfter(today, 'day')) {
+                let orderTotal = Number(order.total_price || 0);
+
+                // Subtract refunds if any
+                if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
+                  let refundAmount = 0;
+                  for (const refund of order.refunds) {
+                    if (refund.refund_line_items) {
+                      refundAmount += refund.refund_line_items.reduce((sum, item) => {
+                        return sum + Number(item.subtotal || 0) + Number(item.total_tax || 0);
+                      }, 0);
+                    }
+                    if (refund.order_adjustments) {
+                      refundAmount -= refund.order_adjustments.reduce((sum, adj) => {
+                        return sum + Number(adj.amount || 0);
+                      }, 0);
+                    }
+                  }
+                  orderTotal -= refundAmount;
+                }
+
+                if (!todaySalesByMonth.has(monthKey)) {
+                  todaySalesByMonth.set(monthKey, 0);
+                }
+                todaySalesByMonth.set(monthKey, todaySalesByMonth.get(monthKey) + orderTotal);
+              }
+            }
+          }
+
+          // Parse pagination
+          const linkHeader = orders.headers?.link;
+          if (linkHeader) {
+            const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+            pageInfo = match ? match[1] : null;
+          } else {
+            pageInfo = null;
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 300)); // Rate limiting
+        } while (pageInfo);
+
+      } catch (error) {
+        console.error(`Error fetching order data for chunk ${startTime} to ${endTime}:`, error.message);
+        // Continue with next chunk
+      }
+
+      currentDate = chunkEnd.clone().add(1, 'day');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Rate limiting between chunks
+    }
+
+    // Group AdMetrics by month and aggregate revenue (up to yesterday)
+    const monthlyData = new Map();
+
+    adMetrics.forEach(metric => {
+      const metricDate = moment.tz(metric.date, storeTimezone);
+      const monthKey = metricDate.format('YYYY-MM');
+
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          totalRevenue: 0,
+          orderCount: 0,
+          totalItems: 0
+        });
+      }
+
+      const monthData = monthlyData.get(monthKey);
+      // totalSales already has refunds deducted in AdMetrics
+      monthData.totalRevenue += Number(metric.totalSales) || 0;
+    });
+
+    // Add today's sales data if needed (from Shopify)
+    todaySalesByMonth.forEach((revenue, monthKey) => {
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          totalRevenue: 0,
+          orderCount: 0,
+          totalItems: 0
+        });
+      }
+      monthlyData.get(monthKey).totalRevenue += revenue;
+    });
+
+    // Add order counts and total items from Shopify (includes today)
+    orderCountsByMonth.forEach((count, monthKey) => {
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          totalRevenue: 0,
+          orderCount: 0,
+          totalItems: 0
+        });
+      }
+      monthlyData.get(monthKey).orderCount = count;
+    });
+
+    // Add total items count from Shopify
+    totalItemsByMonth.forEach((items, monthKey) => {
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          totalRevenue: 0,
+          orderCount: 0,
+          totalItems: 0
+        });
+      }
+      monthlyData.get(monthKey).totalItems = items;
+    });
+
+    // Calculate AOV and Average Items Per Order for each month and format response
+    const monthlyAOV = Array.from(monthlyData.entries())
+      .map(([monthKey, monthData]) => {
+        const { totalRevenue, orderCount, totalItems } = monthData;
+
+        // Calculate AOV: Total Revenue ÷ Number of Orders
+        const aov = orderCount > 0 ? totalRevenue / orderCount : 0;
+
+        // Calculate Average Items Per Order: Total Items ÷ Number of Orders
+        const averageItemsPerOrder = orderCount > 0 ? totalItems / orderCount : 0;
+
+        return {
+          month: monthKey,
+          monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+          orderCount: orderCount,
+          totalItems: totalItems,
+          aov: Math.round(aov),
+          averageItemsPerOrder: Math.round(averageItemsPerOrder)
+        };
+      })
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    console.log(`✅ Calculated Monthly AOV (Fast) for ${monthlyAOV.length} month(s)`);
+
+    return monthlyAOV;
+
+  } catch (error) {
+    console.error('❌ Error calculating Monthly AOV (Fast):', {
+      error: error.message,
+      stack: error.stack,
+      brandId: brandId,
+      startDate: startDate,
+      endDate: endDate
+    });
+    throw new Error(`Failed to calculate Monthly AOV: ${error.message}`);
+  }
 };
 
 
-export const getAov = async( req,res)=>{
+export const getAov = async (req, res) => {
   try {
     const { brandId } = req.params;
     const { startDate, endDate } = req.body;
@@ -323,18 +323,18 @@ export const getMonthlyPaymentOrders = async (req, res) => {
     const { startDate, endDate } = req.body;
 
     if (!brandId || !startDate || !endDate) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required parameters: brandId, startDate, and endDate are required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: brandId, startDate, and endDate are required'
       });
     }
 
     // Validate date formats
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid date format. Please use YYYY-MM-DD format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Please use YYYY-MM-DD format'
       });
     }
 
@@ -359,7 +359,7 @@ export const getMonthlyPaymentOrders = async (req, res) => {
     // Get store timezone
     const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const apiVersion = '2024-04';
-    
+
     let shopData;
     try {
       const shopResponse = await axios.get(
@@ -371,9 +371,9 @@ export const getMonthlyPaymentOrders = async (req, res) => {
       );
       shopData = shopResponse.data.shop;
     } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
-        error: `Failed to fetch shop data: ${error.message}` 
+      return res.status(500).json({
+        success: false,
+        error: `Failed to fetch shop data: ${error.message}`
       });
     }
 
@@ -389,7 +389,7 @@ export const getMonthlyPaymentOrders = async (req, res) => {
 
     // Determine date range for AdMetrics (up to yesterday)
     const adMetricsEndDate = moment.min(yesterday, endMoment);
-    
+
     // Fetch AdMetrics data for COD/prepaid counts (up to yesterday)
     const adMetrics = await AdMetrics.find({
       brandId,
@@ -421,13 +421,13 @@ export const getMonthlyPaymentOrders = async (req, res) => {
 
     // Fetch today's payment gateway data using GraphQL if needed
     const needsTodayData = endMoment.isSameOrAfter(today);
-    
+
     if (needsTodayData) {
       console.log('🔄 Fetching today\'s payment gateway data using GraphQL...');
       try {
         const startTimeISO = today.clone().startOf('day').utc().toISOString();
         const endTimeISO = endMoment.clone().add(1, 'day').startOf('day').utc().toISOString();
-        
+
         // Use a simplified GraphQL query just for payment gateways
         const PAYMENT_GATEWAY_QUERY = `
           query getOrders($first: Int!, $after: String, $query: String!) {
@@ -470,7 +470,7 @@ export const getMonthlyPaymentOrders = async (req, res) => {
           // Process orders for payment gateway tracking
           for (const edge of data.orders.edges) {
             const order = edge.node;
-            
+
             // Skip test orders
             if (order.test) {
               continue;
@@ -478,7 +478,7 @@ export const getMonthlyPaymentOrders = async (req, res) => {
 
             const orderDate = moment.tz(order.createdAt, storeTimezone);
             const monthKey = orderDate.format('YYYY-MM');
-            
+
             // Skip cancelled orders for COD/prepaid count
             if (order.cancelledAt) {
               continue;
@@ -486,11 +486,11 @@ export const getMonthlyPaymentOrders = async (req, res) => {
 
             // Track COD and prepaid orders
             const paymentGateways = order.paymentGatewayNames || [];
-            const isCOD = paymentGateways.some(gateway => 
-              gateway && (gateway.toLowerCase().includes('cod') || 
-                          gateway.toLowerCase().includes('cash_on_delivery'))
-                          || gateway.toLowerCase().includes('cash on delivery'))
-            ;
+            const isCOD = paymentGateways.some(gateway =>
+              gateway && (gateway.toLowerCase().includes('cod') ||
+                gateway.toLowerCase().includes('cash_on_delivery'))
+              || gateway.toLowerCase().includes('cash on delivery'))
+              ;
             const isPrepaid = !isCOD && paymentGateways.length > 0;
 
             if (!monthlyData.has(monthKey)) {
@@ -533,16 +533,16 @@ export const getMonthlyPaymentOrders = async (req, res) => {
 
     console.log(`✅ Fetched payment orders for ${monthlyPaymentOrders.length} month(s)`);
 
-    res.status(200).json({ 
-      success: true, 
-      data: monthlyPaymentOrders 
+    res.status(200).json({
+      success: true,
+      data: monthlyPaymentOrders
     });
 
   } catch (error) {
     console.error('❌ Error fetching monthly payment orders:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };
@@ -554,18 +554,18 @@ export const getTotalRevenue = async (req, res) => {
     const { startDate, endDate } = req.body;
 
     if (!brandId || !startDate || !endDate) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required parameters: brandId, startDate, and endDate are required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: brandId, startDate, and endDate are required'
       });
     }
 
     // Validate date formats
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid date format. Please use YYYY-MM-DD format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Please use YYYY-MM-DD format'
       });
     }
 
@@ -576,17 +576,17 @@ export const getTotalRevenue = async (req, res) => {
 
     const access_token = brand.shopifyAccount?.shopifyAccessToken;
     if (!access_token) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access token is missing or invalid.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Access token is missing or invalid.'
       });
     }
 
     const shopName = brand.shopifyAccount?.shopName;
     if (!shopName) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Shop name is missing or invalid.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Shop name is missing or invalid.'
       });
     }
 
@@ -621,7 +621,7 @@ export const getTotalRevenue = async (req, res) => {
     const today = moment.tz(storeTimezone).startOf('day');
     const yesterday = today.clone().subtract(1, 'day').endOf('day');
     const adMetricsEndDate = moment.min(yesterday, endMoment);
-    
+
     const adMetrics = await AdMetrics.find({
       brandId,
       date: {
@@ -659,14 +659,14 @@ export const getTotalRevenue = async (req, res) => {
         }
 
         const orders = await shopify.order.list(params);
-        
+
         if (!orders || orders.length === 0) break;
 
         // Process orders
         for (const order of orders) {
           if (!order.test) {
             let orderTotal = Number(order.total_price || 0);
-            
+
             // Subtract refunds if any
             if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
               let refundAmount = 0;
@@ -684,7 +684,7 @@ export const getTotalRevenue = async (req, res) => {
               }
               orderTotal -= refundAmount;
             }
-            
+
             totalRevenue += orderTotal;
           }
         }
@@ -702,12 +702,12 @@ export const getTotalRevenue = async (req, res) => {
       } while (pageInfo);
     }
 
-    res.status(200).json({ 
-      success: true, 
-      data: { 
+    res.status(200).json({
+      success: true,
+      data: {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         currency: shopData.currency || 'USD'
-      } 
+      }
     });
   } catch (error) {
     console.error('Error fetching total revenue:', error);
@@ -755,14 +755,14 @@ export const getTotalRevenue = async (req, res) => {
 //     let allOrders = [];
 //     let currentStart = startDateTime.clone();
 //     const finalEnd = endDateTime.clone();
-    
+
 //     while (currentStart.isSameOrBefore(finalEnd)) {
 //       const chunkEnd = moment.min(currentStart.clone().add(CHUNK_SIZE_DAYS - 1, 'days'), finalEnd);
 //       const startTime = currentStart.startOf('day').toISOString();
 //       const endTime = chunkEnd.endOf('day').toISOString();
 
 //       console.log(`Fetching orders from ${currentStart.format('YYYY-MM-DD')} to ${chunkEnd.format('YYYY-MM-DD')}`);
-      
+
 //       let pageInfo = null;
 //       let chunkOrders = [];
 
@@ -812,25 +812,25 @@ export const getTotalRevenue = async (req, res) => {
 //         }
 
 //       } while (pageInfo);
-      
+
 //       allOrders = allOrders.concat(chunkOrders);
 //       console.log(`  Fetched ${chunkOrders.length} orders for this chunk`);
-      
+
 //       currentStart = chunkEnd.clone().add(1, 'day');
 //       await new Promise(resolve => setTimeout(resolve, 500));
 //     }
-    
+
 //     console.log(`Successfully fetched a total of ${allOrders.length} orders`);
 
 //     // Get unique customers who ordered in the date range
 //     const validOrders = allOrders.filter(order => !order.test && order.customer);
 //     const customerIdsInRange = [...new Set(validOrders.map(order => order.customer.id))];
-    
+
 //     console.log(`Found ${customerIdsInRange.length} unique customers in the date range`);
 
 //     // Create a map of customer IDs to their creation dates from the orders
 //     const customerCreationDates = new Map();
-    
+
 //     validOrders.forEach(order => {
 //       const customerId = order.customer.id;
 //       if (order.customer && order.customer.created_at) {
@@ -846,10 +846,10 @@ export const getTotalRevenue = async (req, res) => {
 
 //     customerIdsInRange.forEach(customerId => {
 //       const customerCreatedAt = customerCreationDates.get(customerId);
-      
+
 //       if (customerCreatedAt) {
 //         const createdAtMoment = moment.tz(customerCreatedAt, storeTimezone);
-        
+
 //         // If customer was created before the date range, they're returning
 //         if (createdAtMoment.isBefore(startDateTime)) {
 //           returningCustomers++;
@@ -871,7 +871,7 @@ export const getTotalRevenue = async (req, res) => {
 //         returningCustomerRate: totalCustomers > 0
 //           ? parseFloat(((returningCustomers / totalCustomers) * 100).toFixed(2))
 //           : 0,
-  
+
 //       },
 //       periodInfo: {
 //         startDate: startDateTime.format('YYYY-MM-DD'),
@@ -945,7 +945,7 @@ export const testGraphQLOrders = async (req, res) => {
 
     // Return raw data for inspection
     const orders = data?.orders?.edges?.map(edge => edge.node) || [];
-    
+
     res.json({
       success: true,
       data: {
@@ -968,5 +968,158 @@ export const testGraphQLOrders = async (req, res) => {
   }
 };
 
+
+export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
+  try {
+
+    // 1. Strict Parameter Validation
+    if (!brandId || !startDate || !endDate) {
+      throw new Error('Missing required parameters');
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      throw new Error('Invalid date format');
+    }
+
+    // 2. Fetch Brand & Credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) throw new Error('Brand not found');
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!access_token || !shopName) {
+      throw new Error('Shopify credentials missing');
+    }
+
+    // 3. Initialize Shopify & Get Timezone (With Fallback)
+    const shopify = new Shopify({
+      shopName: shopName,
+      accessToken: access_token,
+      apiVersion: '2024-04'
+    });
+
+    let shopData;
+    try {
+      shopData = await shopify.shop.get();
+    } catch (err) {
+      // Fallbakc for older API versions if 2024-04 fails
+      shopData = await new Shopify({
+        shopName, accessToken: access_token, apiVersion: '2024-01'
+      }).shop.get();
+    }
+
+    const storeTimezone = shopData.iana_timezone || 'UTC';
+    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+    const today = moment.tz(storeTimezone).startOf('day');
+
+    const monthlyData = new Map();
+
+    // 4. Fetch Historical Data from AdMetrics (Yesterday and older)
+    const adMetricsEndDate = moment.min(today.clone().subtract(1, 'day'), endMoment);
+
+    if (startMoment.isBefore(today)) {
+      const adMetrics = await AdMetrics.find({
+        brandId,
+        date: {
+          $gte: startMoment.toDate(),
+          $lte: adMetricsEndDate.toDate()
+        }
+      }).sort({ date: 1 });
+
+      adMetrics.forEach(metric => {
+        const monthKey = moment.tz(metric.date, storeTimezone).format('YYYY-MM');
+        if (!monthlyData.has(monthKey)) monthlyData.set(monthKey, 0);
+
+        const count = Number(metric.productsLaunched) || 0;
+        monthlyData.set(monthKey, monthlyData.get(monthKey) + count);
+      });
+    }
+
+    // 5. Fetch "Live" Data from Shopify (If range includes today)
+    if (endMoment.isSameOrAfter(today)) {
+      let pageInfo = null;
+      // Use UTC ISO string for Shopify API filters
+      const startTimeISO = today.clone().utc().format();
+
+      do {
+        const params = {
+          limit: 250,
+          fields: 'id,created_at',
+          // Only use date filters on the first page; page_info handles it thereafter
+          ...(pageInfo ? { page_info: pageInfo } : { created_at_min: startTimeISO })
+        };
+
+        const products = await shopify.product.list(params);
+
+        if (products && products.length > 0) {
+          for (const product of products) {
+            const productCreatedAt = moment.tz(product.created_at, storeTimezone);
+            // Double check the product is within the requested endMoment
+            if (productCreatedAt.isSameOrBefore(endMoment)) {
+              const monthKey = productCreatedAt.format('YYYY-MM');
+              monthlyData.set(monthKey, (monthlyData.get(monthKey) || 0) + 1);
+            }
+          }
+        }
+
+        // Robust Pagination Handling
+        const linkHeader = products.headers?.link;
+        if (linkHeader && linkHeader.includes('rel="next"')) {
+          const match = linkHeader.match(/<[^>]+page_info=([^&>]+)>;\s*rel="next"/);
+          pageInfo = match ? match[1] : null;
+        } else {
+          pageInfo = null;
+        }
+
+        // Avoid hitting 429 Rate Limits
+        if (pageInfo) await new Promise(res => setTimeout(res, 350));
+
+      } while (pageInfo);
+    }
+
+    // 6. Final Formatting & Sorting
+    const response = Array.from(monthlyData.entries())
+      .map(([monthKey, count]) => ({
+        month: monthKey,
+        monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+        productsLaunched: count
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    console.log(`✅ Success: ${response.length} months of product data fetched.`);
+
+    return response;
+
+  } catch (error) {
+    console.error('❌ Error in getMonthlyProductsLaunched:', error);
+    throw new Error(error.message);
+  }
+};
+
+
+export const getMonthlyProductLaunches = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate } = req.body;
+
+    const data = await calculateMonthlyProductLaunches(
+      brandId,
+      startDate,
+      endDate
+    );
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
 
 

@@ -3,6 +3,8 @@ import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import AdMetrics from '../models/AdMetrics.js';
 import Customer from '../models/Customer.js';
+import Product from '../models/Product.js';
+import mongoose from 'mongoose';
 import moment from 'moment-timezone';
 import axios from 'axios';
 import XLSX from 'xlsx';
@@ -834,140 +836,248 @@ const CUSTOMERS_QUERY = `
   }
 `;
 
+// export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
+//   try {
+
+//     // 1. Strict Parameter Validation
+//     if (!brandId || !startDate || !endDate) {
+//       throw new Error('Missing required parameters');
+//     }
+
+//     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+//     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+//       throw new Error('Invalid date format');
+//     }
+
+//     // 2. Fetch Brand & Credentials
+//     const brand = await Brand.findById(brandId);
+//     if (!brand) throw new Error('Brand not found');
+
+//     const access_token = brand.shopifyAccount?.shopifyAccessToken;
+//     const shopName = brand.shopifyAccount?.shopName;
+//     if (!access_token || !shopName) {
+//       throw new Error('Shopify credentials missing');
+//     }
+
+//     // 3. Initialize Shopify & Get Timezone (With Fallback)
+//     const shopify = new Shopify({
+//       shopName: shopName,
+//       accessToken: access_token,
+//       apiVersion: '2024-04'
+//     });
+
+//     let shopData;
+//     try {
+//       shopData = await shopify.shop.get();
+//     } catch (err) {
+//       // Fallbakc for older API versions if 2024-04 fails
+//       shopData = await new Shopify({
+//         shopName, accessToken: access_token, apiVersion: '2024-01'
+//       }).shop.get();
+//     }
+
+//     const storeTimezone = shopData.iana_timezone || 'UTC';
+//     const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+//     const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+//     const today = moment.tz(storeTimezone).startOf('day');
+
+//     const monthlyData = new Map();
+
+//     // 4. Fetch Historical Data from AdMetrics (Yesterday and older)
+//     const adMetricsEndDate = moment.min(today.clone().subtract(1, 'day'), endMoment);
+
+//     if (startMoment.isBefore(today)) {
+//       const adMetrics = await AdMetrics.find({
+//         brandId,
+//         date: {
+//           $gte: startMoment.toDate(),
+//           $lte: adMetricsEndDate.toDate()
+//         }
+//       }).sort({ date: 1 });
+
+//       adMetrics.forEach(metric => {
+//         const monthKey = moment.tz(metric.date, storeTimezone).format('YYYY-MM');
+//         if (!monthlyData.has(monthKey)) monthlyData.set(monthKey, 0);
+
+//         const count = Number(metric.productsLaunched) || 0;
+//         monthlyData.set(monthKey, monthlyData.get(monthKey) + count);
+//       });
+//     }
+
+//     // 5. Fetch "Live" Data from Shopify (If range includes today)
+//     if (endMoment.isSameOrAfter(today)) {
+//       let pageInfo = null;
+//       // Use UTC ISO string for Shopify API filters
+//       const startTimeISO = today.clone().utc().format();
+
+//       do {
+//         const params = {
+//           limit: 250,
+//           fields: 'id,created_at',
+//           // Only use date filters on the first page; page_info handles it thereafter
+//           ...(pageInfo ? { page_info: pageInfo } : { created_at_min: startTimeISO })
+//         };
+
+//         const products = await shopify.product.list(params);
+
+//         if (products && products.length > 0) {
+//           for (const product of products) {
+//             const productCreatedAt = moment.tz(product.created_at, storeTimezone);
+//             // Double check the product is within the requested endMoment
+//             if (productCreatedAt.isSameOrBefore(endMoment)) {
+//               const monthKey = productCreatedAt.format('YYYY-MM');
+//               monthlyData.set(monthKey, (monthlyData.get(monthKey) || 0) + 1);
+//             }
+//           }
+//         }
+
+//         // Robust Pagination Handling
+//         const linkHeader = products.headers?.link;
+//         if (linkHeader && linkHeader.includes('rel="next"')) {
+//           const match = linkHeader.match(/<[^>]+page_info=([^&>]+)>;\s*rel="next"/);
+//           pageInfo = match ? match[1] : null;
+//         } else {
+//           pageInfo = null;
+//         }
+
+//         // Avoid hitting 429 Rate Limits
+//         if (pageInfo) await new Promise(res => setTimeout(res, 350));
+
+//       } while (pageInfo);
+//     }
+
+//     // 6. Final Formatting & Sorting
+//     const response = Array.from(monthlyData.entries())
+//       .map(([monthKey, count]) => ({
+//         month: monthKey,
+//         monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+//         productsLaunched: count
+//       }))
+//       .sort((a, b) => a.month.localeCompare(b.month));
+
+//     console.log(`✅ Success: ${response.length} months of product data fetched.`);
+
+//     return response;
+
+//   } catch (error) {
+//     console.error('❌ Error in getMonthlyProductsLaunched:', error);
+//     throw new Error(error.message);
+//   }
+// };
+
 export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
   try {
-
     // 1. Strict Parameter Validation
     if (!brandId || !startDate || !endDate) {
       throw new Error('Missing required parameters');
     }
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      throw new Error('Invalid date format');
-    }
-
-    // 2. Fetch Brand & Credentials
-    const brand = await Brand.findById(brandId);
-    if (!brand) throw new Error('Brand not found');
-
-    const access_token = brand.shopifyAccount?.shopifyAccessToken;
-    const shopName = brand.shopifyAccount?.shopName;
-    if (!access_token || !shopName) {
-      throw new Error('Shopify credentials missing');
-    }
-
-    // 3. Initialize Shopify & Get Timezone (With Fallback)
-    const shopify = new Shopify({
-      shopName: shopName,
-      accessToken: access_token,
-      apiVersion: '2024-04'
-    });
-
-    let shopData;
-    try {
-      shopData = await shopify.shop.get();
-    } catch (err) {
-      // Fallbakc for older API versions if 2024-04 fails
-      shopData = await new Shopify({
-        shopName, accessToken: access_token, apiVersion: '2024-01'
-      }).shop.get();
-    }
-
-    const storeTimezone = shopData.iana_timezone || 'UTC';
-    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
-    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
-    const today = moment.tz(storeTimezone).startOf('day');
-
-    const monthlyData = new Map();
-
-    // 4. Fetch Historical Data from AdMetrics (Yesterday and older)
-    const adMetricsEndDate = moment.min(today.clone().subtract(1, 'day'), endMoment);
-
-    if (startMoment.isBefore(today)) {
-      const adMetrics = await AdMetrics.find({
-        brandId,
-        date: {
-          $gte: startMoment.toDate(),
-          $lte: adMetricsEndDate.toDate()
-        }
-      }).sort({ date: 1 });
-
-      adMetrics.forEach(metric => {
-        const monthKey = moment.tz(metric.date, storeTimezone).format('YYYY-MM');
-        if (!monthlyData.has(monthKey)) monthlyData.set(monthKey, 0);
-
-        const count = Number(metric.productsLaunched) || 0;
-        monthlyData.set(monthKey, monthlyData.get(monthKey) + count);
-      });
-    }
-
-    // 5. Fetch "Live" Data from Shopify (If range includes today)
-    if (endMoment.isSameOrAfter(today)) {
-      let pageInfo = null;
-      // Use UTC ISO string for Shopify API filters
-      const startTimeISO = today.clone().utc().format();
-
-      do {
-        const params = {
-          limit: 250,
-          fields: 'id,created_at',
-          // Only use date filters on the first page; page_info handles it thereafter
-          ...(pageInfo ? { page_info: pageInfo } : { created_at_min: startTimeISO })
-        };
-
-        const products = await shopify.product.list(params);
-
-        if (products && products.length > 0) {
-          for (const product of products) {
-            const productCreatedAt = moment.tz(product.created_at, storeTimezone);
-            // Double check the product is within the requested endMoment
-            if (productCreatedAt.isSameOrBefore(endMoment)) {
-              const monthKey = productCreatedAt.format('YYYY-MM');
-              monthlyData.set(monthKey, (monthlyData.get(monthKey) || 0) + 1);
-            }
+    console.log("brandId---->", brandId, "in calculateMonthlyProductLaunches");
+    // 2. Aggregate Data from our dedicated Products collection
+    // This replaces the logic that previously looked at AdMetrics
+    const monthlyStats = await Product.aggregate([
+      {
+        $match: {
+          brandId: new mongoose.Types.ObjectId(brandId),
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
           }
         }
-
-        // Robust Pagination Handling
-        const linkHeader = products.headers?.link;
-        if (linkHeader && linkHeader.includes('rel="next"')) {
-          const match = linkHeader.match(/<[^>]+page_info=([^&>]+)>;\s*rel="next"/);
-          pageInfo = match ? match[1] : null;
-        } else {
-          pageInfo = null;
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 }
         }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
 
-        // Avoid hitting 429 Rate Limits
-        if (pageInfo) await new Promise(res => setTimeout(res, 350));
+    // 3. Final Formatting
+    const response = monthlyStats.map(item => ({
+      month: item._id,
+      monthName: moment(item._id + '-01').format('MMM-YYYY'),
+      productsLaunched: item.count
+    }));
 
-      } while (pageInfo);
-    }
-
-    // 6. Final Formatting & Sorting
-    const response = Array.from(monthlyData.entries())
-      .map(([monthKey, count]) => ({
-        month: monthKey,
-        monthName: moment(monthKey + '-01').format('MMM-YYYY'),
-        productsLaunched: count
-      }))
-      .sort((a, b) => a.month.localeCompare(b.month));
-
-    console.log(`✅ Success: ${response.length} months of product data fetched.`);
-
+    console.log(`✅ Success: ${response.length} months of data fetched from local DB.`);
     return response;
 
   } catch (error) {
-    console.error('❌ Error in getMonthlyProductsLaunched:', error);
+    console.error('❌ Error in calculateMonthlyProductLaunches:', error);
     throw new Error(error.message);
   }
 };
 
+export const syncBrandProducts = async (brandId) => {
+  const brand = await Brand.findById(brandId);
+  if (!brand) throw new Error('Brand not found');
+
+  const { shopifyAccessToken: access_token, shopName } = brand.shopifyAccount || {};
+  if (!access_token || !shopName) throw new Error('Shopify credentials missing');
+
+  const shopify = new Shopify({
+    shopName,
+    accessToken: access_token,
+    apiVersion: '2024-04'
+  });
+
+  // Calculate the 2-year cutoff
+  const twoYearsAgo = moment().subtract(2, 'years').toISOString();
+  let pageInfo = null;
+
+  do {
+    const params = {
+      limit: 250,
+      fields: 'id,title,image,variants,created_at',
+      ...(pageInfo ? { page_info: pageInfo } : { created_at_min: twoYearsAgo })
+    };
+
+    const products = await shopify.product.list(params);
+
+    if (products.length > 0) {
+      const bulkOps = products.map(p => ({
+        updateOne: {
+          filter: { shopifyProductId: String(p.id) },
+          update: {
+            brandId: brand._id,
+            title: p.title,
+            image: p.image?.src || null,
+            price: p.variants?.[0]?.price || 0,
+            createdAt: new Date(p.created_at)
+          },
+          upsert: true
+        }
+      }));
+      await Product.bulkWrite(bulkOps);
+    }
+
+    // Pagination
+    const linkHeader = products.headers?.link;
+    pageInfo = linkHeader?.includes('rel="next"')
+      ? linkHeader.match(/page_info=([^&>]+)/)[1]
+      : null;
+
+    if (pageInfo) await new Promise(res => setTimeout(res, 350));
+  } while (pageInfo);
+};
 
 export const getMonthlyProductLaunches = async (req, res) => {
   try {
     const { brandId } = req.params;
     const { startDate, endDate } = req.body;
+
+    // 1. Chek if we have ANY data for this brand in our local DB
+    const productCount = await Product.countDocuments({ brandId });
+
+    if (productCount === 0) {
+      console.log(`No data found for brand ${brandId}. Starting initial sync...`);
+
+      // 2. Perform the initial 2-year backfill
+      // We 'await' here because the user needs this data for the current request
+      await syncBrandProducts(brandId);
+    }
+    console.log("productCount---->", productCount);
 
     const data = await calculateMonthlyProductLaunches(
       brandId,
@@ -1052,11 +1162,11 @@ export const syncCustomers = async (req, res) => {
 
       for (const edge of data.customers.edges) {
         const customerNode = edge.node;
-        
+
         // Extract customer ID (remove 'gid://shopify/Customer/' prefix)
-        const shopifyCustomerId = customerNode.legacyResourceId?.toString() || 
-                                  customerNode.id?.split('/').pop() || 
-                                  null;
+        const shopifyCustomerId = customerNode.legacyResourceId?.toString() ||
+          customerNode.id?.split('/').pop() ||
+          null;
 
         if (!shopifyCustomerId) {
           console.warn('⚠️ Skipping customer without ID:', customerNode);
@@ -1110,7 +1220,7 @@ export const syncCustomers = async (req, res) => {
 
       for (const customerData of customersToProcess) {
         const existingCustomer = existingCustomersMap.get(customerData.shopifyCustomerId);
-        
+
         if (existingCustomer) {
           // Customer exists - prepare update operation
           customersToUpdate.push({
@@ -1180,7 +1290,7 @@ export const syncCustomers = async (req, res) => {
             totalDuplicates += duplicateErrors.length;
             const successfulInserts = customersToInsert.length - duplicateErrors.length;
             totalCreated += successfulInserts;
-            
+
             // Try to update the duplicates
             for (const writeError of duplicateErrors) {
               const failedCustomer = customersToInsert[writeError.index];
@@ -1223,9 +1333,9 @@ export const syncCustomers = async (req, res) => {
       // Update pagination info for next iteration
       hasNextPage = data.customers.pageInfo?.hasNextPage || false;
       cursor = data.customers.pageInfo?.endCursor || null;
-      
+
       console.log(`✅ Page ${pageCount} completed. Progress: ${totalSynced} customers synced so far${hasNextPage ? ` (more pages to fetch...)` : ' (all pages fetched)'}`);
-      
+
       // Rate limiting - wait 500ms between requests to avoid hitting Shopify rate limits
       if (hasNextPage) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -1270,7 +1380,7 @@ export const getCustomers = async (req, res) => {
 
     // Build query
     const query = { brandId };
-    
+
     // Add search functionality
     if (search) {
       query.$or = [
@@ -1398,9 +1508,9 @@ export const exportCustomersToExcel = async (req, res) => {
       .lean();
 
     if (!customers || customers.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No customers found for this brand' 
+      return res.status(404).json({
+        success: false,
+        error: 'No customers found for this brand'
       });
     }
 
@@ -1425,7 +1535,7 @@ export const exportCustomersToExcel = async (req, res) => {
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
-    
+
     // Create worksheet with explicit options to preserve all columns
     const worksheet = XLSX.utils.json_to_sheet(excelData, {
       header: [

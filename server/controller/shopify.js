@@ -836,248 +836,101 @@ const CUSTOMERS_QUERY = `
   }
 `;
 
-// export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
-//   try {
+const makeGraphQLRqst = async (shopName, accessToken, query, variables) => {
+  const url = `https://${shopName}/admin/api/2024-10/graphql.json`; // Updated API version
+  const response = await axios.post(
+    url,
+    { query, variables },
+    {
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
-//     // 1. Strict Parameter Validation
-//     if (!brandId || !startDate || !endDate) {
-//       throw new Error('Missing required parameters');
-//     }
-
-//     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-//     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-//       throw new Error('Invalid date format');
-//     }
-
-//     // 2. Fetch Brand & Credentials
-//     const brand = await Brand.findById(brandId);
-//     if (!brand) throw new Error('Brand not found');
-
-//     const access_token = brand.shopifyAccount?.shopifyAccessToken;
-//     const shopName = brand.shopifyAccount?.shopName;
-//     if (!access_token || !shopName) {
-//       throw new Error('Shopify credentials missing');
-//     }
-
-//     // 3. Initialize Shopify & Get Timezone (With Fallback)
-//     const shopify = new Shopify({
-//       shopName: shopName,
-//       accessToken: access_token,
-//       apiVersion: '2024-04'
-//     });
-
-//     let shopData;
-//     try {
-//       shopData = await shopify.shop.get();
-//     } catch (err) {
-//       // Fallbakc for older API versions if 2024-04 fails
-//       shopData = await new Shopify({
-//         shopName, accessToken: access_token, apiVersion: '2024-01'
-//       }).shop.get();
-//     }
-
-//     const storeTimezone = shopData.iana_timezone || 'UTC';
-//     const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
-//     const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
-//     const today = moment.tz(storeTimezone).startOf('day');
-
-//     const monthlyData = new Map();
-
-//     // 4. Fetch Historical Data from AdMetrics (Yesterday and older)
-//     const adMetricsEndDate = moment.min(today.clone().subtract(1, 'day'), endMoment);
-
-//     if (startMoment.isBefore(today)) {
-//       const adMetrics = await AdMetrics.find({
-//         brandId,
-//         date: {
-//           $gte: startMoment.toDate(),
-//           $lte: adMetricsEndDate.toDate()
-//         }
-//       }).sort({ date: 1 });
-
-//       adMetrics.forEach(metric => {
-//         const monthKey = moment.tz(metric.date, storeTimezone).format('YYYY-MM');
-//         if (!monthlyData.has(monthKey)) monthlyData.set(monthKey, 0);
-
-//         const count = Number(metric.productsLaunched) || 0;
-//         monthlyData.set(monthKey, monthlyData.get(monthKey) + count);
-//       });
-//     }
-
-//     // 5. Fetch "Live" Data from Shopify (If range includes today)
-//     if (endMoment.isSameOrAfter(today)) {
-//       let pageInfo = null;
-//       // Use UTC ISO string for Shopify API filters
-//       const startTimeISO = today.clone().utc().format();
-
-//       do {
-//         const params = {
-//           limit: 250,
-//           fields: 'id,created_at',
-//           // Only use date filters on the first page; page_info handles it thereafter
-//           ...(pageInfo ? { page_info: pageInfo } : { created_at_min: startTimeISO })
-//         };
-
-//         const products = await shopify.product.list(params);
-
-//         if (products && products.length > 0) {
-//           for (const product of products) {
-//             const productCreatedAt = moment.tz(product.created_at, storeTimezone);
-//             // Double check the product is within the requested endMoment
-//             if (productCreatedAt.isSameOrBefore(endMoment)) {
-//               const monthKey = productCreatedAt.format('YYYY-MM');
-//               monthlyData.set(monthKey, (monthlyData.get(monthKey) || 0) + 1);
-//             }
-//           }
-//         }
-
-//         // Robust Pagination Handling
-//         const linkHeader = products.headers?.link;
-//         if (linkHeader && linkHeader.includes('rel="next"')) {
-//           const match = linkHeader.match(/<[^>]+page_info=([^&>]+)>;\s*rel="next"/);
-//           pageInfo = match ? match[1] : null;
-//         } else {
-//           pageInfo = null;
-//         }
-
-//         // Avoid hitting 429 Rate Limits
-//         if (pageInfo) await new Promise(res => setTimeout(res, 350));
-
-//       } while (pageInfo);
-//     }
-
-//     // 6. Final Formatting & Sorting
-//     const response = Array.from(monthlyData.entries())
-//       .map(([monthKey, count]) => ({
-//         month: monthKey,
-//         monthName: moment(monthKey + '-01').format('MMM-YYYY'),
-//         productsLaunched: count
-//       }))
-//       .sort((a, b) => a.month.localeCompare(b.month));
-
-//     console.log(`✅ Success: ${response.length} months of product data fetched.`);
-
-//     return response;
-
-//   } catch (error) {
-//     console.error('❌ Error in getMonthlyProductsLaunched:', error);
-//     throw new Error(error.message);
-//   }
-// };
+  if (response.data.errors) {
+    throw new Error(`GraphQL Error: ${JSON.stringify(response.data.errors)}`);
+  }
+  return response.data.data;
+};
 
 export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
   try {
-    // 1. Strict Parameter Validation
-    if (!brandId || !startDate || !endDate) {
-      throw new Error('Missing required parameters');
-    }
-    console.log("brandId---->", brandId, "in calculateMonthlyProductLaunches");
-    // 2. Aggregate Data from our dedicated Products collection
-    // This replaces the logic that previously looked at AdMetrics
-    const monthlyStats = await Product.aggregate([
-      {
-        $match: {
-          brandId: new mongoose.Types.ObjectId(brandId),
-          createdAt: {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate)
+    const brand = await Brand.findById(brandId);
+    const { shopifyAccessToken: access_token, shopName } = brand.shopifyAccount || {};
+    const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    const shopResponse = await axios.get(`https://${cleanShopName}/admin/api/2024-10/shop.json`, {
+      headers: { 'X-Shopify-Access-Token': access_token }
+    });
+    const storeTimezone = shopResponse.data.shop.iana_timezone || 'UTC';
+
+    // Set boundaries
+    const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
+    const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
+    
+    // 1. Fetch EVERYTHING from Shopify via GraphQL
+    // Since your DB is missing products (like Shrinathji and Vana Paksi), 
+    // we fetch directly from Shopify to ensure 100% accuracy.
+    
+    let allProducts = [];
+    let hasNextPage = true;
+    let cursor = null;
+
+    // We search the entire range provided in the request
+    const queryStr = `created_at:>=${startMoment.utc().toISOString()} AND created_at:<=${endMoment.utc().toISOString()}`;
+
+    while (hasNextPage) {
+      const PRODUCT_QUERY = `
+        query getProducts($first: Int!, $after: String, $query: String!) {
+          products(first: $first, after: $after, query: $query) {
+            pageInfo { hasNextPage endCursor }
+            edges { node { createdAt } }
           }
         }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id": 1 } }
-    ]);
+      `;
 
-    // 3. Final Formatting
-    const response = monthlyStats.map(item => ({
-      month: item._id,
-      monthName: moment(item._id + '-01').format('MMM-YYYY'),
-      productsLaunched: item.count
-    }));
+      const gqlData = await makeGraphQLRqst(cleanShopName, access_token, PRODUCT_QUERY, {
+        first: 250,
+        after: cursor,
+        query: queryStr
+      });
 
-    console.log(`✅ Success: ${response.length} months of data fetched from local DB.`);
-    return response;
+      const edges = gqlData?.products?.edges || [];
+      allProducts.push(...edges);
 
-  } catch (error) {
-    console.error('❌ Error in calculateMonthlyProductLaunches:', error);
-    throw new Error(error.message);
-  }
-};
-
-export const syncBrandProducts = async (brandId) => {
-  const brand = await Brand.findById(brandId);
-  if (!brand) throw new Error('Brand not found');
-
-  const { shopifyAccessToken: access_token, shopName } = brand.shopifyAccount || {};
-  if (!access_token || !shopName) throw new Error('Shopify credentials missing');
-
-  const shopify = new Shopify({
-    shopName,
-    accessToken: access_token,
-    apiVersion: '2024-04'
-  });
-
-  // Calculate the 2-year cutoff
-  const twoYearsAgo = moment().subtract(2, 'years').toISOString();
-  let pageInfo = null;
-
-  do {
-    const params = {
-      limit: 250,
-      fields: 'id,title,image,variants,created_at',
-      ...(pageInfo ? { page_info: pageInfo } : { created_at_min: twoYearsAgo })
-    };
-
-    const products = await shopify.product.list(params);
-
-    if (products.length > 0) {
-      const bulkOps = products.map(p => ({
-        updateOne: {
-          filter: { shopifyProductId: String(p.id) },
-          update: {
-            brandId: brand._id,
-            title: p.title,
-            image: p.image?.src || null,
-            price: p.variants?.[0]?.price || 0,
-            createdAt: new Date(p.created_at)
-          },
-          upsert: true
-        }
-      }));
-      await Product.bulkWrite(bulkOps);
+      hasNextPage = gqlData?.products?.pageInfo?.hasNextPage;
+      cursor = gqlData?.products?.pageInfo?.endCursor;
     }
 
-    // Pagination
-    const linkHeader = products.headers?.link;
-    pageInfo = linkHeader?.includes('rel="next"')
-      ? linkHeader.match(/page_info=([^&>]+)/)[1]
-      : null;
+    // 2. Group by Month using Store Timezone
+    const monthlyMap = new Map();
+    
+    allProducts.forEach(edge => {
+      const monthKey = moment.tz(edge.node.createdAt, storeTimezone).format('YYYY-MM');
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + 1);
+    });
 
-    if (pageInfo) await new Promise(res => setTimeout(res, 350));
-  } while (pageInfo);
+    // 3. Format Response
+    return Array.from(monthlyMap.entries())
+      .map(([monthKey, count]) => ({
+        month: monthKey,
+        monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+        productsLaunched: count
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+  } catch (error) {
+    console.error('❌ Error in calculation:', error.message);
+    throw error;
+  }
 };
 
 export const getMonthlyProductLaunches = async (req, res) => {
   try {
     const { brandId } = req.params;
     const { startDate, endDate } = req.body;
-
-    // 1. Chek if we have ANY data for this brand in our local DB
-    const productCount = await Product.countDocuments({ brandId });
-
-    if (productCount === 0) {
-      console.log(`No data found for brand ${brandId}. Starting initial sync...`);
-
-      // 2. Perform the initial 2-year backfill
-      // We 'await' here because the user needs this data for the current request
-      await syncBrandProducts(brandId);
-    }
-    console.log("productCount---->", productCount);
 
     const data = await calculateMonthlyProductLaunches(
       brandId,

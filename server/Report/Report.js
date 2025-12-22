@@ -70,26 +70,34 @@ export const fetchTotalSales = async (brandId) => {
       prepaidOrderCount: 0,
     };
     
+    // Calculate time range ONCE outside the loop to ensure consistency
+    // Use exclusive end boundary to prevent overlap: startTime inclusive, endTime exclusive
+    const startTime = startOfYesterday.clone().utc().toISOString();
+    const endTime = endOfYesterday.clone().add(1, 'day').startOf('day').utc().toISOString();
+    const queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
+    
+    console.log(`📅 Fetching orders for ${dateStr} (${storeTimezone}): ${startTime} to ${endTime}`);
+    
     // Fetch orders using GraphQL with pagination
     let hasNextPage = true;
     let cursor = null;
     const seenOrderIds = new Set();
+    let pageCount = 0;
+    let totalOrdersFetched = 0;
     
     while (hasNextPage) {
-      const startTime = startOfYesterday.utc().toISOString();
-      const endTime = endOfYesterday.clone().add(1, 'day').startOf('day').utc().toISOString();
-      const queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
-      
+      pageCount++;
       const variables = {
         first: 50,
         after: cursor,
-        query: queryString,
+        query: queryString, // Use the same query string for all pages
       };
       
       try {
         const data = await makeGraphQLRequest(cleanShopName, access_token, ORDERS_QUERY, variables);
         
         if (!data?.orders?.edges || data.orders.edges.length === 0) {
+          console.log(`✅ Completed fetching orders. Total pages: ${pageCount}, Total orders: ${totalOrdersFetched}`);
           break;
         }
         
@@ -98,20 +106,32 @@ export const fetchTotalSales = async (brandId) => {
           const graphQLOrder = edge.node;
           const orderId = Number.parseInt(graphQLOrder.legacyResourceId, 10);
           
-          // Skip test orders
-          if (graphQLOrder.test) {
-            continue;
-          }
-          
-          // Check for duplicates
+          // Check for duplicates FIRST (before any other processing)
           if (seenOrderIds.has(orderId)) {
-            console.log(`⚠️  Duplicate order detected: ${orderId}. Skipping.`);
+            console.log(`⚠️  Duplicate order detected: ${orderId} (Page ${pageCount}). Skipping.`);
             continue;
           }
           seenOrderIds.add(orderId);
+          totalOrdersFetched++;
+          
+          // Skip test orders
+          if (graphQLOrder.test) {
+            console.log(`⏭️  Skipping test order: ${orderId}`);
+            continue;
+          }
           
           // Convert GraphQL order to REST-like format
           const order = convertGraphQLOrderToRESTFormat(graphQLOrder);
+          
+          // Validate that the order was actually created on yesterday in the store's timezone
+          // This prevents counting orders from other days due to timezone edge cases
+          const orderCreatedAt = moment.tz(order.created_at, storeTimezone);
+          const orderDate = orderCreatedAt.format('YYYY-MM-DD');
+          
+          if (orderDate !== dateStr) {
+            console.log(`⚠️  Order ${orderId} created on ${orderDate} (expected ${dateStr}) - skipping. This may indicate a timezone issue.`);
+            continue;
+          }
           
           // Calculate gross sales and taxes
           const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
@@ -162,14 +182,124 @@ export const fetchTotalSales = async (brandId) => {
         hasNextPage = data.orders.pageInfo.hasNextPage;
         cursor = data.orders.pageInfo.endCursor;
         
+        console.log(`📄 Page ${pageCount}: Fetched ${data.orders.edges.length} orders, hasNextPage: ${hasNextPage}`);
+        
         // Rate limiting - wait between requests
         await new Promise((resolve) => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error('Error fetching orders via GraphQL:', error);
+        console.error(`❌ Error fetching orders via GraphQL (Page ${pageCount}):`, error.message);
+        
+        // If we have a cursor and it's not the first page, try to continue with retry logic
+        if (cursor && pageCount > 1) {
+          console.log(`🔄 Retrying page ${pageCount} with cursor...`);
+          await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait longer before retry
+          
+          // Retry once before giving up
+          try {
+            const retryVariables = {
+              first: 50,
+              after: cursor,
+              query: queryString,
+            };
+            const retryData = await makeGraphQLRequest(cleanShopName, access_token, ORDERS_QUERY, retryVariables);
+            
+            if (retryData?.orders?.edges && retryData.orders.edges.length > 0) {
+              console.log(`✅ Retry successful for page ${pageCount}`);
+              
+              // Process retried orders
+              for (const edge of retryData.orders.edges) {
+                const graphQLOrder = edge.node;
+                const orderId = Number.parseInt(graphQLOrder.legacyResourceId, 10);
+                
+                // Check for duplicates
+                if (seenOrderIds.has(orderId)) {
+                  console.log(`⚠️  Duplicate order detected in retry: ${orderId}. Skipping.`);
+                  continue;
+                }
+                seenOrderIds.add(orderId);
+                totalOrdersFetched++;
+                
+                // Skip test orders
+                if (graphQLOrder.test) {
+                  continue;
+                }
+                
+                // Convert GraphQL order to REST-like format
+                const order = convertGraphQLOrderToRESTFormat(graphQLOrder);
+                
+                // Validate that the order was actually created on yesterday in the store's timezone
+                const orderCreatedAt = moment.tz(order.created_at, storeTimezone);
+                const orderDate = orderCreatedAt.format('YYYY-MM-DD');
+                
+                if (orderDate !== dateStr) {
+                  console.log(`⚠️  Order ${orderId} created on ${orderDate} (expected ${dateStr}) - skipping in retry.`);
+                  continue;
+                }
+                
+                // Calculate gross sales and taxes
+                const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
+                const { grossSales } = calculateGrossSalesAndTaxes(order, hasRefunds);
+                
+                // Calculate refund amount
+                const { refundAmount, refundCount } = calculateRefundAmount(order);
+                
+                // Get total price from order
+                const totalPrice = Number(order.total_price || 0);
+                
+                // Track payment gateway types (COD and Prepaid)
+                const paymentGateways = order.payment_gateway_names || [];
+                const isCOD = paymentGateways.some(gateway => 
+                  gateway && (gateway.toLowerCase().includes('cod') || 
+                              gateway.toLowerCase().includes('cash on delivery') ||
+                              gateway.toLowerCase().includes('cash_on_delivery'))
+                );
+                const isPrepaid = !isCOD && paymentGateways.length > 0;
+                
+                // Update orderRefund table
+                try {
+                  await ensureOrderRefundExists(brandId, order.id, order.created_at);
+                  if (refundAmount > 0) {
+                    await setOrderRefund(brandId, order.id, refundAmount, refundCount);
+                  }
+                } catch (error) {
+                  console.error(`Error storing order refund info for order ${order.id}:`, error);
+                }
+                
+                // Accumulate sales data
+                yesterdaySales.grossSales += grossSales;
+                yesterdaySales.totalPrice += totalPrice;
+                yesterdaySales.refundAmount += refundAmount;
+                yesterdaySales.orderCount++;
+                
+                // Track COD and prepaid orders (only count non-cancelled orders)
+                if (!order.cancelled_at) {
+                  if (isCOD) {
+                    yesterdaySales.codOrderCount++;
+                  } else if (isPrepaid) {
+                    yesterdaySales.prepaidOrderCount++;
+                  }
+                }
+              }
+              
+              // Update pagination after successful retry
+              hasNextPage = retryData.orders.pageInfo.hasNextPage;
+              cursor = retryData.orders.pageInfo.endCursor;
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              continue;
+            }
+          } catch (retryError) {
+            console.error(`❌ Retry also failed for page ${pageCount}:`, retryError.message);
+          }
+        }
+        
+        // If retry failed or it's the first page, throw the error
         throw error;
       }
     }
+    console.log(yesterdaySales);
+    console.log(`✅ Completed fetching orders for ${dateStr}. Total unique orders processed: ${seenOrderIds.size}, Orders counted: ${yesterdaySales.orderCount}`);
+
     
     // Return array for compatibility
     // Total sales calculation: totalPrice - refundAmount (as per MonthlyReportGraphQL.js)

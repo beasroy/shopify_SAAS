@@ -33,6 +33,7 @@ import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
+
 const app = express();
 const server = createServer(app);
 
@@ -109,7 +110,8 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("68cc2437e78884ea57ff5385","68cc2437e78884ea57ff5382")
+calculateMetricsForSingleBrand("690c8630e8ed87ae2f68d72f","690c8630e8ed87ae2f68d72c")
+
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
 
 //monthlyFetchTotalSales("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")

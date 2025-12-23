@@ -857,6 +857,16 @@ const makeGraphQLRqst = async (shopName, accessToken, query, variables) => {
 
 export const calculateMonthlyProductLaunches = async (brandId, startDate, endDate) => {
   try {
+    if (!brandId || !startDate || !endDate) {
+      throw new Error('Missing required parameters: brandId, startDate, and endDate are required');
+    }
+
+    // Validate date formats
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      throw new Error('Invalid date format. Please use YYYY-MM-DD format');
+    }
+
     const brand = await Brand.findById(brandId);
     const { shopifyAccessToken: access_token, shopName } = brand.shopifyAccount || {};
     const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -869,11 +879,11 @@ export const calculateMonthlyProductLaunches = async (brandId, startDate, endDat
     // Set boundaries
     const startMoment = moment.tz(startDate, storeTimezone).startOf('day');
     const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
-    
+
     // 1. Fetch EVERYTHING from Shopify via GraphQL
     // Since your DB is missing products (like Shrinathji and Vana Paksi), 
     // we fetch directly from Shopify to ensure 100% accuracy.
-    
+
     let allProducts = [];
     let hasNextPage = true;
     let cursor = null;
@@ -906,7 +916,7 @@ export const calculateMonthlyProductLaunches = async (brandId, startDate, endDat
 
     // 2. Group by Month using Store Timezone
     const monthlyMap = new Map();
-    
+
     allProducts.forEach(edge => {
       const monthKey = moment.tz(edge.node.createdAt, storeTimezone).format('YYYY-MM');
       monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + 1);

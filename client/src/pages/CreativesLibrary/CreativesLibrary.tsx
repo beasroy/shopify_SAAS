@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import createAxiosInstance from "../ConversionReportPage/components/axiosInstance";
 import Loader from "@/components/dashboard_component/loader";
-import { format } from "date-fns";
 import { 
   Film, 
   Search,
@@ -15,7 +12,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CreativeCard from "./components/CreativeCard";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { useParams } from "react-router-dom";
 import {
@@ -149,20 +145,8 @@ const CreativesLibrary: React.FC = () => {
   // Ref for infinite scroll observer
   const observerRef = React.useRef<IntersectionObserver | null>(null);
   const lastCardRef = React.useRef<HTMLDivElement | null>(null);
-  const dateFrom = useSelector((state: RootState) => state.date.from);
-  const dateTo = useSelector((state: RootState) => state.date.to);
-  const date = useMemo(() => ({
-      from: dateFrom,
-      to: dateTo
-  }), [dateFrom, dateTo]);
-  
-
 
   const axiosInstance = createAxiosInstance();
-
-    // Create stable date strings for dependency tracking
-    const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
-    const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
 
   const fetchCreatives = async (cursor: string | null = null, reset: boolean = false) => {
     if (reset) {
@@ -176,9 +160,6 @@ const CreativesLibrary: React.FC = () => {
 
     try {
       const requestBody: any = {
-        startDate,
-        endDate,
-        includeAllAds: true,
         limit: 12, // 12 ads per account for nice grid layout
         thumbnailWidth: 600,  // Request 600px width thumbnails
         thumbnailHeight: 600, // Request 600px height thumbnails
@@ -217,13 +198,13 @@ const CreativesLibrary: React.FC = () => {
 
 
 
-  // Fetch creatives when brand or date changes
+  // Fetch creatives when brand changes
   useEffect(() => {
-    if (brandId && startDate && endDate) {
-      console.log("🔄 Date or brand changed, fetching creatives...", { startDate, endDate });
+    if (brandId) {
+      console.log("🔄 Brand changed, fetching creatives...");
       fetchCreatives(null, true);
     }
-  }, [brandId, startDate, endDate]); // Use date strings - simple and reliable!
+  }, [brandId]);
 
   // Infinite scroll: Set up intersection observer
   useEffect(() => {
@@ -393,7 +374,7 @@ const CreativesLibrary: React.FC = () => {
                   <SelectItem value="ARCHIVED">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              <DatePickerWithRange />
+    
               
               {/* Metrics Selector */}
               <Sheet>
@@ -671,7 +652,7 @@ const CreativesLibrary: React.FC = () => {
               <p className="text-muted-foreground text-center max-w-md">
                 {searchTerm 
                   ? "Try adjusting your search "
-                  : "No creatives available for the selected date range"}
+                  : "No creatives available"}
               </p>
             </div>
           </CardContent>

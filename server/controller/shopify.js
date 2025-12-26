@@ -1496,3 +1496,566 @@ export const exportCustomersToExcel = async (req, res) => {
   }
 };
 
+
+// export const calculateMonthlyReturningCustomers = async (brandId, startDate, endDate) => {
+//   try {
+//     if (!brandId || !startDate || !endDate) {
+//       throw new Error('brandId, startDate and endDate are required');
+//     }
+
+//     const brand = await Brand.findById(brandId);
+//     if (!brand) throw new Error('Brand not found');
+
+//     const shopify = new Shopify({
+//       shopName: brand.shopifyAccount.shopName,
+//       accessToken: brand.shopifyAccount.shopifyAccessToken,
+//       apiVersion: '2024-04'
+//     });
+
+//     const shopData = await shopify.shop.get();
+//     const storeTimezone = shopData.iana_timezone || 'UTC';
+
+//     const startMoment = moment.tz(startDate, storeTimezone).startOf('month');
+//     const endMoment = moment.tz(endDate, storeTimezone).endOf('month');
+
+//     // Memory-efficient: Only store minimal data
+//     const monthlyCustomers = new Map();
+//     const monthlyOrderCounts = new Map();
+
+//     let pageInfo = null;
+//     let processedCount = 0;
+
+//     do {
+//       const params = {
+//         limit: 250,
+//         status: 'any',
+//         fields: 'created_at,test,cancelled_at,financial_status,customer,email',
+//       };
+
+//       if (pageInfo) {
+//         params.page_info = pageInfo;
+//       } else {
+//         params.created_at_min = startMoment.clone().utc().format();
+//         params.created_at_max = endMoment.clone().utc().format();
+//       }
+
+//       const orders = await shopify.order.list(params);
+//       if (!orders || orders.length === 0) break;
+
+//       // Process immediately without storing full objects
+//       for (const order of orders) {
+//         if (order.test || order.cancelled_at || order.financial_status === 'refunded') continue;
+
+//         const customerKey = order.customer?.id?.toString() || order.email;
+//         if (!customerKey) continue;
+
+//         const orderDate = moment.tz(order.created_at, storeTimezone);
+//         const monthKey = orderDate.format('YYYY-MM');
+
+//         // Initialize month if needed
+//         if (!monthlyCustomers.has(monthKey)) {
+//           monthlyCustomers.set(monthKey, new Set());
+//           monthlyOrderCounts.set(monthKey, new Map());
+//         }
+
+//         monthlyCustomers.get(monthKey).add(customerKey);
+
+//         const orderCounts = monthlyOrderCounts.get(monthKey);
+//         orderCounts.set(customerKey, (orderCounts.get(customerKey) || 0) + 1);
+//       }
+
+//       processedCount += orders.length;
+//       console.log(`Processed ${processedCount} orders...`);
+
+//       // Your improved pagination logic
+//       const linkHeader = orders.headers?.link;
+//       if (linkHeader) {
+//         const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+//         pageInfo = match ? match[1] : null;
+//       } else {
+//         pageInfo = null;
+//       }
+
+//       // Rate limiting
+//       if (pageInfo) await new Promise(r => setTimeout(r, 500));
+
+//     } while (pageInfo);
+
+//     console.log(`Total orders processed: ${processedCount}`);
+
+//     // Calculate returning customers for each month
+//     const sortedMonths = Array.from(monthlyCustomers.keys()).sort();
+//     const result = [];
+//     const cumulativeCustomers = new Set();
+
+//     for (const monthKey of sortedMonths) {
+//       const currentMonthCustomers = monthlyCustomers.get(monthKey);
+//       const orderCounts = monthlyOrderCounts.get(monthKey);
+
+//       const returningCustomers = new Set();
+//       const newCustomers = new Set();
+
+//       for (const customerId of currentMonthCustomers) {
+//         if (cumulativeCustomers.has(customerId)) {
+//           returningCustomers.add(customerId);
+//         } else {
+//           newCustomers.add(customerId);
+//         }
+//       }
+
+//       let returningOrders = 0;
+//       let newOrders = 0;
+
+//       for (const [customerId, orderCount] of orderCounts.entries()) {
+//         if (returningCustomers.has(customerId)) {
+//           returningOrders += orderCount;
+//         } else {
+//           newOrders += orderCount;
+//         }
+//       }
+
+//       const totalOrders = returningOrders + newOrders;
+//       const returningCustomerRate = totalOrders > 0 
+//         ? ((returningOrders / totalOrders) * 100).toFixed(2)
+//         : 0;
+
+//       result.push({
+//         month: monthKey,
+//         monthName: moment(monthKey + '-01').format('MMM YYYY'),
+//         totalOrders: totalOrders,
+//         returningOrders: returningOrders,
+//         newOrders: newOrders,
+//         returningCustomers: returningCustomers.size,
+//         newCustomers: newCustomers.size,
+//         totalUniqueCustomers: currentMonthCustomers.size,
+//         returningCustomerRate: parseFloat(returningCustomerRate)
+//       });
+
+//       currentMonthCustomers.forEach(c => cumulativeCustomers.add(c));
+//     }
+
+//     return result;
+
+//   } catch (error) {
+//     console.error('calculateMonthlyReturningCustomers failed:', error.message);
+//     throw error;
+//   }
+// };
+
+// export const calculateMonthlyReturningCustomers = async (brandId, startDate, endDate) => {
+//   try {
+//     if (!brandId || !startDate || !endDate) {
+//       throw new Error('brandId, startDate and endDate are required');
+//     }
+
+//     const brand = await Brand.findById(brandId);
+//     if (!brand) throw new Error('Brand not found');
+
+//     const shopify = new Shopify({
+//       shopName: brand.shopifyAccount.shopName,
+//       accessToken: brand.shopifyAccount.shopifyAccessToken,
+//       apiVersion: '2024-04'
+//     });
+
+//     const startMoment = moment.utc(startDate).startOf('month');
+//     const endMoment = moment.utc(endDate).endOf('month');
+
+//     const monthlyCustomers = new Map(); // monthKey => Set of customer IDs
+
+//     let pageInfo = null;
+//     let processedCount = 0;
+
+//     do {
+//       const params = {
+//         limit: 250,
+//         status: 'any',
+//         fields: 'created_at,test,cancelled_at,financial_status,customer,email',
+//       };
+
+//       if (pageInfo) {
+//         params.page_info = pageInfo;
+//       } else {
+//         params.created_at_min = startMoment.format();
+//         params.created_at_max = endMoment.format();
+//       }
+
+//       const orders = await shopify.order.list(params);
+//       if (!orders || orders.length === 0) break;
+
+//       for (const order of orders) {
+//         if (order.test || order.cancelled_at || order.financial_status === 'refunded') continue;
+
+//         const customerKey = order.customer?.id?.toString() || order.email;
+//         if (!customerKey) continue;
+
+//         const orderDate = moment.utc(order.created_at);
+//         const monthKey = orderDate.format('YYYY-MM');
+
+//         if (!monthlyCustomers.has(monthKey)) {
+//           monthlyCustomers.set(monthKey, new Set());
+//         }
+
+//         monthlyCustomers.get(monthKey).add(customerKey);
+//       }
+
+//       processedCount += orders.length;
+
+//       const linkHeader = orders.headers?.link;
+//       if (linkHeader) {
+//         const match = linkHeader.match(/<[^>]*page_info=([^&>]*)[^>]*>; rel="next"/);
+//         pageInfo = match ? match[1] : null;
+//       } else {
+//         pageInfo = null;
+//       }
+
+//       if (pageInfo) await new Promise(r => setTimeout(r, 500));
+
+//     } while (pageInfo);
+
+//     // Calculate returning customer percentage for each month
+//     const sortedMonths = Array.from(monthlyCustomers.keys()).sort();
+//     const result = [];
+//     const cumulativeCustomers = new Set();
+
+//     for (const monthKey of sortedMonths) {
+//       const currentMonthCustomers = monthlyCustomers.get(monthKey);
+
+//       let returningCount = 0;
+
+//       for (const customerId of currentMonthCustomers) {
+//         if (cumulativeCustomers.has(customerId)) {
+//           returningCount++;
+//         }
+//       }
+
+//       const totalCustomers = currentMonthCustomers.size;
+//       const returningPercentage = totalCustomers > 0 
+//         ? ((returningCount / totalCustomers) * 100).toFixed(2)
+//         : 0;
+
+//       result.push({
+//         month: monthKey,
+//         monthName: moment(monthKey + '-01').format('MMM YYYY'),
+//         returningCustomerPercentage: parseFloat(returningPercentage)
+//       });
+
+//       // Add current month's customers to cumulative set
+//       currentMonthCustomers.forEach(c => cumulativeCustomers.add(c));
+//     }
+
+//     return result;
+
+//   } catch (error) {
+//     console.error('calculateMonthlyReturningCustomers failed:', error.message);
+//     throw error;
+//   }
+// };
+
+
+// IMPORTANT: This function is used to calculate the returning customer percentage for each month
+export const calculateMonthlyReturningCustomers = async (brandId, startDate, endDate) => {
+  try {
+    if (!brandId || !startDate || !endDate) {
+      throw new Error('brandId, startDate and endDate are required');
+    }
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) throw new Error('Brand not found');
+
+    const shopName = brand.shopifyAccount.shopName;
+    const accessToken = brand.shopifyAccount.shopifyAccessToken;
+    const apiVersion = '2024-04';
+
+    const startMoment = moment.utc(startDate).startOf('month');
+    const endMoment = moment.utc(endDate).endOf('month');
+
+    const monthlyCustomers = new Map();
+    const customerIds = new Set();
+
+    let hasNextPage = true;
+    let cursor = null;
+    let processedCount = 0;
+
+    console.log('Step 1: Fetching orders in selected date range...');
+
+    // Step 1: Fetch orders in selected date range only
+    while (hasNextPage) {
+      const query = `
+        query ($cursor: String, $query: String!) {
+          orders(first: 250, after: $cursor, query: $query, sortKey: CREATED_AT) {
+            edges {
+              node {
+                id
+                createdAt
+                test
+                cancelledAt
+                displayFinancialStatus
+                customer {
+                  id
+                  email
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `;
+
+      // Correct Shopify query syntax (space = AND)
+      const queryString = `created_at:>=${startMoment.toISOString()} created_at:<=${endMoment.toISOString()}`;
+
+      const variables = {
+        cursor,
+        query: queryString
+      };
+
+      const response = await fetch(`https://${shopName}/admin/api/${apiVersion}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': accessToken,
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.errors) {
+        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+      }
+
+      const orders = result.data.orders.edges;
+
+      for (const { node: order } of orders) {
+        if (order.test || order.cancelledAt || order.displayFinancialStatus === 'REFUNDED') {
+          continue;
+        }
+
+
+        let customerKey;
+        if (order.customer?.id) {
+          customerKey = order.customer.id;
+        } else if (order.customer?.email) {
+          customerKey = `email:${order.customer.email}`;
+        } else {
+          continue; // Skip orders without customer info
+        }
+
+        customerIds.add(customerKey);
+
+        const orderDate = moment.utc(order.createdAt);
+        const monthKey = orderDate.format('YYYY-MM');
+
+        if (!monthlyCustomers.has(monthKey)) {
+          monthlyCustomers.set(monthKey, new Set());
+        }
+
+        monthlyCustomers.get(monthKey).add(customerKey);
+      }
+
+      processedCount += orders.length;
+      if (processedCount % 500 === 0) {
+        console.log(`Processed ${processedCount} orders in date range...`);
+      }
+
+      hasNextPage = result.data.orders.pageInfo.hasNextPage;
+      cursor = result.data.orders.pageInfo.endCursor;
+
+      if (hasNextPage) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    console.log(`Orders in range: ${processedCount}`);
+    console.log(`Unique customers in range: ${customerIds.size}`);
+
+    // Step 2: For each customer, get their first VALID order date
+    console.log('Step 2: Fetching first valid order for each customer...');
+
+    const customerFirstOrder = new Map();
+    const customerIdsArray = Array.from(customerIds);
+    const BATCH_SIZE = 20; // Reduced batch size to avoid GraphQL cost limits
+
+    for (let i = 0; i < customerIdsArray.length; i += BATCH_SIZE) {
+      const batch = customerIdsArray.slice(i, i + BATCH_SIZE);
+
+      // Separate email-based customers from ID-based customers
+      const idBasedCustomers = batch.filter(key => !key.startsWith('email:'));
+      const emailBasedCustomers = batch.filter(key => key.startsWith('email:'));
+
+      // Build query for ID-based customers only
+      if (idBasedCustomers.length > 0) {
+        const customerQueries = idBasedCustomers.map((customerId, index) => {
+          // Ensure proper GID format
+          const gid = customerId.startsWith('gid://shopify/Customer/')
+            ? customerId
+            : `gid://shopify/Customer/${customerId.replace(/\D/g, '')}`;
+
+          // Fetch more orders to find first valid one
+          return `
+            customer${index}: customer(id: "${gid}") {
+              id
+              orders(first: 10, sortKey: CREATED_AT, reverse: false) {
+                edges {
+                  node {
+                    createdAt
+                    test
+                    cancelledAt
+                    displayFinancialStatus
+                  }
+                }
+              }
+            }
+          `;
+        }).join('\n');
+
+        const query = `
+          query {
+            ${customerQueries}
+          }
+        `;
+
+        try {
+          const response = await fetch(`https://${shopName}/admin/api/${apiVersion}/graphql.json`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': accessToken,
+            },
+            body: JSON.stringify({ query }),
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to fetch customer batch ${i}-${i + batch.length}: ${response.status}`);
+            await new Promise(r => setTimeout(r, 1000));
+            continue;
+          }
+
+          const result = await response.json();
+
+          if (result.errors) {
+            console.error(`GraphQL errors for batch ${i}: ${JSON.stringify(result.errors)}`);
+            continue;
+          }
+
+          // Find first VALID order (not test/cancelled/refunded)
+          idBasedCustomers.forEach((customerId, index) => {
+            const customerData = result.data[`customer${index}`];
+
+            if (customerData && customerData.orders.edges.length > 0) {
+              // Find first valid order
+              const firstValidOrder = customerData.orders.edges.find(({ node: order }) =>
+                !order.test &&
+                !order.cancelledAt &&
+                order.displayFinancialStatus !== 'REFUNDED'
+              );
+
+              if (firstValidOrder) {
+                customerFirstOrder.set(customerId, moment.utc(firstValidOrder.node.createdAt));
+              }
+            }
+          });
+
+        } catch (error) {
+          console.error(`Error processing batch ${i}:`, error.message);
+        }
+      }
+
+      // For email-based customers, we cant query by email in GraphQL efficiently
+      // Mark them as "unknown" first order date (treat as new customers)
+      emailBasedCustomers.forEach(emailKey => {
+        // We'll handle these separately or mark as new
+        // Option: Skip them or fetch via REST API
+        console.log(`Skipping email-based customer: ${emailKey}`);
+      });
+
+      const progress = Math.min(i + BATCH_SIZE, customerIdsArray.length);
+      console.log(`Processed ${progress}/${customerIdsArray.length} customers (${((progress / customerIdsArray.length) * 100).toFixed(1)}%)`);
+
+      // Rate limiting
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    console.log(`First orders found for ${customerFirstOrder.size} customers`);
+
+    // Step 3: Calculate returning customer percentage for each month
+    const sortedMonths = Array.from(monthlyCustomers.keys()).sort();
+    const result = [];
+
+    for (const monthKey of sortedMonths) {
+      const currentMonthCustomers = monthlyCustomers.get(monthKey);
+      const monthStart = moment.utc(monthKey + '-01').startOf('month');
+
+      let returningCount = 0;
+      let newCount = 0;
+      let unknownCount = 0; // Email-based customers without first order data
+
+      for (const customerId of currentMonthCustomers) {
+        const firstOrderDate = customerFirstOrder.get(customerId);
+
+        if (firstOrderDate) {
+          if (firstOrderDate.isBefore(monthStart)) {
+            returningCount++;
+          } else {
+            newCount++;
+          }
+        } else {
+          // No first order found (email-based or no valid orders)
+          unknownCount++;
+          newCount++; // Treat as new for percentage calculation
+        }
+      }
+
+      const totalCustomers = currentMonthCustomers.size;
+      const returningPercentage = totalCustomers > 0
+        ? ((returningCount / totalCustomers) * 100).toFixed(2)
+        : 0;
+
+        // totalCustomers: Total number of unique customers who placed at least one valid order in that month (within the selected date range).
+        // returningCustomers: Customers who had at least one valid order BEFORE the start of this month and also ordered again in this month.
+        // newCustomers: Customers whose first-ever valid order happens in the same month.
+        
+        // unknownCustomers: Customers for whom we could not determine the first - ever order date.
+
+          result.push({
+            month: monthKey,
+            monthName: moment(monthKey + '-01').format('MMM YYYY'),
+            totalCustomers: totalCustomers,
+            returningCustomers: returningCount,
+            newCustomers: newCount,
+            unknownCustomers: unknownCount,
+            returningCustomerPercentage: parseFloat(returningPercentage)
+          });
+    }
+
+    console.log('Calculation complete!');
+    return result;
+
+  } catch (error) {
+    console.error('calculateMonthlyReturningCustomers failed:', error.message);
+    throw error;
+  }
+};
+
+export const getMonthlyReturnedCustomers = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate } = req.body;
+    const data = await calculateMonthlyReturningCustomers(brandId, startDate, endDate);
+    console.log('data in getMonthlyReturnedCustomers--->:', data);
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error('Error fetching monthly purchased products:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}

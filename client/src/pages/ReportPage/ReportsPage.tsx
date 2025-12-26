@@ -56,7 +56,7 @@ const ReportsPage: React.FC = () => {
   // Get columns based on active tab - AOV, Avg Items/Order, COD Orders, and Prepaid Orders are only available for monthly metrics
   const getColumnsForTab = useCallback((tab: string) => {
     if (tab === 'month wise') {
-      return [...baseColumns, 'AOV', 'Avg Items/Order', 'COD Orders', 'Prepaid Orders', 'Products Launched'];
+      return [...baseColumns, 'AOV', 'Avg Items/Order', 'COD Orders', 'Prepaid Orders', 'Products Launched', 'Returned Customers'];
     }
     return baseColumns;
   }, []);

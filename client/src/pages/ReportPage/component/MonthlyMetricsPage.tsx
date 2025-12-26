@@ -44,17 +44,20 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const [aovData, setAovData] = useState<any[]>([]);
   const [paymentOrdersData, setPaymentOrdersData] = useState<any[]>([]);
   const [productsLaunchedData, setProductsLaunchedData] = useState<any[]>([]);
+  const [returnedCustomers, setReturnedCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiErrors, setApiErrors] = useState<{
     ecommerce: boolean;
     aov: boolean;
     paymentOrders: boolean;
     productsLaunched: boolean;
+    returnedCustomers: boolean;
   }>({
     ecommerce: false,
     aov: false,
     paymentOrders: false,
-    productsLaunched: false
+    productsLaunched: false,
+    returnedCustomers: false
   });
   const { brandId } = useParams();
 
@@ -152,6 +155,27 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       }
     });
 
+    // Create maps of returned customers data by month for quick lookup
+    const returnedCustomersMap = new Map<string, number>();
+    console.log('Returned Customers Data for mapping:', returnedCustomers);
+    returnedCustomers.forEach((returnedCustomersItem) => {
+      // Match by monthName (e.g., "Nov-2025") or month (e.g., "2025-11")
+      let monthKey = '';
+      if (returnedCustomersItem.monthName) {
+        monthKey = returnedCustomersItem.monthName;
+        returnedCustomersMap.set(monthKey, returnedCustomersItem.returnedCustomers || 0);
+        console.log(`Mapped Returned Customers: ${returnedCustomersItem.monthName} = ${returnedCustomersItem.returnedCustomers}`);
+      }
+      if (returnedCustomersItem.month) {
+        // Convert "2025-11" to "Nov-2025" format for matching
+        const date = new Date(returnedCustomersItem.month + '-01');
+        const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
+        monthKey = monthName;
+        returnedCustomersMap.set(monthKey, returnedCustomersItem.returnedCustomers || 0);
+        console.log(`Mapped Returned Customers from month: ${returnedCustomersItem.month} -> ${monthName} = ${returnedCustomersItem.returnedCustomers}`);
+      }
+    });
+
     console.log('Ecommerce Data months:', data.map(item => item.Month));
     console.log('AOV Map keys:', Array.from(aovMap.keys()));
     console.log('Payment Orders Map keys:', Array.from(codOrderMap.keys()));
@@ -165,6 +189,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.get(monthName) ?? 0);
       const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.get(monthName) ?? 0);
       const productsLaunched = apiErrors.productsLaunched ? undefined : (productsLaunchedMap.get(monthName) ?? 0);
+      const returnedCustomers = apiErrors.returnedCustomers ? undefined : (returnedCustomersMap.get(monthName) ?? 0);
       if (typeof aov === 'number' && aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
       }
@@ -173,6 +198,9 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       }
       if (typeof productsLaunched === 'number' && productsLaunched > 0) {
         console.log(`Matched Products Launched for ${monthName}: ${productsLaunched}`);
+      }
+      if (typeof returnedCustomers === 'number' && returnedCustomers > 0) {
+        console.log(`Matched Returned Customers for ${monthName}: ${returnedCustomers}`);
       }
 
       return {
@@ -189,7 +217,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         averageItemsPerOrder: averageItemsPerOrder,
         codOrderCount: codOrderCount,
         prepaidOrderCount: prepaidOrderCount,
-        productsLaunched: productsLaunched
+        productsLaunched: productsLaunched,
+        returnedCustomers: returnedCustomers
       };
     });
   }, [data, aovData, paymentOrdersData, apiErrors]);
@@ -270,7 +299,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           )
         );
       }
-
+      // Fetch products launched data for primary date range
       if (startDate && endDate) {
         promises.push(
           axiosInstance.post(
@@ -283,16 +312,30 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           )
         );
       }
+      // Fetch items sold data on monthly basis
+      if (startDate && endDate) {
+        promises.push(
+          axiosInstance.post(
+            `/api/shopify/monthly-returned-customers/${brandId}`,
+            {
+              startDate: startDate,
+              endDate: endDate
+            },
+            { withCredentials: true }
+          )
+        );
+      }
 
       // Use Promise.allSettled to handle each API independently
       const results = await Promise.allSettled(promises);
-
+      console.log('Returning Customer ------->:', results[4]);
       // Reset error states
       setApiErrors({
         ecommerce: false,
         aov: false,
         paymentOrders: false,
-        productsLaunched: false
+        productsLaunched: false,
+        returnedCustomers: false
       });
 
       // Process ecommerce metrics response (index 0)
@@ -381,6 +424,24 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         }
       }
 
+      // Process returned customers response (index 4)
+      if (results[4]) {
+        if (results[4].status === 'fulfilled') {
+          const returnedCustomersResponse = results[4].value;
+          console.log('Returned Customers API Response:', returnedCustomersResponse.data);
+          if (returnedCustomersResponse.data.success && returnedCustomersResponse.data.data) {
+            console.log('Returned Customers Data:', returnedCustomersResponse.data.data);
+            setReturnedCustomers(returnedCustomersResponse.data.data);
+          }
+        } else {
+          // Returned Customers API failed
+          console.error('Returned Customers API failed:', results[4].reason);
+          setApiErrors(prev => ({ ...prev, returnedCustomers: true }));
+          setReturnedCustomers([]);
+        }
+      }
+
+
     } catch (error) {
       console.error('Error in fetchMetrics:', error);
       // Set all APIs as failed if there's a general error
@@ -388,7 +449,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         ecommerce: true,
         aov: true,
         paymentOrders: true,
-        productsLaunched: true
+        productsLaunched: true,
+        returnedCustomers: true
       });
     } finally {
       setIsLoading(false);

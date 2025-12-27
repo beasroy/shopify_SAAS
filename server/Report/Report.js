@@ -374,16 +374,26 @@ export const fetchFBAdReport = async (brandId) => {
       const accountId = adAccountIds[index];
 
       if (res.code === 200) {
-        const result = JSON.parse(res.body);
-        if (result.data && result.data.length > 0) {
-          const insight = result.data[0]; // Get the first entry of insights
-          const formattedResult = {
-            adAccountId: accountId,
-            spend: insight.spend || '0',
-            revenue: insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0',
-          };
-          return formattedResult;
+        try {
+          const result = JSON.parse(res.body);
+          if (result.data && result.data.length > 0) {
+            const insight = result.data[0]; // Get the first entry of insights
+            const formattedResult = {
+              adAccountId: accountId,
+              spend: insight.spend || '0',
+              revenue: insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0',
+            };
+            return formattedResult;
+          }
+        } catch (parseError) {
+          console.error(`Error parsing response for account ${accountId}:`, parseError.message);
         }
+        // If no data or parse error, return default values
+        return {
+          adAccountId: accountId,
+          spend: '0',
+          revenue: '0',
+        };
       } else {
         return {
           adAccountId: accountId,
@@ -391,7 +401,7 @@ export const fetchFBAdReport = async (brandId) => {
           revenue: '0',
         };
       }
-    });
+    }).filter(result => result !== undefined && result !== null); // Filter out any undefined/null results
     const finalResponse = {
       success: true,
       data: results
@@ -554,7 +564,9 @@ export const addReportData = async (brandId) => {
     const fbData = fbDataResult.data ? fbDataResult.data : [];
 
     const googleDataResult = await getGoogleAdData(brandId);
-    const googleData = googleDataResult.data ? googleDataResult.data : [];
+    const googleData = googleDataResult.data && typeof googleDataResult.data === 'object' && !Array.isArray(googleDataResult.data) 
+      ? googleDataResult.data 
+      : { googleSpend: '0', googleRoas: '0', googleSales: '0' };
 
     // Initialize totals
     let totalMetaSpend = 0;
@@ -562,8 +574,10 @@ export const addReportData = async (brandId) => {
 
     if (fbData.length > 0) {
       fbData.forEach(account => {
-        totalMetaSpend += parseFloat(account.spend) || 0;
-        totalMetaRevenue += parseFloat(account.revenue) || 0;
+        if (account && typeof account === 'object') {
+          totalMetaSpend += parseFloat(account.spend) || 0;
+          totalMetaRevenue += parseFloat(account.revenue) || 0;
+        }
       });
     } else {
       totalMetaSpend = 0;

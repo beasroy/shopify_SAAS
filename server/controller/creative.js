@@ -24,8 +24,11 @@ const fetchVideoSourcesBatch = async (videoIds, accessToken) => {
   
       const { data: batchResponse } = await axios.post(
           `https://graph.facebook.com/v24.0/`,
-        { batch: JSON.stringify(batchRequests) },
-        { params: { access_token: accessToken } }
+        { batch: batchRequests },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          params: { access_token: accessToken }
+        }
       );
   
         const details = [];
@@ -83,8 +86,11 @@ const fetchCreativeThumbnails = async (creativeIds, accessToken, width, height) 
 
         const { data: batchResponse } = await axios.post(
           `https://graph.facebook.com/v24.0/`,
-          { batch: JSON.stringify(batchRequests) },
-          { params: { access_token: accessToken } }
+          { batch: batchRequests },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            params: { access_token: accessToken }
+          }
         );
 
         const thumbnails = [];
@@ -149,8 +155,11 @@ const fetchCarouselImages = async (imageHashes, accessToken, adAccountIds) => {
 
         const { data: batchResponse } = await axios.post(
           `https://graph.facebook.com/v24.0/`,
-          { batch: JSON.stringify(batchRequests) },
-          { params: { access_token: accessToken } }
+          { batch: batchRequests },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            params: { access_token: accessToken }
+          }
         );
 
         batchResponse.forEach((item, index) => {
@@ -174,11 +183,12 @@ const fetchCarouselImages = async (imageHashes, accessToken, adAccountIds) => {
   return imageMap;
 };
 
-// Fetch ad IDs that have activity in the time range from account insights (with limit and pagination)
-const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDate, endDate, limit = null, after = null) => {
-  if (!adAccountIds.length) return { adIds: [], nextCursor: null, hasMore: false };
+// Fetch all ads from ad accounts (sorted by newest first, with pagination)
+// limit is per account - each account will fetch up to 'limit' ads
+const fetchAllAdsFromAccounts = async (adAccountIds, accessToken, limit = null, after = null) => {
+  if (!adAccountIds.length) return { ads: [], nextCursor: null, hasMore: false };
 
-  const adIds = [];
+  const allAds = [];
   let accountCursors = {};
   if (after) {
     try {
@@ -188,7 +198,7 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
       accountCursors = {};
     }
   }
-  let remainingLimit = limit || Infinity;
+  const limitPerAccount = limit || Infinity;
   const nextCursors = {};
 
   // Process each account separately to handle pagination
@@ -198,18 +208,18 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
       const accountCursor = accountCursors[accId] || null;
       let nextUrl = accountCursor 
         ? accountCursor 
-        : `${accId}/insights?level=ad&fields=ad_id&time_range={'since':'${startDate}','until':'${endDate}'}&limit=25`;
+        : `${accId}/ads?fields=id,name,status,effective_status,created_time,updated_time,ad_account_id&limit=25&sort[]=created_time_descending`;
       
       let pageCount = 0;
       let accountHasMore = false;
       let lastNextUrl = null;
       let hasFetchedAtLeastOnePage = false;
+      let accountAdsCount = 0; // Track how many ads we've fetched from this account
 
       // Continue fetching until we have enough or there's no more data
       while (nextUrl) {
-        // Stop if we've reached the limit AND we've fetched at least one page
-        // This ensures we always check for paging.next on the last page we fetch
-        if (remainingLimit <= 0 && hasFetchedAtLeastOnePage) {
+        // Stop if we've reached the per-account limit AND we've fetched at least one page
+        if (accountAdsCount >= limitPerAccount && hasFetchedAtLeastOnePage) {
           break;
         }
         
@@ -232,12 +242,16 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
 
           const { data } = response;
 
-          // Extract ad IDs from current page
+          // Extract ads from current page
           if (data.data && Array.isArray(data.data)) {
-            for (const insight of data.data) {
-              if (insight.ad_id && remainingLimit > 0) {
-                adIds.push(insight.ad_id);
-                remainingLimit--;
+            for (const ad of data.data) {
+              if (ad.id && accountAdsCount < limitPerAccount) {
+                // Ensure ad_account_id is set (fallback to accId if not in response)
+                allAds.push({
+                  ...ad,
+                  ad_account_id: ad.ad_account_id || accId
+                });
+                accountAdsCount++;
               }
             }
           }
@@ -246,11 +260,11 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
           if (data.paging && data.paging.next) {
             lastNextUrl = data.paging.next; // Store the next URL
             accountHasMore = true;
-            // Continue to next page only if we haven't reached the limit
-            if (remainingLimit > 0) {
+            // Continue to next page only if we haven't reached the per-account limit
+            if (accountAdsCount < limitPerAccount) {
               nextUrl = data.paging.next;
             } else {
-              // We've reached the limit, but there's more data - stop here
+              // We've reached the per-account limit, but there's more data - stop here
               nextUrl = null;
             }
           } else {
@@ -259,33 +273,14 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
             lastNextUrl = null;
           }
         } catch (error) {
-          console.error(`Error fetching insights page ${pageCount} for account ${accId}:`, error.message);
+          console.error(`Error fetching ads page ${pageCount} for account ${accId}:`, error.message);
           break; // Move to next account if this one fails
         }
       }
 
       // Store cursor for this account if there's more data available
-      // Use lastNextUrl if we stopped due to limit, or nextUrl if we're continuing
       if (accountHasMore && (lastNextUrl || nextUrl)) {
         nextCursors[accId] = lastNextUrl || nextUrl;
-      }
-      
-      // If we've reached the limit, we can stop processing other accounts
-      // (but we've already checked if this account has more data)
-      if (remainingLimit <= 0) {
-        // Check if other accounts have cursors from previous requests
-        // If they do, they might have more data
-        for (const otherAccId of adAccountIds) {
-          if (otherAccId !== accId && accountCursors[otherAccId]) {
-            // This account has a cursor from a previous request, so there might be more data
-            // We don't need to fetch it now, but we should indicate there's more
-            if (!nextCursors[otherAccId]) {
-              // Keep the existing cursor for this account
-              nextCursors[otherAccId] = accountCursors[otherAccId];
-            }
-          }
-        }
-        break; // Stop processing more accounts since we've reached the limit
       }
     } catch (error) {
       console.error(`Error processing account ${accId}:`, error.message);
@@ -293,17 +288,32 @@ const fetchAdIdsFromAccountInsights = async (adAccountIds, accessToken, startDat
     }
   }
 
+  // Sort all ads by created_time (newest launched first) - in case we got ads from multiple accounts
+  allAds.sort((a, b) => {
+    const timeA = new Date(a.created_time || a.updated_time || 0);
+    const timeB = new Date(b.created_time || b.updated_time || 0);
+    return timeB - timeA; // Descending order (newest launched first)
+  });
+
+  // Log ads per account for debugging
+  const adsPerAccount = {};
+  allAds.forEach(ad => {
+    const accId = ad.ad_account_id || 'unknown';
+    adsPerAccount[accId] = (adsPerAccount[accId] || 0) + 1;
+  });
+  console.log(`📊 Ads per account:`, adsPerAccount);
+
   // Create next cursor if there are more pages
   const hasMore = Object.keys(nextCursors).length > 0;
+  console.log(`✅ Fetched ${allAds.length} ads from ${adAccountIds.length} accounts (limit per account: ${limit || 'unlimited'}, hasMore: ${hasMore})`);
   const nextCursor = hasMore 
     ? Buffer.from(JSON.stringify(nextCursors)).toString('base64')
     : null;
 
-  console.log(`✅ Fetched ${adIds.length} ad IDs from ${adAccountIds.length} accounts (limit: ${limit || 'unlimited'}, hasMore: ${hasMore})`);
-  return { adIds, nextCursor, hasMore };
+  return { ads: allAds, nextCursor, hasMore };
 };
 
-const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
+const fetchAdInsightsBatch = async (adIds, accessToken) => {
   if (!adIds.length) return new Map();
 
   const uniqueAdIds = [...new Set(adIds)];
@@ -318,13 +328,16 @@ const fetchAdInsightsBatch = async (adIds, accessToken, startDate, endDate) => {
       try {
         const batchRequests = chunk.map(adId => ({
           method: "GET",
-          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values,cpc,frequency,video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,cost_per_action_type&time_range={'since':'${startDate}','until':'${endDate}'}`
+          relative_url: `${adId}/insights?fields=spend,ctr,actions,impressions,action_values,cpc,frequency,video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,cost_per_action_type`
         }));
 
         const { data: batchResponse } = await axios.post(
           `https://graph.facebook.com/v24.0/`,
-          { batch: JSON.stringify(batchRequests) },
-          { params: { access_token: accessToken } }
+          { batch: batchRequests },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            params: { access_token: accessToken }
+          }
         );
 
         const insights = [];
@@ -367,6 +380,7 @@ const fetchAdsByIds = async (adIds, accessToken) => {
   if (!adIds.length) return { ads: [] };
 
   const uniqueAdIds = [...new Set(adIds)];
+  console.log(`🔍 Fetching ${uniqueAdIds.length} ads by IDs (first 5: ${uniqueAdIds.slice(0, 5).join(', ')})`);
 
   // Split into chunks of 50 for batch API
   const chunks = [];
@@ -375,21 +389,36 @@ const fetchAdsByIds = async (adIds, accessToken) => {
   }
 
   const allBatchResponses = await Promise.all(
-    chunks.map(async (chunk) => {
+    chunks.map(async (chunk, chunkIndex) => {
       try {
         const batchRequests = chunk.map(adId => ({
           method: "GET",
-          relative_url: `${adId}?fields=id,name,status,effective_status,adcreatives{id,object_story_spec{link_data{child_attachments{image_hash,link,name,description}},video_data{video_id}},image_url,thumbnail_url}`
+          relative_url: `${adId}?fields=id,name,status,effective_status,created_time,updated_time,adcreatives{id,object_story_spec{link_data{child_attachments{image_hash,link,name,description}},video_data{video_id}},image_url,thumbnail_url}`
         }));
 
         const { data } = await axios.post(
           `https://graph.facebook.com/v24.0/`,
-          { batch: JSON.stringify(batchRequests) },
-          { params: { access_token: accessToken } }
+          { batch: batchRequests },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            params: { access_token: accessToken }
+          }
         );
+        
+        // Log errors in batch response
+        if (data && Array.isArray(data)) {
+          const errors = data.filter(item => item.code !== 200);
+          if (errors.length > 0) {
+            console.error(`⚠️  Batch chunk ${chunkIndex + 1} has ${errors.length} errors:`, errors.slice(0, 3).map(e => ({ code: e.code, body: e.body })));
+          }
+        }
+        
         return data;
       } catch (error) {
-        console.error("Error fetching ads batch:", error.message);
+        console.error(`❌ Error fetching ads batch chunk ${chunkIndex + 1}:`, error.message);
+        if (error.response) {
+          console.error(`   Response status: ${error.response.status}`, error.response.data);
+        }
         return [];
       }
     })
@@ -397,20 +426,32 @@ const fetchAdsByIds = async (adIds, accessToken) => {
 
   const batchResponse = allBatchResponses.flat();
   const ads = [];
+  let successCount = 0;
+  let errorCount = 0;
 
-  batchResponse.forEach(item => {
+  batchResponse.forEach((item, index) => {
     try {
       if (item.code === 200 && item.body) {
         const body = JSON.parse(item.body);
         if (body.id) {
           ads.push(body);
+          successCount++;
+        } else {
+          console.warn(`⚠️  Ad response ${index} missing id:`, body);
+        }
+      } else {
+        errorCount++;
+        if (errorCount <= 3) { // Only log first 3 errors to avoid spam
+          console.error(`❌ Ad response ${index} error - code: ${item.code}, body: ${item.body?.substring(0, 200)}`);
         }
       }
     } catch (error) {
-      console.error("Error parsing ad response:", error.message);
+      errorCount++;
+      console.error(`❌ Error parsing ad response ${index}:`, error.message, item);
     }
   });
 
+  console.log(`📊 Fetched ${ads.length} ads (${successCount} success, ${errorCount} errors) from ${batchResponse.length} responses`);
   return { ads };
 };
 
@@ -419,8 +460,6 @@ export const getBrandCreativesBatch = async (req, res) => {
 
   try {
     const { 
-      startDate, 
-      endDate, 
       limit = 10,           // How many ads to fetch per account
       after = null,         // Cursor for pagination (from Facebook's response)
       thumbnailWidth = 400, // Thumbnail width in pixels (default: 400)
@@ -435,17 +474,10 @@ export const getBrandCreativesBatch = async (req, res) => {
             });
           }
     
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'Both startDate and endDate are required (format: YYYY-MM-DD).'
-      });
-    }
-    
-    console.log(`📅 Request: brandId=${brandId}, startDate=${startDate}, endDate=${endDate}, limit=${limit}, after=${after}, thumbnail: ${thumbnailWidth}x${thumbnailHeight}`);
+    console.log(`📅 Request: brandId=${brandId}, limit=${limit}, after=${after}, thumbnail: ${thumbnailWidth}x${thumbnailHeight}`);
 
     // Check cache first (only cache first page, not paginated results)
-    const cacheKey = `creatives:${brandId}:${startDate}:${endDate}:${limit}:first`;
+    const cacheKey = `creatives:${brandId}:${limit}:first`;
     if (!after) {
       try {
         const cachedData = await redis.get(cacheKey);
@@ -486,40 +518,59 @@ export const getBrandCreativesBatch = async (req, res) => {
       });
     }
 
-    console.log(`🚀 Fetching ad IDs with activity in time range ${startDate} to ${endDate}...`);
+    console.log(`🚀 Fetching all ads (sorted by newest first)...`);
 
-    // 🔹 Step 1: Fetch ad IDs that have activity in the time range from account insights (with limit)
-    const totalLimit = limit * adAccountIds.length;
-    const { adIds, nextCursor: adIdsNextCursor, hasMore: adIdsHasMore } = await fetchAdIdsFromAccountInsights(
+    // 🔹 Step 1: Fetch all ads from accounts (sorted by newest first, with limit and pagination)
+    // limit is per account - each account will fetch up to 'limit' ads
+    const { ads: allAdsBasic, nextCursor: adsNextCursor, hasMore: adsHasMore } = await fetchAllAdsFromAccounts(
       adAccountIds, 
-      accessToken, 
-      startDate, 
-      endDate,
-      totalLimit,
+      accessToken,
+      limit,
       after
     );
-    console.log(`✅ Found ${adIds.length} ads with activity in the time range (hasMore: ${adIdsHasMore})`);
+    console.log(`✅ Found ${allAdsBasic.length} ads (hasMore: ${adsHasMore})`);
 
-    if (adIds.length === 0) {
+    if (allAdsBasic.length === 0) {
       return res.status(200).json({
         success: true,
         brandId,
         total_creatives: 0,
         creatives: [],
-        hasMore: adIdsHasMore,
-        nextCursor: adIdsNextCursor,
+        hasMore: adsHasMore,
+        nextCursor: adsNextCursor,
         fetchTime: Date.now() - startTime,
         stats: {
           accountsProcessed: adAccountIds.length,
           totalAds: 0,
-          totalAdIdsFound: 0,
           videosProcessed: 0
         }
       });
     }
 
-    // 🔹 Step 2: Fetch ads with creatives for those ad IDs (no pagination needed - we already limited at ad IDs level)
+    // 🔹 Step 2: Fetch full ad details with creatives for those ad IDs
+    const adIds = allAdsBasic.map(ad => ad.id).filter(id => id); // Filter out any null/undefined IDs
+    console.log(`🔍 Extracted ${adIds.length} ad IDs from ${allAdsBasic.length} basic ads (first 5: ${adIds.slice(0, 5).join(', ')})`);
+    
+    if (adIds.length === 0) {
+      console.warn(`⚠️  No valid ad IDs found in basic ads. Sample ad structure:`, allAdsBasic[0]);
+    }
+    
+    // Create a map of ad_id -> ad_account_id from basic ads
+    const adAccountIdMap = new Map();
+    allAdsBasic.forEach(ad => {
+      if (ad.id && ad.ad_account_id) {
+        adAccountIdMap.set(ad.id, ad.ad_account_id);
+      }
+    });
+    
     const { ads: allAds } = await fetchAdsByIds(adIds, accessToken);
+    
+    // Preserve ad_account_id from basic ads if not in full ad details
+    allAds.forEach(ad => {
+      if (!ad.ad_account_id && adAccountIdMap.has(ad.id)) {
+        ad.ad_account_id = adAccountIdMap.get(ad.id);
+      }
+    });
     
     console.log(`✅ Fetched ${allAds.length} ads with creatives`);
 
@@ -551,7 +602,7 @@ export const getBrandCreativesBatch = async (req, res) => {
       fetchVideoSourcesBatch(videoIds, accessToken),
       fetchCreativeThumbnails(creativeIds, accessToken, thumbnailWidth, thumbnailHeight),
       fetchCarouselImages(imageHashes, accessToken, adAccountIds),
-      fetchAdInsightsBatch(fetchedAdIds, accessToken, startDate, endDate)
+      fetchAdInsightsBatch(fetchedAdIds, accessToken)
     ]);
     
 
@@ -680,6 +731,7 @@ export const getBrandCreativesBatch = async (req, res) => {
         return {
           ad_id: ad.id,
           ad_name: ad.name,
+          ad_account_id: ad.ad_account_id || null,
           ad_effective_status: ad.effective_status,
           ad_status: ad.status,
           creative_type: creativeType,
@@ -708,9 +760,17 @@ export const getBrandCreativesBatch = async (req, res) => {
         };
       });
     
-    // All ads already have activity in the time range, so no filtering needed
-    const limitedCreatives = allCreatives;
-    console.log(`✅ Returning ${limitedCreatives.length} creatives with activity during the time range`);
+    // Sort creatives by newest launched first (already sorted at ad level, but ensure consistency)
+    const sortedCreatives = allCreatives.sort((a, b) => {
+      // Find corresponding ad to get created_time (launch time)
+      const adA = allAds.find(ad => ad.id === a.ad_id);
+      const adB = allAds.find(ad => ad.id === b.ad_id);
+      const timeA = adA?.created_time || adA?.updated_time || 0;
+      const timeB = adB?.created_time || adB?.updated_time || 0;
+      return new Date(timeB) - new Date(timeA); // Descending order (newest launched first)
+    });
+    
+    console.log(`✅ Returning ${sortedCreatives.length} creatives (sorted by newest launched first)`);
   
     const fetchTime = Date.now() - startTime;
     console.log(`⏱️  Total fetch time: ${fetchTime}ms`);
@@ -719,15 +779,14 @@ export const getBrandCreativesBatch = async (req, res) => {
         success: true,
         brandId,
       limit,
-        total_creatives: limitedCreatives.length,
-      hasMore: adIdsHasMore,
-      nextCursor: adIdsNextCursor,  // Send cursor to frontend for next request (from ad IDs pagination)
-      creatives: limitedCreatives,
+        total_creatives: sortedCreatives.length,
+      hasMore: adsHasMore,
+      nextCursor: adsNextCursor,  // Send cursor to frontend for next request
+      creatives: sortedCreatives,
       fetchTime,
       stats: {
         accountsProcessed: adAccountIds.length,
         totalAds: allAds.length,
-        totalAdIdsFound: adIds.length,
         videosProcessed: videoMap.size
       }
     };

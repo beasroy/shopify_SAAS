@@ -37,8 +37,14 @@ const brandSchema = new mongoose.Schema({
   googleAnalyticsRefreshToken: { type: String },   
   fbAccessToken: {type: String},
   competitorBrands: [{
-    type: String, // Array of competitor brand names
-    trim: true
+    pageId: {
+      type: String,
+      required: true
+    },
+    pageName: {
+      type: String,
+      required: true
+    }
   }]
 }, {
   timestamps: true 

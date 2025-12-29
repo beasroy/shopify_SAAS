@@ -44,7 +44,12 @@ interface SearchResponse {
   success: boolean;
   ads: CompetitorAd[];
   totalFound: number;
-  competitorBrandName: string;
+  pageIds: string[];
+}
+
+interface CompetitorBrand {
+  pageId: string;
+  pageName: string;
 }
 
 interface CompetitorAdsResponse {
@@ -60,7 +65,7 @@ const CompetitorAdsDashboard: React.FC = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<CompetitorAd[]>([]);
-  const [followedBrands, setFollowedBrands] = useState<string[]>([]);
+  const [followedBrands, setFollowedBrands] = useState<CompetitorBrand[]>([]);
   const [followedAds, setFollowedAds] = useState<Record<string, CompetitorAd[]>>({});
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -94,9 +99,18 @@ const CompetitorAdsDashboard: React.FC = () => {
       );
       if (response.data.success) {
         const brands = response.data.competitorBrands || [];
-        setFollowedBrands(brands);
+        // Handle both old format (string array) and new format (object array)
+        const normalizedBrands: CompetitorBrand[] = brands.map((brand: string | CompetitorBrand) => {
+          if (typeof brand === 'string') {
+            // Old format - convert to new format (we'll need pageId, but we don't have it)
+            // For backward compatibility, use the string as pageName and generate a placeholder
+            return { pageId: '', pageName: brand };
+          }
+          return brand;
+        });
+        setFollowedBrands(normalizedBrands);
         // If no brands, stop loading
-        if (brands.length === 0) {
+        if (normalizedBrands.length === 0) {
           setInitialLoading(false);
           setLoading(false);
         }
@@ -124,7 +138,8 @@ const CompetitorAdsDashboard: React.FC = () => {
     try {
       const adsMap: Record<string, CompetitorAd[]> = {};
       
-      for (const brandName of followedBrands) {
+      for (const brand of followedBrands) {
+        const brandName = brand.pageName || (typeof brand === 'string' ? brand : '');
         try {
           const response = await axiosInstance.get<CompetitorAdsResponse>(
             `/api/competitor/competitor-ads/${brandId}`,
@@ -157,7 +172,7 @@ const CompetitorAdsDashboard: React.FC = () => {
     if (!brandId || !searchTerm.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a brand name to search.",
+        description: "Please enter a page ID to search.",
         variant: "destructive",
       });
       return;
@@ -167,11 +182,14 @@ const CompetitorAdsDashboard: React.FC = () => {
     setError(null);
     
     try {
+      // Support comma-separated page IDs
+      const pageIds = searchTerm.trim().split(',').map(id => id.trim()).filter(id => id);
+      
       const response = await axiosInstance.get<SearchResponse>(
         `/api/competitor/search-ads/${brandId}`,
         {
           params: {
-            competitorBrandName: searchTerm.trim(),
+            pageIds: pageIds.join(','),
             limit: 20
           }
         }
@@ -182,7 +200,7 @@ const CompetitorAdsDashboard: React.FC = () => {
         if (response.data.ads.length === 0) {
           toast({
             title: "No ads found",
-            description: `No ads found for "${searchTerm.trim()}"`,
+            description: `No ads found for page ID(s): "${searchTerm.trim()}"`,
           });
         }
       }
@@ -200,27 +218,35 @@ const CompetitorAdsDashboard: React.FC = () => {
     }
   };
 
-  const handleFollow = async (brandName: string) => {
+  const handleFollow = async (pageId: string, pageName?: string) => {
     if (!brandId) return;
 
-    setFollowing(brandName);
+    setFollowing(pageId);
     
     try {
       const response = await axiosInstance.post(
         `/api/competitor/competitor-brands/${brandId}`,
-        { competitorBrandName: brandName }
+        { pageId }
       );
 
       if (response.data.success) {
+        const addedPageName = response.data.pageName || pageName || pageId;
         toast({
           title: "Success",
-          description: `Now following ${brandName}. Ads are being fetched...`,
+          description: `Now following ${addedPageName}. Ads are being fetched...`,
         });
         
-        // Update followed brands list
-        setFollowedBrands(response.data.competitorBrands || []);
+        // Update followed brands list - handle both old and new format
+        const brands = response.data.competitorBrands || [];
+        const normalizedBrands: CompetitorBrand[] = brands.map((brand: string | CompetitorBrand) => {
+          if (typeof brand === 'string') {
+            return { pageId: '', pageName: brand };
+          }
+          return brand;
+        });
+        setFollowedBrands(normalizedBrands);
         
-        // Clear search results for this brand
+        // Clear search results
         setSearchResults([]);
         setSearchTerm("");
         
@@ -241,14 +267,18 @@ const CompetitorAdsDashboard: React.FC = () => {
     }
   };
 
-  const handleUnfollow = async (brandName: string) => {
+  const handleUnfollow = async (brand: CompetitorBrand | string) => {
     if (!brandId) return;
+
+    // Handle both old format (string) and new format (object)
+    const brandName = typeof brand === 'string' ? brand : brand.pageName;
+    const identifier = typeof brand === 'string' ? brand : (brand.pageId || brand.pageName);
 
     try {
       const response = await axiosInstance.delete(
         `/api/competitor/competitor-brands/${brandId}`,
         {
-          data: { competitorBrandName: brandName }
+          data: { competitorBrandName: identifier }
         }
       );
 
@@ -258,8 +288,15 @@ const CompetitorAdsDashboard: React.FC = () => {
           description: `Unfollowed ${brandName}`,
         });
         
-        // Update followed brands list
-        setFollowedBrands(response.data.competitorBrands || []);
+        // Update followed brands list - handle both old and new format
+        const brands = response.data.competitorBrands || [];
+        const normalizedBrands: CompetitorBrand[] = brands.map((b: string | CompetitorBrand) => {
+          if (typeof b === 'string') {
+            return { pageId: '', pageName: b };
+          }
+          return b;
+        });
+        setFollowedBrands(normalizedBrands);
         
         // Remove ads for this brand
         const newFollowedAds = { ...followedAds };
@@ -314,15 +351,24 @@ const CompetitorAdsDashboard: React.FC = () => {
     );
   }
 
-  const isFollowing = (brandName: string) => followedBrands.includes(brandName);
+  const isFollowing = (pageId: string) => {
+    return followedBrands.some(brand => {
+      if (typeof brand === 'string') {
+        return brand === pageId;
+      }
+      return brand.pageId === pageId;
+    });
+  };
   
-  // Get brand name from search results (use pageName from first ad if available)
-  const getSearchBrandName = () => {
+  // Get page ID and page name from search results
+  const getSearchPageInfo = () => {
     if (searchResults.length > 0) {
-      // Search results have pageName directly, stored ads have it in metadata
-      return searchResults[0]?.pageName || searchResults[0]?.metadata?.pageName || searchTerm;
+      const firstAd = searchResults[0];
+      const pageId = firstAd?.pageId || firstAd?.metadata?.pageId || searchTerm;
+      const pageName = firstAd?.pageName || firstAd?.metadata?.pageName || '';
+      return { pageId, pageName };
     }
-    return searchTerm;
+    return { pageId: searchTerm, pageName: '' };
   };
 
   return (
@@ -358,7 +404,7 @@ const CompetitorAdsDashboard: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Enter competitor brand name..."
+                  placeholder="Enter Facebook Page ID (comma-separated for multiple)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -399,20 +445,27 @@ const CompetitorAdsDashboard: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">
-                  Search Results for "{searchTerm}"
-                </h2>
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    Search Results
+                  </h2>
+                  {searchResults.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Page ID: {searchTerm} {getSearchPageInfo().pageName && `• ${getSearchPageInfo().pageName}`}
+                    </p>
+                  )}
+                </div>
                 {searchResults.length > 0 && (
                   <div className="flex items-center gap-2">
-                    {isFollowing(getSearchBrandName()) ? (
+                    {isFollowing(getSearchPageInfo().pageId) ? (
                       <Badge variant="secondary">Following</Badge>
                     ) : (
                       <Button
-                        onClick={() => handleFollow(getSearchBrandName())}
-                        disabled={following === getSearchBrandName()}
+                        onClick={() => handleFollow(getSearchPageInfo().pageId, getSearchPageInfo().pageName)}
+                        disabled={following === getSearchPageInfo().pageId}
                         size="sm"
                       >
-                        {following === getSearchBrandName() ? (
+                        {following === getSearchPageInfo().pageId ? (
                           <>
                             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                             Following...
@@ -440,16 +493,21 @@ const CompetitorAdsDashboard: React.FC = () => {
         {/* Followed Brands */}
         {followedBrands.length > 0 && (
           <div className="space-y-6">
-            {followedBrands.map((brandName) => {
+            {followedBrands.map((brand) => {
+              const brandName = typeof brand === 'string' ? brand : brand.pageName;
+              const brandKey = typeof brand === 'string' ? brand : (brand.pageId || brand.pageName);
               const ads = followedAds[brandName] || [];
               const isLoadingAds = loading && !ads.length;
               
               return (
-                <Card key={brandName}>
+                <Card key={brandKey}>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <h2 className="text-xl font-semibold">{brandName}</h2>
+                        {typeof brand === 'object' && brand.pageId && (
+                          <span className="text-xs text-muted-foreground">({brand.pageId})</span>
+                        )}
                         {ads.length > 0 && (
                           <Badge variant="secondary" className="text-xs">
                             {ads.length} {ads.length === 1 ? 'ad' : 'ads'}
@@ -457,7 +515,7 @@ const CompetitorAdsDashboard: React.FC = () => {
                         )}
                       </div>
                       <Button
-                        onClick={() => handleUnfollow(brandName)}
+                        onClick={() => handleUnfollow(brand)}
                         variant="outline"
                         size="sm"
                       >
@@ -505,7 +563,7 @@ const CompetitorAdsDashboard: React.FC = () => {
                 <Search className="w-16 h-16 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Competitor Brands</h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  Search for a competitor brand name above to see their ads, then click "Follow" to track them.
+                  Search for a Facebook Page ID above to see their ads, then click "Follow" to track them.
                 </p>
               </div>
             </CardContent>

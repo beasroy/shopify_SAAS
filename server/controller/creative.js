@@ -1,4 +1,5 @@
 import axios from "axios";
+import crypto from "node:crypto";
 import Brand from "../models/Brands.js";
 import { connection as redis } from "../config/redis.js";
 
@@ -476,25 +477,29 @@ export const getBrandCreativesBatch = async (req, res) => {
     
     console.log(`📅 Request: brandId=${brandId}, limit=${limit}, after=${after}, thumbnail: ${thumbnailWidth}x${thumbnailHeight}`);
 
-    // Check cache first (only cache first page, not paginated results)
-    const cacheKey = `creatives:${brandId}:${limit}:first`;
-    if (!after) {
-      try {
-        const cachedData = await redis.get(cacheKey);
-        if (cachedData) {
-          const parsed = JSON.parse(cachedData);
-          console.log(`✨ Returning cached creatives for brand ${brandId} (first page)`);
-          return res.status(200).json({
-            ...parsed,
-            fromCache: true,
-            fetchTime: Date.now() - startTime
-          });
-        }
-      } catch (cacheError) {
-        console.warn('⚠️  Cache read error:', cacheError.message);
-        // Continue with fresh fetch if cache fails
+    // Create cache key that includes cursor for pagination (cache all pages)
+    // Hash the cursor to create a shorter, consistent cache key
+    const cacheKeySuffix = after 
+      ? crypto.createHash('md5').update(after).digest('hex').substring(0, 16) // Use first 16 chars of MD5 hash
+      : 'first';
+    const cacheKey = `creatives:${brandId}:${limit}:${cacheKeySuffix}`;
+    
+    // Check cache for all pages (not just first page)
+    try {
+      const cachedData = await redis.get(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        console.log(`✨ Returning cached creatives for brand ${brandId} (page: ${after ? 'paginated' : 'first'})`);
+        return res.status(200).json({
+          ...parsed,
+          fromCache: true,
+          fetchTime: Date.now() - startTime
+        });
       }
-          }
+    } catch (cacheError) {
+      console.warn('⚠️  Cache read error:', cacheError.message);
+      // Continue with fresh fetch if cache fails
+    }
       
           const brand = await Brand.findById(brandId).lean();
       
@@ -728,12 +733,19 @@ export const getBrandCreativesBatch = async (req, res) => {
         const orders = getActionCount('purchase');
         const cpp = spend > 0 ? spend / orders : 0;
         
+        // Determine status: active only if both status and effective_status are ACTIVE
+        const status = (ad.status?.toUpperCase() === 'ACTIVE' && ad.effective_status?.toUpperCase() === 'ACTIVE') 
+          ? 'ACTIVE' 
+          : 'PAUSED';
+
         return {
           ad_id: ad.id,
           ad_name: ad.name,
           ad_account_id: ad.ad_account_id || null,
           ad_effective_status: ad.effective_status,
           ad_status: ad.status,
+          status,
+          created_time: ad.created_time,
           creative_type: creativeType,
           creative_url: creativeUrl,
           thumbnail_url: thumbnailUrl,
@@ -772,6 +784,11 @@ export const getBrandCreativesBatch = async (req, res) => {
     
     console.log(`✅ Returning ${sortedCreatives.length} creatives (sorted by newest launched first)`);
   
+    // Find the oldest created_time from this batch (for global sorting reference)
+    const oldestCreatedTime = sortedCreatives.length > 0 
+      ? sortedCreatives[sortedCreatives.length - 1]?.created_time || null
+      : null;
+  
     const fetchTime = Date.now() - startTime;
     console.log(`⏱️  Total fetch time: ${fetchTime}ms`);
 
@@ -782,6 +799,7 @@ export const getBrandCreativesBatch = async (req, res) => {
         total_creatives: sortedCreatives.length,
       hasMore: adsHasMore,
       nextCursor: adsNextCursor,  // Send cursor to frontend for next request
+      oldestCreatedTime, // Oldest date in this batch (for frontend global sorting)
       creatives: sortedCreatives,
       fetchTime,
       stats: {
@@ -791,15 +809,13 @@ export const getBrandCreativesBatch = async (req, res) => {
       }
     };
 
-    // Cache the results (only first page)
-    if (!after) {
-      try {
-        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(responseData));
-        console.log(`💾 Cached creatives for brand ${brandId} (TTL: ${CACHE_TTL}s)`);
-      } catch (cacheError) {
-        console.warn('⚠️  Cache write error:', cacheError.message);
-        // Continue even if caching fails
-      }
+    // Cache the results (all pages, not just first)
+    try {
+      await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(responseData));
+      console.log(`💾 Cached creatives for brand ${brandId} (page: ${after ? 'paginated' : 'first'}, TTL: ${CACHE_TTL}s)`);
+    } catch (cacheError) {
+      console.warn('⚠️  Cache write error:', cacheError.message);
+      // Continue even if caching fails
     }
 
     res.status(200).json(responseData);

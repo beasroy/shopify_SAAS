@@ -2,8 +2,28 @@ import axios from 'axios';
 import Brand from '../models/Brands.js';
 import CompetitorAd from '../models/CompetitorAd.js';
 
+/**
+ * Fetch page name from Facebook Graph API using page ID
+ */
+const fetchPageNameFromPageId = async (pageId, accessToken) => {
+  try {
+    const response = await axios.get(
+      `https://graph.facebook.com/v24.0/${pageId}`,
+      {
+        params: {
+          access_token: accessToken,
+          fields: 'name'
+        }
+      }
+    );
+    return response.data.name || null;
+  } catch (error) {
+    console.error(`Error fetching page name for page ID ${pageId}:`, error.message);
+    return null;
+  }
+};
 
-const fetchCompetitorAdsFromMeta = async (competitorBrandName, ourAccessToken, countries = ['IN']) => {
+const fetchCompetitorAdsFromMeta = async (competitorPageIds, ourAccessToken, countries = ['IN']) => {
   try {
     const allAds = [];
     let nextUrl = null;
@@ -13,9 +33,12 @@ const fetchCompetitorAdsFromMeta = async (competitorBrandName, ourAccessToken, c
     // Initial request parameters
     // Note: ad_reached_countries must be an array of ISO country codes (e.g., ['IN', 'US'])
     // Facebook API expects it as a JSON string in the URL - axios will automatically encode it
+    // Ensure competitorPageIds is an array
+    const pageIdsArray = Array.isArray(competitorPageIds) ? competitorPageIds : [competitorPageIds];
+    
     const baseParams = {
       access_token: ourAccessToken, // Our app's token, not competitor's
-      search_terms: competitorBrandName, // Search by advertiser/page name
+      search_page_ids: pageIdsArray.join(','), // Search by page IDs (comma-separated string)
       ad_reached_countries: JSON.stringify(countries), // Countries where ads were shown (JSON string format)
       ad_active_status: 'ALL', // 'ALL', 'ACTIVE', 'INACTIVE'
       limit: 25, // Meta API max is 25 per page
@@ -45,7 +68,7 @@ const fetchCompetitorAdsFromMeta = async (competitorBrandName, ourAccessToken, c
     }
 
     // Process first page
-    console.log(`\n[PAGINATION] Starting fetch for: ${competitorBrandName}`);
+    console.log(`\n[PAGINATION] Starting fetch for page IDs: ${Array.isArray(competitorPageIds) ? competitorPageIds.join(', ') : competitorPageIds}`);
     console.log(`[PAGINATION] Initial request completed`);
     
     if (response.data.data && response.data.data.length > 0) {
@@ -110,7 +133,7 @@ const fetchCompetitorAdsFromMeta = async (competitorBrandName, ourAccessToken, c
           }
         }
       } catch (pageError) {
-        console.error(`[PAGINATION] ERROR fetching page ${pageCount + 1} for ${competitorBrandName}:`, pageError.message);
+        console.error(`[PAGINATION] ERROR fetching page ${pageCount + 1} for page IDs:`, pageError.message);
         // If OAuth error on pagination, stop fetching
         if (pageError.response?.data?.error?.type === 'OAuthException') {
           console.error(`[PAGINATION] OAuth error during pagination, stopping fetch`);
@@ -135,13 +158,13 @@ const fetchCompetitorAdsFromMeta = async (competitorBrandName, ourAccessToken, c
     }
     
     console.log(`[PAGINATION] ========================================`);
-    console.log(`[PAGINATION] FINISHED: ${competitorBrandName}`);
+    console.log(`[PAGINATION] FINISHED: Page IDs ${Array.isArray(competitorPageIds) ? competitorPageIds.join(', ') : competitorPageIds}`);
     console.log(`[PAGINATION] Total pages fetched: ${pageCount + 1}`);
     console.log(`[PAGINATION] Total ads collected: ${allAds.length}`);
     console.log(`[PAGINATION] ========================================\n`);
     return allAds;
   } catch (error) {
-    console.error(`Error fetching competitor ads for ${competitorBrandName}:`, error.message);
+    console.error(`Error fetching competitor ads for page IDs:`, error.message);
     if (error.response) {
       console.error('API Error Response:', error.response.data);
     }
@@ -240,7 +263,7 @@ const processAndStoreCompetitorAds = async (brandId, competitorBrandName, adsDat
 export const fetchAndStoreCompetitorAds = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { competitorBrandName } = req.body;
+    const { pageIds } = req.body;
 
     if (!brandId) {
       return res.status(400).json({
@@ -249,10 +272,10 @@ export const fetchAndStoreCompetitorAds = async (req, res) => {
       });
     }
 
-    if (!competitorBrandName) {
+    if (!pageIds) {
       return res.status(400).json({
         success: false,
-        message: 'Competitor brand name is required.'
+        message: 'Page IDs are required.'
       });
     }
 
@@ -271,27 +294,41 @@ export const fetchAndStoreCompetitorAds = async (req, res) => {
       });
     }
 
+    // Ensure pageIds is an array
+    const pageIdsArray = Array.isArray(pageIds) ? pageIds : [pageIds];
+    
+    // Fetch page names for all page IDs
+    const pageNamesMap = {};
+    for (const pageId of pageIdsArray) {
+      const pageName = await fetchPageNameFromPageId(pageId, brand.fbAccessToken);
+      if (pageName) {
+        pageNamesMap[pageId] = pageName;
+      }
+    }
+
     // Fetch competitor ads from Ad Library (public API)
     // We use our own access token to query the public Ad Library
     // The Ad Library provides snap URLs (public screenshots) of competitor ads
-    console.log(`Fetching competitor ads for ${competitorBrandName} from Ad Library...`);
+    console.log(`Fetching competitor ads for page IDs: ${pageIdsArray.join(', ')} from Ad Library...`);
     const adsData = await fetchCompetitorAdsFromMeta(
-      competitorBrandName,
+      pageIdsArray,
       brand.fbAccessToken // Our app's token, not competitor's
     );
 
     if (adsData.length === 0) {
       return res.status(200).json({
         success: true,
-        message: 'No ads found for this competitor brand.',
+        message: 'No ads found for these page IDs.',
         adsCount: 0
       });
     }
 
-    // Process and store ads
+    // Process and store ads - use page name from the first ad or from our map
+    // Group ads by page ID to use the correct page name
+    const pageName = adsData[0]?.page_name || pageNamesMap[pageIdsArray[0]] || 'Unknown';
     const { storedAds, errors } = await processAndStoreCompetitorAds(
       brandId,
-      competitorBrandName,
+      pageName,
       adsData
     );
 
@@ -329,6 +366,7 @@ export const getCompetitorAds = async (req, res) => {
     // Build query
     const query = { brandId };
     if (competitorBrandName) {
+      // competitorBrandName can be either page name or page ID
       query.competitorBrandName = competitorBrandName;
     }
 
@@ -367,7 +405,7 @@ export const getCompetitorAds = async (req, res) => {
 export const searchCompetitorAds = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { competitorBrandName, limit = 20 } = req.query;
+    const { pageIds, limit = 20 } = req.query;
 
     if (!brandId) {
       return res.status(400).json({
@@ -376,10 +414,10 @@ export const searchCompetitorAds = async (req, res) => {
       });
     }
 
-    if (!competitorBrandName) {
+    if (!pageIds) {
       return res.status(400).json({
         success: false,
-        message: 'Competitor brand name is required.'
+        message: 'Page IDs are required.'
       });
     }
 
@@ -398,10 +436,13 @@ export const searchCompetitorAds = async (req, res) => {
       });
     }
 
+    // Ensure pageIds is an array (can be comma-separated string from query)
+    const pageIdsArray = Array.isArray(pageIds) ? pageIds : pageIds.split(',').map(id => id.trim());
+
     // Fetch competitor ads from Ad Library (public API) - don't store
-    console.log(`Searching competitor ads for ${competitorBrandName} from Ad Library...`);
+    console.log(`Searching competitor ads for page IDs: ${pageIdsArray.join(', ')} from Ad Library...`);
     const adsData = await fetchCompetitorAdsFromMeta(
-      competitorBrandName,
+      pageIdsArray,
       brand.fbAccessToken
     );
 
@@ -414,7 +455,7 @@ export const searchCompetitorAds = async (req, res) => {
       success: true,
       ads: processedAds,
       totalFound: adsData.length,
-      competitorBrandName
+      pageIds: pageIdsArray
     });
   } catch (error) {
     console.error('Error searching competitor ads:', error);
@@ -432,7 +473,7 @@ export const searchCompetitorAds = async (req, res) => {
 export const addCompetitorBrand = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { competitorBrandName } = req.body;
+    const { pageId } = req.body;
 
     if (!brandId) {
       return res.status(400).json({
@@ -441,13 +482,10 @@ export const addCompetitorBrand = async (req, res) => {
       });
     }
 
-    // Convert to string if it's not already, and handle edge cases
-    const brandName = competitorBrandName ? String(competitorBrandName).trim() : '';
-    
-    if (!brandName) {
+    if (!pageId) {
       return res.status(400).json({
         success: false,
-        message: 'Competitor brand name is required.',
+        message: 'Page ID is required.',
         received: req.body
       });
     }
@@ -467,33 +505,43 @@ export const addCompetitorBrand = async (req, res) => {
       });
     }
 
-    // Check if competitor already exists
-    if (brand.competitorBrands && brand.competitorBrands.includes(brandName)) {
+    // Fetch page name from page ID
+    const pageName = await fetchPageNameFromPageId(pageId, brand.fbAccessToken);
+    
+    if (!pageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Could not fetch page name for the provided page ID. Please verify the page ID is correct and the access token has necessary permissions.'
+      });
+    }
+
+    // Check if competitor already exists (by page ID)
+    if (brand.competitorBrands && brand.competitorBrands.some(cb => cb.pageId === pageId)) {
       return res.status(400).json({
         success: false,
         message: 'Competitor brand already exists in the list.'
       });
     }
 
-    // Add competitor brand
+    // Add competitor brand (store both page ID and page name)
     if (!brand.competitorBrands) {
       brand.competitorBrands = [];
     }
-    brand.competitorBrands.push(brandName);
+    brand.competitorBrands.push({ pageId, pageName });
     await brand.save();
 
-    // Fetch and store ads for this competitor brand
+    // Fetch and store ads for this competitor brand using page ID
     try {
-      console.log(`Fetching and storing ads for competitor: ${brandName}`);
+      console.log(`Fetching and storing ads for competitor page: ${pageName} (ID: ${pageId})`);
       const adsData = await fetchCompetitorAdsFromMeta(
-        brandName,
+        [pageId],
         brand.fbAccessToken
       );
 
       if (adsData.length > 0) {
         const { storedAds, errors } = await processAndStoreCompetitorAds(
           brandId,
-          brandName,
+          pageName,
           adsData
         );
 
@@ -501,6 +549,8 @@ export const addCompetitorBrand = async (req, res) => {
           success: true,
           message: 'Competitor brand added successfully and ads fetched.',
           competitorBrands: brand.competitorBrands,
+          pageName,
+          pageId,
           adsStored: storedAds.length,
           errors: errors.length > 0 ? errors : undefined
         });
@@ -509,6 +559,8 @@ export const addCompetitorBrand = async (req, res) => {
           success: true,
           message: 'Competitor brand added successfully. No ads found.',
           competitorBrands: brand.competitorBrands,
+          pageName,
+          pageId,
           adsStored: 0
         });
       }
@@ -519,6 +571,8 @@ export const addCompetitorBrand = async (req, res) => {
         success: true,
         message: 'Competitor brand added successfully, but failed to fetch ads.',
         competitorBrands: brand.competitorBrands,
+        pageName,
+        pageId,
         adsError: adsError.message
       });
     }
@@ -562,10 +616,16 @@ export const removeCompetitorBrand = async (req, res) => {
       });
     }
 
-    // Remove competitor brand
+    // Remove competitor brand (can be removed by page ID or page name for backward compatibility)
     if (brand.competitorBrands) {
       brand.competitorBrands = brand.competitorBrands.filter(
-        name => name !== competitorBrandName
+        cb => {
+          // Handle both old format (string) and new format (object)
+          if (typeof cb === 'string') {
+            return cb !== competitorBrandName;
+          }
+          return cb.pageId !== competitorBrandName && cb.pageName !== competitorBrandName;
+        }
       );
       await brand.save();
     }
@@ -627,29 +687,45 @@ export const getCompetitorBrands = async (req, res) => {
 /**
  * Process a single competitor brand for a given brand
  */
-const processCompetitorBrand = async (brand, competitorBrandName) => {
+const processCompetitorBrand = async (brand, competitorBrand) => {
   try {
-    console.log(`  Fetching ads for competitor: ${competitorBrandName}`);
+    // Handle both old format (string) and new format (object with pageId and pageName)
+    let pageId, pageName;
+    
+    if (typeof competitorBrand === 'string') {
+      // Old format - try to use as page ID, but this might not work
+      // For backward compatibility, we'll try to search by it
+      pageId = competitorBrand;
+      pageName = competitorBrand;
+      console.log(`  Warning: Using old format for competitor brand: ${competitorBrand}`);
+    } else {
+      // New format
+      pageId = competitorBrand.pageId;
+      pageName = competitorBrand.pageName;
+    }
+    
+    console.log(`  Fetching ads for competitor: ${pageName} (ID: ${pageId})`);
     
     const adsData = await fetchCompetitorAdsFromMeta(
-      competitorBrandName,
+      [pageId],
       brand.fbAccessToken
     );
 
     if (adsData.length > 0) {
       const { storedAds, errors } = await processAndStoreCompetitorAds(
         brand._id.toString(),
-        competitorBrandName,
+        pageName,
         adsData
       );
 
       const errorMsg = errors.length > 0 ? ` (${errors.length} errors)` : '';
-      console.log(`    Stored ${storedAds.length} ads for ${competitorBrandName}${errorMsg}`);
+      console.log(`    Stored ${storedAds.length} ads for ${pageName}${errorMsg}`);
     } else {
-      console.log(`    No ads found for ${competitorBrandName}`);
+      console.log(`    No ads found for ${pageName}`);
     }
   } catch (error) {
-    console.error(`    Error fetching ads for ${competitorBrandName}:`, error.message);
+    const competitorName = typeof competitorBrand === 'string' ? competitorBrand : competitorBrand.pageName;
+    console.error(`    Error fetching ads for ${competitorName}:`, error.message);
     // Continue with next competitor
   }
 };

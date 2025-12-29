@@ -33,6 +33,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 export interface CarouselImage {
   url: string;
@@ -45,6 +48,8 @@ export interface Creative {
   ad_id: string;
   ad_name: string;
   ad_status: string;
+  status: string;
+  created_time: string;
   creative_type: "video" | "image" | "carousel" | "unknown";
   creative_url: string;
   thumbnail_url: string;
@@ -117,6 +122,7 @@ interface CreativesResponse {
   total_creatives: number;
   hasMore: boolean;
   nextCursor: string | null;
+  oldestCreatedTime?: string | null;
   creatives: Creative[];
   fetchTime: number;
   fromCache?: boolean;
@@ -136,11 +142,15 @@ const CreativesLibrary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState<"all" | "image" | "video" | "carousel">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "PAUSED" >("all");
   const [selectedKPIs, setSelectedKPIs] = useState<Set<string>>(
     new Set(AVAILABLE_KPIS.map(kpi => kpi.key))
   );
   const { brandId } = useParams();
+  
+  // Get date range from Redux store
+  const dateFrom = useSelector((state: RootState) => state.date?.from);
+  const dateTo = useSelector((state: RootState) => state.date?.to);
   
   // Ref for infinite scroll observer
   const observerRef = React.useRef<IntersectionObserver | null>(null);
@@ -160,7 +170,7 @@ const CreativesLibrary: React.FC = () => {
 
     try {
       const requestBody: any = {
-        limit: 12, // 12 ads per account for nice grid layout
+        limit: 15, //  ads per account for nice grid layout
         thumbnailWidth: 600,  // Request 600px width thumbnails
         thumbnailHeight: 600, // Request 600px height thumbnails
       };
@@ -177,9 +187,43 @@ const CreativesLibrary: React.FC = () => {
 
       if (response.data.success) {
         if (reset) {
-          setCreatives(response.data.creatives);
+          // Sort by created_time (newest first) for initial load
+          const sorted = [...response.data.creatives].sort((a, b) => {
+            const timeA = new Date(a.created_time || 0).getTime();
+            const timeB = new Date(b.created_time || 0).getTime();
+            return timeB - timeA; // Descending order (newest first)
+          });
+          setCreatives(sorted);
         } else {
-          setCreatives(prev => [...prev, ...response.data.creatives]);
+          // Merge new creatives with existing ones, deduplicate by ad_id, and sort globally
+          setCreatives(prev => {
+            // Create a Map to deduplicate by ad_id (keep the first occurrence)
+            const creativeMap = new Map<string, Creative>();
+            
+            // Add existing creatives first (they take priority)
+            prev.forEach(creative => {
+              if (!creativeMap.has(creative.ad_id)) {
+                creativeMap.set(creative.ad_id, creative);
+              }
+            });
+            
+            // Add new creatives (only if not already present)
+            response.data.creatives.forEach(creative => {
+              if (!creativeMap.has(creative.ad_id)) {
+                creativeMap.set(creative.ad_id, creative);
+              }
+            });
+            
+            // Convert Map to array and sort globally by created_time (newest first)
+            const merged = Array.from(creativeMap.values()).sort((a, b) => {
+              const timeA = new Date(a.created_time || 0).getTime();
+              const timeB = new Date(b.created_time || 0).getTime();
+              return timeB - timeA; // Descending order (newest first)
+            });
+            
+            console.log(`🔄 Merged ${prev.length} existing + ${response.data.creatives.length} new = ${merged.length} total creatives (sorted globally)`);
+            return merged;
+          });
         }
         setHasMore(response.data.hasMore);
         setNextCursor(response.data.nextCursor);
@@ -251,13 +295,13 @@ const CreativesLibrary: React.FC = () => {
       }
       observer.disconnect();
     };
-  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter]); // Re-run when these change
+  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter, dateFrom, dateTo]); // Re-run when these change
 
   const handleRefresh = () => {
     fetchCreatives(null, true);
   };
 
-  // Filter creatives based on search, format, and status
+  // Filter creatives based on search, format, status, and date range
   const filteredCreatives = useMemo(() => {
     return creatives.filter((creative) => {
       // Filter by search term
@@ -270,11 +314,35 @@ const CreativesLibrary: React.FC = () => {
       
       // Filter by status (case-insensitive)
       const matchesStatus = statusFilter === "all" || 
-        creative.ad_status?.toUpperCase() === statusFilter.toUpperCase();
+        creative.status === statusFilter;
       
-      return matchesSearch && matchesFormat && matchesStatus;
+      // Filter by date range (created_time)
+      let matchesDate = true;
+      if (dateFrom || dateTo) {
+        const creativeDate = new Date(creative.created_time);
+        const fromDate = dateFrom ? new Date(dateFrom) : null;
+        const toDate = dateTo ? new Date(dateTo) : null;
+        
+        // Set time to start of day for fromDate and end of day for toDate
+        if (fromDate) {
+          fromDate.setHours(0, 0, 0, 0);
+        }
+        if (toDate) {
+          toDate.setHours(23, 59, 59, 999);
+        }
+        
+        if (fromDate && toDate) {
+          matchesDate = creativeDate >= fromDate && creativeDate <= toDate;
+        } else if (fromDate) {
+          matchesDate = creativeDate >= fromDate;
+        } else if (toDate) {
+          matchesDate = creativeDate <= toDate;
+        }
+      }
+      
+      return matchesSearch && matchesFormat && matchesStatus && matchesDate;
     });
-  }, [creatives, searchTerm, formatFilter, statusFilter]);
+  }, [creatives, searchTerm, formatFilter, statusFilter, dateFrom, dateTo]);
 
   // Handle KPI selection
   const handleKPIToggle = (kpiKey: string) => {
@@ -351,6 +419,7 @@ const CreativesLibrary: React.FC = () => {
 
             {/* Filter by type */}
             <div className="flex gap-2">
+              <DatePickerWithRange />
               <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as "all" | "image" | "video" | "carousel")}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Format" />
@@ -362,16 +431,14 @@ const CreativesLibrary: React.FC = () => {
                   <SelectItem value="carousel">Carousel</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED")}>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "ACTIVE" | "PAUSED" )}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="PAUSED">Paused</SelectItem>
-                  <SelectItem value="DELETED">Deleted</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  <SelectItem value="PAUSED">Paused</SelectItem>  
                 </SelectContent>
               </Select>
     
@@ -587,20 +654,21 @@ const CreativesLibrary: React.FC = () => {
           )}
 
           {/* Info message when filtering */}
-          {(searchTerm || formatFilter !== "all" || statusFilter !== "all") && (
+          {(searchTerm || formatFilter !== "all" || statusFilter !== "all" || dateFrom || dateTo) && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
                 Showing {filteredCreatives.length} of {creatives.length} loaded ads
                 {searchTerm && ` matching "${searchTerm}"`}
                 {formatFilter !== "all" && ` (${formatFilter} format)`}
                 {statusFilter !== "all" && ` (${statusFilter.toLowerCase()} status)`}
+                {(dateFrom || dateTo) && ` (date filtered)`}
                 {hasMore && ". Keep scrolling to load more!"}
               </p>
             </div>
           )}
 
           {/* Info message when no filters */}
-          {!searchTerm && formatFilter === "all" && statusFilter === "all" && (
+          {!searchTerm && formatFilter === "all" && statusFilter === "all" && !dateFrom && !dateTo && (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">
                 Showing {creatives.length} loaded ads. Keep scrolling to load more!
@@ -613,7 +681,7 @@ const CreativesLibrary: React.FC = () => {
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 🎉 You've reached the end! 
-                {searchTerm || formatFilter !== "all" || statusFilter !== "all"
+                {searchTerm || formatFilter !== "all" || statusFilter !== "all" || dateFrom || dateTo
                   ? ` Showing ${filteredCreatives.length} of ${creatives.length} loaded ads.`
                   : ` All ${creatives.length} ads loaded.`}
               </p>
@@ -621,22 +689,26 @@ const CreativesLibrary: React.FC = () => {
           )}
 
           {/* No results message when filters are active */}
-          {filteredCreatives.length === 0 && (searchTerm || formatFilter !== "all" || statusFilter !== "all") && (
+          {filteredCreatives.length === 0 && (searchTerm || formatFilter !== "all" || statusFilter !== "all" || dateFrom || dateTo) && (
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12">
                   <Film className="w-16 h-16 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No Creatives Found</h3>
                   <p className="text-muted-foreground text-center max-w-md">
-                    {searchTerm && (formatFilter !== "all" || statusFilter !== "all")
-                      ? `No creatives found matching "${searchTerm}"${formatFilter !== "all" ? ` (${formatFilter} format)` : ""}${statusFilter !== "all" ? ` (${statusFilter.toLowerCase()} status)` : ""}. Try adjusting your filters.`
+                    {searchTerm && (formatFilter !== "all" || statusFilter !== "all" || dateFrom || dateTo)
+                      ? `No creatives found matching "${searchTerm}"${formatFilter !== "all" ? ` (${formatFilter} format)` : ""}${statusFilter !== "all" ? ` (${statusFilter.toLowerCase()} status)` : ""}${(dateFrom || dateTo) ? ` (date filtered)` : ""}. Try adjusting your filters.`
                       : searchTerm
                       ? `No creatives found matching "${searchTerm}". Try adjusting your search.`
                       : formatFilter !== "all" && statusFilter !== "all"
                       ? `No ${formatFilter} creatives with ${statusFilter.toLowerCase()} status found. Try selecting different filters.`
                       : formatFilter !== "all"
                       ? `No ${formatFilter} creatives found. Try selecting a different format.`
-                      : `No ${statusFilter.toLowerCase()} creatives found. Try selecting a different status.`}
+                      : statusFilter !== "all"
+                      ? `No ${statusFilter.toLowerCase()} creatives found. Try selecting a different status.`
+                      : (dateFrom || dateTo)
+                      ? `No creatives found in the selected date range. Try adjusting the date filter.`
+                      : `No creatives found. Try adjusting your filters.`}
                   </p>
                 </div>
               </CardContent>

@@ -3,7 +3,7 @@ import { useTokenError } from "@/context/TokenErrorContext";
 import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { RootState } from "@/store/index.ts";
-import { ChartBar, FileText, Maximize, Minimize, RefreshCw, Landmark, Route, Captions } from "lucide-react";
+import { ChartBar, Maximize, Minimize, RefreshCw, Landmark, Route, Captions } from "lucide-react";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';

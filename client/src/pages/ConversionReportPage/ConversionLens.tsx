@@ -15,9 +15,6 @@ import { useSelector } from 'react-redux';
 import { RootState } from "@/store/index.ts";
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
-import PageTitleConversion from './components/PageTitleConversion';
-import PagePathConversion from './components/PagePathConversion';
-import LandingPageConversion from './components/LandingPageConversion';
 import RegionConversion from './components/RegionConversion';
 import CityTypeConversion from './components/CityConversion';
 import CountryConversion from './components/CountryConversion';
@@ -91,9 +88,6 @@ const ConversionLens: React.FC = () => {
       'country': 'Country',
       'city': 'City',
       'region': 'Region',
-      'landingPage': 'Landing Page',
-      'pagePath': 'Page Path',
-      'pageTitle': 'Page Title'
     };
     return columnMap[tab] || 'Unknown';
   };
@@ -112,9 +106,6 @@ const ConversionLens: React.FC = () => {
       'country': ['Total Sessions', 'Avg Conv. Rate'],
       'city': ['Total Sessions', 'Avg Conv. Rate'],
       'region': ['Total Sessions', 'Avg Conv. Rate'],
-      'landingPage': ['Total Sessions', 'Avg Conv. Rate'],
-      'pagePath': ['Total Sessions', 'Avg Conv. Rate'],
-      'pageTitle': ['Total Sessions', 'Avg Conv. Rate']
     };
     return columnMap[tab] || [];
   };
@@ -133,9 +124,7 @@ const ConversionLens: React.FC = () => {
       'country': 'Country_Conversion_Report',
       'city': 'City_Conversion_Report',
       'region': 'Region_Conversion_Report',
-      'landingPage': 'LandingPage_Conversion_Report',
-      'pagePath': 'PagePath_Conversion_Report',
-      'pageTitle': 'PageTitle_Conversion_Report'
+
     };
     return fileMap[tab] || 'Conversion_Report';
   };
@@ -153,9 +142,6 @@ const ConversionLens: React.FC = () => {
     { label: 'Country', value: 'country', icon: <MapPin className="w-4 h-4" /> },
     { label: 'City', value: 'city', icon: <Building className="w-4 h-4" /> },
     { label: 'Region', value: 'region', icon: <MapPin className="w-4 h-4" /> },
-    { label: 'Landing Page', value: 'landingPage', icon: <FileText className="w-4 h-4" /> },
-    { label: 'Page Path', value: 'pagePath', icon: <FileText className="w-4 h-4" /> },
-    { label: 'Page Title', value: 'pageTitle', icon: <FileText className="w-4 h-4" /> }
   ];
 
   const handleTabChange = (value: string) => {
@@ -360,7 +346,7 @@ const ConversionLens: React.FC = () => {
                             refreshTrigger={refreshTrigger}
                           />
                         )}
-                        {activeTab === 'landingPage' && (
+                        {/* {activeTab === 'landingPage' && (
                           <LandingPageConversion 
                             isFullScreen={isFullScreen}
                             currentFilter={currentFilter}
@@ -383,7 +369,7 @@ const ConversionLens: React.FC = () => {
                             onDataUpdate={handleTabDataUpdate}
                             refreshTrigger={refreshTrigger}
                           />
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </CardContent>

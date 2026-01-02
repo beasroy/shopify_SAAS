@@ -88,21 +88,21 @@ export default function NewConversionTable({
         })
       }
     })
-    
+
     // Sort months in reverse chronological order (newest first)
     return Array.from(allMonths).sort((a, b) => {
       const [monthA, yearA] = a.split('-')
       const [monthB, yearB] = b.split('-')
-      
+
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
       const monthIndexA = months.indexOf(monthA)
       const monthIndexB = months.indexOf(monthB)
-      
+
       // First compare years
       if (yearA !== yearB) {
         return parseInt(yearB) - parseInt(yearA) // Reverse order (newest year first)
       }
-      
+
       return monthIndexB - monthIndexA // Reverse order (newest month first)
     })
   }
@@ -190,7 +190,7 @@ export default function NewConversionTable({
     setResizingIndex(index)
     document.body.style.cursor = "col-resize"
     document.body.classList.add("select-none")
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
 
   const filteredData = useMemo(() => {
@@ -198,12 +198,12 @@ export default function NewConversionTable({
     if (filter === undefined) {
       return data
     }
-    
+
     // If filter is applied but empty array, show no results
     if (filter.length === 0) {
       return []
     }
-    
+
     // If filter has items, apply the filter
     return data.filter((row) => {
       const primaryValue = String(row[primaryColumn])
@@ -274,21 +274,25 @@ export default function NewConversionTable({
         case "sessions":
           return Math.round(value).toLocaleString(locale)
         default:
-          return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
+        // return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
+          return value.toLocaleString(locale, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
       }
     }
     return value
   }
 
   const renderMonthCell = (monthData: MonthlyData | undefined) => {
-          if (!monthData) {
-        return (
-          <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
-            <div className="truncate">—</div>
-            <div className="truncate">—</div>
-          </td>
-        )
-      }
+    if (!monthData) {
+      return (
+        <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+          <div className="truncate">—</div>
+          <div className="truncate">—</div>
+        </td>
+      )
+    }
 
     const sessions = monthData["Sessions"]
     const convRate = monthData["Conv. Rate"]
@@ -297,13 +301,14 @@ export default function NewConversionTable({
     const clicks = monthData["Clicks"]
     const ConvValueCost = monthData["Conv. Value/ Cost"]
 
-        return (
+    return (
       <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
         <div className="space-y-1">
           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
           {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
           {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
-          {ConvValueCost !== undefined && <div className="text-xs truncate">Conv. Value/ Cost: {ConvValueCost.toLocaleString(locale)}</div>}
+          {ConvValueCost !== undefined && <div className="text-xs truncate">Conv.rate: {ConvValueCost.toLocaleString(locale)}</div>}
+          {ConvValueCost !== undefined && <div className="text-xs truncate"> {renderCell(convRate, "percentage")}</div>}
           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
           {purchases !== undefined && <div className="text-xs truncate">Purchases: {purchases.toLocaleString(locale)}</div>}
         </div>
@@ -312,6 +317,10 @@ export default function NewConversionTable({
   }
 
   const renderSummaryCell = (row: RowData, column: string, columnIndex: number) => {
+    console.log(
+      "column====> =", column,
+      row[column],
+    )
     const value = row[column]
     // Calculate dynamic left position based on actual column widths
     const getLeftPosition = (index: number) => {
@@ -324,9 +333,8 @@ export default function NewConversionTable({
     if (typeof value !== "number") {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${
-            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-          }`}
+          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+            }`}
           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           {""}
@@ -337,13 +345,12 @@ export default function NewConversionTable({
     const totalPurchases =
       typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null
     const conversionValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null
-   
+
     if (column.includes("Sessions")) {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${
-            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+            } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           <div className="text-right">
@@ -356,9 +363,8 @@ export default function NewConversionTable({
     if (column.includes("Rate") || column.includes("Value")) {
       return (
         <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${
-            columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+            } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
         >
           <div className="text-right">
@@ -372,9 +378,8 @@ export default function NewConversionTable({
 
     return (
       <td
-        className={`p-3 text-sm border-r border-b border-gray-200 ${
-          columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-        } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+        className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
         style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
       >
         <div className="text-right font-medium truncate">{renderCell(value)}</div>
@@ -433,9 +438,9 @@ export default function NewConversionTable({
       thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`
     } else if (column === "Avg Conv. Rate") {
       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`
-    }else if (column === "Total Cost") {
+    } else if (column === "Total Cost") {
       thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`
-    }else if (column === "Conv. Value / Cost") {
+    } else if (column === "Conv. Value / Cost") {
       thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`
     }
 
@@ -453,9 +458,8 @@ export default function NewConversionTable({
     return (
       <th
         key={column}
-        className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${
-          isFirst ? `z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
-        } ${active ? "border-blue-500" : ""}`}
+        className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${isFirst ? `z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
+          } ${active ? "border-blue-500" : ""}`}
         style={isFirst ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
       >
         <div className="flex flex-col">
@@ -469,16 +473,14 @@ export default function NewConversionTable({
           aria-orientation="vertical"
           aria-label={`Resize ${column} column`}
           onPointerDown={(e) => startDrag(e, columnIndex)}
-          className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
-            active
-              ? "bg-blue-500/15"
-              : "hover:bg-gray-200/30 active:bg-gray-200/50"
-          }`}
+          className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
+            ? "bg-blue-500/15"
+            : "hover:bg-gray-200/30 active:bg-gray-200/50"
+            }`}
         >
           <div
-            className={`absolute right-0 top-0 h-full w-px ${
-              active ? "bg-blue-500" : "bg-gray-200"
-            }`}
+            className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
+              }`}
           />
         </div>
       </th>
@@ -487,9 +489,8 @@ export default function NewConversionTable({
 
   return (
     <div className="w-full overflow-hidden flex flex-col">
-      <div className={`relative overflow-x-auto ${
-        isFullScreen ? 'max-h-[calc(100vh-80px)]' : ''
-      } max-h-[100vh]`}>
+      <div className={`relative overflow-x-auto ${isFullScreen ? 'max-h-[calc(100vh-80px)]' : ''
+        } max-h-[100vh]`}>
         <table className="w-full table-fixed border border-gray-200">
           <colgroup>
             {safeWidths.map((w, i) => (
@@ -503,23 +504,21 @@ export default function NewConversionTable({
                   <span className="truncate">{primaryColumn}</span>
                   {filter && filter.length > 0 && <span className="text-xs px-2 py-1 rounded">Filtered</span>}
                 </div>
-                
+
                 {/* Resize handle for primary column */}
                 <div
                   role="separator"
                   aria-orientation="vertical"
                   aria-label={`Resize ${primaryColumn} column`}
                   onPointerDown={(e) => startDrag(e, 0)}
-                  className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
-                    resizingIndex === 0
-                      ? "bg-blue-500/15"
-                      : "hover:bg-gray-200/30 active:bg-gray-200/50"
-                  }`}
+                  className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${resizingIndex === 0
+                    ? "bg-blue-500/15"
+                    : "hover:bg-gray-200/30 active:bg-gray-200/50"
+                    }`}
                 >
                   <div
-                    className={`absolute right-0 top-0 h-full w-px ${
-                      resizingIndex === 0 ? "bg-blue-500" : "bg-gray-200"
-                    }`}
+                    className={`absolute right-0 top-0 h-full w-px ${resizingIndex === 0 ? "bg-blue-500" : "bg-gray-200"
+                      }`}
                   />
                 </div>
               </th>
@@ -532,16 +531,15 @@ export default function NewConversionTable({
                 // Add 1 for primary column + secondary columns length
                 const columnIndex = 1 + (secondaryColumns?.length || 0) + monthIndex
                 const active = resizingIndex === columnIndex
-                
+
                 return (
                   <th
                     key={month}
-                    className={`sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200 ${
-                      active ? "border-blue-500" : ""
-                    }`}
+                    className={`sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200 ${active ? "border-blue-500" : ""
+                      }`}
                   >
-                                      <div className="truncate">{month}</div>
-                  <div className="text-xs mt-1 truncate">Sessions / Conv Rate</div>
+                    <div className="truncate">{month}</div>
+                    <div className="text-xs mt-1 truncate">Sessions / Conv Rate</div>
 
                     {/* Resize handle for monthly columns */}
                     <div
@@ -549,16 +547,14 @@ export default function NewConversionTable({
                       aria-orientation="vertical"
                       aria-label={`Resize ${month} column`}
                       onPointerDown={(e) => startDrag(e, columnIndex)}
-                      className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${
-                        active
-                          ? "bg-blue-500/15"
-                          : "hover:bg-gray-200/30 active:bg-gray-200/50"
-                      }`}
+                      className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
+                        ? "bg-blue-500/15"
+                        : "hover:bg-gray-200/30 active:bg-gray-200/50"
+                        }`}
                     >
                       <div
-                        className={`absolute right-0 top-0 h-full w-px ${
-                          active ? "bg-blue-500" : "bg-gray-200"
-                        }`}
+                        className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
+                          }`}
                       />
                     </div>
                   </th>
@@ -578,7 +574,7 @@ export default function NewConversionTable({
                   {filter !== undefined && filteredData.length === 0 ? (
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-lg font-medium text-gray-700">Oops! No data available for this category</span>
-      
+
                     </div>
                   ) : (
                     "No data to display"

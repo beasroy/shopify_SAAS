@@ -279,17 +279,16 @@ export const calculateMonthlyAOV = async (brandId, startDate, endDate) => {
         // Calculate Average Items Per Order: Total Items ÷ Number of Orders
         const averageItemsPerOrder = orderCount > 0 ? totalItems / orderCount : 0;
 
-export const getAov = async( req,res)=>{
-          return {
-            month: monthKey,
-            monthName: moment(monthKey + '-01').format('MMM-YYYY'),
-            totalRevenue: Number(totalRevenue.toFixed(2)),
-            orderCount: orderCount,
-            totalItems: totalItems,
-            aov: Math.round(aov),
-            averageItemsPerOrder: Math.round(averageItemsPerOrder)
-          };
-        })
+        return {
+          month: monthKey,
+          monthName: moment(monthKey + '-01').format('MMM-YYYY'),
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+          orderCount: orderCount,
+          totalItems: totalItems,
+          aov: Math.round(aov),
+          averageItemsPerOrder: Math.round(averageItemsPerOrder)
+        };
+      })
       .sort((a, b) => a.month.localeCompare(b.month));
 
     console.log(`✅ Calculated Monthly AOV (Fast) for ${monthlyAOV.length} month(s)`);
@@ -1024,11 +1023,11 @@ export const syncCustomers = async (req, res) => {
 
       for (const edge of data.customers.edges) {
         const customerNode = edge.node;
-        
+
         // Extract customer ID (remove 'gid://shopify/Customer/' prefix)
-        const shopifyCustomerId = customerNode.legacyResourceId?.toString() || 
-                                  customerNode.id?.split('/').pop() || 
-                                  null;
+        const shopifyCustomerId = customerNode.legacyResourceId?.toString() ||
+          customerNode.id?.split('/').pop() ||
+          null;
 
         if (!shopifyCustomerId) {
           console.warn('⚠️ Skipping customer without ID:', customerNode);
@@ -1082,7 +1081,7 @@ export const syncCustomers = async (req, res) => {
 
       for (const customerData of customersToProcess) {
         const existingCustomer = existingCustomersMap.get(customerData.shopifyCustomerId);
-        
+
         if (existingCustomer) {
           // Customer exists - prepare update operation
           customersToUpdate.push({
@@ -1152,7 +1151,7 @@ export const syncCustomers = async (req, res) => {
             totalDuplicates += duplicateErrors.length;
             const successfulInserts = customersToInsert.length - duplicateErrors.length;
             totalCreated += successfulInserts;
-            
+
             // Try to update the duplicates
             for (const writeError of duplicateErrors) {
               const failedCustomer = customersToInsert[writeError.index];
@@ -1195,9 +1194,9 @@ export const syncCustomers = async (req, res) => {
       // Update pagination info for next iteration
       hasNextPage = data.customers.pageInfo?.hasNextPage || false;
       cursor = data.customers.pageInfo?.endCursor || null;
-      
+
       console.log(`✅ Page ${pageCount} completed. Progress: ${totalSynced} customers synced so far${hasNextPage ? ` (more pages to fetch...)` : ' (all pages fetched)'}`);
-      
+
       // Rate limiting - wait 500ms between requests to avoid hitting Shopify rate limits
       if (hasNextPage) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -1242,7 +1241,7 @@ export const getCustomers = async (req, res) => {
 
     // Build query
     const query = { brandId };
-    
+
     // Add search functionality
     if (search) {
       query.$or = [
@@ -1370,9 +1369,9 @@ export const exportCustomersToExcel = async (req, res) => {
       .lean();
 
     if (!customers || customers.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No customers found for this brand' 
+      return res.status(404).json({
+        success: false,
+        error: 'No customers found for this brand'
       });
     }
 
@@ -1397,7 +1396,7 @@ export const exportCustomersToExcel = async (req, res) => {
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
-    
+
     // Create worksheet with explicit options to preserve all columns
     const worksheet = XLSX.utils.json_to_sheet(excelData, {
       header: [
@@ -1531,7 +1530,7 @@ export const calculateMonthlyReturningCustomers = async (brandId, startDate, end
     console.log('Fetching orders in date range...');
 
     // Valid financial statuses that represent actual purchases
-    const validStatuses = ['PAID', 'PARTIALLY_PAID', 'PARTIALLY_REFUNDED', 'AUTHORIZED']; 
+    const validStatuses = ['PAID', 'PARTIALLY_PAID', 'PARTIALLY_REFUNDED', 'AUTHORIZED'];
 
     while (hasNextPage) {
       const queryString = `created_at:>='${startMoment.toISOString()}' created_at:<='${endMoment.toISOString()}'`;

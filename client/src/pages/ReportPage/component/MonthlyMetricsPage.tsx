@@ -44,20 +44,20 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const [aovData, setAovData] = useState<any[]>([]);
   const [paymentOrdersData, setPaymentOrdersData] = useState<any[]>([]);
   const [productsLaunchedData, setProductsLaunchedData] = useState<any[]>([]);
-  const [returnedCustomers, setReturnedCustomers] = useState<any[]>([]);
+  const [returningCustomerPercentage, setReturningCustomerPercentage] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiErrors, setApiErrors] = useState<{
     ecommerce: boolean;
     aov: boolean;
     paymentOrders: boolean;
     productsLaunched: boolean;
-    returnedCustomers: boolean;
+    returningCustomerPercentage: boolean;
   }>({
     ecommerce: false,
     aov: false,
     paymentOrders: false,
     productsLaunched: false,
-    returnedCustomers: false
+    returningCustomerPercentage: false
   });
   const { brandId } = useParams();
 
@@ -157,22 +157,22 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
     // Create maps of returned customers data by month for quick lookup
     const returnedCustomersMap = new Map<string, number>();
-    console.log('Returned Customers Data for mapping:', returnedCustomers);
-    returnedCustomers.forEach((returnedCustomersItem) => {
+    console.log('Returned Customers Data for mapping:', returningCustomerPercentage);
+    returningCustomerPercentage.forEach((returnedCustomersItem) => {
       // Match by monthName (e.g., "Nov-2025") or month (e.g., "2025-11")
       let monthKey = '';
       if (returnedCustomersItem.monthName) {
         monthKey = returnedCustomersItem.monthName;
-        returnedCustomersMap.set(monthKey, returnedCustomersItem.returnedCustomers || 0);
-        console.log(`Mapped Returned Customers: ${returnedCustomersItem.monthName} = ${returnedCustomersItem.returnedCustomers}`);
+        returnedCustomersMap.set(monthKey, returnedCustomersItem.returningCustomerPercentage || 0);
+        console.log(`Mapped Returned Customers: ${returnedCustomersItem.monthName} = ${returnedCustomersItem.returningCustomerPercentage}`);
       }
       if (returnedCustomersItem.month) {
         // Convert "2025-11" to "Nov-2025" format for matching
         const date = new Date(returnedCustomersItem.month + '-01');
         const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
         monthKey = monthName;
-        returnedCustomersMap.set(monthKey, returnedCustomersItem.returnedCustomers || 0);
-        console.log(`Mapped Returned Customers from month: ${returnedCustomersItem.month} -> ${monthName} = ${returnedCustomersItem.returnedCustomers}`);
+        returnedCustomersMap.set(monthKey, returnedCustomersItem.returningCustomerPercentage || 0);
+        console.log(`Mapped Returned Customers from month: ${returnedCustomersItem.month} -> ${monthName} = ${returnedCustomersItem.returningCustomerPercentage}`);
       }
     });
 
@@ -189,7 +189,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.get(monthName) ?? 0);
       const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.get(monthName) ?? 0);
       const productsLaunched = apiErrors.productsLaunched ? undefined : (productsLaunchedMap.get(monthName) ?? 0);
-      const returnedCustomers = apiErrors.returnedCustomers ? undefined : (returnedCustomersMap.get(monthName) ?? 0);
+      const returningCustomerPercentage = apiErrors.returningCustomerPercentage ? undefined : (returnedCustomersMap.get(monthName) ?? 0);
       if (typeof aov === 'number' && aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
       }
@@ -199,8 +199,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       if (typeof productsLaunched === 'number' && productsLaunched > 0) {
         console.log(`Matched Products Launched for ${monthName}: ${productsLaunched}`);
       }
-      if (typeof returnedCustomers === 'number' && returnedCustomers > 0) {
-        console.log(`Matched Returned Customers for ${monthName}: ${returnedCustomers}`);
+      if (typeof returningCustomerPercentage === 'number' && returningCustomerPercentage > 0) {
+        console.log(`Matched Returned Customers for ${monthName}: ${returningCustomerPercentage}`);
       }
 
       return {
@@ -218,7 +218,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         codOrderCount: codOrderCount,
         prepaidOrderCount: prepaidOrderCount,
         productsLaunched: productsLaunched,
-        returnedCustomers: returnedCustomers
+        returningCustomerPercentage: returningCustomerPercentage
       };
     });
   }, [data, aovData, paymentOrdersData, apiErrors]);
@@ -335,7 +335,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         aov: false,
         paymentOrders: false,
         productsLaunched: false,
-        returnedCustomers: false
+        returningCustomerPercentage: false
       });
 
       // Process ecommerce metrics response (index 0)
@@ -431,13 +431,13 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           console.log('Returned Customers API Response:', returnedCustomersResponse.data);
           if (returnedCustomersResponse.data.success && returnedCustomersResponse.data.data) {
             console.log('Returned Customers Data:', returnedCustomersResponse.data.data);
-            setReturnedCustomers(returnedCustomersResponse.data.data);
+            setReturningCustomerPercentage(returnedCustomersResponse.data.data);
           }
         } else {
           // Returned Customers API failed
           console.error('Returned Customers API failed:', results[4].reason);
           setApiErrors(prev => ({ ...prev, returnedCustomers: true }));
-          setReturnedCustomers([]);
+          setReturningCustomerPercentage([]);
         }
       }
 
@@ -450,7 +450,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         aov: true,
         paymentOrders: true,
         productsLaunched: true,
-        returnedCustomers: true
+        returningCustomerPercentage: true
       });
     } finally {
       setIsLoading(false);

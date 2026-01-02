@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
 import { useParams } from 'react-router-dom';
-import { ChartBar,  Maximize, Minimize, RefreshCw, Users, User, Target, Monitor, Smartphone, Globe, MousePointer, MapPin, Building, FileText, TrendingUp, BarChart3 } from 'lucide-react';
+import { ChartBar,  Maximize, Minimize, RefreshCw, Users, User, Target, Monitor, Smartphone, Globe, MousePointer, MapPin, Building, TrendingUp, BarChart3 } from 'lucide-react';
 import { useTokenError } from '@/context/TokenErrorContext';
 import DeviceTypeConversion from './components/DeviceConversion';
 import GenderConversion from './components/GenderConversion';

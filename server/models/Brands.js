@@ -36,15 +36,9 @@ const brandSchema = new mongoose.Schema({
   googleAdsRefreshToken: { type: String }, 
   googleAnalyticsRefreshToken: { type: String },   
   fbAccessToken: {type: String},
-  competitorBrands: [{
-    pageId: {
-      type: String,
-      required: true
-    },
-    pageName: {
-      type: String,
-      required: true
-    }
+  followedBrands: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ScrapedBrand'
   }]
 }, {
   timestamps: true 

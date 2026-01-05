@@ -29,8 +29,8 @@ import creativeRoutes from "./routes/creative.js"
 import shopifyRoutes from "./routes/shopify.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
-import competitorAdsRoutes from "./routes/competitorAds.js"
-
+import scrapingRoutes from "./routes/scraping.js"
+//import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { addReportData } from "./Report/Report.js";
 
@@ -103,7 +103,8 @@ dataOperationRouter.use("/ads",creativeRoutes)
 dataOperationRouter.use("/",shopifyWebhookRoutes)
 dataOperationRouter.use("/shopify",shopifyRoutes)
 dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
-dataOperationRouter.use("/competitor",competitorAdsRoutes)
+dataOperationRouter.use("/scraping",scrapingRoutes)
+
 
 
 if (isDevelopment) {
@@ -125,6 +126,7 @@ if (isDevelopment) {
 // .catch(console.error)
 
 //monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
+//await testSaundIndia();
 
 const PORT = process.env.PORT || 5000;
 

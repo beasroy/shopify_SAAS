@@ -17,6 +17,7 @@
   "dependencies": {
     "@google-analytics/data": "^4.9.0",
     "@shopify/shopify-api": "^11.5.0",
+    "apify-client": "^2.21.0",
     "axios": "^1.7.7",
     "axios-rate-limit": "^1.4.0",
     "axios-retry": "^4.5.0",

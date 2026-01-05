@@ -30,7 +30,8 @@ import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.ts
 import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
 import CreativesLibrary from './pages/CreativesLibrary/CreativesLibrary.tsx';
 import D2CCalculator from './pages/D2CCalculator/D2CCalculator.tsx';
-import CompetitorAdsDashboard from './pages/CompetitorAds/CompetitorAdsDashboard.tsx';
+import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
+
 
 
 
@@ -68,7 +69,7 @@ function App() {
                 <Route path = "/pricing_callback" element={<PricingCallback />} />
                 <Route path = "/first-time-brand-setup" element={<BrandSetupDashboard />} />
                 <Route path = "/d2c-calculator/:brandId" element={<D2CCalculator />} />
-                <Route path = "/competitor-ads/:brandId" element={<CompetitorAdsDashboard />} />
+                <Route path = "/followed-brands/:brandId" element={<FollowedBrands />} />
               </Routes>
             </TutorialManager>
             </AutoLogout>

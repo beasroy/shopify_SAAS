@@ -14,6 +14,6 @@ router.post('/customers/sync/:brandId', verifyAuth, syncCustomers);
 router.get('/customers/:brandId', verifyAuth, getCustomers);
 router.get('/customers/export/:brandId', verifyAuth, exportCustomersToExcel);
 router.delete('/customers/:brandId', verifyAuth, deleteCustomersByBrand);
-router.post('/bounce-rate/:brandId', verifyAuth, getBounceRates);
+// router.post('/bounce-rate/:brandId', verifyAuth, getBounceRates);
 
 export default router;

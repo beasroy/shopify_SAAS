@@ -264,7 +264,7 @@ export default function NewConversionTable({
     setRowsPerPage(newRowsPerPage)
   }
 
-  const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions") => {
+  const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions" | "bounceRate") => {
     if (typeof value === "number") {
       switch (type) {
         case "spend":
@@ -300,10 +300,13 @@ export default function NewConversionTable({
     const cost = monthData["Cost"]
     const clicks = monthData["Clicks"]
     const ConvValueCost = monthData["Conv. Value/ Cost"]
+    const bounceRate = monthData["Bounce Rate"]
+    const engagementRate = monthData["Engagement Rate"]
 
     return (
       <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
         <div className="space-y-1">
+          <div className="font-medium truncate">{renderCell(bounceRate, "bounceRate")}</div>
           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
           {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
           {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
@@ -311,6 +314,7 @@ export default function NewConversionTable({
           {ConvValueCost !== undefined && <div className="text-xs truncate"> {renderCell(convRate, "percentage")}</div>}
           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
           {purchases !== undefined && <div className="text-xs truncate">Purchases: {purchases.toLocaleString(locale)}</div>}
+          {engagementRate !== undefined && <div className="text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>}
         </div>
       </td>
     )
@@ -539,7 +543,7 @@ export default function NewConversionTable({
                       }`}
                   >
                     <div className="truncate">{month}</div>
-                    <div className="text-xs mt-1 truncate">Sessions / Conv Rate</div>
+                    <div className="text-xs mt-1 truncate">{primaryColumn === "All Page" ? "Bounce Rate": "Sessions / Conv Rate"}</div>
 
                     {/* Resize handle for monthly columns */}
                     <div

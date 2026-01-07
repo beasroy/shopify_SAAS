@@ -15,7 +15,8 @@ import {
   Target,
   ShoppingCart,
   Package,
-  Eye
+  Eye,
+  SquareDashedMousePointer
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -170,6 +171,7 @@ export default function CollapsibleSidebar() {
     },
     { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
     { name: "Product", path: `/product-reports/${selectedBrandId}`, icon: <Package size={20} /> },
+    { name: "Bounce Rate", path: `/bounce-rate-reports/${selectedBrandId}`, icon: <SquareDashedMousePointer size={20} /> },
     //{ name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 

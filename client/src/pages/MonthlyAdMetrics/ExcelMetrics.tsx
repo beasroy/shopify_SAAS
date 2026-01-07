@@ -123,6 +123,10 @@ export const ExcelMetricsPage: React.FC = () => {
   const dateTo = useSelector((state: RootState) => state.date.to)
   const [expandedMonths, setExpandedMonths] = useState<string[]>([])
   const { brandId } = useParams()
+  const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId)
+  const brandName = useSelector(
+    (state: RootState) => state.brand.brands.find((brand) => brand._id === selectedBrandId)?.name,
+  )
 
   const date = useMemo(
     () => ({
@@ -471,6 +475,111 @@ export const ExcelMetricsPage: React.FC = () => {
     )
   }
 
+  const handleExport = () => {
+    try {
+      if (!processedData || !processedData.length) {
+        // Visible feedback if there is no data to export
+        window.alert("No metrics data available to export for the selected date range.")
+        return
+      }
+
+      const headers = [
+        "Level",
+        "Month",
+        "Date",
+        "Total Sales",
+        "Refund Amount",
+        "ROI",
+        "Total Spend",
+        "Total Ad Sales",
+        "Gross ROI",
+        "Meta Spend",
+        "Meta Sales",
+        "Meta ROAS",
+        "Google Spend",
+        "Google Sales",
+        "Google ROAS",
+      ]
+
+      const rows: (string | number)[][] = []
+
+      processedData.forEach((monthData: any) => {
+        const monthLabel = format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")
+
+        // Monthly summary row
+        rows.push([
+          "Month",
+          monthLabel,
+          "",
+          monthData.totalSales ?? 0,
+          monthData.refundAmount ?? 0,
+          monthData.ROI ?? 0,
+          monthData.totalSpend ?? 0,
+          monthData.totalAdSales ?? 0,
+          monthData.grossROI ?? 0,
+          monthData.metaSpend ?? 0,
+          monthData.metaSales ?? 0,
+          monthData.metaROAS ?? 0,
+          monthData.googleSpend ?? 0,
+          monthData.googleSales ?? 0,
+          monthData.googleROAS ?? 0,
+        ])
+
+        // Daily rows
+        monthData.dailyMetrics.forEach((daily: any) => {
+          rows.push([
+            "Day",
+            monthLabel,
+            format(new Date(daily.date), "dd/MM/yyyy"),
+            daily.totalSales ?? 0,
+            daily.refundAmount ?? 0,
+            daily.ROI ?? 0,
+            daily.totalSpend ?? 0,
+            daily.adSales ?? 0,
+            daily.grossROI ?? 0,
+            daily.metaSpend ?? 0,
+            daily.metaRevenue ?? 0,
+            daily.metaROAS ?? 0,
+            daily.googleSpend ?? 0,
+            daily.googleSales ?? 0,
+            daily.googleROAS ?? 0,
+          ])
+        })
+      })
+
+      const escapeCell = (value: string | number) => {
+        const str = String(value ?? "")
+        // Escape quotes and wrap in quotes so Excel parses correctly
+        const escaped = str.replace(/"/g, '""')
+        return `"${escaped}"`
+      }
+
+      const csvBody =
+        [headers, ...rows]
+          .map((row) => row.map(escapeCell).join(","))
+          .join("\r\n")
+
+      // Add BOM so Excel (especially on Windows) detects UTF-8 correctly
+      const csvContent = `\uFEFF${csvBody}`
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+
+      const link = document.createElement("a")
+      const fromPart = startDate || "start"
+      const toPart = endDate || "end"
+      link.href = url
+      link.download = `monthly-ad-metrics-${brandName ?? "brand"}-${fromPart}-to-${toPart}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to export metrics CSV", err)
+      window.alert("Something went wrong while exporting. Please check the console for details.")
+    }
+  }
+
   const renderContent = () => {
     if (loading) return <Loader isLoading={loading} />
     if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
@@ -503,7 +612,7 @@ export const ExcelMetricsPage: React.FC = () => {
                   <Button onClick={toggleFullScreen} size="icon" variant="outline" className="bg-white">
                     {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-2 bg-white">
+                  <Button onClick={handleExport} variant="outline" size="sm" className="gap-2 bg-white">
                     <Download className="h-4 w-4" />
                     Export
                   </Button>

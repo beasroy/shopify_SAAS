@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Creative } from "../CreativesLibrary";
+import { format } from "date-fns";
 
 interface CreativeCardProps {
   creative: Creative;
@@ -103,15 +104,15 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) =
           <div className="absolute top-2 left-2 z-30">
             <span className={cn(
               "inline-block text-[10px] px-2 py-0.5 rounded-full font-medium shadow-sm",
-              creative.ad_status === "ACTIVE" || creative.ad_status === "active"
+              creative.status === "ACTIVE" || creative.status === "active"
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : creative.ad_status === "PAUSED" || creative.ad_status === "paused"
+                : creative.status === "PAUSED" || creative.status === "paused"
                   ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                  : creative.ad_status === "DELETED" || creative.ad_status === "deleted" || creative.ad_status === "ARCHIVED" || creative.ad_status === "archived"
+                  : creative.status === "DELETED" || creative.status === "deleted" || creative.status === "ARCHIVED" || creative.status === "archived"
                     ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                     : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
             )}>
-              {creative.ad_status || "Unknown"}
+              {creative.status || "Unknown"}
             </span>
           </div>
           {hasCarousel ? (
@@ -239,9 +240,12 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) =
           {/* Header */}
           <div className="mb-3">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className="text-sm font-semibold line-clamp-2 flex-1 leading-tight">
+              <div className="flex flex-col items-start justify-start gap-1"> 
+              <h3 className="text-sm font-semibold flex-1 leading-tight">
                 {creative.ad_name}
               </h3>
+              <span className="text-xs text-muted-foreground">{format(new Date(creative.created_time), "dd/MM/yyyy")}</span>
+              </div>
               <span className={cn(
                 "inline-block text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0",
                 creative.creative_type === "video"

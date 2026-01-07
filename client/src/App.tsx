@@ -31,8 +31,10 @@ import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
 import CreativesLibrary from './pages/CreativesLibrary/CreativesLibrary.tsx';
 import D2CCalculator from './pages/D2CCalculator/D2CCalculator.tsx';
 import ProductPage from './pages/Product/ProductPage.tsx';
-import CompetitorAdsDashboard from './pages/CompetitorAds/CompetitorAdsDashboard.tsx';
 import BounceRatePage from './pages/BounceRate/BounceRatePage.tsx';
+import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
+
+
 
 
 function App() {
@@ -70,8 +72,8 @@ function App() {
                   <Route path="/pricing_callback" element={<PricingCallback />} />
                   <Route path="/first-time-brand-setup" element={<BrandSetupDashboard />} />
                   <Route path="/d2c-calculator/:brandId" element={<D2CCalculator />} />
-                  <Route path="/competitor-ads/:brandId" element={<CompetitorAdsDashboard />} />
                   <Route path="/bounce-rate-reports/:brandId" element={<BounceRatePage />} />
+                  <Route path="/followed-brands/:brandId" element={<FollowedBrands />} />
                 </Routes>
               </TutorialManager>
             </AutoLogout>

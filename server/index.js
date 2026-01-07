@@ -29,8 +29,8 @@ import creativeRoutes from "./routes/creative.js"
 import shopifyRoutes from "./routes/shopify.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
-import competitorAdsRoutes from "./routes/competitorAds.js"
-
+import scrapingRoutes from "./routes/scraping.js"
+//import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { addReportData } from "./Report/Report.js";
 
@@ -104,7 +104,8 @@ dataOperationRouter.use("/ads",creativeRoutes)
 dataOperationRouter.use("/",shopifyWebhookRoutes)
 dataOperationRouter.use("/shopify",shopifyRoutes)
 dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
-dataOperationRouter.use("/competitor",competitorAdsRoutes)
+dataOperationRouter.use("/scraping",scrapingRoutes)
+
 
 
 if (isDevelopment) {
@@ -114,7 +115,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-//calculateMetricsForSingleBrand("694403cdeb1502b7b832368e","694403cceb1502b7b832368b")
+calculateMetricsForSingleBrand("6941510e2deb1bce03ca02a2","6941510d2deb1bce03ca029f")
 //addReportData("690c8630e8ed87ae2f68d72f")
 
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
@@ -126,6 +127,7 @@ if (isDevelopment) {
 // .catch(console.error)
 
 //monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
+//await testSaundIndia();
 
 const PORT = process.env.PORT || 5000;
 

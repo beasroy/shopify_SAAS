@@ -1666,15 +1666,6 @@ export const calculateMonthlyReturningCustomers = async (brandId, startDate, end
       }
     }
 
-    // Print debug summary
-    console.log('\n=== ORDER PROCESSING SUMMARY ===');
-    console.log(`Total orders fetched: ${totalOrdersFetched}`);
-    console.log(`Test orders skipped: ${testOrdersSkipped}`);
-    console.log(`Cancelled orders skipped: ${cancelledOrdersSkipped}`);
-    console.log(`Voided orders skipped: ${voidedOrdersSkipped}`);
-    console.log(`Invalid financial status skipped: ${invalidFinancialStatusSkipped}`);
-    console.log(`Guest orders skipped: ${guestOrdersSkipped}`);
-    console.log(`Valid orders processed: ${validOrdersProcessed}`);
 
     console.log('\nFinancial Status Distribution:');
     for (const [status, count] of financialStatusCounts.entries()) {
@@ -1764,3 +1755,111 @@ export const getMonthlyReturnedCustomers = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 }
+
+// export const calculateBounceRates = async (
+//   brandId,
+//   startDate,
+//   endDate
+// ) => {
+//   try {
+//     if (!brandId || !startDate || !endDate) {
+//       throw new Error('brandId, startDate and endDate are required');
+//     }
+
+//     const brand = await Brand.findById(brandId);
+//     if (!brand) throw new Error('Brand not found');
+
+//     const ga4PropertyId = brand.ga4Account?.PropertyID;
+//     if (!ga4PropertyId) {
+//       throw new Error('GA4 Property ID missing');
+//     }
+
+//     const client = new BetaAnalyticsDataClient();
+
+//     const response = await client.runReport({
+//       property: `properties/${ga4PropertyId}`,
+//       dateRanges: [{ startDate, endDate }],
+//       dimensions: [{ name: 'pagePath' }],
+//       metrics: [
+//         { name: 'sessions' },
+//         { name: 'bounceRate' },
+//       ],
+//       limit: 1000,
+//     });
+
+//     // Normalize rows
+//     const pages = response.rows.map((row) => {
+//       const sessions = Number(row.metricValues[0].value);
+//       const bounceRate = Number(row.metricValues[1].value); // 0–1
+
+//       return {
+//         pagePath: row.dimensionValues[0].value,
+//         sessions,
+//         bouncedSessions: sessions * bounceRate,
+//       };
+//     });
+
+//     // Helper to aggregate correctly
+//     const calculate = (filterFn) => {
+//       const filtered = pages.filter(filterFn);
+
+//       const totalSessions = filtered.reduce(
+//         (sum, p) => sum + p.sessions,
+//         0
+//       );
+
+//       const totalBouncedSessions = filtered.reduce(
+//         (sum, p) => sum + p.bouncedSessions,
+//         0
+//       );
+
+//       return totalSessions
+//         ? Number(
+//           ((totalBouncedSessions / totalSessions) * 100).toFixed(2)
+//         )
+//         : 0;
+//     };
+
+//     return {
+//       overallBounceRate: calculate(() => true),
+
+//       homePageBounceRate: calculate(
+//         (p) => p.pagePath === '/' || p.pagePath === '/home'
+//       ),
+
+//       collectionsPageBounceRate: calculate((p) =>
+//         p.pagePath.startsWith('/collections')
+//       ),
+
+//       productPageBounceRate: calculate((p) =>
+//         p.pagePath.startsWith('/products')
+//       ),
+//     };
+//   } catch (error) {
+//     throw new Error(`Failed to calculate bounce rates: ${error.message}`);
+//   }
+// };
+
+// export const getBounceRates = async (req, res) => {
+//   try {
+//     const { brandId } = req.params;
+//     const { startDate, endDate } = req.body;
+
+//     const data = await calculateBounceRates(
+//       brandId,
+//       startDate,
+//       endDate
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       data,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// };
+

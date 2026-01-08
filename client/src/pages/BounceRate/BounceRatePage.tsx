@@ -10,13 +10,24 @@ import { useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { SideTab } from "@/components/ui/side-tab";
 import BounceRateHome from "./component/BounceRateHome";
-import ExcelDownload from "../ConversionReportPage/components/ExcelDownload";
 import CollectionPage from "./component/CollectionPage";
 import Loader from "@/components/dashboard_component/loader";
 import { useParams } from "react-router-dom";
 import createAxiosInstance from "../ConversionReportPage/components/axiosInstance";
 import { format } from 'date-fns';
 import ProductPage from "./component/ProductPage"
+
+export const normalizePath = (path = "", page = "") => {
+    if (!path || path === "(not set)" || !page) return null;
+    // Remove query params & hash
+    let cleanPath = path.split("?")[0].split("#")[0];
+
+    const pathIncludesProduct = cleanPath?.split("/")?.includes(page);
+
+    if (!pathIncludesProduct) return null
+
+    return cleanPath;
+};
 
 
 export default function BounceRatePage() {
@@ -66,32 +77,6 @@ export default function BounceRatePage() {
         { label: 'Product', value: 'productPage', icon: <Captions className="w-4 h-4" /> }
     ];
 
-    const getPrimaryColumnForTab = (tab: string): string => {
-        const columnMap: Record<string, string> = {
-            'allPage': 'All Page',
-            'collectionPage': 'Collection',
-            'productPage': 'Product'
-        };
-        return columnMap[tab] || 'Unknown';
-    };
-
-    const getFileNameForTab = (tab: string): string => {
-        const fileMap: Record<string, string> = {
-            'allPage': 'AllPage_Product_Report',
-            'collectionPage': 'CollectionPage_Product_Report',
-            'productPage': 'ProductPage_Product_Report'
-        };
-        return fileMap[tab] || 'Product_Report';
-    };
-
-    const getSecondaryColumnsForTab = (tab: string): string[] => {
-        const columnMap: Record<string, string[]> = {
-            'landingPage': ['Total Sessions', 'Avg Conv. Rate'],
-            'pagePath': ['Total Sessions', 'Avg Conv. Rate'],
-            'pageTitle': ['Total Sessions', 'Avg Conv. Rate']
-        };
-        return columnMap[tab] || [];
-    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -154,15 +139,7 @@ export default function BounceRatePage() {
                                                     <Button id="refresh" onClick={handleManualRefresh} size="icon" variant="outline">
                                                         <RefreshCw className="h-4 w-4" />
                                                     </Button>
-                                                    <ExcelDownload
-                                                        data={tabData}
-                                                        fileName={getFileNameForTab(activeTab)}
-                                                        primaryColumn={getPrimaryColumnForTab(activeTab)}
-                                                        secondaryColumns={getSecondaryColumnsForTab(activeTab)}
-                                                        monthlyDataKey="MonthlyData"
-                                                        monthlyMetrics={["Sessions", "Conv. Rate"]}
-                                                        disabled={tabData.length === 0}
-                                                    />
+                                        
                                                     <Button id="expand-button" onClick={toggleFullScreen} size="icon" variant="outline">
                                                         {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                                                     </Button>

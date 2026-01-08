@@ -2,6 +2,7 @@ import NewConversionTable from "@/pages/ConversionReportPage/components/Conversi
 import { RootState } from "@/store";
 import React from "react";
 import { useSelector } from "react-redux";
+import { normalizePath } from "../BounceRatePage";
 
 interface ConversionComponentProps {
     isFullScreen: boolean;
@@ -14,32 +15,13 @@ interface ConversionComponentProps {
 const ProductPage: React.FC<ConversionComponentProps> = ({ isFullScreen, currentFilter, tabData }) => {
 
     const locale = useSelector((state: RootState) => state.locale.locale);
-    // const { brandId } = useParams();
     const primaryColumn = "All Page";
     const monthlyDataKey = "MonthlyData";
 
-    const normalizeProductPath = (path = "") => {
-        if (!path || path === "(not set)") return null;
-
-        // Remove query params & hash
-        let cleanPath = path.split("?")[0].split("#")[0];
-
-        // Remove locale prefix: /en-us, /fr, /de, etc.
-        // cleanPath = cleanPath.replace(/^\/[a-z]{2}(-[a-z]{2})?\//i, "/");
-
-        // Must start with /products
-        // if (!cleanPath.startsWith("/products")) return null;
-
-        const pathIncludesProduct = cleanPath?.split("/")?.includes("products")
-
-        if (!pathIncludesProduct) return null
-
-        return cleanPath;
-    };
 
     const normalizedProductPages = tabData
         .map(item => {
-            const normalizedPath = normalizeProductPath(item["All Page"]);
+            const normalizedPath = normalizePath(item["All Page"], "products");
             if (!normalizedPath) return null;
 
             return {
@@ -55,7 +37,6 @@ const ProductPage: React.FC<ConversionComponentProps> = ({ isFullScreen, current
             <NewConversionTable
                 data={normalizedProductPages || []}
                 primaryColumn={primaryColumn}
-                // secondaryColumns={secondaryColumns}
                 monthlyDataKey={monthlyDataKey}
                 isFullScreen={isFullScreen}
                 locale={locale}

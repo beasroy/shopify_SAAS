@@ -3,9 +3,9 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { format } from 'date-fns';
 import { useParams } from 'react-router-dom';
-import createAxiosInstance from "./axiosInstance";
+import createAxiosInstance from "../../ConversionReportPage/components/axiosInstance";
 import Loader from "@/components/dashboard_component/loader";
-import NewConversionTable from "./ConversionTable";
+import NewConversionTable from "../../ConversionReportPage/components/ConversionTable";
 
 interface ConversionComponentProps {
   isFullScreen: boolean;
@@ -22,7 +22,7 @@ type ApiResponse = {
   }>;
 };
 
-const PagePathConversion: React.FC<ConversionComponentProps> = ({
+const PageTitleConversion: React.FC<ConversionComponentProps> = ({
   isFullScreen,
   currentFilter,
   onDataUpdate,
@@ -52,7 +52,7 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/analytics/pagePathConversionReport/${brandId}`, {
+      const response = await axiosInstance.post(`/api/analytics/pageTitleConversionReport/${brandId}`, {
         startDate: startDate, 
         endDate: endDate
       }, { withCredentials: true });
@@ -76,15 +76,14 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
   // Update parent with data
   useEffect(() => {
     if (apiResponse?.data && onDataUpdate) {
-      onDataUpdate(apiResponse.data, 'pagePath');
+      onDataUpdate(apiResponse.data, 'pageTitle');
     }
   }, [apiResponse?.data, onDataUpdate]);
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Page Path";
+  const primaryColumn = "Page Title";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
-  
 
   if (loading) {
     return <Loader isLoading={loading} />;
@@ -105,4 +104,4 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
   );
 };
 
-export default PagePathConversion;
+export default PageTitleConversion;

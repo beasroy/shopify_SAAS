@@ -33,7 +33,9 @@ export type FunnelRow = {
   aov?: number
   averageItemsPerOrder?: number
   codOrderCount?: number
-  prepaidOrderCount?: number
+  prepaidOrderCount?: number,
+  productsLaunched?: number
+  returningCustomerPercentage?: number
 }
 
 type ColumnDef<T extends keyof FunnelRow = keyof FunnelRow> = {
@@ -60,6 +62,8 @@ const allColumns: ColumnDef[] = [
   { key: "averageItemsPerOrder", header: "Avg Items/Order", width: 150, minWidth: 130, align: "right" },
   { key: "codOrderCount", header: "COD Orders", width: 130, minWidth: 110, align: "right" },
   { key: "prepaidOrderCount", header: "Prepaid Orders", width: 150, minWidth: 130, align: "right" },
+  { key: "productsLaunched", header: "Products Launched", width: 150, minWidth: 130, align: "right" },
+  { key: "returningCustomerPercentage", header: "Returned Customers", width: 150, minWidth: 130, align: "right" },
 ]
 
 function clamp(n: number, min: number, max?: number) {
@@ -70,15 +74,15 @@ function clamp(n: number, min: number, max?: number) {
 // Helper function to get logo for a column
 function getColumnLogo(key: keyof FunnelRow): React.ReactNode | null {
   // Shopify logo for AOV, Avg Items/Order, COD Orders, and Prepaid Orders
-  if (key === 'aov' || key === 'averageItemsPerOrder' || key === 'codOrderCount' || key === 'prepaidOrderCount') {
+  if (key === 'aov' || key === 'averageItemsPerOrder' || key === 'codOrderCount' || key === 'prepaidOrderCount' || key === 'productsLaunched' || key === 'returningCustomerPercentage') {
     return <ShopifyLogo width="1rem" height="1rem" />
   }
-  
+
   // Analytics logo for other columns except month/day/date
   if (key !== 'month' && key !== 'day' && key !== 'date') {
     return <Ga4Logo width="1rem" height="1rem" />
   }
-  
+
   // No logo for month/day/date columns
   return null
 }
@@ -107,9 +111,9 @@ export default function ReportTable({
       console.log('No column management props, using all columns');
       return allColumns;
     }
-    
+
     console.log('Column management props:', { visibleColumns, columnOrder });
-    
+
     // Create a mapping from display names to column keys
     const columnNameToKey: Record<string, keyof FunnelRow> = {
       'Day': 'day',
@@ -125,9 +129,11 @@ export default function ReportTable({
       'AOV': 'aov',
       'Avg Items/Order': 'averageItemsPerOrder',
       'COD Orders': 'codOrderCount',
-      'Prepaid Orders': 'prepaidOrderCount'
+      'Prepaid Orders': 'prepaidOrderCount',
+      'Products Launched': 'productsLaunched',
+      'Returned Customers': 'returningCustomerPercentage'
     };
-    
+
     // Filter and reorder columns based on column management
     const filteredColumns = columnOrder
       .filter((col: string) => visibleColumns.includes(col))
@@ -139,18 +145,18 @@ export default function ReportTable({
       })
       .filter((col): col is ColumnDef => col !== undefined);
 
-  
-  // If no valid columns found, return all columns as fallback
-  const finalColumns = filteredColumns.length > 0 ? filteredColumns : allColumns;
-  
-  // Ensure we always have valid columns
-  if (finalColumns.some(col => !col || !col.key)) {
-    console.error('Invalid columns detected, falling back to all columns:', finalColumns);
-    return allColumns;
-  }
-  
-  return finalColumns;
-}, [visibleColumns, columnOrder]);
+
+    // If no valid columns found, return all columns as fallback
+    const finalColumns = filteredColumns.length > 0 ? filteredColumns : allColumns;
+
+    // Ensure we always have valid columns
+    if (finalColumns.some(col => !col || !col.key)) {
+      console.error('Invalid columns detected, falling back to all columns:', finalColumns);
+      return allColumns;
+    }
+
+    return finalColumns;
+  }, [visibleColumns, columnOrder]);
 
   const [widths, setWidths] = React.useState<number[]>([])
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -165,7 +171,7 @@ export default function ReportTable({
         setContainerWidth(containerRef.current.clientWidth)
       }
     }
-    
+
     measureContainer()
     window.addEventListener('resize', measureContainer)
     return () => window.removeEventListener('resize', measureContainer)
@@ -174,21 +180,21 @@ export default function ReportTable({
   // Calculate widths to fill container width - recalculate on resize
   React.useEffect(() => {
     if (columns.length === 0 || containerWidth === 0) return
-    
+
     const currentColumnsKey = columns.map(c => c.key).join(',')
-    
+
     // If columns changed, reset to allow recalculation
     if (currentColumnsKey !== columnsKeyRef.current) {
       columnsKeyRef.current = currentColumnsKey
       hasInitializedRef.current = false
     }
-    
+
     // Always recalculate when container width changes (including resize)
     const defaultWidths = columns.map((c) => c.width)
     const minWidths = columns.map((c) => c.minWidth || 80)
     const totalDefaultWidth = defaultWidths.reduce((sum, w) => sum + w, 0)
     const totalMinWidth = minWidths.reduce((sum, w) => sum + w, 0)
-    
+
     // Distribute columns proportionally to fill container width
     if (totalDefaultWidth > 0) {
       // If minimum widths exceed container, scale them down
@@ -204,7 +210,7 @@ export default function ReportTable({
           const minWidth = minWidths[index]
           return Math.max(scaled, minWidth)
         })
-        
+
         // Adjust if total exceeds container due to minWidth constraints
         let totalScaled = scaledWidths.reduce((sum, w) => sum + w, 0)
         if (totalScaled > containerWidth) {
@@ -212,7 +218,7 @@ export default function ReportTable({
           const excess = totalScaled - containerWidth
           const flexibleIndices: number[] = []
           let flexibleTotal = 0
-          
+
           for (let i = 0; i < scaledWidths.length; i++) {
             const w = scaledWidths[i]
             if (w > minWidths[i]) {
@@ -220,7 +226,7 @@ export default function ReportTable({
               flexibleTotal += w
             }
           }
-          
+
           if (flexibleTotal > 0 && flexibleIndices.length > 0) {
             scaledWidths = scaledWidths.map((w, i) => {
               if (flexibleIndices.includes(i)) {
@@ -234,7 +240,7 @@ export default function ReportTable({
           const remaining = containerWidth - totalScaled
           const flexibleIndices: number[] = []
           let flexibleTotal = 0
-          
+
           for (let i = 0; i < scaledWidths.length; i++) {
             const w = scaledWidths[i]
             if (w > minWidths[i]) {
@@ -242,7 +248,7 @@ export default function ReportTable({
               flexibleTotal += w
             }
           }
-          
+
           // If no flexible columns, add to all columns proportionally
           if (flexibleIndices.length === 0) {
             const perColumn = remaining / scaledWidths.length
@@ -257,33 +263,33 @@ export default function ReportTable({
             })
           }
         }
-        
+
         // Final normalization to ensure exact sum equals containerWidth
         const finalTotal = scaledWidths.reduce((sum, w) => sum + w, 0)
         if (Math.abs(finalTotal - containerWidth) > 0.1) {
           const adjustment = (containerWidth - finalTotal) / scaledWidths.length
           scaledWidths = scaledWidths.map(w => w + adjustment)
         }
-        
+
         setWidths(scaledWidths)
       }
     } else {
       setWidths(defaultWidths)
     }
-    
+
     hasInitializedRef.current = true
   }, [columns, containerWidth])
-  
+
   // Ensure widths array matches columns array length
   const safeWidths = React.useMemo(() => {
     return columns.map((col, index) => widths[index] || col.width);
   }, [columns, widths]);
-  
+
   // Calculate total table width - should match container width after normalization
   const totalTableWidth = React.useMemo(() => {
     return safeWidths.reduce((sum, width) => sum + width, 0);
   }, [safeWidths]);
-  
+
   const dragRef = React.useRef<DragState | null>(null)
   const [resizingIndex, setResizingIndex] = React.useState<number | null>(null)
 
@@ -340,29 +346,36 @@ export default function ReportTable({
     setResizingIndex(index)
     document.body.style.cursor = "col-resize"
     document.body.classList.add("select-none")
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
 
   const renderCell = (row: FunnelRow, key: keyof FunnelRow): React.ReactNode => {
+    
+    if (key === 'returningCustomerPercentage') {
+      const value = row.returningCustomerPercentage
+      if (value === undefined || value === null) return "-"
+      return `${value.toFixed(1)}%`
+    }
+
     // Handle COD and Prepaid Order Count - show percentage instead of count
     if (key === 'codOrderCount' || key === 'prepaidOrderCount') {
       const codCount = row.codOrderCount ?? 0
       const prepaidCount = row.prepaidOrderCount ?? 0
       const total = codCount + prepaidCount
-      
+
       // If both are undefined or total is 0, show "-" or "0%"
       if (row.codOrderCount === undefined && row.prepaidOrderCount === undefined) {
         return "-"
       }
-      
+
       if (total === 0) {
         return "0%"
       }
-      
+
       let percentage: number
       let count: number
       let label: string
-      
+
       if (key === 'codOrderCount') {
         percentage = (codCount / total) * 100
         count = codCount
@@ -372,7 +385,7 @@ export default function ReportTable({
         count = prepaidCount
         label = 'Prepaid Orders'
       }
-      
+
       return (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -386,7 +399,7 @@ export default function ReportTable({
         </Tooltip>
       )
     }
-    
+
     // Handle other columns normally
     const v = row[key]
     if (v === undefined) return "-"
@@ -404,14 +417,14 @@ export default function ReportTable({
     <TooltipProvider>
       <div className="w-full space-y-2">
         <div className="w-full rounded-lg border border-gray-200 bg-white overflow-hidden">
-          <div 
+          <div
             ref={containerRef}
-            className="overflow-x-auto overflow-y-auto" 
+            className="overflow-x-auto overflow-y-auto"
             style={{ height: '90vh', width: '100%' }}
           >
-            <table 
-              className="table-fixed border-collapse text-sm w-full" 
-              style={{ 
+            <table
+              className="table-fixed border-collapse text-sm w-full"
+              style={{
                 minWidth: `${totalTableWidth}px`
               }}
             >
@@ -428,11 +441,11 @@ export default function ReportTable({
                       console.error('Invalid column at index', idx, col);
                       return null;
                     }
-                    
+
                     const isFirst = idx === 0
                     const active = resizingIndex === idx
                     const columnLogo = getColumnLogo(col.key)
-                    
+
                     return (
                       <th
                         key={String(col.key)}
@@ -443,7 +456,7 @@ export default function ReportTable({
                           "px-3 text-left font-medium bg-gray-100",
                           col.align === "right" && "text-right",
                           isFirst &&
-                            "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
+                          "sticky left-0 z-50 bg-gray-100 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                         )}
                       >
                         <div className="flex items-center gap-2">
@@ -462,133 +475,133 @@ export default function ReportTable({
                           </Tooltip>
                         </div>
 
-                      {/* Resize handle with blue active state */}
-                      <div
-                        role="separator"
-                        aria-orientation="vertical"
-                        aria-label={`Resize ${col.header} column`}
-                        onPointerDown={(e) => startDrag(e, idx)}
-                        className={cn(
-                          "absolute inset-y-0 right-0 w-3 cursor-col-resize",
-                          active
-                            ? "bg-blue-500/15"
-                            : "hover:bg-gray-200/30 active:bg-gray-200/50"
-                        )}
-                      >
+                        {/* Resize handle with blue active state */}
                         <div
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`Resize ${col.header} column`}
+                          onPointerDown={(e) => startDrag(e, idx)}
                           className={cn(
-                            "absolute right-0 top-0 h-full w-px",
-                            active ? "bg-blue-500" : "bg-gray-200"
+                            "absolute inset-y-0 right-0 w-3 cursor-col-resize",
+                            active
+                              ? "bg-blue-500/15"
+                              : "hover:bg-gray-200/30 active:bg-gray-200/50"
                           )}
-                        />
-                      </div>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-
-            <tbody className="text-gray-700">
-              {currentRows.map((row, rIdx) => (
-                <tr key={row.id} className={cn(rIdx % 2 === 1 && "bg-gray-50/60", "hover:bg-blue-50 transition-colors duration-150")}>
-                  {columns.map((col, cIdx) => {
-                    if (!col || !col.key) {
-                      console.error('Invalid column at index', cIdx, col);
-                      return null;
-                    }
-                    
-                    const isFirst = cIdx === 0
-                    const alignClass =
-                      col.align === "right"
-                        ? "text-right"
-                        : col.align === "center"
-                        ? "text-center"
-                        : "text-left"
-                    return (
-                      <td
-                        key={String(col.key)}
-                        className={cn(
-                          "px-3 py-2 truncate tabular-nums",
-                          "border-b border-l last:border-r",
-                          "align-middle",
-                          "border-gray-200",
-                          alignClass,
-                          isFirst &&
-                            "sticky left-0 z-40 bg-transparent shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
-                        )}
-                        title={
-                          typeof (row as any)[col.key] === "string"
-                            ? ((row as any)[col.key] as string)
-                            : undefined
-                        }
-                      >
-                        {renderCell(row, col.key)}
-                      </td>
+                        >
+                          <div
+                            className={cn(
+                              "absolute right-0 top-0 h-full w-px",
+                              active ? "bg-blue-500" : "bg-gray-200"
+                            )}
+                          />
+                        </div>
+                      </th>
                     )
                   })}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
 
-          {/* Footer: rows per page + pagination - Inside scrollable area */}
-          <div 
-            className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4 w-full"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600">Rows per page:</span>
-              <Select
-                value={pageSize}
-                onValueChange={(v) => {
-                  setPageSize(v as "50" | "100" | "200" | "all")
-                  setPage(1)
-                }}
-              >
-                <SelectTrigger className="h-8 w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start" className="w-[140px]">
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                  <SelectItem value="200">200</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <tbody className="text-gray-700">
+                {currentRows.map((row, rIdx) => (
+                  <tr key={row.id} className={cn(rIdx % 2 === 1 && "bg-gray-50/60", "hover:bg-blue-50 transition-colors duration-150")}>
+                    {columns.map((col, cIdx) => {
+                      if (!col || !col.key) {
+                        console.error('Invalid column at index', cIdx, col);
+                        return null;
+                      }
 
-            <div className="flex flex-1 items-center justify-end gap-3">
-              <div className="text-gray-600">
-                {totalRows === 0 ? "0 of 0" : <>{start + 1}&ndash;{end} of {totalRows}</>}
+                      const isFirst = cIdx === 0
+                      const alignClass =
+                        col.align === "right"
+                          ? "text-right"
+                          : col.align === "center"
+                            ? "text-center"
+                            : "text-left"
+                      return (
+                        <td
+                          key={String(col.key)}
+                          className={cn(
+                            "px-3 py-2 truncate tabular-nums",
+                            "border-b border-l last:border-r",
+                            "align-middle",
+                            "border-gray-200",
+                            alignClass,
+                            isFirst &&
+                            "sticky left-0 z-40 bg-transparent shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
+                          )}
+                          title={
+                            typeof (row as any)[col.key] === "string"
+                              ? ((row as any)[col.key] as string)
+                              : undefined
+                          }
+                        >
+                          {renderCell(row, col.key)}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Footer: rows per page + pagination - Inside scrollable area */}
+            <div
+              className="flex flex-col items-start justify-between gap-3 border-t border-gray-200 bg-gray-50 p-3 text-sm md:flex-row md:items-center mt-4 w-full"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600">Rows per page:</span>
+                <Select
+                  value={pageSize}
+                  onValueChange={(v) => {
+                    setPageSize(v as "50" | "100" | "200" | "all")
+                    setPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="w-[140px]">
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="200">200</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || pageSize === "all"}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-[4rem] text-center text-gray-700">
-                  {pageSize === "all" ? "1 / 1" : `${page} / ${totalPages}`}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages || pageSize === "all"}
-                  aria-label="Next page"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+
+              <div className="flex flex-1 items-center justify-end gap-3">
+                <div className="text-gray-600">
+                  {totalRows === 0 ? "0 of 0" : <>{start + 1}&ndash;{end} of {totalRows}</>}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || pageSize === "all"}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[4rem] text-center text-gray-700">
+                    {pageSize === "all" ? "1 / 1" : `${page} / ${totalPages}`}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages || pageSize === "all"}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </TooltipProvider>
   )

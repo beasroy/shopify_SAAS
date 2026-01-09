@@ -80,6 +80,7 @@ export const getGoogleAuthURL = async (req, res) => {
             authUrlConfig.prompt = 'consent';
         }
 
+
         const url = oauth2Client.generateAuthUrl(authUrlConfig);
 
         res.status(200).json({ 
@@ -135,8 +136,9 @@ export const handleGoogleCallback = async (req, res) => {
             const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
             const userInfo = await oauth2.userinfo.get();
             const { email, name, id } = userInfo.data;
-
+            console.log('userInfo in google callback--->:', userInfo.data);
             let user = await User.findOne({ email });
+            console.log('user--->:', user);
             if (!user) {
                 user = new User({
                     username: name,

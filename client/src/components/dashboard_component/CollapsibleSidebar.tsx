@@ -14,7 +14,9 @@ import {
   Crown, Clapperboard, Calculator,
   Target,
   ShoppingCart,
-  Eye
+  Package,
+  Eye,
+  SquareDashedMousePointer
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -27,7 +29,7 @@ import type { RootState } from "@/store/index.ts"
 import { clearUser } from "@/store/slices/UserSlice.ts"
 import { baseURL } from "@/data/constant.ts"
 import type { IBrand } from "@/interfaces"
-import {  WhiteGoogleAdsLogo } from "@/data/logo.tsx"
+import { WhiteGoogleAdsLogo } from "@/data/logo.tsx"
 import { FaMeta } from "react-icons/fa6"
 import PricingModal from "../../pages/Pricing/Pricing.tsx"
 
@@ -157,12 +159,10 @@ export default function CollapsibleSidebar() {
     { name: "Creatives Library", path: `/creatives-library/${selectedBrandId}`, icon: <Clapperboard size={20} /> },
     { name: "Ad Market", path:`/followed-brands/${selectedBrandId}`, icon: <Eye size={20} /> },
     { name: "Ad Metrics", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
-    { name: "E-Commerce Reports", path: `/ecommerce-reports/${selectedBrandId}` , icon: <ShoppingCart size={20} />},
-    { name: "Conversion Reports", path: `/conversion-reports/${selectedBrandId}` , icon: <Target size={20} />},
+    { name: "E-Commerce Reports", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
+    { name: "Conversion Reports", path: `/conversion-reports/${selectedBrandId}`, icon: <Target size={20} /> },
     {
-      name: "Meta Ads",
-      path: `#`,
-      icon: <FaMeta size={20} />,
+      name: "Meta Ads", path: `#`, icon: <FaMeta size={20} />,
       subItems: [
         { name: "Campaign Analysis", path: `/meta-campaigns/${selectedBrandId}` },
         { name: "Interest Reports", path: `/meta-interest/${selectedBrandId}` },
@@ -170,6 +170,8 @@ export default function CollapsibleSidebar() {
       ],
     },
     { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
+    { name: "Product", path: `/product-reports/${selectedBrandId}`, icon: <Package size={20} /> },
+    { name: "Bounce Rate", path: `/bounce-rate-reports/${selectedBrandId}`, icon: <SquareDashedMousePointer size={20} /> },
     //{ name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 
@@ -191,17 +193,16 @@ export default function CollapsibleSidebar() {
     <TooltipProvider>
       <div
         ref={sidebarRef}
-        className={`bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl relative ${
-          isExpanded ? "w-60" : "w-16"
-        }`}
+        className={`bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl relative ${isExpanded ? "w-60" : "w-16"
+          }`}
         style={{ height: "100vh" }}
       >
 
-                {/* Header Section */}
+        {/* Header Section */}
         <div className="flex-shrink-0 p-4 border-b border-slate-700/50">
           <div className="flex items-center justify-between">
-            <div 
-              className="flex items-center cursor-pointer group" 
+            <div
+              className="flex items-center cursor-pointer group"
               onClick={() => navigate("/dashboard")}
             >
               <div className="relative">
@@ -214,7 +215,7 @@ export default function CollapsibleSidebar() {
                 </span>
               )}
             </div>
-            
+
             {/* Toggle button - only show when expanded */}
             {isExpanded && (
               <button
@@ -226,7 +227,7 @@ export default function CollapsibleSidebar() {
               </button>
             )}
           </div>
-          
+
           {/* Toggle button for collapsed state - positioned above logo */}
           {!isExpanded && (
             <div className="flex justify-center mt-3">
@@ -247,8 +248,8 @@ export default function CollapsibleSidebar() {
             <nav className="space-y-2 py-4">
               {/* Brand Selector */}
               <div className="mb-6">
-                                 <SidebarItem
-                   icon={<Store size={20} className="text-slate-300" />}
+                <SidebarItem
+                  icon={<Store size={20} className="text-slate-300" />}
                   text={
                     selectedBrandId
                       ? brands.find((b: IBrand) => b._id === selectedBrandId)?.name.replace(/_/g, " ") || "Select Brand"
@@ -371,11 +372,10 @@ function SidebarChild({
     }
   }, [isActive])
 
-  const baseClasses = `flex items-center text-xs w-full px-4 py-3 rounded-lg transition-all duration-200 ${
-    isActive 
-      ? "text-white bg-slate-600/30  shadow-lg" 
+  const baseClasses = `flex items-center text-xs w-full px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+      ? "text-white bg-slate-600/30  shadow-lg"
       : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-  } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`
+    } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`
 
   const content = (
     <>
@@ -484,15 +484,13 @@ function SidebarItem({
           onClick()
         }
       }}
-      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer group capitalize ${
-        isActive 
-          ? "text-white bg-slate-600/30 border-l-2 border-slate-400 shadow-lg" 
+      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer group capitalize ${isActive
+          ? "text-white bg-slate-600/30 border-l-2 border-slate-400 shadow-lg"
           : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+        } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
-             <span className={`mr-3 transition-colors duration-200 ${
-         isActive ? "text-slate-300" : "text-slate-400 group-hover:text-slate-300"
-       }`}>
+      <span className={`mr-3 transition-colors duration-200 ${isActive ? "text-slate-300" : "text-slate-400 group-hover:text-slate-300"
+        }`}>
         {icon}
       </span>
       {isExpanded && <span className="text-sm font-medium flex-1 capitalize">{text}</span>}

@@ -255,7 +255,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
     // Get only the visible columns in the correct order
     const visibleOrderedColumns = columnOrder.filter((col) => visibleColumns.includes(col))
     const currentColumn = visibleOrderedColumns[columnIndex]
-    
+
     // Only calculate position for frozen columns
     if (!frozenColumns.includes(currentColumn)) {
       return 0
@@ -263,7 +263,7 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
 
     // Static positioning based on column order
     let position = 0
-    
+
     for (let i = 0; i < columnIndex; i++) {
       const column = visibleOrderedColumns[i]
       if (frozenColumns.includes(column)) {
@@ -491,6 +491,25 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
         const hookrate = (threeSecondsView / totalimpressions) * 100
         return hookrate
       },
+      "ROAS": (_, campaigns) => {
+        const totalSpend = campaigns.reduce((sum, campaign) => sum + Number(campaign["Amount spend"] || 0), 0);
+        const totalRevenue = campaigns.reduce((sum, campaign) => sum + Number(campaign["Revenue"] || 0), 0);
+        const totalRoas = totalSpend > 0 ? (totalRevenue / totalSpend) : 0;
+        return totalRoas
+      },
+      "Frequency": (_, campaigns) => {
+        const totalFrequency = campaigns.reduce((sum, c) => sum + Number(c["Frequency"] || 0), 0)
+        return campaigns.length ? totalFrequency / campaigns.length : 0
+      },
+      "Add To Cart (ATC)": (_, campaigns) => {
+        const totalATC = campaigns.reduce((sum, c) => sum + Number(c["Add To Cart (ATC)"] || 0), 0)
+        return campaigns.length ? totalATC / campaigns.length : 0
+      },
+      "Checkout Initiate (CI)":(_, campaigns) => {
+        const totalCI = campaigns.reduce((sum, c) => sum + Number(c["Checkout Initiate (CI)"] || 0), 0)
+        return campaigns.length ? totalCI / campaigns.length : 0
+      },
+      
       DEFAULT: (values, _) => values.reduce((sum, val) => sum + val, 0),
     }
 
@@ -645,26 +664,24 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
                 <button
                   key="all"
                   onClick={() => setActiveTab("all")}
-                  className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "all"
+                  className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 ${activeTab === "all"
                       ? "bg-white text-blue-700 shadow-sm"
                       : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   All
                 </button>
               )}
-              
+
               {/* Individual account tabs */}
               {data.map((account) => (
                 <button
                   key={account.account_id}
                   onClick={() => setActiveTab(account.account_id)}
-                  className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === account.account_id
+                  className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 ${activeTab === account.account_id
                       ? "bg-white text-blue-700 shadow-sm"
                       : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   {account.account_name}
                 </button>
@@ -673,8 +690,8 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
           </div>
 
           <div className="flex items-center gap-2">
-              {/* Date Picker */}
-              <DatePickerWithRange /> 
+            {/* Date Picker */}
+            <DatePickerWithRange />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -781,313 +798,202 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
               key={currentAccountData?.account_id}
               className="block"
             >
-                <div
-                  ref={tableRef}
-                  className={`overflow-auto ${getTableHeight()} bg-white rounded-lg border border-slate-200 shadow-sm`}
-                  onScroll={(e) => {
-                    const target = e.target as HTMLDivElement
-                    const currentScrollLeft = target.scrollLeft
+              <div
+                ref={tableRef}
+                className={`overflow-auto ${getTableHeight()} bg-white rounded-lg border border-slate-200 shadow-sm`}
+                onScroll={(e) => {
+                  const target = e.target as HTMLDivElement
+                  const currentScrollLeft = target.scrollLeft
 
-                    setScrollLeft(currentScrollLeft)
-                    if (scrollTimeoutRef.current) {
-                      clearTimeout(scrollTimeoutRef.current)
-                    }
-                  }}
-                >
-                  <table className="w-full border-collapse text-xs relative">
-                    <thead className="bg-slate-50 sticky top-0 z-20">
-                      <tr>
-                        {columnOrder
-                          .filter((column) => visibleColumns.includes(column))
-                          .filter((column) => !isGroupingEnabled || column !== "campaignName")
-                          .map((column, index) => {
-                            const isFrozen = frozenColumns.includes(column)
-                            const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                            const columnStyle = getColumnStyle(column)
+                  setScrollLeft(currentScrollLeft)
+                  if (scrollTimeoutRef.current) {
+                    clearTimeout(scrollTimeoutRef.current)
+                  }
+                }}
+              >
+                <table className="w-full border-collapse text-xs relative">
+                  <thead className="bg-slate-50 sticky top-0 z-20">
+                    <tr>
+                      {columnOrder
+                        .filter((column) => visibleColumns.includes(column))
+                        .filter((column) => !isGroupingEnabled || column !== "campaignName")
+                        .map((column, index) => {
+                          const isFrozen = frozenColumns.includes(column)
+                          const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                          const columnStyle = getColumnStyle(column)
 
-                            return (
-                              <th
-                                key={column}
-                                ref={(el) => (columnRefs.current[column] = el)}
-                                className={`text-left p-2 font-medium text-slate-700 border-b border-r ${
-                                  isFrozen ? "sticky z-20 bg-slate-50" : ""
+                          return (
+                            <th
+                              key={column}
+                              ref={(el) => (columnRefs.current[column] = el)}
+                              className={`text-left p-2 font-medium text-slate-700 border-b border-r ${isFrozen ? "sticky z-20 bg-slate-50" : ""
                                 } ${dragOverColumn === column ? "bg-blue-50" : ""} ${getSeparatorClass(column)}`}
-                                style={{
-                                  left: leftPos,
-                                  ...columnStyle,
-                                }}
-                                draggable
-                                onDragStart={() => handleColumnDragStart(column)}
-                                onDragOver={(e) => handleColumnDragOver(e, column)}
-                                onDrop={() => handleColumnDrop(column)}
-                                onDragEnd={handleColumnDragEnd}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span>{column}</span>
-                                  <SlidersHorizontal className="h-3 w-3 text-slate-400 cursor-grab" />
-                                </div>
-                              </th>
-                            )
-                          })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Render grouped campaigns */}
-                      {isGroupingEnabled &&
-                        groupedCampaigns.map((group, groupIndex) => (
-                          <React.Fragment key={`group-${group.label}`}>
-                            {/* Label group header/summary row */}
-                            <tr className="bg-gradient-to-r from-slate-100 to-slate-50 font-medium hover:bg-slate-100 transition-colors">
-                              {columnOrder
-                                .filter((column) => visibleColumns.includes(column))
-                                .filter((column) => !isGroupingEnabled || column !== "campaignName")
-                                .map((column, index) => {
-                                  const isFrozen = frozenColumns.includes(column)
-                                  const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                                  const columnStyle = getColumnStyle(column)
-                                  const summary = calculateGroupSummary(group.campaigns)
+                              style={{
+                                left: leftPos,
+                                ...columnStyle,
+                              }}
+                              draggable
+                              onDragStart={() => handleColumnDragStart(column)}
+                              onDragOver={(e) => handleColumnDragOver(e, column)}
+                              onDrop={() => handleColumnDrop(column)}
+                              onDragEnd={handleColumnDragEnd}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>{column}</span>
+                                <SlidersHorizontal className="h-3 w-3 text-slate-400 cursor-grab" />
+                              </div>
+                            </th>
+                          )
+                        })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Render grouped campaigns */}
+                    {isGroupingEnabled &&
+                      groupedCampaigns.map((group, groupIndex) => (
+                        <React.Fragment key={`group-${group.label}`}>
+                          {/* Label group header/summary row */}
+                          <tr className="bg-gradient-to-r from-slate-100 to-slate-50 font-medium hover:bg-slate-100 transition-colors">
+                            {columnOrder
+                              .filter((column) => visibleColumns.includes(column))
+                              .filter((column) => !isGroupingEnabled || column !== "campaignName")
+                              .map((column, index) => {
+                                const isFrozen = frozenColumns.includes(column)
+                                const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                                const columnStyle = getColumnStyle(column)
+                                const summary = calculateGroupSummary(group.campaigns)
 
-                                  if (column === "Campaign") {
-                                    return (
-                                      <td
-                                        key={column}
-                                        className={`p-2 border-r sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50 ${getSeparatorClass(column)}`}
-                                        style={{
-                                          left: leftPos,
-                                          ...columnStyle,
-                                        }}
-                                      >
-                                        <div className="flex items-center">
-                                          <button
-                                            onClick={() => toggleGroupExpansion(groupIndex)}
-                                            className="mr-2 focus:outline-none rounded-full p-0.5 hover:bg-slate-200 transition-colors"
-                                          >
-                                            {group.isExpanded ? (
-                                              <ChevronDown className="h-4 w-4 text-slate-600" />
-                                            ) : (
-                                              <ChevronRight className="h-4 w-4 text-slate-600" />
-                                            )}
-                                          </button>
-                                          <span className="font-medium text-slate-700">
-                                            Group: {group.campaigns.length} campaigns
-                                          </span>
-                                        </div>
-                                      </td>
-                                    )
-                                  }
-
-                                  if (column === "Labels") {
-                                    return (
-                                      <td
-                                        key={column}
-                                        className={`p-2 border-r ${
-                                          isFrozen
-                                            ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
-                                            : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                        } ${getSeparatorClass(column)}`}
-                                        style={{
-                                          left: leftPos,
-                                          ...columnStyle,
-                                        }}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <Badge
-                                            className={`${labelColorMap.get(group.label)} w-fit flex items-center gap-1 cursor-default text-xs py-0.5 px-2 rounded-md`}
-                                          >
-                                            {group.label}
-                                          </Badge>
-                                          {isEditMode && (
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 w-6 p-0 rounded-full hover:bg-red-50"
-                                              onClick={() => {
-                                                // Remove this label from all campaigns in this group
-                                                group.campaigns.forEach((campaign) => {
-                                                  handleRemoveLabel(campaign.campaignId, group.label)
-                                                })
-                                              }}
-                                            >
-                                              <X className="h-3.5 w-3.5 text-red-500" />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    )
-                                  }
-
+                                if (column === "Campaign") {
                                   return (
                                     <td
                                       key={column}
-                                      className={`p-2 border-r ${
-                                        isFrozen
-                                          ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
-                                          : "bg-gradient-to-r from-slate-100 to-slate-50"
-                                      } font-semibold`}
+                                      className={`p-2 border-r sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50 ${getSeparatorClass(column)}`}
                                       style={{
                                         left: leftPos,
                                         ...columnStyle,
                                       }}
                                     >
-                                      <div>{summary[column]}</div>
+                                      <div className="flex items-center">
+                                        <button
+                                          onClick={() => toggleGroupExpansion(groupIndex)}
+                                          className="mr-2 focus:outline-none rounded-full p-0.5 hover:bg-slate-200 transition-colors"
+                                        >
+                                          {group.isExpanded ? (
+                                            <ChevronDown className="h-4 w-4 text-slate-600" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4 text-slate-600" />
+                                          )}
+                                        </button>
+                                        <span className="font-medium text-slate-700">
+                                          Group: {group.campaigns.length} campaigns
+                                        </span>
+                                      </div>
                                     </td>
                                   )
-                                })}
-                            </tr>
+                                }
 
-                            {/* Individual campaigns in the group */}
-                            {group.isExpanded &&
-                              group.campaigns.map((campaign, index) => (
-                                <tr
-                                  key={`group-${group.label}-campaign-${campaign.campaignId}-${index}`}
-                                  className={`group border-b border-2 hover:bg-slate-50 transition-colors ${
-                                    dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                                if (column === "Labels") {
+                                  return (
+                                    <td
+                                      key={column}
+                                      className={`p-2 border-r ${isFrozen
+                                          ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
+                                          : "bg-gradient-to-r from-slate-100 to-slate-50"
+                                        } ${getSeparatorClass(column)}`}
+                                      style={{
+                                        left: leftPos,
+                                        ...columnStyle,
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Badge
+                                          className={`${labelColorMap.get(group.label)} w-fit flex items-center gap-1 cursor-default text-xs py-0.5 px-2 rounded-md`}
+                                        >
+                                          {group.label}
+                                        </Badge>
+                                        {isEditMode && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 rounded-full hover:bg-red-50"
+                                            onClick={() => {
+                                              // Remove this label from all campaigns in this group
+                                              group.campaigns.forEach((campaign) => {
+                                                handleRemoveLabel(campaign.campaignId, group.label)
+                                              })
+                                            }}
+                                          >
+                                            <X className="h-3.5 w-3.5 text-red-500" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )
+                                }
+
+                                return (
+                                  <td
+                                    key={column}
+                                    className={`p-2 border-r ${isFrozen
+                                        ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50"
+                                        : "bg-gradient-to-r from-slate-100 to-slate-50"
+                                      } font-semibold`}
+                                    style={{
+                                      left: leftPos,
+                                      ...columnStyle,
+                                    }}
+                                  >
+                                    <div>{summary[column]}</div>
+                                  </td>
+                                )
+                              })}
+                          </tr>
+
+                          {/* Individual campaigns in the group */}
+                          {group.isExpanded &&
+                            group.campaigns.map((campaign, index) => (
+                              <tr
+                                key={`group-${group.label}-campaign-${campaign.campaignId}-${index}`}
+                                className={`group border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                                   }`}
-                                  draggable
-                                  onDragStart={() => handleDragStart(campaign.campaignName)}
-                                  onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
-                                  onDrop={() => handleDrop(campaign.campaignName)}
-                                  onDragEnd={handleDragEnd}
-                                >
-                                  {columnOrder
-                                    .filter((column) => visibleColumns.includes(column))
-                                    .filter((column) => !isGroupingEnabled || column !== "campaignName")
-                                    .map((column, index) => {
-                                      const isFrozen = frozenColumns.includes(column)
-                                      const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                                      const columnStyle = getColumnStyle(column)
+                                draggable
+                                onDragStart={() => handleDragStart(campaign.campaignName)}
+                                onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
+                                onDrop={() => handleDrop(campaign.campaignName)}
+                                onDragEnd={handleDragEnd}
+                              >
+                                {columnOrder
+                                  .filter((column) => visibleColumns.includes(column))
+                                  .filter((column) => !isGroupingEnabled || column !== "campaignName")
+                                  .map((column, index) => {
+                                    const isFrozen = frozenColumns.includes(column)
+                                    const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                                    const columnStyle = getColumnStyle(column)
 
-                                      if (column === "Campaign") {
-                                        return (
-                                          <td
-                                            key={column}
-                                            className={`p-2 border-r sticky bg-white z-10 group-hover:bg-slate-50 transition-colors ${getSeparatorClass(column)}`}
-                                            style={{
-                                              left: leftPos,
-                                              paddingLeft: "30px",
-                                              ...columnStyle,
-                                            }}
-                                          >
-                                            <div className="flex items-center justify-between gap-2">
-                                              <span className="font-medium">{campaign.campaignName}</span>
-                                              { campaign.accountName && (
-                                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
-                                                  {campaign.accountName}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                        )
-                                      }
-
-                                      if (column === "Labels") {
-                                        return (
-                                          <td
-                                            key={column}
-                                            className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white group-hover:bg-slate-50 transition-colors" : ""} ${getSeparatorClass(column)}`}
-                                            style={{
-                                              left: leftPos,
-                                              ...columnStyle,
-                                            }}
-                                          >
-                                            {isEditMode && isGroupingEnabled ? (
-                                              <div className="flex items-center gap-2">
-                                                <Badge
-                                                  className={`${labelColorMap.get(group.label)} w-fit flex items-center gap-1 text-xs py-0.5 px-2 rounded-md`}
-                                                >
-                                                  {group.label}
-                                                </Badge>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-6 w-6 p-0 rounded-full hover:bg-red-50"
-                                                  onClick={() => handleRemoveLabel(campaign.campaignId, group.label)}
-                                                >
-                                                  <X className="h-3.5 w-3.5 text-red-500" />
-                                                </Button>
-                                                <DropdownMenu>
-                                                  <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="h-7">
-                                                      Change
-                                                    </Button>
-                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="start" className="w-56">
-                                                    <div className="p-2">
-                                                      {allUniqueLabels
-                                                        .filter((label) => label !== group.label)
-                                                        .map((label) => (
-                                                          <DropdownMenuItem
-                                                            key={label}
-                                                            className="flex items-center gap-2 cursor-pointer"
-                                                            onClick={() => {
-                                                              handleRemoveLabel(campaign.campaignId, group.label)
-                                                              handleAddLabel(campaign.campaignId, label)
-                                                            }}
-                                                          >
-                                                            <Badge
-                                                              className={`${labelColorMap.get(label)} text-xs py-0.5 px-2`}
-                                                            >
-                                                              {label}
-                                                            </Badge>
-                                                          </DropdownMenuItem>
-                                                        ))}
-                                                      <DropdownMenuSeparator />
-                                                      <DropdownMenuItem
-                                                        className="flex items-center gap-2 cursor-pointer"
-                                                        onClick={(e) => {
-                                                          e.preventDefault()
-                                                          setEditingLabel(campaign.campaignId)
-                                                          setEditLabelValue("")
-                                                          setTimeout(() => {
-                                                            newLabelInputRef.current?.focus()
-                                                          }, 0)
-                                                        }}
-                                                      >
-                                                        <Plus className="h-3.5 w-3.5 text-slate-500" />
-                                                        <span className="text-sm">Create new label</span>
-                                                      </DropdownMenuItem>
-                                                      {editingLabel === campaign.campaignName && (
-                                                        <div className="flex items-center gap-1 px-2 py-1 mt-2">
-                                                          <Input
-                                                            ref={newLabelInputRef}
-                                                            value={editLabelValue}
-                                                            onChange={(e) => setEditLabelValue(e.target.value)}
-                                                            placeholder="New label name"
-                                                            className="h-7 text-xs"
-                                                            autoFocus
-                                                            onKeyDown={(e) => {
-                                                              if (e.key === "Enter") {
-                                                                handleCreateNewLabel(campaign.campaignId)
-                                                                handleRemoveLabel(campaign.campaignId, group.label)
-                                                              } else if (e.key === "Escape") {
-                                                                setEditingLabel(null)
-                                                                setEditLabelValue("")
-                                                              }
-                                                            }}
-                                                          />
-                                                          <Button
-                                                            size="sm"
-                                                            className="h-7 px-2"
-                                                            onClick={() => {
-                                                              handleCreateNewLabel(campaign.campaignId)
-                                                              handleRemoveLabel(campaign.campaignId, group.label)
-                                                            }}
-                                                          >
-                                                            <Check className="h-3.5 w-3.5" />
-                                                          </Button>
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  </DropdownMenuContent>
-                                                </DropdownMenu>
-                                              </div>
-                                            ) : (
-                                              renderLabelDropdown(campaign)
+                                    if (column === "Campaign") {
+                                      return (
+                                        <td
+                                          key={column}
+                                          className={`p-2 border-r sticky bg-white z-10 group-hover:bg-slate-50 transition-colors ${getSeparatorClass(column)}`}
+                                          style={{
+                                            left: leftPos,
+                                            paddingLeft: "30px",
+                                            ...columnStyle,
+                                          }}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium">{campaign.campaignName}</span>
+                                            {campaign.accountName && (
+                                              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                                                {campaign.accountName}
+                                              </span>
                                             )}
-                                          </td>
-                                        )
-                                      }
+                                          </div>
+                                        </td>
+                                      )
+                                    }
 
+                                    if (column === "Labels") {
                                       return (
                                         <td
                                           key={column}
@@ -1097,139 +1003,230 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
                                             ...columnStyle,
                                           }}
                                         >
-                                          <div>{campaign[column]}</div>
+                                          {isEditMode && isGroupingEnabled ? (
+                                            <div className="flex items-center gap-2">
+                                              <Badge
+                                                className={`${labelColorMap.get(group.label)} w-fit flex items-center gap-1 text-xs py-0.5 px-2 rounded-md`}
+                                              >
+                                                {group.label}
+                                              </Badge>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0 rounded-full hover:bg-red-50"
+                                                onClick={() => handleRemoveLabel(campaign.campaignId, group.label)}
+                                              >
+                                                <X className="h-3.5 w-3.5 text-red-500" />
+                                              </Button>
+                                              <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                  <Button variant="outline" size="sm" className="h-7">
+                                                    Change
+                                                  </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="start" className="w-56">
+                                                  <div className="p-2">
+                                                    {allUniqueLabels
+                                                      .filter((label) => label !== group.label)
+                                                      .map((label) => (
+                                                        <DropdownMenuItem
+                                                          key={label}
+                                                          className="flex items-center gap-2 cursor-pointer"
+                                                          onClick={() => {
+                                                            handleRemoveLabel(campaign.campaignId, group.label)
+                                                            handleAddLabel(campaign.campaignId, label)
+                                                          }}
+                                                        >
+                                                          <Badge
+                                                            className={`${labelColorMap.get(label)} text-xs py-0.5 px-2`}
+                                                          >
+                                                            {label}
+                                                          </Badge>
+                                                        </DropdownMenuItem>
+                                                      ))}
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                      className="flex items-center gap-2 cursor-pointer"
+                                                      onClick={(e) => {
+                                                        e.preventDefault()
+                                                        setEditingLabel(campaign.campaignId)
+                                                        setEditLabelValue("")
+                                                        setTimeout(() => {
+                                                          newLabelInputRef.current?.focus()
+                                                        }, 0)
+                                                      }}
+                                                    >
+                                                      <Plus className="h-3.5 w-3.5 text-slate-500" />
+                                                      <span className="text-sm">Create new label</span>
+                                                    </DropdownMenuItem>
+                                                    {editingLabel === campaign.campaignName && (
+                                                      <div className="flex items-center gap-1 px-2 py-1 mt-2">
+                                                        <Input
+                                                          ref={newLabelInputRef}
+                                                          value={editLabelValue}
+                                                          onChange={(e) => setEditLabelValue(e.target.value)}
+                                                          placeholder="New label name"
+                                                          className="h-7 text-xs"
+                                                          autoFocus
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                              handleCreateNewLabel(campaign.campaignId)
+                                                              handleRemoveLabel(campaign.campaignId, group.label)
+                                                            } else if (e.key === "Escape") {
+                                                              setEditingLabel(null)
+                                                              setEditLabelValue("")
+                                                            }
+                                                          }}
+                                                        />
+                                                        <Button
+                                                          size="sm"
+                                                          className="h-7 px-2"
+                                                          onClick={() => {
+                                                            handleCreateNewLabel(campaign.campaignId)
+                                                            handleRemoveLabel(campaign.campaignId, group.label)
+                                                          }}
+                                                        >
+                                                          <Check className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </DropdownMenuContent>
+                                              </DropdownMenu>
+                                            </div>
+                                          ) : (
+                                            renderLabelDropdown(campaign)
+                                          )}
                                         </td>
                                       )
-                                    })}
-                                </tr>
-                              ))}
-                          </React.Fragment>
-                        ))}
+                                    }
 
-                      {/* Ungrouped campaigns section */}
-                      {isGroupingEnabled && ungroupedCampaigns.length > 0 && (
-                        <tr className="bg-gradient-to-r from-gray-100 to-gray-50 font-medium hover:bg-gray-100 transition-colors">
-                          {columnOrder
-                            .filter((column) => visibleColumns.includes(column))
-                            .filter((column) => !isGroupingEnabled || column !== "campaignName")
-                            .map((column, index) => {
-                              const isFrozen = frozenColumns.includes(column)
-                              const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                              const columnStyle = getColumnStyle(column)
+                                    return (
+                                      <td
+                                        key={column}
+                                        className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white group-hover:bg-slate-50 transition-colors" : ""} ${getSeparatorClass(column)}`}
+                                        style={{
+                                          left: leftPos,
+                                          ...columnStyle,
+                                        }}
+                                      >
+                                        <div>{campaign[column]}</div>
+                                      </td>
+                                    )
+                                  })}
+                              </tr>
+                            ))}
+                        </React.Fragment>
+                      ))}
 
-                              if (column === "Campaign") {
-                                return (
-                                  <td
-                                    key={column}
-                                    className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50 ${getSeparatorClass(column)}`}
-                                    style={{
-                                      left: leftPos,
-                                      ...columnStyle,
-                                    }}
-                                  >
-                                    <div className="font-medium text-slate-700 flex items-center">
-                                      <Filter className="h-4 w-4 mr-2 text-slate-500" />
-                                      Unlabeled: {ungroupedCampaigns.length} campaigns
-                                    </div>
-                                  </td>
-                                )
-                              }
+                    {/* Ungrouped campaigns section */}
+                    {isGroupingEnabled && ungroupedCampaigns.length > 0 && (
+                      <tr className="bg-gradient-to-r from-gray-100 to-gray-50 font-medium hover:bg-gray-100 transition-colors">
+                        {columnOrder
+                          .filter((column) => visibleColumns.includes(column))
+                          .filter((column) => !isGroupingEnabled || column !== "campaignName")
+                          .map((column, index) => {
+                            const isFrozen = frozenColumns.includes(column)
+                            const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                            const columnStyle = getColumnStyle(column)
 
-                              if (column === "Labels") {
-                                return (
-                                  <td
-                                    key={column}
-                                    className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50" : ""} ${getSeparatorClass(column)}`}
-                                    style={{
-                                      left: leftPos,
-                                      ...columnStyle,
-                                    }}
-                                  >
-                                    -
-                                  </td>
-                                )
-                              }
-
-                              // Calculate summary for ungrouped campaigns
-                              const summary = calculateGroupSummary(ungroupedCampaigns)
-
+                            if (column === "Campaign") {
                               return (
                                 <td
                                   key={column}
-                                  className={`p-2 border-r ${
-                                    isFrozen
-                                      ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
-                                      : "bg-gradient-to-r from-gray-100 to-gray-50"
-                                  } font-semibold`}
+                                  className={`p-2 border-r sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50 ${getSeparatorClass(column)}`}
                                   style={{
                                     left: leftPos,
                                     ...columnStyle,
                                   }}
                                 >
-                                  <div>{summary[column]}</div>
+                                  <div className="font-medium text-slate-700 flex items-center">
+                                    <Filter className="h-4 w-4 mr-2 text-slate-500" />
+                                    Unlabeled: {ungroupedCampaigns.length} campaigns
+                                  </div>
                                 </td>
                               )
-                            })}
-                        </tr>
-                      )}
+                            }
 
-                      {/* Render ungrouped campaigns or all campaigns when grouping is disabled */}
-                      {(isGroupingEnabled ? ungroupedCampaigns : filteredCampaigns).map((campaign, index) => (
-                        <tr
-                          key={`${isGroupingEnabled ? "ungrouped" : "all"}-${campaign.campaignName}-${index}`}
-                          className={`group border-b border-2 hover:bg-slate-50 transition-colors ${
-                            dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
+                            if (column === "Labels") {
+                              return (
+                                <td
+                                  key={column}
+                                  className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-gradient-to-r from-slate-100 to-slate-50" : ""} ${getSeparatorClass(column)}`}
+                                  style={{
+                                    left: leftPos,
+                                    ...columnStyle,
+                                  }}
+                                >
+                                  -
+                                </td>
+                              )
+                            }
+
+                            // Calculate summary for ungrouped campaigns
+                            const summary = calculateGroupSummary(ungroupedCampaigns)
+
+                            return (
+                              <td
+                                key={column}
+                                className={`p-2 border-r ${isFrozen
+                                    ? "sticky z-10 bg-gradient-to-r from-gray-100 to-gray-50"
+                                    : "bg-gradient-to-r from-gray-100 to-gray-50"
+                                  } font-semibold`}
+                                style={{
+                                  left: leftPos,
+                                  ...columnStyle,
+                                }}
+                              >
+                                <div>{summary[column]}</div>
+                              </td>
+                            )
+                          })}
+                      </tr>
+                    )}
+
+                    {/* Render ungrouped campaigns or all campaigns when grouping is disabled */}
+                    {(isGroupingEnabled ? ungroupedCampaigns : filteredCampaigns).map((campaign, index) => (
+                      <tr
+                        key={`${isGroupingEnabled ? "ungrouped" : "all"}-${campaign.campaignName}-${index}`}
+                        className={`group border-b border-2 hover:bg-slate-50 transition-colors ${dragOverCampaign === campaign.campaignName ? "bg-blue-50" : ""
                           }`}
-                          draggable
-                          onDragStart={() => handleDragStart(campaign.campaignName)}
-                          onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
-                          onDrop={() => handleDrop(campaign.campaignName)}
-                          onDragEnd={handleDragEnd}
-                        >
-                          {columnOrder
-                            .filter((column) => visibleColumns.includes(column))
-                            .filter((column) => !isGroupingEnabled || column !== "campaignName")
-                            .map((column, index) => {
-                              const isFrozen = frozenColumns.includes(column)
-                              const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
-                              const columnStyle = getColumnStyle(column)
-                              if (column === "Campaign") {
-                                return (
-                                  <td
-                                    key={column}
-                                    className={`p-2 border-r sticky z-10 bg-white group-hover:bg-slate-50 transition-colors ${getSeparatorClass(column)}`}
-                                    style={{
-                                      left: leftPos,
-                                      ...columnStyle,
-                                    }}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="font-medium">{campaign.campaignName}</span>
-                                      { campaign.accountName && (
-                                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
-                                          {campaign.accountName}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                )
-                              }
+                        draggable
+                        onDragStart={() => handleDragStart(campaign.campaignName)}
+                        onDragOver={(e) => handleDragOver(e, campaign.campaignName)}
+                        onDrop={() => handleDrop(campaign.campaignName)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        {columnOrder
+                          .filter((column) => visibleColumns.includes(column))
+                          .filter((column) => !isGroupingEnabled || column !== "campaignName")
+                          .map((column, index) => {
+                            const isFrozen = frozenColumns.includes(column)
+                            const leftPos = isFrozen ? `${getLeftPosition(index)}px` : undefined
+                            const columnStyle = getColumnStyle(column)
+                            if (column === "Campaign") {
+                              return (
+                                <td
+                                  key={column}
+                                  className={`p-2 border-r sticky z-10 bg-white group-hover:bg-slate-50 transition-colors ${getSeparatorClass(column)}`}
+                                  style={{
+                                    left: leftPos,
+                                    ...columnStyle,
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-medium">{campaign.campaignName}</span>
+                                    {campaign.accountName && (
+                                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                                        {campaign.accountName}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              )
+                            }
 
-                              if (column === "Labels") {
-                                return (
-                                  <td
-                                    key={column}
-                                    className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white group-hover:bg-slate-50 transition-colors" : ""} ${getSeparatorClass(column)}`}
-                                    style={{
-                                      left: leftPos,
-                                      ...columnStyle,
-                                    }}
-                                  >
-                                    {renderLabelDropdown(campaign)}
-                                  </td>
-                                )
-                              }
-
+                            if (column === "Labels") {
                               return (
                                 <td
                                   key={column}
@@ -1239,17 +1236,31 @@ const MetaCampaignTable: React.FC<MetaCampaignTableProps> = ({ data, blendedSumm
                                     ...columnStyle,
                                   }}
                                 >
-                                  <div>{campaign[column]}</div>
+                                  {renderLabelDropdown(campaign)}
                                 </td>
                               )
-                            })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            }
+
+                            return (
+                              <td
+                                key={column}
+                                className={`p-2 border-r ${isFrozen ? "sticky z-10 bg-white group-hover:bg-slate-50 transition-colors" : ""} ${getSeparatorClass(column)}`}
+                                style={{
+                                  left: leftPos,
+                                  ...columnStyle,
+                                }}
+                              >
+                                <div>{campaign[column]}</div>
+                              </td>
+                            )
+                          })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </Card>
     </TooltipProvider>

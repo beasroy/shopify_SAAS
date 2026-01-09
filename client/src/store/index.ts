@@ -82,5 +82,6 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 
-export type RootState = ReturnType<typeof store.getState>;
+// Use the non-persisted reducer type so selectors can access all slices
+export type RootState = ReturnType<typeof rootReducer>;
 export type AppDispatch = typeof store.dispatch;

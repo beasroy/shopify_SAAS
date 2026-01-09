@@ -1369,3 +1369,274 @@ export const exportCustomersToExcel = async (req, res) => {
   }
 };
 
+
+export const getFullRefundDetails = async (req, res) => {
+  try {
+    const brandId = req.params.brandId;
+    const { refundId } = req.body;
+
+    if (!brandId || !refundId) {
+      return res.status(400).json({ success: false, error: 'Brand ID and refund ID are required' });
+    }
+
+    // Get brand to access Shopify credentials
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found' });
+    }
+
+    const access_token = brand.shopifyAccount?.shopifyAccessToken;
+    if (!access_token) {
+      return res.status(400).json({ success: false, error: 'Shopify access token is missing' });
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    if (!shopName) {
+      return res.status(400).json({ success: false, error: 'Shop name is missing' });
+    }
+
+    // Format refund ID to GID format if needed
+    let formattedRefundId = refundId;
+    if (!refundId.startsWith('gid://shopify/Refund/')) {
+      formattedRefundId = `gid://shopify/Refund/${refundId}`;
+    }
+
+    // GraphQL query to fetch all refund fields
+    const REFUND_QUERY = `
+      query getRefundDetails($refundId: ID!) {
+        refund(id: $refundId) {
+          id
+          createdAt
+          updatedAt
+          note
+          totalRefundedSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+            presentmentMoney {
+              amount
+              currencyCode
+            }
+          }
+          order {
+            id
+            legacyResourceId
+            name
+            createdAt
+            totalPriceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+          refundLineItems(first: 250) {
+            edges {
+              node {
+                id
+                quantity
+                restockType
+                subtotalSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                totalTaxSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                lineItem {
+                  id
+                  title
+                  quantity
+                  variant {
+                    id
+                    title
+                    sku
+                    price
+                  }
+                  product {
+                    id
+                    title
+                  }
+                }
+              }
+            }
+          }
+          refundShippingLines(first: 100) {
+            edges {
+              node {
+                id
+                subtotalAmountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                taxAmountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                shippingLine {
+                  id
+                  title
+                  originalPriceSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                }
+              }
+            }
+          }
+          duties{
+            amountSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+              presentmentMoney {
+                amount
+                currencyCode
+              }
+            }
+            originalDuty{
+              countryCodeOfOrigin
+              harmonizedSystemCode
+              price{
+                shopMoney {
+                  amount
+                  currencyCode
+                }
+                presentmentMoney {
+                  amount
+                  currencyCode
+                }
+              }
+              taxLines{
+                priceSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                channelLiable
+                title
+                rate
+                ratePercentage
+                source
+              }
+            }
+          }
+          orderAdjustments(first: 100) {
+            edges {
+              node {
+                id
+                amountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                reason
+                taxAmountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+              }
+            }
+          }
+          transactions(first: 100) {
+            edges {
+              node {
+                id
+                amountSet {
+                  shopMoney {
+                    amount
+                    currencyCode
+                  }
+                  presentmentMoney {
+                    amount
+                    currencyCode
+                  }
+                }
+                status
+                gateway
+                kind
+                processedAt
+                test
+                parentTransaction {
+                  id
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      refundId: formattedRefundId,
+    };
+
+    // Make GraphQL request
+    const data = await makeGraphQLRequest(shopName, access_token, REFUND_QUERY, variables);
+
+    if (!data?.refund) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Refund not found' 
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: data.refund,
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching refund details:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch refund details',
+    });
+  }
+};
+

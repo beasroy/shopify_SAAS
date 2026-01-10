@@ -50,7 +50,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
   try {
     const { brandId } = req.params;
     let { dateRanges } = req.body;
-   
+
     // Ensure dateRanges is an array and has at least one range
     if (!dateRanges || !Array.isArray(dateRanges) || dateRanges.length === 0) {
       const now = new Date();
@@ -63,7 +63,7 @@ export async function getDailyAddToCartAndCheckouts(req, res) {
     const brand = await Brand.findById(brandId).lean();
 
 
-    if (!brand ) {
+    if (!brand) {
       return res.status(404).json({
         success: false,
         message: 'Brand not found.'
@@ -1031,7 +1031,7 @@ export async function getCityWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-  const refreshToken = brand.googleAnalyticsRefreshToken;
+    const refreshToken = brand.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for Brand ID: ${brandId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1313,7 +1313,7 @@ export async function getPageWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-      const refreshToken = brand.googleAnalyticsRefreshToken;
+    const refreshToken = brand.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for Brand ID: ${brandId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -1579,7 +1579,7 @@ export async function getChannelWiseConversions(req, res) {
     const { brandId } = req.params;
     const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
 
-      const brand = await Brand.findById(brandId).lean();
+    const brand = await Brand.findById(brandId).lean();
 
     if (!brand) {
       return res.status(404).json({
@@ -2008,7 +2008,7 @@ export async function getInterestWiseConversions(req, res) {
 
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-      const refreshToken = brand.googleAnalyticsRefreshToken;
+    const refreshToken = brand.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for Brand ID: ${brandId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -2147,7 +2147,7 @@ export async function getOperatingSystemWiseConversions(req, res) {
     const propertyId = brand.ga4Account?.PropertyID;
     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
 
-      const refreshToken = brand.googleAnalyticsRefreshToken;
+    const refreshToken = brand.googleAnalyticsRefreshToken;
     if (!refreshToken || refreshToken.trim() === '') {
       console.warn(`No refresh token found for Brand ID: ${brandId}`);
       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
@@ -3145,4 +3145,156 @@ function getAdjustedDates(startDate, endDate) {
     adjustedStartDate: LastSixMonths.toISOString().split('T')[0],
     adjustedEndDate: now.toISOString().split('T')[0]
   };
+}
+
+export async function getBounceRate(req, res) {
+  try {
+    const { brandId } = req.params;
+    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+    const brand = await Brand.findById(brandId).lean();
+
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: 'Brand not found.',
+      });
+    }
+
+    const propertyId = brand.ga4Account?.PropertyID;
+    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+    const refreshToken = brand.googleAnalyticsRefreshToken;
+
+    if (!refreshToken || refreshToken.trim() === '') {
+      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden.' });
+    }
+
+    const accessToken = await getGoogleAccessToken(refreshToken);
+
+    // 1. Updated Request Body with new GA4 Metrics
+    const requestBody = {
+      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dimensions: [
+        { name: 'yearMonth' },
+        { name: 'landingPage' }
+      ],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'engagementRate' },
+        { name: 'bounceRate' },
+        { name: 'ecommercePurchases' }
+      ]
+    };
+
+    const response = await axios.post(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+      requestBody,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const Rows = response?.data?.rows || [];
+
+    // 2. Process and Group Data
+    const groupedData = Rows.reduce((acc, row) => {
+      const yearMonth = row.dimensionValues[0]?.value;
+      const landingPage = row.dimensionValues[1]?.value;
+
+      // Extract values based on metric order in requestBody
+      const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
+      const engagementRate = parseFloat(row.metricValues[1]?.value || 0);
+      const bounceRate = parseFloat(row.metricValues[2]?.value || 0);
+      const purchases = parseInt(row.metricValues[3]?.value || 0, 10);
+
+      if (!acc[landingPage]) {
+        acc[landingPage] = {
+          MonthlyData: {},
+          TotalSessions: 0,
+          TotalPurchases: 0,
+          SumEngagementRate: 0,
+          SumBounceRate: 0,
+          MonthCount: 0
+        };
+      }
+
+      if (!acc[landingPage].MonthlyData[yearMonth]) {
+        acc[landingPage].MonthlyData[yearMonth] = {
+          Month: yearMonth,
+          // Sessions: sessions,
+          // Purchases: purchases,
+          "Engagement Rate": (engagementRate * 100).toFixed(2) + "%",
+          "Bounce Rate": (bounceRate * 100).toFixed(2) + "%",
+          // "Conv. Rate": sessions > 0 ? ((purchases / sessions) * 100).toFixed(2) : "0.00"
+        };
+      }
+
+      // Aggregate totals for the Landing Page averages
+      acc[landingPage].TotalSessions += sessions;
+      acc[landingPage].TotalPurchases += purchases;
+      acc[landingPage].SumEngagementRate += engagementRate;
+      acc[landingPage].SumBounceRate += bounceRate;
+      acc[landingPage].MonthCount += 1;
+
+      return acc;
+    }, {});
+
+    // 3. Map to final array format
+    let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => {
+      const avgEngagement = (LandingPageData.SumEngagementRate / LandingPageData.MonthCount) * 100;
+      const avgBounce = (LandingPageData.SumBounceRate / LandingPageData.MonthCount) * 100;
+      const totalSessions = LandingPageData.TotalSessions;
+      const totalPurchases = LandingPageData.TotalPurchases;
+
+      return {
+        "All Page": LandingPage,
+        "Total Sessions": totalSessions,
+        "Total Purchases": totalPurchases,
+        "Avg Engagement Rate": avgEngagement.toFixed(2) + "%",
+        "Avg Bounce Rate": avgBounce.toFixed(2) + "%",
+        "Avg Conv. Rate": totalSessions > 0 ? ((totalPurchases / totalSessions) * 100).toFixed(2) : "0.00",
+        MonthlyData: Object.values(LandingPageData.MonthlyData)
+      };
+    });
+
+    // 4. Sorting and Filtering
+    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+    let limitedData = data.slice(0, 500);
+
+    if (sessionsFilter || convRateFilter) {
+      limitedData = limitedData.filter(item => {
+        const sessionCondition = sessionsFilter
+          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+          : true;
+
+        const convRateCondition = convRateFilter
+          ? compareValues(parseFloat(item["Avg Conv. Rate"]), convRateFilter.value, convRateFilter.operator)
+          : true;
+
+        return sessionCondition && convRateCondition;
+      });
+    }
+
+    const activeFilters = {};
+    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+    res.status(200).json({
+      reportType: `Monthly Landing Page Performance (Sessions, Engagement, Conversions)`,
+      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
+      data: limitedData,
+    });
+
+  } catch (error) {
+    console.error('Error fetching Landing Pages Data:', error);
+    if (error.response && error.response.status === 403) {
+      return res.status(403).json({ error: 'Access to GA4 API forbidden. Check permissions.' });
+    }
+    res.status(500).json({ error: 'Failed to fetch Landing Pages-Based Monthly Data.' });
+  }
 }

@@ -3,9 +3,9 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { format } from 'date-fns';
 import { useParams } from 'react-router-dom';
-import createAxiosInstance from "./axiosInstance";
+import createAxiosInstance from "../../ConversionReportPage/components/axiosInstance";
 import Loader from "@/components/dashboard_component/loader";
-import NewConversionTable from "./ConversionTable";
+import NewConversionTable from "../../ConversionReportPage/components/ConversionTable";
 
 interface ConversionComponentProps {
   isFullScreen: boolean;
@@ -18,11 +18,11 @@ type ApiResponse = {
   reportType: string;
   data: Array<{
     [key: string]: any;
-    MonthlyData?: Array<{ Month: string;[key: string]: any }>
+    MonthlyData?: Array<{ Month: string;[key: string]: any }>;
   }>;
 };
 
-const PageTitleConversion: React.FC<ConversionComponentProps> = ({
+const LandingPageConversion: React.FC<ConversionComponentProps> = ({
   isFullScreen,
   currentFilter,
   onDataUpdate,
@@ -52,7 +52,7 @@ const PageTitleConversion: React.FC<ConversionComponentProps> = ({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/analytics/pageTitleConversionReport/${brandId}`, {
+      const response = await axiosInstance.post(`/api/analytics/pageConversionReport/${brandId}`, {
         startDate: startDate, 
         endDate: endDate
       }, { withCredentials: true });
@@ -76,14 +76,15 @@ const PageTitleConversion: React.FC<ConversionComponentProps> = ({
   // Update parent with data
   useEffect(() => {
     if (apiResponse?.data && onDataUpdate) {
-      onDataUpdate(apiResponse.data, 'pageTitle');
+      onDataUpdate(apiResponse.data, 'landingPage');
     }
   }, [apiResponse?.data, onDataUpdate]);
 
   // Extract columns dynamically from the API response
-  const primaryColumn = "Page Title";
+  const primaryColumn = "Landing Page";
   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
   const monthlyDataKey = "MonthlyData";
+
 
   if (loading) {
     return <Loader isLoading={loading} />;
@@ -104,4 +105,4 @@ const PageTitleConversion: React.FC<ConversionComponentProps> = ({
   );
 };
 
-export default PageTitleConversion;
+export default LandingPageConversion;

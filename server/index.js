@@ -6,10 +6,10 @@ import cookieParser from "cookie-parser";
 import { createServer } from 'http';
 import { initializeSocket } from './config/socket.js';
 import authRoutes from "./routes/auth.js"
-import analyticsRoutes from "./routes/analytics.js"  
+import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
-import excelReportRoutes from "./routes/report.js" 
+import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import metaRoutes from "./routes/meta.js"
@@ -32,7 +32,6 @@ import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
 import scrapingRoutes from "./routes/scraping.js"
 //import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
-import { addReportData } from "./Report/Report.js";
 
 
 
@@ -46,20 +45,20 @@ initializeSocket(server);
 
 
 dotenv.config();
-             
+
 connectDB();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
-  origin: isDevelopment 
+  origin: isDevelopment
     ? true  // Allow all origins in development
     : [
-        'https://parallels.messold.com',
-        'https://extensions.shopifycdn.com',
-        'https://*.shopifycdn.com',
-        'https://extensions.shopify.com'
-      ],
+      'https://parallels.messold.com',
+      'https://extensions.shopifycdn.com',
+      'https://*.shopifycdn.com',
+      'https://extensions.shopify.com'
+    ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
@@ -80,31 +79,31 @@ app.use(cookieParser());
 const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);
 
-dataOperationRouter.use("/auth",authRoutes);
+dataOperationRouter.use("/auth", authRoutes);
 // dataOperationRouter.use("/shopify",spotifyRoutes);
-dataOperationRouter.use("/analytics",analyticsRoutes);
-dataOperationRouter.use("/brands",brandRoutes);
-dataOperationRouter.use("/metrics",fbMetricrRoutes);
-dataOperationRouter.use("/report",excelReportRoutes);
-dataOperationRouter.use("/performance",targetReportRoutes);
-dataOperationRouter.use("/segment",segmentReportRoutes);
-dataOperationRouter.use("/setup",setupBrandRoutes);
-dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
-dataOperationRouter.use("/meta",metaRoutes);
-dataOperationRouter.use("/google",googleRoutes);
-dataOperationRouter.use("/users",userRoutes);
+dataOperationRouter.use("/analytics", analyticsRoutes);
+dataOperationRouter.use("/brands", brandRoutes);
+dataOperationRouter.use("/metrics", fbMetricrRoutes);
+dataOperationRouter.use("/report", excelReportRoutes);
+dataOperationRouter.use("/performance", targetReportRoutes);
+dataOperationRouter.use("/segment", segmentReportRoutes);
+dataOperationRouter.use("/setup", setupBrandRoutes);
+dataOperationRouter.use("/googleAd", googleAdConversionReportRoutes)
+dataOperationRouter.use("/meta", metaRoutes);
+dataOperationRouter.use("/google", googleRoutes);
+dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
-dataOperationRouter.use("/zoho",zohoRoutes);
-dataOperationRouter.use("/app",shopifyAppRoutes)
-dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
-dataOperationRouter.use("/pricing",pricingRoutes)
-dataOperationRouter.use("/cache",cacheRoutes)
-dataOperationRouter.use("/ads",creativeRoutes)
-dataOperationRouter.use("/",shopifyWebhookRoutes)
-dataOperationRouter.use("/shopify",shopifyRoutes)
-dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
-dataOperationRouter.use("/scraping",scrapingRoutes)
+dataOperationRouter.use("/zoho", zohoRoutes);
+dataOperationRouter.use("/app", shopifyAppRoutes)
+dataOperationRouter.use("/shopify/webhooks", webhookRoutes)
+dataOperationRouter.use("/pricing", pricingRoutes)
+dataOperationRouter.use("/cache", cacheRoutes)
+dataOperationRouter.use("/ads", creativeRoutes)
+dataOperationRouter.use("/", shopifyWebhookRoutes)
+dataOperationRouter.use("/shopify", shopifyRoutes)
+dataOperationRouter.use("/d2c-calculator", d2cCalculatorRoutes)
+dataOperationRouter.use("/scraping", scrapingRoutes)
 
 
 
@@ -115,7 +114,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("6941510e2deb1bce03ca02a2","6941510d2deb1bce03ca029f")
+calculateMetricsForSingleBrand("6941510e2deb1bce03ca02a2", "6941510d2deb1bce03ca029f")
 //addReportData("690c8630e8ed87ae2f68d72f")
 
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
@@ -132,7 +131,7 @@ calculateMetricsForSingleBrand("6941510e2deb1bce03ca02a2","6941510d2deb1bce03ca0
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
-  res.send('Hello, World!'); 
+  res.send('Hello, World!');
 });
 
 // Trust proxy in production
@@ -144,7 +143,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on ${isDevelopment ? 'http' : 'https'}://0.0.0.0:${PORT}`);
   console.log(`Socket.IO server is ready for real-time notifications`);
   console.log(`Redis notification subscriber is ready to receive worker notifications`);
-  
+
 
 });
 

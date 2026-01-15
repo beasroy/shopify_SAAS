@@ -2,6 +2,7 @@ import Shopify from 'shopify-api-node';
 import Brand from '../models/Brands.js';
 import AdMetrics from '../models/AdMetrics.js';
 import moment from 'moment-timezone';
+import D2CCalculator from '../models/D2CCalculator.js';
 
 
 const fetchTotalRevenue = async (brand, startDate, endDate) => {
@@ -46,7 +47,7 @@ const fetchTotalRevenue = async (brand, startDate, endDate) => {
   const today = moment.tz(storeTimezone).startOf('day');
   const yesterday = today.clone().subtract(1, 'day').endOf('day');
   const adMetricsEndDate = moment.min(yesterday, endMoment);
-  
+
   const adMetrics = await AdMetrics.find({
     brandId: brand._id,
     date: {
@@ -84,14 +85,14 @@ const fetchTotalRevenue = async (brand, startDate, endDate) => {
       }
 
       const orders = await shopify.order.list(params);
-      
+
       if (!orders || orders.length === 0) break;
 
       // Process orders
       for (const order of orders) {
         if (!order.test) {
           let orderTotal = Number(order.total_price || 0);
-          
+
           // Subtract refunds if any
           if (order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0) {
             let refundAmount = 0;
@@ -109,7 +110,7 @@ const fetchTotalRevenue = async (brand, startDate, endDate) => {
             }
             orderTotal -= refundAmount;
           }
-          
+
           totalRevenue += orderTotal;
         }
       }
@@ -170,18 +171,18 @@ export const getRevenue = async (req, res) => {
 
     // Validate required parameters
     if (!brandId || !startDate || !endDate) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required parameters: brandId, startDate, and endDate are required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: brandId, startDate, and endDate are required'
       });
     }
 
     // Validate date formats
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid date format. Please use YYYY-MM-DD format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Please use YYYY-MM-DD format'
       });
     }
 
@@ -194,8 +195,8 @@ export const getRevenue = async (req, res) => {
     // Fetch total revenue from Shopify
     const revenueData = await fetchTotalRevenue(brand, startDate, endDate);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: {
         revenue: revenueData.totalRevenue,
         currency: revenueData.currency
@@ -211,29 +212,29 @@ export const getRevenue = async (req, res) => {
 export const calculateD2C = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { 
+    const {
       revenue,
       currency,
-      cogs, 
-      sellingMarketingExpense, 
-      fulfillmentLogistics, 
-      otherOperatingExpense 
+      cogs,
+      sellingMarketingExpense,
+      fulfillmentLogistics,
+      otherOperatingExpense
     } = req.body;
 
     // Validate required parameters
     if (!brandId || revenue === undefined || revenue === null) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required parameters: brandId and revenue are required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: brandId and revenue are required'
       });
     }
 
     // Validate revenue is a number
     const revenueValue = Number(revenue);
     if (Number.isNaN(revenueValue)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid revenue value. Revenue must be a number' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid revenue value. Revenue must be a number'
       });
     }
 
@@ -246,8 +247,8 @@ export const calculateD2C = async (req, res) => {
       otherOperatingExpense || 0
     );
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: {
         ...metrics,
         currency: currency || 'USD'
@@ -258,3 +259,83 @@ export const calculateD2C = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const getLastUsedExpenditure = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const brand = await Brand.findById(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ success: false, error: 'Brand not found.' });
+    }
+    const lastUsedCosts = await D2CCalculator.findOne({ brandId: brandId });
+
+    if (!lastUsedCosts) {
+      return res.status(404).json({ success: false, error: 'Last used costs unavailable.' });
+    }
+    res.status(200).json({ success: true, data: lastUsedCosts });
+  } catch (error) {
+    console.error('Error getting last used costs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const calculateMetrics = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { additionalRevenue, additionalExpenses, onlineRevenue, otherRevenue, currency, marketingExpense, otherMarketingExpense, operatingCost, cogs = 0 } = req.body;
+    console.log("calculateMetrics===>", req.body);
+
+    if (!onlineRevenue || !currency || !marketingExpense || !operatingCost || !otherMarketingExpense) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: brandId, onlineRevenue, currency, marketingExpense, and operatingCost are required'
+      });
+    }
+
+    let totalRevenue = onlineRevenue + otherRevenue;
+
+    if (Object.keys(additionalRevenue).length > 0) {
+      totalRevenue += Object.values(additionalRevenue).reduce((sum, value) => sum + Number(value), 0);
+    }
+
+    let totalExpense = marketingExpense + operatingCost + otherMarketingExpense;
+
+    if (Object.keys(additionalExpenses).length > 0) {
+      totalExpense += Object.values(additionalExpenses).reduce((sum, value) => sum + Number(value), 0);
+    }
+
+    const profit = totalRevenue - totalExpense;
+    const profitMargin = (profit / totalRevenue) * 100;
+
+    const updatedRecord = await D2CCalculator.findOneAndUpdate(
+      { brandId: brandId },
+      {
+        // Data to update or create
+        marketingCosts: marketingExpense,
+        otherMarketingCosts: otherMarketingExpense,
+        operatingCosts: operatingCost,
+        cogs: cogs || 0
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        profit,
+        profitMargin,
+        totalRevenue,
+        totalExpense
+      }
+    });
+
+  } catch (error) {
+    console.error('Error calculating metrics:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}

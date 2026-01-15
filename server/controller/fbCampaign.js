@@ -139,12 +139,15 @@ const processCampaignInsights = (campaign, insights) => {
     }
   }
 
+  const revenue = spend * roas || 0;
+
   return {
     "campaignId": campaign.id || "",
     "campaignName": insights.campaign_name || "",
     "Status": campaign.status || "",
     "Amount spend": spend,
     "Conversion Rate": parseFloat(conversionRate.toFixed(2)),
+    "Revenue":parseFloat(revenue.toFixed(2)),
     "ROAS": parseFloat(roas.toFixed(2)),
     "Reach": reach,
     "Frequency": parseFloat(frequency.toFixed(2)),

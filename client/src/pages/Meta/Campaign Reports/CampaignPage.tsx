@@ -76,7 +76,7 @@ function CampaignPage() {
 
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 3 * 60 * 60 * 1000); // 3 hours
+        const intervalId = setInterval(fetchData, 6 * 60 * 60 * 1000); // 6 hours
         return () => clearInterval(intervalId);
     }, [fetchData]);
 

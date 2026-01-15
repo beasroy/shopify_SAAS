@@ -8,6 +8,7 @@ import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSide
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
 import { useSelector } from "react-redux"
 import { RootState } from "@/store"
+import NewCalculator from "./components/NewCalculator"
 
 const CalculatorsPage: React.FC = () => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -17,7 +18,14 @@ const CalculatorsPage: React.FC = () => {
     from: dateFrom ? new Date(dateFrom) : undefined,
     to: dateTo ? new Date(dateTo) : undefined
   }), [dateFrom, dateTo]);
+
   const calculators = [
+    {
+      id: "ebidtaNew",
+      title: "Monthly Business Calculator",
+      description: "Calculate your EBIDTA for your business",
+      icon: Calculator,
+    },
     {
       id: "ebidta",
       title: "EBIDTA Calculator",
@@ -55,7 +63,7 @@ const CalculatorsPage: React.FC = () => {
         
 
           {/* Accordion with Calculators */}
-          <Accordion type="single" collapsible defaultValue="ebidta" className="w-full space-y-4">
+          <Accordion type="single" collapsible defaultValue="ebidtaNew" className="w-full space-y-4">
             {calculators.map((calc) => (
               <AccordionItem key={calc.id} value={calc.id} className="border border-gray-200 rounded-lg overflow-hidden w-full">
                 <AccordionTrigger className="px-6 hover:bg-gray-50">
@@ -70,6 +78,7 @@ const CalculatorsPage: React.FC = () => {
 
                 <AccordionContent className="px-0 py-0 border-t border-gray-200 w-full">
                   <div className="w-full">
+                    {calc.id === "ebidtaNew" && <NewCalculator date={date} />}
                     {calc.id === "ebidta" && <EbidtaCalculator date={date} />}
                     {calc.id === "cpa" && (
                       <div className="text-center py-12">

@@ -117,7 +117,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
   const [newFieldName, setNewFieldName] = useState<string>("");
 
   const [currency, setCurrency] = useState<string>('USD');
-  const [metrics, setMetrics] = useState<EbidtaMetrics | null>(null);
+  // const [metrics, setMetrics] = useState<EbidtaMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
   const { brandId } = useParams<{ brandId: string }>();
   const { toast } = useToast();

@@ -9,7 +9,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ORDERS_QUERY, makeGraphQLRequest } from '../Report/MonthlyReportGraphQL.js';
+import { ORDERS_QUERY, makeGraphQLRequest, convertGraphQLOrderToRESTFormat, calculateRefundAmount } from '../Report/MonthlyReportGraphQL.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -724,7 +724,7 @@ export const getTotalRevenue = async (req, res) => {
 export const testGraphQLOrders = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, limit = 5 } = req.query; // limit defaults to 5 orders
+    const { startDate, endDate, limit = 5 } = req.query; // limit defaults to 5 orders for detailed response
 
     if (!brandId) {
       return res.status(400).json({ success: false, error: 'Brand ID is required' });
@@ -746,47 +746,197 @@ export const testGraphQLOrders = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Shop name is missing or invalid' });
     }
 
-    // Build query string
+    // Get store timezone from Shopify API
+    const cleanShopName = shopName.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    let storeTimezone = 'UTC';
+    try {
+      const shopResponse = await axios.get(
+        `https://${cleanShopName}/admin/api/2024-04/shop.json`,
+        {
+          headers: { 'X-Shopify-Access-Token': access_token },
+          timeout: 30000,
+        }
+      );
+      storeTimezone = shopResponse.data.shop.iana_timezone || 'UTC';
+    } catch (error) {
+      console.warn('⚠️  Could not fetch store timezone, using UTC:', error.message);
+    }
+
+    // Build query string using store timezone
     let queryString = '';
+    let startTime, endTime;
+    let expectedStartDate, expectedEndDate; // For post-fetch validation
+    
     if (startDate && endDate) {
-      const startTime = moment(startDate).startOf('day').utc().toISOString();
-      const endTime = moment(endDate).add(1, 'day').startOf('day').utc().toISOString();
+      // Convert dates to store timezone, then to UTC for API query
+      const startMoment = moment.tz(startDate, storeTimezone);
+      const endMoment = moment.tz(endDate, storeTimezone);
+      expectedStartDate = startMoment.format('YYYY-MM-DD');
+      expectedEndDate = endMoment.format('YYYY-MM-DD');
+      startTime = startMoment.clone().startOf('day').utc().toISOString();
+      // Use start of next day (exclusive) instead of end of current day (inclusive) to avoid boundary overlap
+      endTime = endMoment.clone().add(1, 'day').startOf('day').utc().toISOString();
+
       queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
     } else {
       // Default to last 7 days if no dates provided
-      const endTime = moment().utc().toISOString();
-      const startTime = moment().subtract(7, 'days').utc().toISOString();
+      const endMoment = moment.tz(storeTimezone).endOf('day');
+      const startMoment = moment.tz(storeTimezone).subtract(7, 'days').startOf('day');
+      expectedStartDate = startMoment.format('YYYY-MM-DD');
+      expectedEndDate = endMoment.format('YYYY-MM-DD');
+      startTime = startMoment.utc().toISOString();
+      endTime = endMoment.clone().add(1, 'day').startOf('day').utc().toISOString();
       queryString = `created_at:>=${startTime} AND created_at:<${endTime}`;
     }
 
     console.log('🧪 Testing GraphQL Orders Query:', {
       brandId,
       shopName,
+      storeTimezone,
+      startDate: startDate || 'last 7 days',
+      endDate: endDate || 'today',
       queryString,
       limit: Number.parseInt(limit, 10)
     });
 
-    // Make GraphQL request
-    const variables = {
-      first: Number.parseInt(limit, 10),
-      after: null,
-      query: queryString,
-    };
+    // Fetch all orders with pagination to calculate totals
+    let allOrders = [];
+    let hasNextPage = true;
+    let after = null;
+    let totalSales = 0;
+    let totalRefunds = 0;
+    let allOrdersCount = 0;
+    let testOrdersCount = 0;
+    let cancelledOrdersCount = 0;
+    let activeOrdersCount = 0;
+    const orderDetails = []; // For debugging
 
-    const data = await makeGraphQLRequest(shopName, access_token, ORDERS_QUERY, variables);
+    while (hasNextPage) {
+      const variables = {
+        first: 250, // Fetch in batches of 250 (Shopify's max)
+        after: after,
+        query: queryString,
+      };
 
-    // Return raw data for inspection
-    const orders = data?.orders?.edges?.map(edge => edge.node) || [];
+      const data = await makeGraphQLRequest(shopName, access_token, ORDERS_QUERY, variables);
+      const orders = data?.orders?.edges?.map(edge => edge.node) || [];
+      
+      // Calculate totals from all orders and categorize them
+      for (const order of orders) {
+        // Parse order date in store timezone for validation
+        const orderDateMoment = moment.utc(order.createdAt).tz(storeTimezone);
+        const orderDateStr = orderDateMoment.format('YYYY-MM-DD');
+        const isCancelled = !!order.cancelledAt;
+        const isTest = !!order.test;
+        
+        // Validate order is within the expected date range (post-fetch filtering)
+        // This ensures we don't count orders that GraphQL incorrectly included
+        const isInDateRange = orderDateStr >= expectedStartDate && orderDateStr <= expectedEndDate;
+        
+        // Track order details for debugging
+        orderDetails.push({
+          id: order.legacyResourceId,
+          createdAt: order.createdAt,
+          orderDate: orderDateStr,
+          expectedDateRange: `${expectedStartDate} to ${expectedEndDate}`,
+          isInDateRange,
+          isTest,
+          isCancelled,
+          totalPrice: order.totalPriceSet?.shopMoney?.amount || '0'
+        });
+
+        // Skip orders outside the date range
+        if (!isInDateRange) {
+          console.log(`⚠️  Order ${order.legacyResourceId} (${orderDateStr}) is outside date range (${expectedStartDate} to ${expectedEndDate}). Skipping.`);
+          continue;
+        }
+
+        if (isTest) {
+          testOrdersCount++;
+          continue; // Skip test orders
+        }
+
+        allOrdersCount++;
+        
+        if (isCancelled) {
+          cancelledOrdersCount++;
+        } else {
+          activeOrdersCount++;
+        }
+        
+        // Add order total to sales
+        const orderTotal = Number(order.totalPriceSet?.shopMoney?.amount || 0);
+        totalSales += orderTotal;
+        
+        // Calculate refunds for this order using MonthlyReportGraphQL.js
+        // Convert GraphQL order to REST format first
+        const restOrder = convertGraphQLOrderToRESTFormat(order);
+        // Calculate refund amount (returns { refundAmount, refundCount })
+        const { refundAmount } = calculateRefundAmount(restOrder);
+        totalRefunds += refundAmount;
+      }
+
+      // Collect orders for detailed response (up to limit, filtered by date range)
+      if (allOrders.length < Number.parseInt(limit, 10)) {
+        const remainingSlots = Number.parseInt(limit, 10) - allOrders.length;
+        // Filter orders by date range before adding to response
+        const filteredOrders = orders.filter(order => {
+          const orderDateMoment = moment.utc(order.createdAt).tz(storeTimezone);
+          const orderDateStr = orderDateMoment.format('YYYY-MM-DD');
+          return orderDateStr >= expectedStartDate && orderDateStr <= expectedEndDate;
+        });
+        allOrders.push(...filteredOrders.slice(0, remainingSlots));
+      }
+
+      // Check pagination
+      hasNextPage = data?.orders?.pageInfo?.hasNextPage || false;
+      after = data?.orders?.pageInfo?.endCursor || null;
+    }
+
+    // Log order breakdown for debugging
+    console.log('📊 Order Breakdown:', {
+      totalOrders: allOrdersCount,
+      activeOrders: activeOrdersCount,
+      cancelledOrders: cancelledOrdersCount,
+      testOrders: testOrdersCount,
+      storeTimezone,
+      orderDetails: orderDetails.slice(0, 20) // Log first 20 for debugging
+    });
 
     res.json({
       success: true,
       data: {
         query: queryString,
-        pagination: data?.orders?.pageInfo || {},
-        ordersCount: orders.length,
-        orders: orders,
+        storeTimezone,
+        dateRange: {
+          startDate: startDate || 'last 7 days',
+          endDate: endDate || 'today',
+          expectedStartDate,
+          expectedEndDate,
+          startTime,
+          endTime
+        },
+        orderCounts: {
+          total: allOrdersCount,
+          active: activeOrdersCount,
+          cancelled: cancelledOrdersCount,
+          test: testOrdersCount
+        },
+        totals: {
+          totalSales: totalSales.toFixed(2),
+          totalRefunds: totalRefunds.toFixed(2),
+          netSales: (totalSales - totalRefunds).toFixed(2),
+          currency: allOrders[0]?.totalPriceSet?.shopMoney?.currencyCode || 'USD'
+        },
+        // Return limited orders for detailed inspection
+        ordersCount: allOrders.length,
+        orders: allOrders,
         // Also return first order in detail for easier inspection
-        firstOrderDetail: orders[0] || null,
+        firstOrderDetail: allOrders[0] || null,
+        // Debug: Show all order details (first 50)
+        debug: {
+          orderDetails: orderDetails.slice(0, 50)
+        }
       }
     });
 

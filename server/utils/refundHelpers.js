@@ -1,7 +1,8 @@
-import OrderRefund from '../models/OrderRefund.js';
+import Order from '../models/Order.js';
 import AdMetrics from '../models/AdMetrics.js';
 import Brand from '../models/Brands.js';
 import moment from 'moment-timezone';
+import axios from 'axios';
 
 /**
  * Calculate total refund amount from refund payload
@@ -53,62 +54,30 @@ export const calculateRefundAmount = (refundPayload) => {
 };
 
 /**
- * Ensure OrderRefund entry exists for an order
- * Creates entry with order_id and order_created_at if it doesn't exist
- * Used during historical order sync to pre-populate order data
- */
-export const ensureOrderRefundExists = async (brandId, orderId, orderCreatedAt) => {
-  try {
-    const existingRefund = await OrderRefund.findOne({
-      brandId,
-      orderId
-    });
-
-    if (!existingRefund) {
-      // Create entry with zero refund amount (will be updated later if refunds come)
-      const orderRefund = new OrderRefund({
-        brandId,
-        orderId,
-        orderCreatedAt: new Date(orderCreatedAt),
-        refundAmount: 0,
-        refundCount: 0,
-        lastRefundAt: null
-      });
-      await orderRefund.save();
-      console.log(`✅ Created OrderRefund entry for order ${orderId} (no refunds yet)`);
-    }
-
-  } catch (error) {
-    console.error(`Error ensuring OrderRefund exists for order ${orderId}:`, error);
-    throw error;
-  }
-};
-
-/**
  * Set OrderRefund entry for an order (used during historical sync)
  * Sets the total refund amount from all refunds in the order
  * This should be used when processing historical orders where we have the complete refund picture
  */
 export const setOrderRefund = async (brandId, orderId, totalRefundAmount, refundCount = 1) => {
   try {
-    // Find existing refund entry for this order
-    const orderRefund = await OrderRefund.findOne({
+    
+    const order = await Order.findOne({
       brandId,
       orderId
     });
 
-    if (!orderRefund) {
+    if (!order) {
       throw new Error(`OrderRefund entry not found for order ${orderId}. Order must be synced first.`);
     }
 
     // Set the total refund amount (don't add, replace)
-    orderRefund.refundAmount = totalRefundAmount;
-    orderRefund.refundCount = refundCount;
-    orderRefund.lastRefundAt = new Date();
-    await orderRefund.save();
-    console.log(`✅ Set OrderRefund for order ${orderId}: Total refund = ${orderRefund.refundAmount}`);
+    order.refundAmount = totalRefundAmount;
+    order.refundCount = refundCount;
+    order.lastRefundAt = new Date();
+    await order.save();
+    console.log(`✅ Set OrderRefund for order ${orderId}: Total refund = ${order.refundAmount}`);
     
-    return orderRefund;
+    return order;
   } catch (error) {
     console.error(`Error setting OrderRefund for order ${orderId}:`, error);
     throw error;
@@ -116,31 +85,89 @@ export const setOrderRefund = async (brandId, orderId, totalRefundAmount, refund
 };
 
 /**
+ * Fetch order from Shopify REST API and create Order document if it doesn't exist
+ */
+async function fetchAndCreateOrder(brandId, orderId) {
+  try {
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      throw new Error(`Brand not found: ${brandId}`);
+    }
+
+    const shopName = brand.shopifyAccount?.shopName;
+    const accessToken = brand.shopifyAccount?.shopifyAccessToken;
+
+    if (!shopName || !accessToken) {
+      throw new Error(`Shopify credentials missing for brand ${brandId}`);
+    }
+
+    // Fetch order from Shopify REST API
+    const response = await axios.get(
+      `https://${shopName}/admin/api/2024-10/orders/${orderId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': accessToken
+        }
+      }
+    );
+
+    const shopifyOrder = response.data.order;
+    if (!shopifyOrder) {
+      throw new Error(`Order ${orderId} not found in Shopify`);
+    }
+
+    // Create Order document
+    const order = await Order.create({
+      orderId: Number(orderId),
+      orderCreatedAt: new Date(shopifyOrder.created_at),
+      brandId: brandId,
+      city: shopifyOrder.shipping_address?.city || null,
+      state: shopifyOrder.shipping_address?.province || null
+    });
+
+    console.log(`✅ Created Order document for order ${orderId} from Shopify`);
+    return order;
+  } catch (error) {
+    if (error.code === 11000) {
+      // Order already exists (race condition), fetch it
+      return await Order.findOne({ brandId, orderId: Number(orderId) });
+    }
+    console.error(`Error fetching/creating order ${orderId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Update OrderRefund entry for an order (used for webhook refunds)
  * Aggregates multiple refunds per order - ADDS to existing amount
- * Note: This assumes the OrderRefund entry already exists (created during historical sync)
- * Use this for incremental webhook updates, not for historical sync
+ * If Order doesn't exist, fetches it from Shopify and creates it
  */
 export const updateOrderRefund = async (brandId, orderId, refundAmount) => {
   try {
-    // Find existing refund entry for this order
-    const orderRefund = await OrderRefund.findOne({
+    // Find existing order entry
+    let order = await Order.findOne({
       brandId,
-      orderId
+      orderId: Number(orderId)
     });
 
-    if (!orderRefund) {
-      throw new Error(`OrderRefund entry not found for order ${orderId}. Order must be synced first.`);
+    // If order doesn't exist, fetch it from Shopify and create it
+    if (!order) {
+      console.log(`⚠️  Order ${orderId} not found in database. Fetching from Shopify...`);
+      order = await fetchAndCreateOrder(brandId, orderId);
+      
+      if (!order) {
+        throw new Error(`Could not fetch or create order ${orderId} from Shopify`);
+      }
     }
 
     // Update existing: add new refund amount and increment count
-    orderRefund.refundAmount += refundAmount;
-    orderRefund.refundCount += 1;
-    orderRefund.lastRefundAt = new Date();
-    await orderRefund.save();
-    console.log(`✅ Updated OrderRefund for order ${orderId}: Total refund = ${orderRefund.refundAmount}`);
+    order.refundAmount = refundAmount;
+    order.refundCount = (order.refundCount || 0) + 1;
+    order.lastRefundAt = new Date();
+    await order.save();
+    console.log(`✅ Updated OrderRefund for order ${orderId}: Total refund = ${order.refundAmount}`);
     
-    return orderRefund;
+    return order;
   } catch (error) {
     console.error(`Error updating OrderRefund for order ${orderId}:`, error);
     throw error;
@@ -158,7 +185,7 @@ export const getRefundsForDate = async (brandId, orderDate, storeTimezone = 'UTC
     const endOfDay = dateMoment.clone().endOf('day').toDate();
 
     // Sum all refunds for this date
-    const refundsForDate = await OrderRefund.find({
+    const refundsForDate = await Order.find({
       brandId,
       orderCreatedAt: {
         $gte: startOfDay,
@@ -184,7 +211,7 @@ export const getRefundsForDateRange = async (brandId, startDate, endDate, storeT
     const endMoment = moment.tz(endDate, storeTimezone).endOf('day');
 
     // Find all refunds in the date range
-    const refunds = await OrderRefund.find({
+    const refunds = await Order.find({
       brandId,
       orderCreatedAt: {
         $gte: startMoment.toDate(),
@@ -192,10 +219,14 @@ export const getRefundsForDateRange = async (brandId, startDate, endDate, storeT
       }
     });
 
-    // Group refunds by date
+    // Group refunds by date (convert from UTC to store timezone)
     const refundsByDate = new Map();
     refunds.forEach(refund => {
-      const refundDate = moment.tz(refund.orderCreatedAt, storeTimezone).format('YYYY-MM-DD');
+      // orderCreatedAt is stored as UTC in database
+      // If storeTimezone is UTC, no conversion needed; otherwise convert to store timezone
+      const refundDate = storeTimezone === 'UTC' 
+        ? moment.utc(refund.orderCreatedAt).format('YYYY-MM-DD')
+        : moment.utc(refund.orderCreatedAt).tz(storeTimezone).format('YYYY-MM-DD');
       const currentAmount = refundsByDate.get(refundDate) || 0;
       refundsByDate.set(refundDate, currentAmount + refund.refundAmount);
     });

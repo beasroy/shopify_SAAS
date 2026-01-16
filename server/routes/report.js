@@ -1,7 +1,7 @@
 import express from 'express';
 import { getMetricsbyID,  } from '../controller/report.js';
 import AdMetrics from '../models/AdMetrics.js';
-import OrderRefund from '../models/OrderRefund.js';
+import Order from '../models/Order.js';
 import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
@@ -102,7 +102,7 @@ router.delete('/delete/:brandId', verifyAuth, async (req, res) => {
         // Delete both AdMetrics and OrderRefund records
         const [adMetricsResult, orderRefundResult] = await Promise.all([
             AdMetrics.deleteMany({ brandId }),
-            OrderRefund.deleteMany({ brandId })
+            Order.deleteMany({ brandId })
         ]);
         
         const totalDeleted = adMetricsResult.deletedCount + orderRefundResult.deletedCount;

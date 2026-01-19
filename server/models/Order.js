@@ -47,6 +47,10 @@ const OrderSchema = new mongoose.Schema({
 OrderSchema.index({ brandId: 1, orderCreatedAt: 1 });
 // Unique index to prevent duplicate entries per order
 OrderSchema.index({ brandId: 1, orderId: 1 }, { unique: true });
+// Index for location-based analytics (using original city/state, normalized in aggregation)
+OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1 });
+
+
 
 const Order = mongoose.model('Order', OrderSchema);
 

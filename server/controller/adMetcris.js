@@ -2,7 +2,6 @@ import axios from 'axios';
 import { config } from 'dotenv';
 import moment from 'moment';
 import Brand from '../models/Brands.js';
-import User from '../models/User.js';
 import { GoogleAdsApi } from "google-ads-api";
 
 

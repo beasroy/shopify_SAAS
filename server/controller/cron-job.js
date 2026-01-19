@@ -1,6 +1,7 @@
 import cron from 'node-cron'; 
 import { calculateMetricsForAllBrands } from '../Report/Report.js';
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
+import { setupLocationClassificationCron } from './locationClassificationCron.js';
 
 
 export const setupCronJobs = () => { 
@@ -27,5 +28,8 @@ export const setupCronJobs = () => {
           console.error('Error sending brand metrics emails:', error); 
         } 
     }, { timezone: 'UTC' });
+    
+    // Setup location classification cron (runs at 6 AM UTC daily)
+    setupLocationClassificationCron();
    
 };

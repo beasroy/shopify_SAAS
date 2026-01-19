@@ -48,5 +48,24 @@ export const historicalSyncQueue = new Queue('historical-sync', {
   }
 });
 
+// Queue for city classification
+export const cityClassificationQueue = new Queue('city-classification', {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000
+    },
+    removeOnComplete: {
+      age: 86400, // Keep for 24 hours
+      count: 1000
+    },
+    removeOnFail: {
+      age: 604800 // Keep failed for 7 days
+    }
+  }
+});
+
 console.log('✅ Shopify queues initialized');
 

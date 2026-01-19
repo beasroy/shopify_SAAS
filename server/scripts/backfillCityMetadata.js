@@ -1,0 +1,120 @@
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import { connectDB } from '../config/db.js';
+import { cityClassificationQueue } from '../config/shopifyQueues.js';
+import Order from '../models/Order.js';
+import CityMetadata from '../models/CityMetadata.js';
+
+dotenv.config();
+
+/**
+ * One-time script to backfill CityMetadata for all existing cities in Orders
+ * Usage: node server/scripts/backfillCityMetadata.js
+ */
+async function backfillCityMetadata() {
+    try {
+        console.log('🔄 Starting city metadata backfill...');
+        
+        // Connect to database
+        await connectDB();
+        console.log('✅ Connected to database');
+        
+        // Get all unique city/state from Orders
+        console.log('📊 Fetching all unique cities from Orders...');
+        const allCities = await Order.aggregate([
+            {
+                $match: {
+                    city: { $exists: true, $ne: null, $ne: '' },
+                    state: { $exists: true, $ne: null, $ne: '' }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        city: { $toLower: { $trim: { input: "$city" }}},
+                        state: { $toLower: { $trim: { input: "$state" }}}
+                    },
+                    originalCity: { $first: "$city" },
+                    originalState: { $first: "$state" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    cityNormalized: "$_id.city",
+                    city: "$originalCity",
+                    state: "$originalState",
+                    lookupKey: {
+                        $concat: ["$_id.city", "_", "$_id.state", "_india"]
+                    }
+                }
+            }
+        ]);
+        
+        console.log(`📊 Found ${allCities.length} unique cities`);
+        
+        if (allCities.length === 0) {
+            console.log('ℹ️  No cities found in Orders table');
+            process.exit(0);
+        }
+        
+        // Check existing
+        const existing = await CityMetadata.find({}).select('lookupKey');
+        const existingKeys = new Set(existing.map(c => c.lookupKey));
+        
+        const newCities = allCities.filter(c => !existingKeys.has(c.lookupKey));
+        console.log(`🆕 ${newCities.length} new cities to classify (${allCities.length - newCities.length} already exist)`);
+        
+        if (newCities.length === 0) {
+            console.log('✅ All cities already classified');
+            process.exit(0);
+        }
+        
+        // Queue batch jobs
+        const batchSize = 20;
+        let batchNumber = 1;
+        const totalBatches = Math.ceil(newCities.length / batchSize);
+        
+        console.log(`📦 Creating ${totalBatches} batch jobs...`);
+        
+        for (let i = 0; i < newCities.length; i += batchSize) {
+            const batch = newCities.slice(i, i + batchSize);
+            
+            await cityClassificationQueue.add('classify-cities-batch', {
+                type: 'batch',
+                cities: batch,
+                batchNumber: batchNumber++,
+                totalBatches: totalBatches
+            }, {
+                priority: 1,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 2000
+                }
+            });
+            
+            console.log(`✅ Queued batch ${batchNumber - 1}/${totalBatches} (${batch.length} cities)`);
+        }
+        
+        console.log(`\n✅ Backfill complete! Queued ${totalBatches} batch jobs`);
+        console.log('ℹ️  Monitor the queue to see job progress');
+        
+        // Wait a bit to ensure jobs are queued
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        process.exit(0);
+        
+    } catch (error) {
+        console.error('❌ Error during backfill:', error);
+        process.exit(1);
+    }
+}
+
+// Run if called directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+    backfillCityMetadata();
+}
+
+export default backfillCityMetadata;
+

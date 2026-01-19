@@ -179,8 +179,8 @@ export default function Dashboard() {
 
   const formattedMetrics = useMemo(() => {
     return {
-      totalSpent: `₹ ${rawMetrics.totalSpent.toLocaleString(locale)}`,
-      totalRevenue: `₹ ${rawMetrics.totalRevenue.toLocaleString(locale)}`,
+      totalSpent: `${rawMetrics.totalSpent.toLocaleString(locale)}`,
+      totalRevenue: `${rawMetrics.totalRevenue.toLocaleString(locale)}`,
       totalROAS: Number((rawMetrics.totalROAS).toFixed(2)).toLocaleString(locale),
       totalPurchases: rawMetrics.totalPurchases.toLocaleString(locale),
       totalCTR: `${Number((rawMetrics.totalCTR).toFixed(2)).toLocaleString(locale)} %`,
@@ -241,12 +241,12 @@ export default function Dashboard() {
     {
       label: 'Total Cost',
       value: googleAdMetrics
-        ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalSpend || '0').toLocaleString(locale)}`
-        : '₹ 0',
+        ? `${parseFloat(googleAdMetrics?.adMetrics?.totalSpend || '0').toLocaleString(locale)}`
+        : '0',
     },
     {
       label: 'Conversion Value',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalConversionsValue).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalConversionsValue).toLocaleString(locale)}` : '0',
     },
     {
       label: 'ROAS',
@@ -258,19 +258,19 @@ export default function Dashboard() {
     },
     {
       label: 'CPC',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCPC).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCPC).toLocaleString(locale)}` : '0',
     },
     {
       label: 'CPM',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCPM).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCPM).toLocaleString(locale)}` : '0',
     },
     {
       label: 'CTR',
-      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCTR).toLocaleString(locale)} %` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCTR).toLocaleString(locale)} %` : '0',
     },
     {
       label: 'Cost Per Conversion',
-      value: googleAdMetrics ? `₹ ${parseFloat(googleAdMetrics?.adMetrics?.totalCostPerConversion).toLocaleString(locale)}` : ' 0',
+      value: googleAdMetrics ? `${parseFloat(googleAdMetrics?.adMetrics?.totalCostPerConversion).toLocaleString(locale)}` : '0',
     },
   ]
 
@@ -378,10 +378,10 @@ export default function Dashboard() {
 
         {fbAdAccountsMetrics?.length > 0 && fbAdAccountsMetrics.map((accountMetrics, index) => {
           const fbmetrics = [
-            { label: 'Amount Spent', value: `₹ ${parseFloat(String(accountMetrics.spend || '0')).toLocaleString(locale)}` },
+            { label: 'Amount Spent', value: `${parseFloat(String(accountMetrics.spend || '0')).toLocaleString(locale)}` },
             {
               label: 'Revenue',
-              value: `₹ ${parseFloat(String(accountMetrics.Revenue?.value || '0')).toLocaleString(locale)}`
+              value: `${parseFloat(String(accountMetrics.Revenue?.value || '0')).toLocaleString(locale)}`
             },
             {
               label: 'ROAS (Ads only)',
@@ -393,10 +393,10 @@ export default function Dashboard() {
                 : '0'
             },
             { label: 'Ads Purchases', value: accountMetrics.purchases?.value || '0' },
-            { label: 'CPC (All clicks)', value: `₹ ${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpc || '0'))}` },
-            { label: 'CPM', value: `₹ ${new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(parseFloat(accountMetrics.cpm || '0'))}` },
+            { label: 'CPC (All clicks)', value: `${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpc || '0'))}` },
+            { label: 'CPM', value: `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(parseFloat(accountMetrics.cpm || '0'))}` },
             { label: 'CTR', value: `${parseFloat(accountMetrics.ctr || '0').toFixed(2)} %` },
-            { label: 'Cost per Purchase (All)', value: `₹ ${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpp || '0'))}` },
+            { label: 'Cost per Purchase (All)', value: `${new Intl.NumberFormat(locale).format(parseFloat(accountMetrics.cpp || '0'))}` },
           ];
 
           return (

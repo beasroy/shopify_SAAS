@@ -1,7 +1,7 @@
 import cron from 'node-cron'; 
 import { calculateMetricsForAllBrands } from '../Report/Report.js';
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
-import { setupLocationClassificationCron } from './locationClassificationCron.js';
+// import { setupLocationClassificationCron } from './locationClassificationCron.js';
 
 
 export const setupCronJobs = () => { 
@@ -29,7 +29,7 @@ export const setupCronJobs = () => {
         } 
     }, { timezone: 'UTC' });
     
-    // Setup location classification cron (runs at 6 AM UTC daily)
-    setupLocationClassificationCron();
+    // // Setup location classification cron (runs at 6 AM UTC daily)
+    // setupLocationClassificationCron();
    
 };

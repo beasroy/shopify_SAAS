@@ -18,6 +18,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
 import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
+import './workers/cityClassificationWorker.js'; // Initialize city classification worker
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
@@ -30,6 +31,7 @@ import shopifyRoutes from "./routes/shopify.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
 import scrapingRoutes from "./routes/scraping.js"
+import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 //import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { addReportData } from "./Report/Report.js";
@@ -96,6 +98,7 @@ dataOperationRouter.use("/users",userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
+dataOperationRouter.use("/analytics", locationAnalyticsRoutes);
 dataOperationRouter.use("/app",shopifyAppRoutes)
 dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
 dataOperationRouter.use("/pricing",pricingRoutes)

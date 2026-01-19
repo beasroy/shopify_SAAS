@@ -209,12 +209,11 @@ const InterestTable: React.FC<InterestTableProps> = ({ data, height = "max-h-96"
     return height
   }
 
-  // Format currency values
+  // Format number values without currency symbol
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value);
   }
 

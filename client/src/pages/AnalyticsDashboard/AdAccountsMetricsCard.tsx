@@ -206,7 +206,7 @@ export const CampaignGrid = ({ campaigns, isLoading, icon }: { campaigns: (Campa
           <thead>
             <tr className="bg-gray-100 text-left text-sm font-medium text-gray-700 sticky top-0">
               <th className="px-6 py-3">Campaign Name</th>
-              <th className="px-6 py-3 text-center">Spend (₹)</th>
+              <th className="px-6 py-3 text-center">Spend</th>
               <th className="px-6 py-3 text-center">ROAS</th>
             </tr>
           </thead>
@@ -231,7 +231,7 @@ export const CampaignGrid = ({ campaigns, isLoading, icon }: { campaigns: (Campa
                     {campaign.campaign_name}
                   </td>
                   <td className="px-6 py-3 text-center text-gray-700 font-semibold">
-                  ₹{spendValue.toFixed(2)}
+                  {spendValue.toFixed(2)}
                   </td>
                   <td className="px-6 py-3 text-center">
                     {roasValue !== null ? (

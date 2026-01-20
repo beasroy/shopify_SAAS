@@ -268,3 +268,17 @@ export const getSingleAdFromAllScrapedBrands = async (req, res) => {
         });
     }
 }
+
+export const deleteSpecificScrapedBrandDetails = async (req, res) => {
+  try {
+    const { scrapedBrandId } = req.params;
+    const { adId } = req.body;
+  } catch (error) {
+    console.error('[API] Error deleting specific scraped brand details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting specific scraped brand details',
+      error: error.message
+    });
+  }
+}

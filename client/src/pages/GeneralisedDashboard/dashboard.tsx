@@ -21,6 +21,7 @@ import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
+import SpeedInsights from "./components/SpeedInsights";
 
 
 
@@ -362,6 +363,14 @@ const SummaryDashboard: React.FC = () => {
           onRefresh={fetchPerformanceData}
           loading={loading}
         />
+           <div className="mt-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-800">PageSpeed Insights</h2>
+            <p className="text-sm text-slate-500 mt-1">Analyze your website's performance metrics</p>
+          </div>
+          <SpeedInsights />
+          </div>
+
 
         {/* Dashboard Quick Links Section */}
         <div className="mt-8">

@@ -510,6 +510,152 @@ export const saveScrapingResults = async (pageUrl, scrapingResults) => {
 };
 
 /**
+ * Save scraping results to an existing ScrapingBrand (without creating/finding brand)
+ * @param {string} scrapingBrandId - The existing ScrapingBrand ID
+ * @param {Array} scrapingResults - Array of ad results from Apify
+ * @returns {Promise<Object>} - Object with saved brand info and ad counts
+ */
+const saveScrapingResultsToExistingBrand = async (scrapingBrandId, scrapingResults) => {
+    try {
+        if (!scrapingBrandId) {
+            throw new Error('ScrapingBrand ID is required');
+        }
+
+        // Verify the ScrapingBrand exists
+        const scrapingBrand = await ScrapedBrand.findById(scrapingBrandId);
+        if (!scrapingBrand) {
+            throw new Error(`ScrapingBrand with ID ${scrapingBrandId} not found`);
+        }
+
+        const hasResults = Array.isArray(scrapingResults) && scrapingResults.length > 0;
+        if (!hasResults) {
+            console.log('[Save] No scraping results to save');
+            return {
+                scrapingBrand: {
+                    _id: scrapingBrand._id,
+                    pageId: scrapingBrand.pageId,
+                    pageName: scrapingBrand.pageName,
+                    pageUrl: scrapingBrand.pageUrl
+                },
+                adsSaved: 0,
+                adsSkipped: 0,
+                errors: []
+            };
+        }
+
+        console.log(`[Save] Processing ${scrapingResults.length} results for existing ScrapingBrand: ${scrapingBrandId}`);
+
+        // Extract and update pageId and pageName from scraping results (if not already set)
+        const pageInfo = extractPageInfo(scrapingResults);
+        await updateScrapingBrandInfo(scrapingBrand, pageInfo);
+
+        // Save each ad detail
+        let adsSaved = 0;
+        let adsSkipped = 0;
+        const errors = [];
+
+        for (const result of scrapingResults) {
+            try {
+                await saveSingleAdDetail(result, scrapingBrandId);
+                adsSaved++;
+            } catch (error) {
+                console.error(`[Save] Error saving ad detail:`, error.message);
+                errors.push({
+                    result: result,
+                    error: error.message
+                });
+                adsSkipped++;
+            }
+        }
+
+        console.log(`[Save] Saved ${adsSaved} ads, skipped ${adsSkipped} ads for ScrapingBrand: ${scrapingBrandId}`);
+
+        return {
+            scrapingBrand: {
+                _id: scrapingBrand._id,
+                pageId: scrapingBrand.pageId,
+                pageName: scrapingBrand.pageName,
+                pageUrl: scrapingBrand.pageUrl
+            },
+            adsSaved,
+            adsSkipped,
+            errors: errors.length > 0 ? errors : undefined
+        };
+    } catch (error) {
+        console.error('[Save] Error saving scraping results to existing brand:', error);
+        throw error;
+    }
+};
+
+/**
+ * Refresh ad details for an existing ScrapingBrand
+ * Deletes all existing ScrapedAdDetail records and fetches/saves new ones
+ * @param {string} scrapingBrandId - The ScrapingBrand ID to refresh
+ * @param {Object} options - Same options as fetchPageAds (count, countries, activeStatus, period)
+ * @returns {Promise<Object>} - Combined fetch and save results
+ */
+export const refreshScrapingBrandAds = async (scrapingBrandId, options = {}) => {
+    try {
+        if (!scrapingBrandId) {
+            throw new Error('ScrapingBrand ID is required');
+        }
+
+        // Find the ScrapingBrand
+        const scrapingBrand = await ScrapedBrand.findById(scrapingBrandId);
+        if (!scrapingBrand) {
+            throw new Error(`ScrapingBrand with ID ${scrapingBrandId} not found`);
+        }
+
+        console.log(`[Refresh] Starting refresh for ScrapingBrand: ${scrapingBrandId} (${scrapingBrand.pageUrl})`);
+
+        // Delete all existing ScrapedAdDetail records for this brand
+        const deleteResult = await ScrapedAdDetail.deleteMany({ scrapingBrandId: scrapingBrandId });
+        console.log(`[Refresh] Deleted ${deleteResult.deletedCount} existing ad details`);
+
+        // Determine the page identifier to use for fetching
+        // Prefer pageId if available, otherwise use pageUrl
+        const pageIdentifier = scrapingBrand.pageId || scrapingBrand.pageUrl;
+
+        // Fetch new ads
+        const fetchResult = await fetchPageAds(pageIdentifier, options);
+
+        if (!fetchResult.success || !fetchResult.ads || fetchResult.ads.length === 0) {
+            console.log(`[Refresh] No ads fetched for ScrapingBrand: ${scrapingBrandId}`);
+            return {
+                fetchResult,
+                saveResult: {
+                    scrapingBrand: {
+                        _id: scrapingBrand._id,
+                        pageId: scrapingBrand.pageId,
+                        pageName: scrapingBrand.pageName,
+                        pageUrl: scrapingBrand.pageUrl
+                    },
+                    adsSaved: 0,
+                    adsSkipped: 0,
+                    errors: [],
+                    deletedCount: deleteResult.deletedCount
+                }
+            };
+        }
+
+        // Save new ads to the existing brand (keeping the same scrapingBrandId)
+        const saveResult = await saveScrapingResultsToExistingBrand(scrapingBrandId, fetchResult.ads);
+        saveResult.deletedCount = deleteResult.deletedCount;
+
+        console.log(`[Refresh] Refresh completed for ScrapingBrand: ${scrapingBrandId}`);
+        console.log(`[Refresh] Deleted: ${deleteResult.deletedCount}, Saved: ${saveResult.adsSaved}`);
+
+        return {
+            fetchResult,
+            saveResult
+        };
+    } catch (error) {
+        console.error('[Refresh] Error refreshing scraping brand ads:', error);
+        throw error;
+    }
+};
+
+/**
  * Fetch page ads and save to database in one call
  * @param {string|string[]} pageIdentifier - Facebook page URL, username, or page ID
  * @param {Object} options - Same options as fetchPageAds

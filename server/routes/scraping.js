@@ -1,5 +1,5 @@
 import express from 'express';
-import { testSaundIndia, fetchAndSavePageAds, fetchPageAds } from '../services/scrapingService.js';
+import { testSaundIndia, fetchAndSavePageAds, fetchPageAds, refreshScrapingBrandAds } from '../services/scrapingService.js';
 import ScrapingBrand from '../models/ScrapedBrand.js';
 import ScrapedAdDetail from '../models/ScrapedAdDetail.js';
 import { scrapeBrand , getSingleAdFromAllScrapedBrands, followBrand, unfollowBrand, getFollowedBrands} from '../controller/adScraper.js';
@@ -385,6 +385,61 @@ router.get('/all', async (req, res) => {
     }
 });
 
+
+/**
+ * Refresh ad details for an existing ScrapingBrand
+ * Deletes all existing ScrapedAdDetail records and fetches/saves new ones
+ * POST /api/scraping/refresh/:scrapingBrandId
+ * Body (optional): { count?: number, countries?: string[], activeStatus?: string, period?: string }
+ */
+router.post('/refresh/:scrapingBrandId', async (req, res) => {
+    try {
+        const { scrapingBrandId } = req.params;
+        const { count = 200, countries = ['IN'], activeStatus = 'all', period = '' } = req.body;
+
+        if (!scrapingBrandId) {
+            return res.status(400).json({
+                success: false,
+                message: 'scrapingBrandId is required'
+            });
+        }
+
+        console.log(`[API] Refreshing ads for ScrapingBrand: ${scrapingBrandId}`);
+
+        const result = await refreshScrapingBrandAds(scrapingBrandId, {
+            count,
+            countries,
+            activeStatus,
+            period
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Scraping brand ads refreshed successfully',
+            data: {
+                fetchResult: {
+                    runId: result.fetchResult.runId,
+                    adsFetched: result.fetchResult.count,
+                    status: result.fetchResult.status
+                },
+                saveResult: {
+                    scrapingBrand: result.saveResult.scrapingBrand,
+                    adsSaved: result.saveResult.adsSaved,
+                    adsSkipped: result.saveResult.adsSkipped,
+                    deletedCount: result.saveResult.deletedCount,
+                    errors: result.saveResult.errors
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[API] Error refreshing scraping brand ads:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error refreshing scraping brand ads',
+            error: error.message
+        });
+    }
+});
 
 router.post('/scrape-brand', scrapeBrand);
 router.get('/get-single-ad-from-all-scraped-brands', getSingleAdFromAllScrapedBrands);

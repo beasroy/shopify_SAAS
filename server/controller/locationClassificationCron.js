@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { cityClassificationQueue } from '../config/shopifyQueues.js';
 import Order from '../models/Order.js';
 import CityMetadata from '../models/CityMetadata.js';
-import mongoose from 'mongoose';
+
 
 /**
  * Daily cron job to classify unknown cities from yesterday's orders

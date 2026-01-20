@@ -35,6 +35,8 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 //import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { addReportData } from "./Report/Report.js";
+import backfillCityMetadata from "./scripts/backfillCityMetadata.js";
+import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 
 
 
@@ -108,6 +110,7 @@ dataOperationRouter.use("/",shopifyWebhookRoutes)
 dataOperationRouter.use("/shopify",shopifyRoutes)
 dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
 dataOperationRouter.use("/scraping",scrapingRoutes)
+dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
 
 
 
@@ -132,6 +135,7 @@ calculateMetricsForSingleBrand("68dfb7e4e78884ea57ff7b53","68da4456e78884ea57ff6
 //monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
 //await testSaundIndia();
 
+//await backfillCityMetadata();
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

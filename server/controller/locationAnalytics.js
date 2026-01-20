@@ -260,12 +260,11 @@ export async function getLocationSales(req, res) {
             // For region dimension, group by state; for others, group by city
             locationGroupStage,
             // Stage 6: Group by location (aggregate daily data)
+            // Group only by normalized locationKey to merge cities with different casing
             {
                 $group: {
                     _id: {
                         locationKey: "$_id.locationKey",
-                        originalLocation: "$_id.originalLocation",
-                        originalCity: "$_id.originalCity",
                         originalState: "$_id.originalState",
                         metroStatus: "$_id.metroStatus",
                         region: "$_id.region",
@@ -273,6 +272,9 @@ export async function getLocationSales(req, res) {
                         isCoastal: "$_id.isCoastal",
                         isClassified: "$_id.isClassified"
                     },
+                    // Pick the first non-null original city name as canonical version
+                    originalLocation: { $first: "$_id.originalLocation" },
+                    originalCity: { $first: "$_id.originalCity" },
                     totalSales: { $sum: "$dailySales" },
                     totalOrderCount: { $sum: "$dailyOrderCount" },
                     dailyBreakdown: {
@@ -292,19 +294,87 @@ export async function getLocationSales(req, res) {
                     tier: "$_id.tier",
                     isCoastal: "$_id.isCoastal",
                     isClassified: "$_id.isClassified",
-                    originalCity: "$_id.originalCity",
+                    originalCity: { $ifNull: ["$originalCity", "$originalLocation"] },
                     originalState: "$_id.originalState",
-                    originalLocation: "$_id.originalLocation",
+                    originalLocation: { $ifNull: ["$originalLocation", "$originalCity"] },
                     locationKey: "$_id.locationKey"
                 }
             },
-            // Stage 8: Sort daily breakdown by date
+            // Stage 8: Merge daily breakdown by date (sum sales and orderCount for same dates)
+            // Unwind, group by date, then reconstruct
+            {
+                $unwind: "$dailyBreakdown"
+            },
+            {
+                $group: {
+                    _id: {
+                        locationKey: "$locationKey",
+                        originalState: "$_id.originalState",
+                        metroStatus: "$_id.metroStatus",
+                        region: "$_id.region",
+                        tier: "$_id.tier",
+                        isCoastal: "$_id.isCoastal",
+                        isClassified: "$_id.isClassified",
+                        originalLocation: "$originalLocation",
+                        originalCity: "$originalCity",
+                        date: "$dailyBreakdown.date"
+                    },
+                    sales: { $sum: "$dailyBreakdown.sales" },
+                    orderCount: { $sum: "$dailyBreakdown.orderCount" }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        locationKey: "$_id.locationKey",
+                        originalState: "$_id.originalState",
+                        metroStatus: "$_id.metroStatus",
+                        region: "$_id.region",
+                        tier: "$_id.tier",
+                        isCoastal: "$_id.isCoastal",
+                        isClassified: "$_id.isClassified",
+                        originalLocation: "$_id.originalLocation",
+                        originalCity: "$_id.originalCity"
+                    },
+                    dailyBreakdown: {
+                        $push: {
+                            date: "$_id.date",
+                            sales: "$sales",
+                            orderCount: "$orderCount"
+                        }
+                    }
+                }
+            },
+            // Stage 9: Add fields, recalculate totals, and sort daily breakdown
             {
                 $addFields: {
+                    metroStatus: "$_id.metroStatus",
+                    region: "$_id.region",
+                    tier: "$_id.tier",
+                    isCoastal: "$_id.isCoastal",
+                    isClassified: "$_id.isClassified",
+                    originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
+                    originalState: "$_id.originalState",
+                    originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
+                    locationKey: "$_id.locationKey",
                     dailyBreakdown: {
                         $sortArray: {
                             input: "$dailyBreakdown",
                             sortBy: { date: 1 }
+                        }
+                    },
+                    totalSales: {
+                        $reduce: {
+                            input: "$dailyBreakdown",
+                            initialValue: 0,
+                            in: { $add: ["$$value", "$$this.sales"] }
+                        }
+                    },
+                    totalOrderCount: {
+                        $reduce: {
+                            input: "$dailyBreakdown",
+                            initialValue: 0,
+                            in: { $add: ["$$value", "$$this.orderCount"] }
                         }
                     }
                 }

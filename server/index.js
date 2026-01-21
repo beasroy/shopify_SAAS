@@ -37,6 +37,7 @@ import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 import { addReportData } from "./Report/Report.js";
 import backfillCityMetadata from "./scripts/backfillCityMetadata.js";
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
+import festivalDateRoutes from "./routes/festivalDate.js";
 
 
 
@@ -111,6 +112,8 @@ dataOperationRouter.use("/shopify",shopifyRoutes)
 dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
 dataOperationRouter.use("/scraping",scrapingRoutes)
 dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
+dataOperationRouter.use("/festival-dates",festivalDateRoutes)
+dataOperationRouter.use("/festival-dates",festivalDateRoutes)
 
 
 

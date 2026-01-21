@@ -8,6 +8,7 @@ import {
   User2Icon,
   Store,
   CalendarRange,
+  Calendar,
   LineChart,
   Plus,
   Home,
@@ -155,6 +156,7 @@ export default function CollapsibleSidebar() {
   const allDashboards = [
     { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
     { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
+    { name: "Festival Calendar", path: `/festival-calendar/${selectedBrandId}`, icon: <Calendar size={20} /> },
     { name: "D2C Calculator", path: `/d2c-calculator/${selectedBrandId}`, icon: <Calculator size={20} /> },
     { name: "Creatives Library", path: `/creatives-library/${selectedBrandId}`, icon: <Clapperboard size={20} /> },
     { name: "Ad Market", path:`/followed-brands/${selectedBrandId}`, icon: <Eye size={20} /> },

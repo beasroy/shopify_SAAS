@@ -17,7 +17,8 @@ import {
   ShoppingCart,
   Package,
   Eye,
-  SquareDashedMousePointer
+  SquareDashedMousePointer,
+  Gauge
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -157,9 +158,11 @@ export default function CollapsibleSidebar() {
     { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
     { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
     { name: "Festival Calendar", path: `/festival-calendar/${selectedBrandId}`, icon: <Calendar size={20} /> },
+    { name: "Speed Insights", path: `/speed-insights`, icon: <Gauge size={20} /> },
     { name: "D2C Calculator", path: `/d2c-calculator/${selectedBrandId}`, icon: <Calculator size={20} /> },
     { name: "Creatives Library", path: `/creatives-library/${selectedBrandId}`, icon: <Clapperboard size={20} /> },
     { name: "Ad Market", path:`/followed-brands/${selectedBrandId}`, icon: <Eye size={20} /> },
+    
     { name: "Ad Metrics", path: `/admetrics/${selectedBrandId}`, icon: <LineChart size={20} /> },
     { name: "E-Commerce Reports", path: `/ecommerce-reports/${selectedBrandId}`, icon: <ShoppingCart size={20} /> },
     { name: "Conversion Reports", path: `/conversion-reports/${selectedBrandId}`, icon: <Target size={20} /> },

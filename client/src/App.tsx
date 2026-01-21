@@ -34,6 +34,7 @@ import ProductPage from './pages/Product/ProductPage.tsx';
 import BounceRatePage from './pages/BounceRate/BounceRatePage.tsx';
 import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
 import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.tsx';
+import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
 
 
 
@@ -76,6 +77,7 @@ function App() {
                   <Route path="/bounce-rate-reports/:brandId" element={<BounceRatePage />} />
                   <Route path="/followed-brands/:brandId" element={<FollowedBrands />} />
                   <Route path="/festival-calendar/:brandId" element={<FestivalCalendarPage />} />
+                  <Route path="/speed-insights" element={<SpeedInsightsPage />} />
                 </Routes>
               </TutorialManager>
             </AutoLogout>

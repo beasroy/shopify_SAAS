@@ -45,7 +45,7 @@ export const unfollowBrand = async (req, res) => {
       );
     await brand.save();
 
-    return res.status(200).json({ message: 'Brand unfollowed successfully' });
+    return res.status(200).json({success: true, message: 'Brand unfollowed successfully' });
 
   } catch (error) {
     console.error('Error unfollowing brand:', error);

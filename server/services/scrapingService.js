@@ -613,8 +613,8 @@ export const refreshScrapingBrandAds = async (scrapingBrandId, options = {}) => 
         console.log(`[Refresh] Deleted ${deleteResult.deletedCount} existing ad details`);
 
         // Determine the page identifier to use for fetching
-        // Prefer pageId if available, otherwise use pageUrl
-        const pageIdentifier = scrapingBrand.pageId || scrapingBrand.pageUrl;
+        // Always use pageUrl to maintain consistent URL format (simple page URL)
+        const pageIdentifier = scrapingBrand.pageUrl;
 
         // Fetch new ads
         const fetchResult = await fetchPageAds(pageIdentifier, options);

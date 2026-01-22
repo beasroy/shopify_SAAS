@@ -395,7 +395,7 @@ router.get('/all', async (req, res) => {
 router.post('/refresh/:scrapingBrandId', async (req, res) => {
     try {
         const { scrapingBrandId } = req.params;
-        const { count = 200, countries = ['IN'], activeStatus = 'all', period = '' } = req.body;
+        const { count = 100, countries = ['IN'], activeStatus = 'all', period = '' } = req.body;
 
         if (!scrapingBrandId) {
             return res.status(400).json({
@@ -443,7 +443,7 @@ router.post('/refresh/:scrapingBrandId', async (req, res) => {
 
 router.post('/scrape-brand', scrapeBrand);
 router.get('/get-single-ad-from-all-scraped-brands', getSingleAdFromAllScrapedBrands);
-router.post('/follow-brand', followBrand);
+router.post('/follow-brand/:brandId', followBrand);
 router.post('/unfollow-brand/:brandId', unfollowBrand);
 router.get('/get-followed-brands/:brandId', getFollowedBrands);
 export default router;

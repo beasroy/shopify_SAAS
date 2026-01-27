@@ -167,6 +167,16 @@ export default function OtherPlatformModalContent({
       if (response) {
         const { status, data, config } = response;
         const code = data?.error?.code || data?.code;
+        const errorSubcode = data?.error?.error_subcode;
+
+        // Check for Facebook OAuth authorization error (code 190, error_subcode 458)
+        if (platform.toLowerCase() === 'facebook' && 
+            (data?.error?.code === 190 && data?.error?.error_subcode === 458) ||
+            (status === 401 && code === 'OAUTH_NOT_AUTHORIZED')) {
+          console.error('Facebook OAuth Authorization Error:', { status, code, errorSubcode, message: data?.message });
+          setShowLoginButton(true);
+          return;
+        }
 
         // Common authentication and authorization errors
         const authErrors = [
@@ -174,7 +184,8 @@ export default function OtherPlatformModalContent({
           403,  // Forbidden
           'UNAUTHENTICATED',
           'TOKEN_EXPIRED',
-          'INVALID_CREDENTIALS'
+          'INVALID_CREDENTIALS',
+          'OAUTH_NOT_AUTHORIZED'
         ];
 
         // Check if the error is related to authentication
@@ -341,30 +352,39 @@ export default function OtherPlatformModalContent({
     loading ? <div>Loading...</div> : (
       <>
         {showLoginButton ? (
-          <Button
-          size="sm"
-          onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
-          className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
-        >
-            {platform.toLowerCase() === 'google ads' && (
-              <>
-                <GoogleLogo height="1rem" width="1rem" />
-                Connect to your Google Ads account
-              </>
-            )}
-            {platform.toLowerCase() === 'google analytics' && (
-              <>
-                <Ga4Logo height="1rem" width="1rem" />
-                Connect to your GA4 account
-              </>
-            )}
+          <div className="space-y-3">
             {platform.toLowerCase() === 'facebook' && (
-              <>
-                <FacebookLogo height="1rem" width="1rem" />
-                Connect to your Facebook account
-              </>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                <p className="text-sm text-yellow-800 mb-2">
+                  Your Facebook authorization has expired. Please reconnect your account to continue.
+                </p>
+              </div>
             )}
-          </Button>
+            <Button
+              size="sm"
+              onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
+              className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
+            >
+              {platform.toLowerCase() === 'google ads' && (
+                <>
+                  <GoogleLogo height="1rem" width="1rem" />
+                  Connect to your Google Ads account
+                </>
+              )}
+              {platform.toLowerCase() === 'google analytics' && (
+                <>
+                  <Ga4Logo height="1rem" width="1rem" />
+                  Connect to your GA4 account
+                </>
+              )}
+              {platform.toLowerCase() === 'facebook' && (
+                <>
+                  <FacebookLogo height="1rem" width="1rem" />
+                  Reconnect Facebook Account
+                </>
+              )}
+            </Button>
+          </div>
         ) : (
           // Handle the case where the button is not shown
           <>

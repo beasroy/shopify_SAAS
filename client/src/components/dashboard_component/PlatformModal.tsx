@@ -169,13 +169,26 @@ export default function PlatformModal({
 
     if (axiosError.response) {
       const { status, data } = axiosError.response;
-      const code = axiosError.code;
-      if (status === 400) {
-        setShowLoginButton(true);
+      const code = (data as any)?.code;
+      
+      // Check for Facebook OAuth authorization error
+      if (status === 401 && (code === 'OAUTH_NOT_AUTHORIZED' || code === 'TOKEN_EXPIRED')) {
+        if (platform.toLowerCase() === 'facebook' && code === 'OAUTH_NOT_AUTHORIZED') {
+          // Show reconnect button for Facebook
+          setShowLoginButton(true);
+        } else {
+          alert('Your session has expired. Please log in again.');
+          setShowLoginButton(true);
+        }
+      } else if (status === 400) {
+        // Check if it's a Facebook OAuth error in the error object
+        const errorData = (data as any)?.error;
+        if (errorData?.code === 190 && errorData?.error_subcode === 458) {
+          setShowLoginButton(true);
+        } else {
+          setShowLoginButton(true);
+        }
       } else if (status === 403) {
-        setShowLoginButton(true);
-      } else if (status === 401 || code === 'TOKEN_EXPIRED') {
-        alert('Your Google session has expired. Please log in again.');
         setShowLoginButton(true);
       } else {
         console.error('Unhandled Error Status:', status);
@@ -442,30 +455,39 @@ export default function PlatformModal({
           {loading ? (
             <div className="flex justify-center py-4">Loading...</div>
           ) : showLoginButton ? (
-            <Button
-              size="sm"
-              onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
-              className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
-            >
-              {platform.toLowerCase() === 'google ads' && (
-                <>
-                  <GoogleLogo height="1rem" width="1rem" />
-                  Connect to your Google Ads account
-                </>
-              )}
-              {platform.toLowerCase() === 'google analytics' && (
-                <>
-                  <Ga4Logo height="1rem" width="1rem" />
-                  Connect to your GA4 account
-                </>
-              )}
+            <div className="space-y-3">
               {platform.toLowerCase() === 'facebook' && (
-                <>
-                  <FacebookLogo height="1rem" width="1rem" />
-                  Connect to your Facebook account
-                </>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-yellow-800 mb-2">
+                    Your Facebook authorization has expired. Please reconnect your account to continue.
+                  </p>
+                </div>
               )}
-            </Button>
+              <Button
+                size="sm"
+                onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
+                className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
+              >
+                {platform.toLowerCase() === 'google ads' && (
+                  <>
+                    <GoogleLogo height="1rem" width="1rem" />
+                    Connect to your Google Ads account
+                  </>
+                )}
+                {platform.toLowerCase() === 'google analytics' && (
+                  <>
+                    <Ga4Logo height="1rem" width="1rem" />
+                    Connect to your GA4 account
+                  </>
+                )}
+                {platform.toLowerCase() === 'facebook' && (
+                  <>
+                    <FacebookLogo height="1rem" width="1rem" />
+                    Reconnect Facebook Account
+                  </>
+                )}
+              </Button>
+            </div>
           ) : (
             <>
               <div className="relative">

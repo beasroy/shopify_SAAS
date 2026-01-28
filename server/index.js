@@ -124,7 +124,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("68dfb7e4e78884ea57ff7b53","68da4456e78884ea57ff6fc2")
+calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a","69779a7cd639a12fc8b83477")
 //addReportData("68dfb7e4e78884ea57ff7b53")
 
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")

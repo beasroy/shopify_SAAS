@@ -193,6 +193,14 @@ export const ExcelMetricsPage: React.FC = () => {
     return formatCurrencyUtil(value, currency);
   }
 
+  // Format number without currency symbol (for Meta, Google, and Meta + Google sections)
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
   const formatPercentage = (value: number) => {
     return `${value.toFixed(2)}`
   }
@@ -383,28 +391,28 @@ export const ExcelMetricsPage: React.FC = () => {
                         {formatPercentage(monthData.ROI)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
-                        {formatCurrency(monthData.totalSpend)}
+                        {formatNumber(monthData.totalSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
-                        {formatCurrency(monthData.totalAdSales)}
+                        {formatNumber(monthData.totalAdSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.grossROI)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
-                        {formatCurrency(monthData.metaSpend)}
+                        {formatNumber(monthData.metaSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
-                        {formatCurrency(monthData.metaSales)}
+                        {formatNumber(monthData.metaSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.metaROAS)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
-                        {formatCurrency(monthData.googleSpend)}
+                        {formatNumber(monthData.googleSpend)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
-                        {formatCurrency(monthData.googleSales)}
+                        {formatNumber(monthData.googleSales)}
                       </Cell>
                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
                         {formatPercentage(monthData.googleROAS)}
@@ -437,28 +445,28 @@ export const ExcelMetricsPage: React.FC = () => {
                             {formatPercentage(daily.ROI)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
-                            {formatCurrency(daily.totalSpend)}
+                            {formatNumber(daily.totalSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.adSales)}
+                            {formatNumber(daily.adSales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.grossROI)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
-                            {formatCurrency(daily.metaSpend)}
+                            {formatNumber(daily.metaSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.metaRevenue)}
+                            {formatNumber(daily.metaRevenue)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.metaROAS)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
-                            {formatCurrency(daily.googleSpend)}
+                            {formatNumber(daily.googleSpend)}
                           </Cell>
                           <Cell isNumeric className="px-3 py-1.5 text-xs">
-                            {formatCurrency(daily.googleSales)}
+                            {formatNumber(daily.googleSales)}
                           </Cell>
                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
                             {formatPercentage(daily.googleROAS)}

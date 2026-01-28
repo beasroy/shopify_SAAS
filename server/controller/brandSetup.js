@@ -301,8 +301,21 @@ export const getFbAdAccountIds = async (req, res) => {
             return res.status(404).json({ message: 'No ad accounts found for the user.' });
         }
     } catch (error) {
-        console.error('Error fetching Facebook Ad Accounts:', error.message);
-        res.status(500).json({ message: 'Error fetching Facebook Ad accounts.', error: error.message });
+        console.error('Error fetching Facebook Ad Accounts:', error.response?.status, error.response?.data);
+        
+        // Check for OAuth authorization error (code 190, error_subcode 458)
+        if (error.response?.data?.error) {
+            const fbError = error.response.data.error;
+            if (fbError.code === 190 && fbError.error_subcode === 458) {
+                return res.status(401).json({
+                    message: 'Your Facebook authorization has expired. Please reconnect your account.',
+                    code: 'OAUTH_NOT_AUTHORIZED',
+                    error: fbError
+                });
+            }
+        }
+        
+        res.status(500).json({ message: 'Error fetching Facebook Ad accounts.', error: error.response?.data });
     }
 };
 

@@ -6,12 +6,17 @@ import logger from "../utils/logger.js";
 import { GoogleAdsApi } from "google-ads-api";
 import AdMetrics from "../models/AdMetrics.js";
 import { ensureOrderRefundExists, setOrderRefund } from '../utils/refundHelpers.js';
-import {
-  ORDERS_QUERY,
+// import {
+//   ORDERS_QUERY,
+
+import { 
+  ORDERS_QUERY, 
+
   makeGraphQLRequest,
   convertGraphQLOrderToRESTFormat,
   calculateGrossSalesAndTaxes,
-  calculateRefundAmount
+  calculateRefundAmount,
+  storeOrderData
 } from './MonthlyReportGraphQL.js';
 import Product from '../models/Product.js';
 
@@ -135,14 +140,18 @@ export const fetchTotalSales = async (brandId) => {
 
           // Calculate gross sales and taxes
           const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
-          const { grossSales } = calculateGrossSalesAndTaxes(order, hasRefunds);
-
+          const { grossSales , totalTaxes } = calculateGrossSalesAndTaxes(order, hasRefunds);
+          
           // Calculate refund amount
           const { refundAmount, refundCount } = calculateRefundAmount(order);
 
           // Get total price from order
-          const totalPrice = Number(order.total_price || 0);
-
+          let totalPrice = Number(order.total_price || 0);
+          const taxesIncluded = order.taxes_included;
+          if (!taxesIncluded) {
+            totalPrice = totalPrice + totalTaxes;
+          }
+          
           // Track payment gateway types (COD and Prepaid)
           const paymentGateways = order.payment_gateway_names || [];
           const isCOD = paymentGateways.some(gateway =>
@@ -151,15 +160,13 @@ export const fetchTotalSales = async (brandId) => {
               gateway.toLowerCase().includes('cash_on_delivery'))
           );
           const isPrepaid = !isCOD && paymentGateways.length > 0;
-
-          // Update orderRefund table
+          
+          // Store order data
           try {
-            await ensureOrderRefundExists(brandId, order.id, order.created_at);
-            if (refundAmount > 0) {
-              await setOrderRefund(brandId, order.id, refundAmount, refundCount);
-            }
+            await storeOrderData(brandId, order, totalPrice, refundAmount, refundCount);
+            
           } catch (error) {
-            console.error(`Error storing order refund info for order ${order.id}:`, error);
+            console.error(`Error storing order data info for order ${order.id}:`, error);
           }
 
           // Accumulate sales data
@@ -239,14 +246,18 @@ export const fetchTotalSales = async (brandId) => {
 
                 // Calculate gross sales and taxes
                 const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
-                const { grossSales } = calculateGrossSalesAndTaxes(order, hasRefunds);
-
+                const { grossSales , totalTaxes } = calculateGrossSalesAndTaxes(order, hasRefunds);
+                
                 // Calculate refund amount
                 const { refundAmount, refundCount } = calculateRefundAmount(order);
 
                 // Get total price from order
-                const totalPrice = Number(order.total_price || 0);
-
+                let totalPrice = Number(order.total_price || 0);
+                const taxesIncluded = order.taxes_included;
+                if (!taxesIncluded) {
+                  totalPrice = totalPrice + totalTaxes;
+                }
+                
                 // Track payment gateway types (COD and Prepaid)
                 const paymentGateways = order.payment_gateway_names || [];
                 const isCOD = paymentGateways.some(gateway =>
@@ -256,16 +267,9 @@ export const fetchTotalSales = async (brandId) => {
                 );
                 const isPrepaid = !isCOD && paymentGateways.length > 0;
 
-                // Update orderRefund table
-                try {
-                  await ensureOrderRefundExists(brandId, order.id, order.created_at);
-                  if (refundAmount > 0) {
-                    await setOrderRefund(brandId, order.id, refundAmount, refundCount);
-                  }
-                } catch (error) {
-                  console.error(`Error storing order refund info for order ${order.id}:`, error);
-                }
 
+                await storeOrderData(brandId, order, totalPrice, refundAmount, refundCount);
+                
                 // Accumulate sales data
                 yesterdaySales.grossSales += grossSales;
                 yesterdaySales.totalPrice += totalPrice;

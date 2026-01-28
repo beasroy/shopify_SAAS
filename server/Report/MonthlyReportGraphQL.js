@@ -1,12 +1,12 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
+import Order from "../models/Order.js";
 import moment from 'moment-timezone';
 import axios from "axios";
 import winston from 'winston';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ensureOrderRefundExists, setOrderRefund } from '../utils/refundHelpers.js';
 import logger from '../utils/logger.js';
 config();
 
@@ -75,21 +75,6 @@ function writeDebugLog(message, orderDate = null) {
 }
 
 /**
- * GraphQL-based Order Fetching with COGS Calculation
- * This implementation uses Shopify GraphQL API to fetch orders with:
- * - Order details (prices, taxes, discounts)
- * - Line items with product/variant information
- * - Inventory item costs (COGS)
- * - Refunds with full details
- * 
- * Benefits over REST:
- * - Single query fetches all nested data
- * - Better rate limit management
- * - More efficient for large datasets
- * - Direct access to inventory item costs
- */
-
-/**
  * GraphQL query to fetch orders with all necessary data including COGS
  */
 export const ORDERS_QUERY = `
@@ -107,6 +92,10 @@ export const ORDERS_QUERY = `
           test
           tags
           cancelledAt
+          shippingAddress {
+            city
+            province
+          }
           totalPriceSet {
             shopMoney {
               amount
@@ -131,6 +120,8 @@ export const ORDERS_QUERY = `
               currencyCode
             }
           }
+          taxesIncluded
+
           lineItems(first: 250) {
             edges {
               node {
@@ -407,12 +398,8 @@ export function getRefundAmountFromGraphQL(refund) {
       }, 0)
     : 0;
 
-  const tax = refund?.refund_line_items
-    ? refund.refund_line_items.reduce((sum, item) => {
-        const itemTax = Number(item.total_tax || 0);
-        return sum + itemTax;
-      }, 0)
-    : 0;
+  console.log('subtotal', subtotal);
+
 
   const shipping = refund?.refund_shipping_lines
     ? refund.refund_shipping_lines.reduce((sum, shippingLine) => {
@@ -422,16 +409,21 @@ export function getRefundAmountFromGraphQL(refund) {
       }, 0)
     : 0;
 
-  let otherAdjustments = 0;
-  if (refund?.order_adjustments) {
-    otherAdjustments = refund.order_adjustments.reduce((sum, adjustment) => {
-      const amount = Number(adjustment.amount || 0);
-      return sum + amount;
-    }, 0);
-  }
+  console.log('shipping', shipping);
 
-  
-  const totalReturn = subtotal + tax + shipping + otherAdjustments;
+  // let otherAdjustments = 0;
+  // if (refund?.order_adjustments) {
+  //   otherAdjustments = refund.order_adjustments.reduce((sum, adjustment) => {
+  //     const amount = Number(adjustment.amount || 0);
+  //     return sum + amount;
+  //   }, 0);
+  // }
+
+  // console.log('otherAdjustments', otherAdjustments);
+
+  const totalReturn = subtotal + shipping ;
+
+  console.log('totalReturn', totalReturn);
 
   return {
     totalReturn
@@ -480,12 +472,15 @@ export function convertGraphQLOrderToRESTFormat(graphQLOrder) {
     created_at: createdAt,
     test: graphQLOrder.test,
     tags: graphQLOrder.tags,
+    city: graphQLOrder.shippingAddress?.city || '',
+    state: graphQLOrder.shippingAddress?.province || '',
     cancelled_at: graphQLOrder.cancelledAt,
     total_price: graphQLOrder.totalPriceSet?.shopMoney?.amount || '0',
     subtotal_price: graphQLOrder.subtotalPriceSet?.shopMoney?.amount || '0',
     total_discounts: graphQLOrder.totalDiscountsSet?.shopMoney?.amount || '0',
     total_tax: graphQLOrder.totalTaxSet?.shopMoney?.amount || '0',
     payment_gateway_names: graphQLOrder.paymentGatewayNames || [],
+    taxes_included: graphQLOrder.taxesIncluded,
     line_items,
     refunds,
   };
@@ -530,14 +525,18 @@ export function calculateGrossSalesAndTaxes(order, hasRefunds) {
 
 /**
  * Calculate refund amount and count from order refunds
+ * Calculates refunds if order has refunds (regardless of cancellation status)
+ * This is used for sales calculation - refunds are subtracted from total sales
  */
 export function calculateRefundAmount(order) {
   const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
   
+  // Calculate refunds if order has refunds
   if (!hasRefunds) {
     return { refundAmount: 0, refundCount: 0 };
   }
 
+  // Calculate refunds from refunds array
   let refundAmount = 0;
   let refundCount = 0;
 
@@ -550,19 +549,72 @@ export function calculateRefundAmount(order) {
   return { refundAmount, refundCount };
 }
 
+
+
 /**
- * Store refund data in database
+ * Create or update Order in database with order id, created_at, city, and state
+ * Uses findOneAndUpdate with upsert for atomic operation
+ * Updates existing orders (may have been created from refund webhook) or creates new ones
  */
-async function storeRefundData(brandId, order, refundAmount, refundCount) {
-  if (!brandId || refundAmount <= 0) {
+async function setOrder(brandId, orderId, created_at, city, state, totalPrice, refundAmount, cancelled_at, refundCount) {
+  try {
+    if (!brandId || !orderId || !created_at) {
+      throw new Error('Missing required fields: brandId, orderId, or created_at');
+    }
+
+    const orderCreatedAt = created_at instanceof Date ? created_at : new Date(created_at);
+    const isCancelled = !!cancelled_at;
+
+    // Build the update object
+    const updateData = {
+      orderId: orderId,
+      orderCreatedAt: orderCreatedAt,
+      brandId: brandId,
+      city: city || null,
+      state: state || null,
+      totalSales: totalPrice,
+    };
+
+    // Only add refundAmount if order is cancelled
+    if (isCancelled && refundAmount) {
+      updateData.totalSales = totalPrice - refundAmount;
+      updateData.refundAmount = refundAmount;
+      updateData.refundCount = refundCount;
+      updateData.lastRefundAt = new Date();
+    }
+
+    // Use findOneAndUpdate with upsert for atomic create/update
+    // This will create the order if it doesn't exist, or update it if it does
+    const order = await Order.findOneAndUpdate(
+      {
+        brandId: brandId,
+        orderId: orderId
+      },
+      {
+        $set: updateData
+      },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true
+      }
+    );
+
+    return order;
+  } catch (error) {
+    console.error(`Error creating/updating order ${orderId}:`, error);
+    throw error;
+  }
+}
+
+export async function storeOrderData(brandId, order, totalPrice, refundAmount, refundCount) {
+  if (!brandId) {
     return;
   }
-
   try {
-    await ensureOrderRefundExists(brandId, order.id, order.created_at);
-    await setOrderRefund(brandId, order.id, refundAmount, refundCount);
+    await setOrder(brandId, order.id, order.created_at, order.city, order.state, totalPrice, refundAmount, order.cancelled_at, refundCount);
   } catch (error) {
-    console.error(`Error storing order refund info for order ${order.id}:`, error);
+    console.error(`Error storing order info for order ${order.id}:`, error);
   }
 }
 
@@ -587,23 +639,34 @@ async function processOrderForDay(order, acc, storeTimezone, brandId) {
     );
     return;
   }
+  const taxesIncluded = order.taxes_included;
 
-  const totalPrice = Number(order.total_price || 0);
+  let totalPrice = Number(order.total_price || 0);
   const subtotalPrice = Number(order.subtotal_price || 0);
   const discountAmount = Number(order.total_discounts || 0);
+
   
   const hasRefunds = order.refunds && Array.isArray(order.refunds) && order.refunds.length > 0;
   const { grossSales, totalTaxes } = calculateGrossSalesAndTaxes(order, hasRefunds);
   const { refundAmount, refundCount } = calculateRefundAmount(order);
 
-
+  if (!taxesIncluded) {
+    totalPrice = totalPrice + totalTaxes;
+  }
 
   if (hasRefunds) {
     console.log(`Order ${order.id} has refunds - deducting ${refundAmount} from ${orderDate}`);
   }
 
-  // Store refund data
-  await storeRefundData(brandId, order, refundAmount, refundCount);
+  await storeOrderData(brandId, order , totalPrice , refundAmount, refundCount);
+
+  
+  // // Store refund data in database ONLY if order is cancelled
+  // // For non-cancelled orders with refunds, refunds are calculated and subtracted from sales
+  // // but not stored in the database
+  // if (order.cancelled_at) {
+  //   await storeRefundData(brandId, order, refundAmount, refundCount);
+  // }
   
   // Track payment gateway types (COD and Prepaid)
   const paymentGateways = order.payment_gateway_names || [];
@@ -739,6 +802,10 @@ async function fetchAllOrdersGraphQL(shopName, accessToken, startDate, endDate, 
   let currentStart = moment.tz(startDate, storeTimezone);
   const finalEnd = moment.tz(endDate, storeTimezone);
   const chunkBoundaries = []; // Track chunk boundaries for debugging
+  
+  // Calculate expected date range for post-fetch validation
+  const expectedStartDate = currentStart.format('YYYY-MM-DD');
+  const expectedEndDate = finalEnd.format('YYYY-MM-DD');
 
   while (currentStart.isSameOrBefore(finalEnd)) {
     const chunkEnd = moment.min(
@@ -752,7 +819,11 @@ async function fetchAllOrdersGraphQL(shopName, accessToken, startDate, endDate, 
     // Use start of next day (exclusive) instead of end of current day (inclusive) to avoid boundary overlap
     const endTime = chunkEnd.clone().add(1, 'day').startOf('day').utc().toISOString();
     
-    chunkBoundaries.push({ start: startTime, end: endTime, chunkStart: currentStart.format('YYYY-MM-DD'), chunkEnd: chunkEnd.format('YYYY-MM-DD') });
+    // Expected date range for this chunk
+    const chunkStartDate = currentStart.format('YYYY-MM-DD');
+    const chunkEndDate = chunkEnd.format('YYYY-MM-DD');
+    
+    chunkBoundaries.push({ start: startTime, end: endTime, chunkStart: chunkStartDate, chunkEnd: chunkEndDate });
 
     try {
       const chunkOrders = await processOrderChunk(
@@ -765,7 +836,7 @@ async function fetchAllOrdersGraphQL(shopName, accessToken, startDate, endDate, 
 
       // Log chunk details for debugging
       const orderIds = chunkOrders.map(o => o.id).join(', ');
-      console.log(`✅ Fetched ${chunkOrders.length} orders for chunk ${currentStart.format('YYYY-MM-DD')} to ${chunkEnd.format('YYYY-MM-DD')} (UTC: ${startTime} to ${endTime})`);
+      console.log(`✅ Fetched ${chunkOrders.length} orders for chunk ${chunkStartDate} to ${chunkEndDate} (UTC: ${startTime} to ${endTime})`);
       if (chunkOrders.length > 0) {
         console.log(`   Order IDs: ${orderIds.substring(0, 100)}${orderIds.length > 100 ? '...' : ''}`);
       }
@@ -784,7 +855,19 @@ async function fetchAllOrdersGraphQL(shopName, accessToken, startDate, endDate, 
   // Log chunk boundaries for debugging
   console.log(`📊 Chunk boundaries used:`, chunkBoundaries.map(c => `${c.chunkStart} to ${c.chunkEnd} (UTC: ${c.start} to ${c.end})`).join('\n'));
 
-  return allOrders;
+  // Final validation: filter orders to ensure they're within the overall date range
+  const filteredOrders = allOrders.filter(order => {
+    const orderDateMoment = moment.tz(order.created_at, storeTimezone);
+    const orderDateStr = orderDateMoment.format('YYYY-MM-DD');
+    return orderDateStr >= expectedStartDate && orderDateStr <= expectedEndDate;
+  });
+
+  if (filteredOrders.length !== allOrders.length) {
+    const filteredOut = allOrders.length - filteredOrders.length;
+    console.log(`⚠️  Final validation: Filtered out ${filteredOut} orders outside overall date range (${expectedStartDate} to ${expectedEndDate})`);
+  }
+
+  return filteredOrders;
 }
 
 /**
@@ -951,15 +1034,6 @@ export const monthlyFetchTotalSalesGraphQL = async (brandId, startDate, endDate)
     
     console.log(`Total refunds processed: ${totalRefundsProcessed}`);
     
-    // Log summary of data processing
-    const ordersInRange = orders.filter(order => {
-      const orderDate = moment.tz(order.created_at, storeTimezone).format('YYYY-MM-DD');
-      return originalStartDate.isSameOrBefore(moment.tz(orderDate, storeTimezone)) && 
-             originalEndDate.isSameOrAfter(moment.tz(orderDate, storeTimezone));
-    }).length;
-    
-    console.log(`Orders in target range: ${ordersInRange}/${orders.length}`);
-    
     return Object.values(dailySalesMap).map(day => {
       const grossSales = Number(day.grossSales);
       const discountAmount = Number(day.discountAmount);
@@ -969,8 +1043,6 @@ export const monthlyFetchTotalSalesGraphQL = async (brandId, startDate, endDate)
       const totalTaxes = Number(day.totalTaxes || 0);
 
       console.log(`Day: ${day.date}, Gross Sales: ${grossSales}, Discount Amount: ${discountAmount}, Refund Amount: ${refundAmount}, Total Price: ${totalPrice}, Subtotal Price: ${subtotalPrice}, Total Taxes: ${totalTaxes}`);
-      
-  
       
       return {
         date: day.date,

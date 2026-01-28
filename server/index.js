@@ -18,6 +18,7 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
 import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
+import './workers/cityClassificationWorker.js'; // Initialize city classification worker
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
@@ -30,8 +31,13 @@ import shopifyRoutes from "./routes/shopify.js"
 import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
 import scrapingRoutes from "./routes/scraping.js"
+import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 //import { testSaundIndia } from "./services/apifyServiice.js";
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+import { addReportData } from "./Report/Report.js";
+import backfillCityMetadata from "./scripts/backfillCityMetadata.js";
+import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
+import festivalDateRoutes from "./routes/festivalDate.js";
 
 
 
@@ -94,16 +100,20 @@ dataOperationRouter.use("/google", googleRoutes);
 dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
-dataOperationRouter.use("/zoho", zohoRoutes);
-dataOperationRouter.use("/app", shopifyAppRoutes)
-dataOperationRouter.use("/shopify/webhooks", webhookRoutes)
-dataOperationRouter.use("/pricing", pricingRoutes)
-dataOperationRouter.use("/cache", cacheRoutes)
-dataOperationRouter.use("/ads", creativeRoutes)
-dataOperationRouter.use("/", shopifyWebhookRoutes)
-dataOperationRouter.use("/shopify", shopifyRoutes)
-dataOperationRouter.use("/d2c-calculator", d2cCalculatorRoutes)
-dataOperationRouter.use("/scraping", scrapingRoutes)
+dataOperationRouter.use("/zoho",zohoRoutes);
+dataOperationRouter.use("/analytics", locationAnalyticsRoutes);
+dataOperationRouter.use("/app",shopifyAppRoutes)
+dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
+dataOperationRouter.use("/pricing",pricingRoutes)
+dataOperationRouter.use("/cache",cacheRoutes)
+dataOperationRouter.use("/ads",creativeRoutes)
+dataOperationRouter.use("/",shopifyWebhookRoutes)
+dataOperationRouter.use("/shopify",shopifyRoutes)
+dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
+dataOperationRouter.use("/scraping",scrapingRoutes)
+dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
+dataOperationRouter.use("/festival-dates",festivalDateRoutes)
+dataOperationRouter.use("/festival-dates",festivalDateRoutes)
 
 
 
@@ -114,8 +124,8 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("68d10cabe78884ea57ff5be3","68ccf2c5e78884ea57ff5608")
-//addReportData("690c8630e8ed87ae2f68d72f")
+calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a","69779a7cd639a12fc8b83477")
+//addReportData("68dfb7e4e78884ea57ff7b53")
 
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
 
@@ -128,6 +138,7 @@ calculateMetricsForSingleBrand("68d10cabe78884ea57ff5be3","68ccf2c5e78884ea57ff5
 //monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
 //await testSaundIndia();
 
+//await backfillCityMetadata();
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

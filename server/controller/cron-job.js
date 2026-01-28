@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { calculateMetricsForAllBrands } from '../Report/Report.js';
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
+
 import { syncAllBrandProducts as syncYesterdayProductsForAllBrands } from '../Report/Report.js';
 
 
@@ -17,6 +18,7 @@ export const setupCronJobs = () => {
     }
   }, { timezone: 'UTC' });
 
+  // export const setupCronJobs = () => { 
   // cron job for metrics calculation
   cron.schedule('00 2 * * *', async () => {
     console.log('Metrics calculation cron job started at:', new Date().toISOString());
@@ -40,5 +42,8 @@ export const setupCronJobs = () => {
       console.error('Error sending brand metrics emails:', error);
     }
   }, { timezone: 'UTC' });
+
+  // // Setup location classification cron (runs at 6 AM UTC daily)
+  // setupLocationClassificationCron();
 
 };

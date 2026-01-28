@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { TrendingUp, Wallet, CircleMinus, RefreshCw, PlusIcon, HandCoins, UploadIcon, Trash2Icon } from 'lucide-react';
+import { TrendingUp, Wallet, CircleMinus, RefreshCw, PlusIcon, HandCoins, Trash2Icon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'react-router-dom';
 import axiosInstance from '@/services/axiosConfig';

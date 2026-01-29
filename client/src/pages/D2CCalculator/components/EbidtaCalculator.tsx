@@ -38,7 +38,7 @@ const EbidtaCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
   const [revenue, setRevenue] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('USD');
   const [metrics, setMetrics] = useState<EbidtaMetrics | null>(null);
-  
+
   // User inputs
   const [cogs, setCogs] = useState<string>('');
   const [sellingMarketingExpense, setSellingMarketingExpense] = useState<string>('');
@@ -157,104 +157,104 @@ const EbidtaCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <Label htmlFor="revenue" className="text-xs text-gray-600 mb-1 block">Revenue</Label>
-                      <Input
-                        id="revenue"
-                        type="text"
-                        value={formatCurrency(revenue)}
-                        readOnly
+                <Input
+                  id="revenue"
+                  type="text"
+                  value={formatCurrency(revenue)}
+                  readOnly
                   className="bg-gray-50 font-semibold text-sm h-9"
-                      />
-                    </div>
+                />
+              </div>
               <div className="text-2xl font-bold text-gray-400 mt-6">−</div>
               <div className="flex-1">
                 <Label htmlFor="cogs" className="text-xs text-gray-600 mb-1 block">COGS</Label>
-                      <Input
-                        id="cogs"
-                        type="number"
+                <Input
+                  id="cogs"
+                  type="number"
                   placeholder="0"
-                        value={cogs}
-                        onChange={(e) => setCogs(e.target.value)}
+                  value={cogs}
+                  onChange={(e) => setCogs(e.target.value)}
                   className="font-semibold text-sm h-9"
-                      />
-                    </div>
+                />
+              </div>
               <div className="text-2xl font-bold text-gray-400 mt-6">=</div>
               <div className="flex-1">
                 <Label htmlFor="grossProfit" className="text-xs text-green-700 mb-1 block font-medium">Gross Profit</Label>
-                      <Input
-                        id="grossProfit"
-                        type="text"
-                        value={metrics ? formatCurrency(metrics.grossProfit) : formatCurrency(0)}
-                        readOnly
+                <Input
+                  id="grossProfit"
+                  type="text"
+                  value={metrics ? formatCurrency(metrics.grossProfit) : formatCurrency(0)}
+                  readOnly
                   className="bg-green-50 border-green-200 font-bold text-sm text-green-900 h-9"
-                      />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Operating Expenses - Compact Grid */}
         <Card className="mb-4">
           <CardContent className="pt-4">
             <Label className="text-xs text-gray-500 mb-3 block">Operating Expenses</Label>
             <div className="grid grid-cols-3 gap-4">
-                  <div>
+              <div>
                 <Label htmlFor="sellingMarketing" className="text-xs text-gray-600 mb-1 block">Selling & Marketing</Label>
-                      <Input
-                        id="sellingMarketing"
-                        type="number"
+                <Input
+                  id="sellingMarketing"
+                  type="number"
                   placeholder="0"
-                        value={sellingMarketingExpense}
-                        onChange={(e) => setSellingMarketingExpense(e.target.value)}
+                  value={sellingMarketingExpense}
+                  onChange={(e) => setSellingMarketingExpense(e.target.value)}
                   className="text-sm h-9"
-                      />
-                  </div>
-                  <div>
+                />
+              </div>
+              <div>
                 <Label htmlFor="fulfillment" className="text-xs text-gray-600 mb-1 block">Fulfillment & Logistics</Label>
-                      <Input
-                        id="fulfillment"
-                        type="number"
+                <Input
+                  id="fulfillment"
+                  type="number"
                   placeholder="0"
-                        value={fulfillmentLogistics}
-                        onChange={(e) => setFulfillmentLogistics(e.target.value)}
+                  value={fulfillmentLogistics}
+                  onChange={(e) => setFulfillmentLogistics(e.target.value)}
                   className="text-sm h-9"
-                      />
-                  </div>
-                  <div>
+                />
+              </div>
+              <div>
                 <Label htmlFor="otherOperating" className="text-xs text-gray-600 mb-1 block">Other Operating</Label>
-                      <Input
-                        id="otherOperating"
-                        type="number"
+                <Input
+                  id="otherOperating"
+                  type="number"
                   placeholder="0"
-                        value={otherOperatingExpense}
-                        onChange={(e) => setOtherOperatingExpense(e.target.value)}
+                  value={otherOperatingExpense}
+                  onChange={(e) => setOtherOperatingExpense(e.target.value)}
                   className="text-sm h-9"
-                      />
-                  </div>
-                </div>
-            </CardContent>
-          </Card>
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 mb-4">
-            <Button
-              onClick={fetchRevenue}
-              disabled={revenueLoading || !date.from || !date.to}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${revenueLoading ? 'animate-spin' : ''}`} />
-              {revenueLoading ? 'Loading...' : 'Refresh Revenue'}
-            </Button>
-            <Button
-              onClick={calculateMetrics}
-              disabled={loading || revenue === 0}
-              variant="default"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Calculating...' : 'Calculate'}
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 mb-4">
+          <Button
+            onClick={fetchRevenue}
+            disabled={revenueLoading || !date.from || !date.to}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${revenueLoading ? 'animate-spin' : ''}`} />
+            {revenueLoading ? 'Loading...' : 'Refresh Revenue'}
+          </Button>
+          <Button
+            onClick={calculateMetrics}
+            disabled={loading || revenue === 0}
+            variant="default"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Calculating...' : 'Calculate'}
+          </Button>
+        </div>
 
         {/* Operating Income Calculation - Inline */}
         <Card className="mb-4 border-blue-200 bg-blue-50/30">
@@ -285,17 +285,17 @@ const EbidtaCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
               <div className="text-2xl font-bold text-gray-400 mt-6">=</div>
               <div className="flex-1">
                 <Label htmlFor="operatingIncome" className="text-xs text-blue-700 mb-1 block font-medium">Operating Income</Label>
-                      <Input
-                        id="operatingIncome"
-                        type="text"
-                        value={metrics ? formatCurrency(metrics.operatingIncome) : formatCurrency(0)}
-                        readOnly
+                <Input
+                  id="operatingIncome"
+                  type="text"
+                  value={metrics ? formatCurrency(metrics.operatingIncome) : formatCurrency(0)}
+                  readOnly
                   className="bg-blue-100 border-blue-200 font-bold text-sm text-blue-900 h-9"
-                      />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Compact Summary */}
         <Card className="bg-gray-50 border-gray-200">
@@ -305,22 +305,22 @@ const EbidtaCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
               <div>
                 <div className="text-xs text-gray-500 mb-1">Revenue</div>
                 <div className="font-semibold text-gray-900">{metrics ? formatCurrency(metrics.revenue) : formatCurrency(0)}</div>
-                  </div>
+              </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">COGS</div>
                 <div className="font-semibold text-gray-900">{metrics ? formatCurrency(metrics.cogs) : formatCurrency(0)}</div>
-                  </div>
+              </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">Gross Profit</div>
                 <div className="font-bold text-green-700">{metrics ? formatCurrency(metrics.grossProfit) : formatCurrency(0)}</div>
-                  </div>
+              </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">Operating Income</div>
                 <div className="font-bold text-blue-700">{metrics ? formatCurrency(metrics.operatingIncome) : formatCurrency(0)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

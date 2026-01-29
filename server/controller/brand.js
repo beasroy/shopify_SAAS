@@ -1,12 +1,13 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
+import Product from "../models/Product.js";
 
 import { metricsQueue } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
 
 export const addBrands = async (req, res) => {
-    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount} = req.body;
+    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
 
     try {
         const newBrand = new Brand({
@@ -69,30 +70,30 @@ export const addBrands = async (req, res) => {
 }
 
 
-export const getBrands = async(req,res) =>{
-    try{
+export const getBrands = async (req, res) => {
+    try {
         const brands = await Brand.find();
         res.json(brands);
-    }catch(error){
+    } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error fetching brands', error: error.message });
     }
 }
 
-export const getCurrency= async (req,res)=>{
-    try{
-        const {brandId} = req.params;
+export const getCurrency = async (req, res) => {
+    try {
+        const { brandId } = req.params;
         const brand = await Brand.findById(brandId);
         res.json(brand.shopifyAccount.currency);
-    }catch(error){
+    } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error fetching currency', error: error.message });
     }
 }
 
-export const getBrandbyId = async(req,res)=>{
+export const getBrandbyId = async (req, res) => {
     try {
-        const {brandId} = req.params;
+        const { brandId } = req.params;
 
         const brand = await Brand.findById(brandId);
 
@@ -137,7 +138,7 @@ export const updateBrands = async (req, res) => {
         if (shopifyAccount) {
             const currentShopName = currentBrand.shopifyAccount?.shopName;
             const newShopName = shopifyAccount.shopName;
-            
+
             if (newShopName && (!currentShopName || currentShopName !== newShopName)) {
                 newAdditions.newStore = true;
                 hasNewAdditions = true;
@@ -150,17 +151,17 @@ export const updateBrands = async (req, res) => {
         if (fbAdAccounts) {
             // Get existing Facebook ad accounts
             const existingFbAccounts = currentBrand.fbAdAccounts || [];
-            
+
             // Find new accounts that aren't already connected
-            newAdditions.newFbAccounts = fbAdAccounts.filter(account => 
+            newAdditions.newFbAccounts = fbAdAccounts.filter(account =>
                 !existingFbAccounts.includes(account)
             );
-            
+
             if (newAdditions.newFbAccounts.length > 0) {
                 hasNewAdditions = true;
                 console.log(`New Facebook ad accounts detected: ${newAdditions.newFbAccounts.join(', ')}`);
             }
-            
+
             // Merge existing and new accounts, avoiding duplicates
             const mergedFbAccounts = [...new Set([...existingFbAccounts, ...fbAdAccounts])];
             updateData.fbAdAccounts = mergedFbAccounts;
@@ -170,33 +171,33 @@ export const updateBrands = async (req, res) => {
         if (googleAdAccount) {
             // Get existing Google ad accounts
             const existingGoogleAccounts = currentBrand.googleAdAccount || [];
-            
+
             // Convert to array if it's not already
             const newGoogleAccounts = Array.isArray(googleAdAccount) ? googleAdAccount : [googleAdAccount];
-            
+
             // Find new accounts that aren't already connected
-            newAdditions.newGoogleAccounts = newGoogleAccounts.filter(newAccount => 
-                !existingGoogleAccounts.some(existingAccount => 
+            newAdditions.newGoogleAccounts = newGoogleAccounts.filter(newAccount =>
+                !existingGoogleAccounts.some(existingAccount =>
                     existingAccount.clientId === newAccount.clientId
                 )
             );
-            
+
             if (newAdditions.newGoogleAccounts.length > 0) {
                 hasNewAdditions = true;
                 console.log(`New Google ad accounts detected: ${newAdditions.newGoogleAccounts.map(acc => acc.clientId).join(', ')}`);
             }
-            
+
             // Merge existing and new accounts, avoiding duplicates
             const mergedGoogleAccounts = [...existingGoogleAccounts];
             newGoogleAccounts.forEach(newAccount => {
-                const exists = mergedGoogleAccounts.some(existing => 
+                const exists = mergedGoogleAccounts.some(existing =>
                     existing.clientId === newAccount.clientId
                 );
                 if (!exists) {
                     mergedGoogleAccounts.push(newAccount);
                 }
             });
-            
+
             updateData.googleAdAccount = mergedGoogleAccounts;
         }
 
@@ -258,15 +259,15 @@ export const filterBrands = async (req, res) => {
 export const deleteBrand = async (req, res) => {
     try {
         const { brandId } = req.params;
-        
+
         // First, check if the brand exists
         const brand = await Brand.findById(brandId);
-        
+
         if (!brand) {
             return res.status(404).json({ error: 'Brand not found.' });
         }
 
-       
+
         // Delete related data from AdMetrics collection
         try {
             const adMetricsResult = await AdMetrics.deleteMany({ brandId: brandId });
@@ -288,12 +289,12 @@ export const deleteBrand = async (req, res) => {
 
         // Finally, delete the brand itself
         const deletedBrand = await Brand.findByIdAndDelete(brandId);
-        
+
         if (!deletedBrand) {
             return res.status(404).json({ error: 'Brand not found.' });
         }
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             message: 'Brand and all related data deleted successfully',
             deletedBrand: {
                 id: deletedBrand._id,
@@ -332,7 +333,7 @@ export const deletePlatformIntegration = async (req, res) => {
                 if (!shopName) {
                     return res.status(400).json({ error: 'Shop name is required for Shopify platform.' });
                 }
-                
+
                 if (brand.shopifyAccount?.shopName === shopName) {
                     updateData = { shopifyAccount: {} };
                     deletedInfo = { platform: 'shopify', shopName };
@@ -345,14 +346,14 @@ export const deletePlatformIntegration = async (req, res) => {
                 if (!accountId) {
                     return res.status(400).json({ error: 'Account ID is required for Facebook platform.' });
                 }
-                
+
                 const currentFbAccounts = brand.fbAdAccounts || [];
                 const updatedFbAccounts = currentFbAccounts.filter(account => account !== accountId);
-                
+
                 if (updatedFbAccounts.length === currentFbAccounts.length) {
                     return res.status(404).json({ error: 'Facebook account not found for this brand.' });
                 }
-                
+
                 updateData = { fbAdAccounts: updatedFbAccounts };
                 deletedInfo = { platform: 'facebook', accountId };
                 break;
@@ -361,14 +362,14 @@ export const deletePlatformIntegration = async (req, res) => {
                 if (!accountId) {
                     return res.status(400).json({ error: 'Account ID is required for Google Ads platform.' });
                 }
-                
+
                 const currentGoogleAccounts = brand.googleAdAccount || [];
                 const updatedGoogleAccounts = currentGoogleAccounts.filter(account => account.clientId !== accountId);
-                
+
                 if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
                     return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
                 }
-                
+
                 updateData = { googleAdAccount: updatedGoogleAccounts };
                 deletedInfo = { platform: 'google ads', accountId };
                 break;
@@ -397,14 +398,86 @@ export const deletePlatformIntegration = async (req, res) => {
             return res.status(404).json({ error: 'Brand not found.' });
         }
 
-        res.status(200).json({ 
-            message: 'Platform integration deleted successfully', 
+        res.status(200).json({
+            message: 'Platform integration deleted successfully',
             deletedInfo,
-            brand: updatedBrand 
+            brand: updatedBrand
         });
 
     } catch (error) {
         console.error('Error deleting platform integration:', error);
         res.status(500).json({ message: 'Error deleting platform integration', error: error.message });
+    }
+}
+
+export async function deleteAllProducts(req, res) {
+    try {
+        const result = await Product.deleteMany({});
+
+        if (result.deletedCount === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No products found',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${result.deletedCount} products deleted successfully`,
+        });
+    } catch (error) {
+        console.error(`Error deleting products:`, error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+}
+
+
+export async function deleteProductsByBrand(req, res) {
+    try {
+        const { brandId } = req.params;
+
+        if (!brandId) {
+            return res.status(400).json({
+                success: false,
+                error: 'brandId is required',
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(brandId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid Brand ID format'
+            });
+        }
+
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return res.status(404).json({ success: false, error: 'Brand not found' });
+        }
+        const result = await Product.deleteMany({ brandId:brandId });
+
+        if (result.deletedCount === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No products found for this brand',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${result.deletedCount} products deleted successfully for brand ${brand.name}`,
+            deletedCount: result.deletedCount,
+            brand: brand.name
+        });
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
     }
 }

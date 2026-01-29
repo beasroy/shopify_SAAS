@@ -6,10 +6,10 @@ import cookieParser from "cookie-parser";
 import { createServer } from 'http';
 import { initializeSocket } from './config/socket.js';
 import authRoutes from "./routes/auth.js"
-import analyticsRoutes from "./routes/analytics.js"  
+import analyticsRoutes from "./routes/analytics.js"
 import brandRoutes from "./routes/brand.js"
 import fbMetricrRoutes from "./routes/AdAnalytics.js"
-import excelReportRoutes from "./routes/report.js" 
+import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import metaRoutes from "./routes/meta.js"
@@ -51,20 +51,20 @@ initializeSocket(server);
 
 
 dotenv.config();
-             
+
 connectDB();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
-  origin: isDevelopment 
+  origin: isDevelopment
     ? true  // Allow all origins in development
     : [
-        'https://parallels.messold.com',
-        'https://extensions.shopifycdn.com',
-        'https://*.shopifycdn.com',
-        'https://extensions.shopify.com'
-      ],
+      'https://parallels.messold.com',
+      'https://extensions.shopifycdn.com',
+      'https://*.shopifycdn.com',
+      'https://extensions.shopify.com'
+    ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
@@ -85,19 +85,19 @@ app.use(cookieParser());
 const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);
 
-dataOperationRouter.use("/auth",authRoutes);
+dataOperationRouter.use("/auth", authRoutes);
 // dataOperationRouter.use("/shopify",spotifyRoutes);
-dataOperationRouter.use("/analytics",analyticsRoutes);
-dataOperationRouter.use("/brands",brandRoutes);
-dataOperationRouter.use("/metrics",fbMetricrRoutes);
-dataOperationRouter.use("/report",excelReportRoutes);
-dataOperationRouter.use("/performance",targetReportRoutes);
-dataOperationRouter.use("/segment",segmentReportRoutes);
-dataOperationRouter.use("/setup",setupBrandRoutes);
-dataOperationRouter.use("/googleAd",googleAdConversionReportRoutes)
-dataOperationRouter.use("/meta",metaRoutes);
-dataOperationRouter.use("/google",googleRoutes);
-dataOperationRouter.use("/users",userRoutes);
+dataOperationRouter.use("/analytics", analyticsRoutes);
+dataOperationRouter.use("/brands", brandRoutes);
+dataOperationRouter.use("/metrics", fbMetricrRoutes);
+dataOperationRouter.use("/report", excelReportRoutes);
+dataOperationRouter.use("/performance", targetReportRoutes);
+dataOperationRouter.use("/segment", segmentReportRoutes);
+dataOperationRouter.use("/setup", setupBrandRoutes);
+dataOperationRouter.use("/googleAd", googleAdConversionReportRoutes)
+dataOperationRouter.use("/meta", metaRoutes);
+dataOperationRouter.use("/google", googleRoutes);
+dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
 dataOperationRouter.use("/zoho",zohoRoutes);
@@ -142,7 +142,7 @@ calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a","69779a7cd639a12fc8b83
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
-  res.send('Hello, World!'); 
+  res.send('Hello, World!');
 });
 
 // Trust proxy in production
@@ -154,7 +154,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on ${isDevelopment ? 'http' : 'https'}://0.0.0.0:${PORT}`);
   console.log(`Socket.IO server is ready for real-time notifications`);
   console.log(`Redis notification subscriber is ready to receive worker notifications`);
-  
+
 
 });
 

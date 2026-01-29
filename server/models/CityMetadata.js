@@ -38,7 +38,7 @@ const CityMetadataSchema = new mongoose.Schema({
     },
     region: {
         type: String,
-        enum: ['north', 'south', 'east', 'west', 'central'],
+        enum: ['north', 'south', 'east', 'west', 'central', 'other'],
         index: true
     },
     isCoastal: {

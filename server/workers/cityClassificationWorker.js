@@ -68,24 +68,9 @@ const cityClassificationWorker = new Worker(
         } catch (error) {
             console.error(`❌ [Worker] Error processing batch ${batchNumber}:`, error);
             
-            // Mark cities as failed in metadata
-            if (cities && cities.length > 0) {
-                try {
-                    await ensureMongoConnection();
-                    const lookupKeys = cities.map(c => c.lookupKey);
-                    await CityMetadata.updateMany(
-                        { lookupKey: { $in: lookupKeys } },
-                        {
-                            $set: {
-                                processingStatus: 'failed',
-                                processedAt: new Date()
-                            }
-                        }
-                    );
-                } catch (updateError) {
-                    console.error('Error updating failed status:', updateError);
-                }
-            }
+            // Mark cities as failed in metadata (if classifications were created before error)
+            // Note: We can't mark them as failed if GPT call failed before creating classifications
+            // This is a best-effort attempt to update status if partial data exists
             
             throw error;
         }

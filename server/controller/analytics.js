@@ -3150,40 +3150,61 @@ function getAdjustedDates(startDate, endDate) {
 export async function getBounceRate(req, res) {
   try {
     const { brandId } = req.params;
-    const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "startDate and endDate are required"
+      });
+    }
 
     const brand = await Brand.findById(brandId).lean();
-
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.',
+        message: "Brand not found"
       });
     }
 
     const propertyId = brand.ga4Account?.PropertyID;
-    const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
     const refreshToken = brand.googleAnalyticsRefreshToken;
 
-    if (!refreshToken || refreshToken.trim() === '') {
-      return res.status(403).json({ error: 'Access to Google Analytics API is forbidden.' });
+    if (!propertyId || !refreshToken) {
+      return res.status(403).json({
+        success: false,
+        message: "GA4 Property ID or Refresh Token missing"
+      });
     }
+
+    const { adjustedStartDate, adjustedEndDate } =
+      getAdjustedDates(startDate, endDate);
 
     const accessToken = await getGoogleAccessToken(refreshToken);
 
-    // 1. Updated Request Body with new GA4 Metrics
     const requestBody = {
-      dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+      dateRanges: [
+        {
+          startDate: adjustedStartDate,
+          endDate: adjustedEndDate
+        }
+      ],
       dimensions: [
-        { name: 'yearMonth' },
-        { name: 'landingPage' }
+        { name: "yearMonth" },
+        { name: "pagePathPlusQueryString" }
       ],
       metrics: [
-        { name: 'sessions' },
-        { name: 'engagementRate' },
-        { name: 'bounceRate' },
-        { name: 'ecommercePurchases' }
-      ]
+        { name: "sessions" },
+        { name: "engagementRate" },
+        { name: "bounceRate" }
+      ],
+      orderBys: [
+        {
+          metric: { metricName: "sessions" },
+          desc: true
+        }
+      ],
+      limit: 500
     };
 
     const response = await axios.post(
@@ -3192,109 +3213,71 @@ export async function getBounceRate(req, res) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    const Rows = response?.data?.rows || [];
+    const rows = response?.data?.rows || [];
 
-    // 2. Process and Group Data
-    const groupedData = Rows.reduce((acc, row) => {
-      const yearMonth = row.dimensionValues[0]?.value;
-      const landingPage = row.dimensionValues[1]?.value;
+    const groupedData = rows.reduce((acc, row) => {
+      const month = row.dimensionValues?.[0]?.value;
+      const page = row.dimensionValues?.[1]?.value;
 
-      // Extract values based on metric order in requestBody
-      const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
-      const engagementRate = parseFloat(row.metricValues[1]?.value || 0);
-      const bounceRate = parseFloat(row.metricValues[2]?.value || 0);
-      const purchases = parseInt(row.metricValues[3]?.value || 0, 10);
+      const sessions = Number(row.metricValues?.[0]?.value || 0);
+      const engagementRate = Number(row.metricValues?.[1]?.value || 0);
+      const bounceRate = Number(row.metricValues?.[2]?.value || 0);
 
-      if (!acc[landingPage]) {
-        acc[landingPage] = {
-          MonthlyData: {},
+      if (!page || sessions === 0) return acc;
+
+      if (!acc[page]) {
+        acc[page] = {
+          MonthlyData: [],
           TotalSessions: 0,
-          TotalPurchases: 0,
-          SumEngagementRate: 0,
-          SumBounceRate: 0,
-          MonthCount: 0
+          WeightedEngagementSum: 0,
+          WeightedBounceSum: 0
         };
       }
 
-      if (!acc[landingPage].MonthlyData[yearMonth]) {
-        acc[landingPage].MonthlyData[yearMonth] = {
-          Month: yearMonth,
-          // Sessions: sessions,
-          // Purchases: purchases,
-          "Engagement Rate": (engagementRate * 100).toFixed(2) + "%",
-          "Bounce Rate": (bounceRate * 100).toFixed(2) + "%",
-          // "Conv. Rate": sessions > 0 ? ((purchases / sessions) * 100).toFixed(2) : "0.00"
-        };
-      }
+      acc[page].MonthlyData.push({
+        Month: month,
+        Sessions: sessions,
+        "Engagement Rate": (engagementRate * 100).toFixed(2) + "%",
+        "Bounce Rate": (bounceRate * 100).toFixed(2) + "%"
+      });
 
-      // Aggregate totals for the Landing Page averages
-      acc[landingPage].TotalSessions += sessions;
-      acc[landingPage].TotalPurchases += purchases;
-      acc[landingPage].SumEngagementRate += engagementRate;
-      acc[landingPage].SumBounceRate += bounceRate;
-      acc[landingPage].MonthCount += 1;
+      acc[page].TotalSessions += sessions;
+      acc[page].WeightedEngagementSum += engagementRate * sessions;
+      acc[page].WeightedBounceSum += bounceRate * sessions;
 
       return acc;
     }, {});
 
-    // 3. Map to final array format
-    let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => {
-      const avgEngagement = (LandingPageData.SumEngagementRate / LandingPageData.MonthCount) * 100;
-      const avgBounce = (LandingPageData.SumBounceRate / LandingPageData.MonthCount) * 100;
-      const totalSessions = LandingPageData.TotalSessions;
-      const totalPurchases = LandingPageData.TotalPurchases;
+    const finalData = Object.entries(groupedData).map(
+      ([page, data]) => ({
+        "All Page": page,
+        "Total Sessions": data.TotalSessions,
+        "Avg Engagement Rate":
+          ((data.WeightedEngagementSum / data.TotalSessions) * 100).toFixed(2) + "%",
+        "Avg Bounce Rate":
+          ((data.WeightedBounceSum / data.TotalSessions) * 100).toFixed(2) + "%",
+        MonthlyData: data.MonthlyData
+      })
+    );
 
-      return {
-        "All Page": LandingPage,
-        "Total Sessions": totalSessions,
-        "Total Purchases": totalPurchases,
-        "Avg Engagement Rate": avgEngagement.toFixed(2) + "%",
-        "Avg Bounce Rate": avgBounce.toFixed(2) + "%",
-        "Avg Conv. Rate": totalSessions > 0 ? ((totalPurchases / totalSessions) * 100).toFixed(2) : "0.00",
-        MonthlyData: Object.values(LandingPageData.MonthlyData)
-      };
-    });
-
-    // 4. Sorting and Filtering
-    data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
-
-    let limitedData = data.slice(0, 500);
-
-    if (sessionsFilter || convRateFilter) {
-      limitedData = limitedData.filter(item => {
-        const sessionCondition = sessionsFilter
-          ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
-          : true;
-
-        const convRateCondition = convRateFilter
-          ? compareValues(parseFloat(item["Avg Conv. Rate"]), convRateFilter.value, convRateFilter.operator)
-          : true;
-
-        return sessionCondition && convRateCondition;
-      });
-    }
-
-    const activeFilters = {};
-    if (sessionsFilter) activeFilters.sessions = sessionsFilter;
-    if (convRateFilter) activeFilters.conversionRate = convRateFilter;
-
-    res.status(200).json({
-      reportType: `Monthly Landing Page Performance (Sessions, Engagement, Conversions)`,
-      activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
-      data: limitedData,
+    return res.status(200).json({
+      success: true,
+      reportType: "Monthly Landing Page Performance (GA4 Accurate)",
+      data: finalData
     });
 
   } catch (error) {
-    console.error('Error fetching Landing Pages Data:', error);
-    if (error.response && error.response.status === 403) {
-      return res.status(403).json({ error: 'Access to GA4 API forbidden. Check permissions.' });
-    }
-    res.status(500).json({ error: 'Failed to fetch Landing Pages-Based Monthly Data.' });
+    console.error("GA4 Bounce Rate Error:", error?.response?.data || error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch GA4 bounce rate data"
+    });
   }
 }
+
+

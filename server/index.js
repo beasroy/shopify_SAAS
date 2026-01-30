@@ -113,7 +113,7 @@ dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
 dataOperationRouter.use("/scraping",scrapingRoutes)
 dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
 dataOperationRouter.use("/festival-dates",festivalDateRoutes)
-dataOperationRouter.use("/festival-dates",festivalDateRoutes)
+
 
 
 

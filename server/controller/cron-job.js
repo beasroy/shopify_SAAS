@@ -1,8 +1,8 @@
 import cron from 'node-cron';
 import { calculateMetricsForAllBrands } from '../Report/Report.js';
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
-
 import { syncAllBrandProducts as syncYesterdayProductsForAllBrands } from '../Report/Report.js';
+import { setupHolidayGenerationCron } from '../cron/holidayGenerationCron.js';
 
 
 export const setupCronJobs = () => {
@@ -20,7 +20,7 @@ export const setupCronJobs = () => {
 
   // export const setupCronJobs = () => { 
   // cron job for metrics calculation
-  cron.schedule('00 2 * * *', async () => {
+  cron.schedule('00 3 * * *', async () => {
     console.log('Metrics calculation cron job started at:', new Date().toISOString());
     try {
       console.log('Metrics calculation cron job is running at:', new Date().toISOString());
@@ -45,5 +45,8 @@ export const setupCronJobs = () => {
 
   // // Setup location classification cron (runs at 6 AM UTC daily)
   // setupLocationClassificationCron();
+
+  // Setup yearly holiday generation cron (runs on January 1st at 2 AM UTC)
+  setupHolidayGenerationCron();
 
 };

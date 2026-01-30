@@ -434,7 +434,6 @@ export async function deleteAllProducts(req, res) {
     }
 }
 
-
 export async function deleteProductsByBrand(req, res) {
     try {
         const { brandId } = req.params;

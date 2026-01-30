@@ -4,7 +4,8 @@ import {
   addFestivalDate,
   updateFestivalDate,
   deleteFestivalDate,
-  getCalendarSalesData
+  getCalendarSalesData,
+  generateHolidaysWithGPTController
 } from '../controller/festivalDate.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 
@@ -15,6 +16,9 @@ router.get('/:brandId', verifyAuth, getFestivalDates);
 
 // Get calendar sales data (for hover tooltips)
 router.get('/sales/:brandId', verifyAuth, getCalendarSalesData);
+
+// Generate holidays using GPT
+router.post('/generate', verifyAuth, generateHolidaysWithGPTController);
 
 // Add a new festival date
 router.post('/:brandId', verifyAuth, addFestivalDate);

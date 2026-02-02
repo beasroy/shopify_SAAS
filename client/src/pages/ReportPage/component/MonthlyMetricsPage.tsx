@@ -303,7 +303,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       if (startDate && endDate) {
         promises.push(
           axiosInstance.post(
-            `/api/shopify/monthly-launched-products/${brandId}`,
+            `/api/product/monthly-launched-products/${brandId}`,
             {
               startDate: startDate,
               endDate: endDate

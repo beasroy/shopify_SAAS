@@ -38,6 +38,7 @@ import { addReportData } from "./Report/Report.js";
 import backfillCityMetadata from "./scripts/backfillCityMetadata.js";
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
+import productRoutes from "./routes/product.js";
 
 
 
@@ -100,21 +101,21 @@ dataOperationRouter.use("/google", googleRoutes);
 dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
-dataOperationRouter.use("/zoho",zohoRoutes);
+dataOperationRouter.use("/zoho", zohoRoutes);
 dataOperationRouter.use("/analytics", locationAnalyticsRoutes);
-dataOperationRouter.use("/app",shopifyAppRoutes)
-dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
-dataOperationRouter.use("/pricing",pricingRoutes)
-dataOperationRouter.use("/cache",cacheRoutes)
-dataOperationRouter.use("/ads",creativeRoutes)
-dataOperationRouter.use("/",shopifyWebhookRoutes)
-dataOperationRouter.use("/shopify",shopifyRoutes)
-dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
-dataOperationRouter.use("/scraping",scrapingRoutes)
-dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
-dataOperationRouter.use("/festival-dates",festivalDateRoutes)
-dataOperationRouter.use("/festival-dates",festivalDateRoutes)
-
+dataOperationRouter.use("/app", shopifyAppRoutes)
+dataOperationRouter.use("/shopify/webhooks", webhookRoutes)
+dataOperationRouter.use("/pricing", pricingRoutes)
+dataOperationRouter.use("/cache", cacheRoutes)
+dataOperationRouter.use("/ads", creativeRoutes)
+dataOperationRouter.use("/", shopifyWebhookRoutes)
+dataOperationRouter.use("/shopify", shopifyRoutes)
+dataOperationRouter.use("/d2c-calculator", d2cCalculatorRoutes)
+dataOperationRouter.use("/scraping", scrapingRoutes)
+dataOperationRouter.use("/pageSpeedInsights", pageSpeedInsightsRoutes)
+dataOperationRouter.use("/festival-dates", festivalDateRoutes)
+dataOperationRouter.use("/festival-dates", festivalDateRoutes)
+dataOperationRouter.use("/product", productRoutes)
 
 
 if (isDevelopment) {
@@ -124,7 +125,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a","69779a7cd639a12fc8b83477")
+calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a", "69779a7cd639a12fc8b83477")
 //addReportData("68dfb7e4e78884ea57ff7b53")
 
 //getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")

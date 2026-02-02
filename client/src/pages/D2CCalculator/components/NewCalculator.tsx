@@ -232,14 +232,18 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
 
-  React.useEffect(() => {
-    if (brandId && date.from && date.to) {
-      fetchRevenue();
-    }
-  }, [brandId, date.from, date.to]);
 
-  const fetchRevenue = React.useCallback(async () => {
+
+  const fetchRevenue = React.useCallback(async (force = false) => {
     if (!brandId || !date.from || !date.to) return;
+
+    const currentDateKey = `${startDate}_${endDate}`;
+    const storedDateKey = sessionStorage.getItem("DATE_KEY");
+    const brandKey = sessionStorage.getItem("BRAND_KEY");
+
+    if (!force && storedDateKey === currentDateKey && brandKey === brandId) {
+      return;
+    }
 
     setRevenueLoading(true);
 
@@ -303,6 +307,8 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
           title: "Success",
           description: "Revenue fetched successfully",
         });
+        sessionStorage.setItem("DATE_KEY", currentDateKey);
+        sessionStorage.setItem("BRAND_KEY", brandId);
       }
 
 
@@ -316,7 +322,94 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
     } finally {
       setRevenueLoading(false);
     }
+  }, [brandId, date.from, date.to]);
+
+
+  React.useEffect(() => {
+    if (brandId && date.from && date.to) {
+      fetchRevenue();
+    }
   }, [brandId, date.from, date.to, toast]);
+
+  // const fetchRevenue = React.useCallback(async () => {
+  //   if (!brandId || !date.from || !date.to) return;
+
+  //   setRevenueLoading(true);
+
+  //   try {
+  //     const queryParams: Record<string, string> = {};
+  //     if (startDate) queryParams.startDate = startDate;
+  //     if (endDate) queryParams.endDate = endDate;
+
+  //     const revenueRequest = axiosInstance.post(
+  //       `${baseURL}/api/d2c-calculator/revenue/${brandId}`,
+  //       {
+  //         startDate: format(date.from, 'yyyy-MM-dd'),
+  //         endDate: format(date.to, 'yyyy-MM-dd'),
+  //       },
+  //       { withCredentials: true }
+  //     );
+
+  //     const reportRequest = axiosInstance.get(
+  //       `${baseURL}/api/report/${brandId}`,
+  //       {
+  //         params: queryParams,
+  //         withCredentials: true,
+  //       }
+  //     );
+
+  //     const [revenueResponse, reportResponse] = await Promise.all([
+  //       revenueRequest,
+  //       reportRequest,
+  //     ]);
+
+  //     setCostAndExpenses(prev => ({
+  //       ...prev,
+  //       marketingCost: reportResponse.data.data[0].totalSpend || 0,
+  //     }))
+
+  //     const processedDailyMetrics = reportResponse.data.data[0].dailyMetrics.map((daily: any) => ({
+  //       ...daily,
+  //       // metaROAS: safeDivide(daily.metaRevenue, daily.metaSpend),
+  //       googleSales: (daily.googleSpend) * (daily.googleROAS),
+  //       adSales: (daily.totalSpend) * (daily.grossROI || 0),
+  //       // ROI: safeDivide(daily.totalSales, daily.totalSpend),
+  //     }))
+
+  //     const metaSales = processedDailyMetrics.reduce((sum: number, daily: any) => sum + (daily.metaRevenue || 0), 0)
+  //     const googleSales = processedDailyMetrics.reduce((sum: number, daily: any) => sum + daily.googleSales, 0)
+  //     const marketSales = metaSales + googleSales || 0
+  //     setRevenue(prev => ({
+  //       ...prev,
+  //       marketSales: marketSales,
+  //     }))
+
+
+  //     if (revenueResponse.data.success) {
+  //       setRevenue(prev => ({
+  //         ...prev,
+  //         shopifySales: revenueResponse.data.data.revenue,
+  //       }));
+  //       setCurrency(revenueResponse.data.data.currency || 'USD');
+
+  //       toast({
+  //         title: "Success",
+  //         description: "Revenue fetched successfully",
+  //       });
+  //     }
+
+
+  //   } catch (error: any) {
+  //     console.error('Error fetching revenue:', error);
+  //     toast({
+  //       title: "Error",
+  //       description: error.response?.data?.error || "Failed to fetch revenue",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setRevenueLoading(false);
+  //   }
+  // }, [brandId, date.from, date.to, toast]);
 
   const fetchLastUsedLandedCostForCOGS = React.useCallback(async () => {
     if (!brandId) {
@@ -404,12 +497,6 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
 
   }, [])
 
-  React.useEffect(() => {
-    if (brandId && date.from && date.to) {
-      // fetchRevenue();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, date.from, date.to]);
 
   React.useEffect(() => {
     localStorage.setItem('additionalRevenue', JSON.stringify(additionalRevenue));
@@ -564,7 +651,8 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
       return;
     }
 
-    if (file.type !== 'text/csv') {
+    // if (file.type !== 'text/csv') {
+    if (!file.name.toLowerCase().endsWith(".csv")) {
       toast({
         title: "Error",
         description: "Please select a CSV file",
@@ -597,7 +685,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
           requiredHeaders.forEach(header => {
             const value = row[header];
             // Check if value is null, undefined, or just whitespace
-            if (value === null || value === undefined || value.trim() === "") {
+            if (value === null || value === undefined || String(value).trim() === "") {
               errors.push(`Row ${index + 1}: Column "${header}" is empty.`);
             }
           });
@@ -610,7 +698,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
           // console.log("Validation Successful!", data);
           const cleanedData = cleanShopifyCSVData(data as any)
           setUploadedFileList(cleanedData);
-          console.log("cleanedData ===>", cleanedData);
+
           // Proceed to upload or process data
         }
       }
@@ -621,6 +709,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
 
   function cleanShopifyCSVData(rows = []) {
     const cleaned = []
+    const seen = new Set<string>()
 
     for (const row of rows) {
       // Shopify column names (exact)
@@ -634,6 +723,8 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
 
       const productId = String(rawSKU).trim()
 
+      if (seen.has(productId)) continue
+
       // Clean numbers like "1,234"
       const unitCost = Number(
         String(rawCostPerItem || 0).replace(/,/g, "")
@@ -643,7 +734,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
       if (!productId || !Number.isFinite(unitCost) || unitCost <= 0) {
         continue
       }
-
+      seen.add(productId)
       cleaned.push({
         productId,
         unitCost
@@ -755,7 +846,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
               <div className='flex flex-col md:flex-row items-center md:items-center justify-start md:justify-between gap-2 md:gap-4 mt-4'>
                 <div className='w-full md:w-auto flex md:justify-start justify-center'>
                   <Button
-                    onClick={fetchRevenue}
+                    onClick={() => fetchRevenue(true)}
                     disabled={revenueLoading || !date.from || !date.to || metricsLoading}
                     variant="outline"
                     size="sm"
@@ -1042,6 +1133,7 @@ const NewCalculator: React.FC<EbidtaCalculatorProps> = ({ date }) => {
                 <Button
                   onClick={() => {
                     setUploadedFile(undefined);
+                    setUploadedFileList([]);
                     if (fileInputRef.current) {
                       fileInputRef.current.value = '';
                     }

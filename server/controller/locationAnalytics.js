@@ -224,14 +224,8 @@ export async function getLocationSales(req, res) {
                             }
                         }
                     },
-                    lookupKey: {
-                        $concat: [
-                            { $toLower: { $trim: { input: { $ifNull: ["$city", ""] }}}},
-                            "_",
-                            { $toLower: { $trim: { input: { $ifNull: ["$state", ""] }}}},
-                            "_india"
-                        ]
-                    },
+                    // Note: lookupKey will be matched dynamically based on city+state
+                    // since country is determined by GPT
                     orderDate: {
                         $dateToString: { 
                             format: "%Y-%m-%d", 
@@ -240,12 +234,27 @@ export async function getLocationSales(req, res) {
                     }
                 }
             },
-            // Stage 3: Lookup CityMetadata
+            // Stage 3: Lookup CityMetadata by cityNormalized + state
+            // (since lookupKey includes country which we don't know upfront)
             {
                 $lookup: {
                     from: "citymetadatas",
-                    localField: "lookupKey",
-                    foreignField: "lookupKey",
+                    let: { 
+                        cityNorm: "$cityNormalized",
+                        stateNorm: "$stateNormalized"
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$cityNormalized", "$$cityNorm"] },
+                                        { $eq: [{ $toLower: { $trim: "$state" }}, "$$stateNorm"] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     as: "cityMeta"
                 }
             },

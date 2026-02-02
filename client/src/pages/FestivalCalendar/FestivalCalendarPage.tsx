@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,32 +15,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { CalendarIcon, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  isSameDay,
-  isPast,
-  isToday,
-  addMonths,
-  subMonths,
-} from 'date-fns';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { CalendarIcon, Loader2, Search, Plus, Trash2, Sparkles } from 'lucide-react';
+import { format, getMonth, parseISO } from 'date-fns';
 import createAxiosInstance from '../ConversionReportPage/components/axiosInstance';
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
 import { useParams } from 'react-router-dom';
@@ -53,235 +40,132 @@ interface FestivalDate {
   description?: string;
   isRecurring?: boolean;
   recurrencePattern?: string;
+  type?: 'global' | 'brand';
+  scope?: 'national' | 'state' | 'regional';
+  state?: string;
+  country?: string;
 }
 
-interface SalesData {
-  date: string;
-  totalSales: number;
-  codOrderCount: number;
-  prepaidOrderCount: number;
-}
+const COUNTRIES = [
+  { code: 'IN', name: 'India' },
+  { code: 'US', name: 'United States' },
+  { code: 'UK', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+];
 
-interface CalendarSalesData {
-  sales: Record<string, SalesData>;
-  festivals: Record<string, { festivalName: string; description?: string }>;
-}
-
-interface PublicHoliday {
-  date: Date;
-  name: string;
-  isPublicHoliday: boolean;
-}
-
-// Indian Public Holidays (Fixed dates - you can expand this or use an API for variable dates)
-const getPublicHolidays = (year: number): PublicHoliday[] => {
-  const holidays: PublicHoliday[] = [
-    { date: new Date(year, 0, 1), name: 'New Year\'s Day', isPublicHoliday: true },
-    { date: new Date(year, 0, 26), name: 'Republic Day', isPublicHoliday: true },
-    { date: new Date(year, 3, 14), name: 'Ambedkar Jayanti', isPublicHoliday: true },
-    { date: new Date(year, 4, 1), name: 'Labour Day', isPublicHoliday: true },
-    { date: new Date(year, 7, 15), name: 'Independence Day', isPublicHoliday: true },
-    { date: new Date(year, 9, 2), name: 'Gandhi Jayanti', isPublicHoliday: true },
-    { date: new Date(year, 11, 25), name: 'Christmas', isPublicHoliday: true },
-  ];
-
-  
-  return holidays;
-};
+const MONTHS = [
+  'All Months',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function FestivalCalendarPage() {
   const { brandId } = useParams<{ brandId: string }>();
   const axiosInstance = createAxiosInstance();
   
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [festivalDates, setFestivalDates] = useState<FestivalDate[]>([]);
-  const [salesData, setSalesData] = useState<CalendarSalesData>({ sales: {}, festivals: {} });
   const [loading, setLoading] = useState(false);
-  const [salesLoading, setSalesLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  // Track the date range of loaded sales data
-  const [loadedDateRange, setLoadedDateRange] = useState<{ start: Date; end: Date } | null>(null);
-  // Track which months have loaded festival dates
-  const [loadedFestivalMonths, setLoadedFestivalMonths] = useState<Set<string>>(new Set());
-  // Track previous brandId to detect changes
-  const previousBrandIdRef = useRef<string | undefined>(brandId);
+  const [selectedCountry, setSelectedCountry] = useState('IN');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'global' | 'brand'>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('All Months');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'national' | 'state' | 'regional'>('all');
+  const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc'>('date-asc');
   
   // Form state
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [festivalName, setFestivalName] = useState('');
   const [festivalDescription, setFestivalDescription] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrencePattern, setRecurrencePattern] = useState<string>('');
+  const [scope, setScope] = useState<'national' | 'state' | 'regional'>('national');
+  const [state, setState] = useState('');
 
-  // Check if festival dates for a month are already loaded
-  const isFestivalMonthLoaded = useCallback((month: Date): boolean => {
-    const monthKey = format(month, 'yyyy-MM');
-    return loadedFestivalMonths.has(monthKey);
-  }, [loadedFestivalMonths]);
-
-  // Fetch festival dates for a specific month
-  const fetchFestivalDates = useCallback(async (targetMonth?: Date) => {
+  // Fetch festival dates
+  const fetchFestivalDates = useCallback(async () => {
     if (!brandId) return;
-    
-    const monthToUse = targetMonth || currentMonth;
-    const monthKey = format(monthToUse, 'yyyy-MM');
-    
-    // Check if already loaded
-    if (isFestivalMonthLoaded(monthToUse)) {
-      return; // Already loaded, no need to fetch
-    }
     
     try {
       setLoading(true);
       const response = await axiosInstance.get(`/api/festival-dates/${brandId}`, {
         params: {
-          month: monthKey // Pass month in YYYY-MM format
+          country: selectedCountry
         },
         withCredentials: true
       });
       
       if (response.data.success) {
-        // Merge with existing festival dates (avoid duplicates)
-        setFestivalDates(prev => {
-          const existingIds = new Set(prev.map(f => f._id));
-          const newFestivals = response.data.data.filter((f: FestivalDate) => !existingIds.has(f._id));
-          return [...prev, ...newFestivals];
-        });
-        
-        // Mark this month as loaded
-        setLoadedFestivalMonths(prev => new Set([...prev, monthKey]));
+        setFestivalDates(response.data.data || []);
       }
     } catch (error) {
       console.error('Error fetching festival dates:', error);
     } finally {
       setLoading(false);
     }
-  }, [brandId, axiosInstance, currentMonth, isFestivalMonthLoaded]);
+  }, [brandId, selectedCountry]);
 
-  // Check if current month is within loaded date range
-  const isMonthLoaded = useCallback((month: Date): boolean => {
-    if (!loadedDateRange) return false;
-    
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
-    
-    return monthStart >= loadedDateRange.start && monthEnd <= loadedDateRange.end;
-  }, [loadedDateRange]);
-
-  // Fetch sales data for last 3 months from a given month
-  const fetchSalesData = useCallback(async (targetMonth?: Date) => {
+  // Generate holidays with GPT
+  const handleGenerateHolidays = useCallback(async () => {
     if (!brandId) return;
     
-    // Use targetMonth or currentMonth
-    const monthToUse = targetMonth || currentMonth;
-    
-    // Check if data for this month is already loaded
-    if (isMonthLoaded(monthToUse)) {
-      return; // Data already loaded, no need to fetch
-    }
-    
     try {
-      setSalesLoading(true);
-      // Fetch last 3 months of sales data from the target month
-      const response = await axiosInstance.get(
-        `/api/festival-dates/sales/${brandId}`,
+      setGenerating(true);
+      const currentYear = new Date().getFullYear();
+      const response = await axiosInstance.post(
+        '/api/festival-dates/generate',
         {
-          params: {
-            targetMonth: monthToUse.toISOString()
-          },
-          withCredentials: true
-        }
+          country: selectedCountry,
+          year: currentYear
+        },
+        { withCredentials: true }
       );
       
       if (response.data.success) {
-        // Merge with existing sales data
-        setSalesData(prev => ({
-          sales: { ...prev.sales, ...response.data.data.sales },
-          festivals: { ...prev.festivals, ...response.data.data.festivals }
-        }));
-        
-        // Update loaded date range (3 months: 1 before, target, 1 after)
-        const monthStart = startOfMonth(monthToUse);
-        const rangeStart = subMonths(monthStart, 1); // 1 month before
-        const rangeEnd = addMonths(monthStart, 2); // 1 month after target
-        const rangeEndLastDay = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 0);
-        rangeEndLastDay.setHours(23, 59, 59, 999);
-        
-        setLoadedDateRange({
-          start: rangeStart,
-          end: rangeEndLastDay
-        });
+        alert(response.data.message || 'Holidays generated successfully!');
+        await fetchFestivalDates();
       }
-    } catch (error) {
-      console.error('Error fetching sales data:', error);
+    } catch (error: any) {
+      console.error('Error generating holidays:', error);
+      alert(error.response?.data?.message || 'Failed to generate holidays');
     } finally {
-      setSalesLoading(false);
+      setGenerating(false);
     }
-  }, [brandId, axiosInstance, currentMonth, isMonthLoaded]);
+  }, [brandId, selectedCountry]);
 
-  // Reset all cached data when brandId changes
-  useEffect(() => {
-    if (!brandId) return;
-    
-    // Check if brand actually changed
-    if (previousBrandIdRef.current === brandId) {
-      return; // Same brand, no need to reset
-    }
-    
-    // Brand changed - reset all state
-    setFestivalDates([]);
-    setSalesData({ sales: {}, festivals: {} });
-    setLoadedDateRange(null);
-    setLoadedFestivalMonths(new Set());
-    setCurrentMonth(new Date()); // Reset to current month
-    
-    // Update ref
-    previousBrandIdRef.current = brandId;
-  }, [brandId]); // Run when brandId changes
-
-  // Fetch festival dates and sales data when month changes
-  useEffect(() => {
-    if (!brandId) return;
-    
-    // Fetch data for the current month
-    // The fetch functions will check if data is already loaded
-    fetchFestivalDates(currentMonth);
-    fetchSalesData(currentMonth);
-  }, [currentMonth, brandId, fetchFestivalDates, fetchSalesData]); // Run when month or brandId changes
-
-  // Handle date click - open modal to add festival
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    setIsDialogOpen(true);
-  };
-
-  // Handle add festival
+  // Add festival
   const handleAddFestival = async () => {
-    if (!selectedDate || !festivalName.trim()) return;
+    if (!selectedDate || !festivalName.trim() || !brandId) return;
     
     try {
       setLoading(true);
       const response = await axiosInstance.post(
         `/api/festival-dates/${brandId}`,
         {
-          date: selectedDate.toISOString(),
+          date: selectedDate,
           festivalName: festivalName.trim(),
           description: festivalDescription.trim() || undefined,
           isRecurring: isRecurring,
           recurrencePattern: isRecurring && recurrencePattern ? recurrencePattern : undefined,
+          country: selectedCountry,
+          scope: scope,
+          state: scope === 'state' ? state : undefined,
         },
         { withCredentials: true }
       );
       
       if (response.data.success) {
-        // Refresh festival dates for the current month
-        const monthKey = format(currentMonth, 'yyyy-MM');
-        setLoadedFestivalMonths(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(monthKey); // Remove from cache to force refresh
-          return newSet;
-        });
-        await fetchFestivalDates(currentMonth);
+        await fetchFestivalDates();
         setIsDialogOpen(false);
         resetForm();
       }
@@ -293,352 +177,353 @@ export default function FestivalCalendarPage() {
     }
   };
 
+  // Delete festival
+  const handleDeleteFestival = async (festivalId: string) => {
+    if (!brandId || !confirm('Are you sure you want to delete this holiday?')) return;
+    
+    try {
+      setLoading(true);
+      const response = await axiosInstance.delete(
+        `/api/festival-dates/${festivalId}`,
+        {
+          params: { brandId },
+          withCredentials: true }
+      );
+      
+      if (response.data.success) {
+        await fetchFestivalDates();
+      }
+    } catch (error: any) {
+      console.error('Error deleting festival date:', error);
+      alert(error.response?.data?.message || 'Failed to delete festival date');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
+    setSelectedDate('');
     setFestivalName('');
     setFestivalDescription('');
-    setSelectedDate(undefined);
     setIsRecurring(false);
     setRecurrencePattern('');
+    setScope('national');
+    setState('');
   };
 
-  // Get sales data for a date
-  const getSalesForDate = (date: Date): SalesData | null => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return salesData.sales[dateStr] || null;
-  };
+  // Filter and sort holidays
+  const filteredAndSortedHolidays = useMemo(() => {
+    let filtered = [...festivalDates];
 
-  // Get festival info for a date (including recurring festivals)
-  const getFestivalInfo = (date: Date): FestivalDate | undefined => {
-    return festivalDates.find(festival => {
-      const festivalDate = new Date(festival.date);
-      
-      // Exact date match
-      if (isSameDay(festivalDate, date)) {
-        return true;
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(holiday =>
+        holiday.festivalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        holiday.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(holiday => holiday.type === typeFilter);
+    }
+
+    // Month filter
+    if (monthFilter !== 'All Months') {
+      const monthIndex = MONTHS.indexOf(monthFilter) - 1;
+      filtered = filtered.filter(holiday => {
+        const date = parseISO(holiday.date);
+        return getMonth(date) === monthIndex;
+      });
+    }
+
+    // Scope filter
+    if (scopeFilter !== 'all') {
+      filtered = filtered.filter(holiday => holiday.scope === scopeFilter);
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      const dateA = parseISO(a.date);
+      const dateB = parseISO(b.date);
+
+      if (sortBy === 'date-asc') {
+        return dateA.getTime() - dateB.getTime();
+      } else if (sortBy === 'date-desc') {
+        return dateB.getTime() - dateA.getTime();
+      } else if (sortBy === 'name-asc') {
+        return a.festivalName.localeCompare(b.festivalName);
+      } else {
+        return b.festivalName.localeCompare(a.festivalName);
       }
-      
-      // Check recurring festivals
-      if (festival.isRecurring && festival.recurrencePattern) {
-        const festivalMonth = festivalDate.getMonth(); // 0-11
-        const festivalDay = festivalDate.getDate(); // 1-31
-        const festivalDayOfWeek = festivalDate.getDay(); // 0-6
-        const dateMonth = date.getMonth();
-        const dateDay = date.getDate();
-        const dateDayOfWeek = date.getDay();
-        
-        if (festival.recurrencePattern === 'annually') {
-          // Match same month and day (e.g., Feb 14 every year)
-          return festivalMonth === dateMonth && festivalDay === dateDay;
-        } else if (festival.recurrencePattern === 'monthly') {
-          // Match same day of month (e.g., 14th of every month)
-          return festivalDay === dateDay;
-        } else if (festival.recurrencePattern === 'weekly') {
-          // Match same day of week (e.g., every Monday)
-          return festivalDayOfWeek === dateDayOfWeek;
-        }
-      }
-      
-      return false;
     });
-  };
 
-  // Get public holiday for a date
-  const getPublicHoliday = (date: Date): PublicHoliday | undefined => {
-    const year = date.getFullYear();
-    const holidays = getPublicHolidays(year);
-    return holidays.find(holiday => isSameDay(holiday.date, date));
-  };
+    return filtered;
+  }, [festivalDates, searchQuery, typeFilter, monthFilter, scopeFilter, sortBy]);
 
-  // Generate calendar days
-  const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const calendarStart = startOfWeek(monthStart);
-    const calendarEnd = endOfWeek(monthEnd);
+  // Group holidays by month only if month filter is selected
+  const groupedHolidays = useMemo(() => {
+    if (monthFilter === 'All Months') {
+      // Return as a single group with no month label
+      return { '': filteredAndSortedHolidays };
+    }
     
-    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  }, [currentMonth]);
+    const groups: Record<string, FestivalDate[]> = {};
+    filteredAndSortedHolidays.forEach(holiday => {
+      const date = parseISO(holiday.date);
+      const monthKey = format(date, 'MMMM yyyy');
+      if (!groups[monthKey]) {
+        groups[monthKey] = [];
+      }
+      groups[monthKey].push(holiday);
+    });
+    return groups;
+  }, [filteredAndSortedHolidays, monthFilter]);
 
-  // Navigation
-  const goToPreviousMonth = () => {
-    const newMonth = subMonths(currentMonth, 1);
-    setCurrentMonth(newMonth);
-    // fetchSalesData will be called by useEffect when currentMonth changes
-  };
-
-  const goToNextMonth = () => {
-    const newMonth = addMonths(currentMonth, 1);
-    setCurrentMonth(newMonth);
-    // fetchSalesData will be called by useEffect when currentMonth changes
-  };
-
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
-
-  // Navigate to specific month and year
-  const goToMonthYear = (month: number, year: number) => {
-    setCurrentMonth(new Date(year, month, 1));
-  };
-
-  // Generate month and year options for select
-  const monthOptions = [
-    { value: '0', label: 'January' },
-    { value: '1', label: 'February' },
-    { value: '2', label: 'March' },
-    { value: '3', label: 'April' },
-    { value: '4', label: 'May' },
-    { value: '5', label: 'June' },
-    { value: '6', label: 'July' },
-    { value: '7', label: 'August' },
-    { value: '8', label: 'September' },
-    { value: '9', label: 'October' },
-    { value: '10', label: 'November' },
-    { value: '11', label: 'December' },
-  ];
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - 2 + i);
-
-  // Combined month-year value for select
-  const monthYearValue = `${currentMonth.getMonth()}-${currentMonth.getFullYear()}`;
-
-  // Handle month-year select change
-  const handleMonthYearChange = (value: string) => {
-    const [month, year] = value.split('-').map(Number);
-    goToMonthYear(month, year);
-  };
-
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  useEffect(() => {
+    if (brandId && !loading) {
+      fetchFestivalDates();
+    }
+  }, [brandId, selectedCountry]);
 
   return (
     <div className="flex h-screen bg-slate-50">
       <CollapsibleSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b bg-white">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">Festival Calendar</h1>
               <p className="text-sm text-slate-500 mt-1">
-                Click on any date to add a festival. Hover over past dates to see sales data.
+                View and manage holidays and festivals for your brand
               </p>
             </div>
-            <Button onClick={goToToday} variant="outline" size="sm">
-              Today
+            <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Holiday
             </Button>
+          </div>
+
+          {/* Filters and Controls */}
+          <div className="flex flex-wrap items-center gap-4 mt-4">
+            {/* Country Selector */}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="country" className="text-sm font-medium">Country:</Label>
+              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                <SelectTrigger id="country" className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map(country => (
+                    <SelectItem key={country.code} value={country.code}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Generate Holidays Button */}
+            <Button
+              variant="outline"
+              onClick={handleGenerateHolidays}
+              disabled={generating}
+              className="gap-2"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate Holidays
+                </>
+              )}
+            </Button>
+
+            {/* Search */}
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search holidays..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+
+            {/* Type Filter */}
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="global">Global</SelectItem>
+                <SelectItem value="brand">Brand</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Month Filter */}
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(month => (
+                  <SelectItem key={month} value={month}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Scope Filter */}
+            <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as typeof scopeFilter)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Scopes</SelectItem>
+                <SelectItem value="national">National</SelectItem>
+                <SelectItem value="state">State</SelectItem>
+                <SelectItem value="regional">Regional</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-asc">Date (Ascending)</SelectItem>
+                <SelectItem value="date-desc">Date (Descending)</SelectItem>
+                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
         <div className="flex-1 overflow-auto p-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-lg p-6 h-full flex flex-col">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={goToPreviousMonth}
-                  className="h-9 w-9"
-                  disabled={salesLoading}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Select
-                  value={monthYearValue}
-                  onValueChange={handleMonthYearChange}
-                  disabled={salesLoading}
-                >
-                  <SelectTrigger className="h-9 px-4 font-semibold text-slate-800 min-w-[220px] border-slate-300 hover:bg-slate-50 [&_svg]:hidden">
-                    <SelectValue>
-                      {format(currentMonth, 'MMMM yyyy')}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[400px]">
-                    {yearOptions.map((year) => (
-                      <SelectGroup key={year}>
-                        <div className="px-2 py-1.5">
-                          <div className="text-sm text-center font-semibold text-slate-500 uppercase tracking-wide mb-1 px-2">
-                            {year}
-                          </div>
-                          {monthOptions.map((month) => {
-                            const value = `${month.value}-${year}`;
-                            const isSelected = currentMonth.getMonth() === Number.parseInt(month.value, 10) && 
-                                              currentMonth.getFullYear() === year;
-                            return (
-                              <SelectItem
-                                key={value}
-                                value={value}
-                                className={isSelected ? "bg-blue-50 font-semibold" : ""}
-                              >
-                                {month.label} {year}
-                              </SelectItem>
-                            );
-                          })}
-                        </div>
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {salesLoading && (
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-                )}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={goToNextMonth}
-                  className="h-9 w-9"
-                  disabled={salesLoading}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          {loading && festivalDates.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             </div>
-
-            {/* Calendar Grid */}
-            <div className="flex-1 grid grid-cols-7 gap-px border border-slate-200 rounded-lg overflow-hidden bg-slate-200" style={{ gridTemplateRows: 'auto repeat(5, 1fr)' }}>
-              {/* Week day headers */}
-              {weekDays.map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs font-semibold text-slate-700 py-2 bg-white"
-                >
-                  {day}
+          ) : filteredAndSortedHolidays.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <CalendarIcon className="h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-lg font-semibold text-slate-700 mb-2">No holidays found</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                {searchQuery || typeFilter !== 'all' || monthFilter !== 'All Months' || scopeFilter !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Generate holidays or add your own'}
+              </p>
+              {!searchQuery && typeFilter === 'all' && monthFilter === 'All Months' && scopeFilter === 'all' && (
+                <Button onClick={handleGenerateHolidays} variant="outline" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Generate Holidays
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {Object.entries(groupedHolidays).map(([month, holidays]) => (
+                <div key={month}>
+                  {month && (
+                    <h2 className="text-xl font-semibold text-slate-800 mb-4">{month}</h2>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {holidays.map(holiday => {
+                      const date = parseISO(holiday.date);
+                      const isBrandHoliday = holiday.type === 'brand';
+                      const dayOfMonth = format(date, 'd');
+                      const monthAbbr = format(date, 'MMM');
+                      const dayName = format(date, 'EEE');
+                      
+                      return (
+                        <Card
+                          key={holiday._id}
+                          className={cn(
+                            "relative overflow-hidden transition-all duration-200 hover:shadow-md border-0",
+                            "group",
+                            isBrandHoliday 
+                              ? "bg-gradient-to-br from-orange-50 via-amber-50/50 to-yellow-50" 
+                              : "bg-gradient-to-br from-blue-50 via-indigo-50/50 to-purple-50"
+                          )}
+                        >
+                          {/* Decorative effect in right corner */}
+                          <div className={cn(
+                            "absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-20 blur-2xl",
+                            isBrandHoliday ? "bg-orange-400" : "bg-blue-400"
+                          )} />
+                          
+                          <CardHeader className="pb-3 relative z-10">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 flex-1 min-w-0">
+                                {/* Blue date square */}
+                                <div className={cn(
+                                  "flex flex-col items-center justify-center w-16 h-16 rounded-lg shrink-0",
+                                  isBrandHoliday ? "bg-orange-500" : "bg-blue-500"
+                                )}>
+                                  <span className="text-[10px] font-semibold text-white uppercase leading-tight">{dayName}</span>
+                                  <span className="text-xl font-bold text-white leading-none my-0.5">{dayOfMonth}</span>
+                                  <span className="text-[10px] font-medium text-white uppercase leading-tight">{monthAbbr}</span>
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  {/* Holiday name */}
+                                  <CardTitle className="text-base font-semibold text-slate-800 leading-tight mb-1 line-clamp-2">
+                                    {holiday.festivalName}
+                                  </CardTitle>
+                                  
+                                  {/* Full date */}
+                                  <CardDescription className="text-xs text-slate-600">
+                                    {format(date, 'EEEE, MMMM d, yyyy')}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                              
+                              {isBrandHoliday && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleDeleteFestival(holiday._id)}
+                                  disabled={loading}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          
+                          <CardContent className="pt-0 pb-4 relative z-10">
+                            {holiday.description && (
+                              <p className="text-sm text-slate-700 leading-relaxed mb-2 line-clamp-3">
+                                {holiday.description}
+                              </p>
+                            )}
+                            {holiday.state && (
+                              <div className="inline-flex items-center gap-1 text-xs text-slate-600 mt-1">
+                                <span className="text-red-500">📍</span>
+                                <span>{holiday.state}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
-
-              {/* Calendar days */}
-              <TooltipProvider delayDuration={200}>
-                {calendarDays.map((day) => {
-                  const isCurrentMonth = isSameMonth(day, currentMonth);
-                  const isTodayDate = isToday(day);
-                  const isPastDate = isPast(day) || isTodayDate;
-                  const sales = getSalesForDate(day);
-                  const festival = getFestivalInfo(day);
-                  const publicHoliday = getPublicHoliday(day);
-                  const hasSalesData = sales && isPastDate;
-
-                  const dayContent = (
-                    <button
-                      type="button"
-                      onClick={() => handleDateClick(day)}
-                      className={cn(
-                        "relative h-full w-full p-1.5 transition-all text-sm bg-white",
-                        "hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10",
-                        !isCurrentMonth && "text-slate-400 bg-slate-50",
-                        isCurrentMonth && "text-slate-900 font-medium",
-                        isTodayDate && "bg-blue-50 font-bold text-blue-900",
-                        festival && "bg-orange-50 text-orange-900 font-semibold hover:bg-orange-100",
-                        publicHoliday && !festival && "bg-purple-50 text-purple-700 hover:bg-purple-100",
-                      )}
-                    >
-                      <div className="flex flex-col items-center justify-center h-full">
-                        <span className="text-sm font-semibold">{format(day, 'd')}</span>
-                        {(festival || publicHoliday) && (
-                          <div className="mt-0.5 flex gap-0.5">
-                            {festival && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-orange-500" title={festival.festivalName} />
-                            )}
-                            {publicHoliday && !festival && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-purple-500" title={publicHoliday.name} />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  );
-
-                  // Check if we're loading data for this month
-                  const isDateInCurrentMonth = isSameMonth(day, currentMonth);
-                  const isLoadingForThisDate = salesLoading && isDateInCurrentMonth && isPastDate && !hasSalesData;
-
-                  if (hasSalesData || isLoadingForThisDate) {
-                    return (
-                      <Tooltip key={format(day, 'yyyy-MM-dd')}>
-                        <TooltipTrigger asChild>
-                          {dayContent}
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-slate-900 text-white">
-                          <div className="space-y-1 text-xs">
-                            <p className="font-semibold">{format(day, 'MMM dd, yyyy')}</p>
-                            {festival && (
-                              <p className="text-orange-400">{festival.festivalName}</p>
-                            )}
-                            {publicHoliday && !festival && (
-                              <p className="text-purple-300">{publicHoliday.name}</p>
-                            )}
-                            {(() => {
-                              if (isLoadingForThisDate) {
-                                return (
-                                  <div className="border-t border-slate-700 pt-1 mt-1 flex items-center gap-2">
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    <p className="text-slate-300">Loading sales data...</p>
-                                  </div>
-                                );
-                              }
-                              if (hasSalesData && sales) {
-                                return (
-                                  <div className="border-t border-slate-700 pt-1 mt-1">
-                                    <p>Total Sales: ₹{sales.totalSales.toLocaleString('en-IN')}</p>
-                                    <p>COD Orders: {sales.codOrderCount}</p>
-                                    <p>Prepaid Orders: {sales.prepaidOrderCount}</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  }
-
-                  if (festival || publicHoliday) {
-                    return (
-                      <Tooltip key={format(day, 'yyyy-MM-dd')}>
-                        <TooltipTrigger asChild>
-                          {dayContent}
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-slate-900 text-white">
-                          <div className="space-y-1 text-xs">
-                            <p className="font-semibold">{format(day, 'MMM dd, yyyy')}</p>
-                            {festival && (
-                              <>
-                                <p className="text-orange-400">{festival.festivalName}</p>
-                                {festival.description && (
-                                  <p className="text-slate-300">{festival.description}</p>
-                                )}
-                              </>
-                            )}
-                            {publicHoliday && !festival && (
-                              <p className="text-purple-300">{publicHoliday.name} (Public Holiday)</p>
-                            )}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  }
-
-                  return <div key={format(day, 'yyyy-MM-dd')}>{dayContent}</div>;
-                })}
-              </TooltipProvider>
             </div>
-
-            {/* Legend */}
-            <div className="mt-6 pt-6 border-t border-slate-200 flex items-center gap-8 text-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="h-4 w-4 rounded bg-orange-50 border-2 border-orange-300" />
-                <span className="text-slate-700 font-medium">Brand Festival</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="h-4 w-4 rounded bg-purple-50 border-2 border-purple-300" />
-                <span className="text-slate-700 font-medium">Public Holiday</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="h-4 w-4 rounded bg-blue-50 border-2 border-blue-300" />
-                <span className="text-slate-700 font-medium">Today</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -649,32 +534,28 @@ export default function FestivalCalendarPage() {
           resetForm();
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Festival Date</DialogTitle>
+            <DialogTitle>Add Holiday</DialogTitle>
             <DialogDescription>
-              Add a special festival date for your brand.
+              Add a brand-specific holiday or festival
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date">Date *</Label>
               <div className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                 <Input
                   id="date"
                   type="date"
-                  value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setSelectedDate(new Date(e.target.value));
-                    }
-                  }}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="festivalName">Festival Name *</Label>
+              <Label htmlFor="festivalName">Holiday Name *</Label>
               <Input
                 id="festivalName"
                 placeholder="e.g., Diwali, Christmas, New Year Sale"
@@ -686,12 +567,36 @@ export default function FestivalCalendarPage() {
               <Label htmlFor="description">Description (Optional)</Label>
               <Textarea
                 id="description"
-                placeholder="Add any additional details about this festival"
+                placeholder="Add any additional details about this holiday"
                 value={festivalDescription}
                 onChange={(e) => setFestivalDescription(e.target.value)}
                 rows={3}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="scope">Scope *</Label>
+              <Select value={scope} onValueChange={(v) => setScope(v as typeof scope)}>
+                <SelectTrigger id="scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="national">National</SelectItem>
+                  <SelectItem value="state">State</SelectItem>
+                  <SelectItem value="regional">Regional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {scope === 'state' && (
+              <div className="space-y-2">
+                <Label htmlFor="state">State *</Label>
+                <Input
+                  id="state"
+                  placeholder="Enter state name"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                />
+              </div>
+            )}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -742,11 +647,13 @@ export default function FestivalCalendarPage() {
               onClick={handleAddFestival} 
               disabled={
                 !festivalName.trim() || 
+                !selectedDate ||
                 loading || 
-                (isRecurring && !recurrencePattern)
+                (isRecurring && !recurrencePattern) ||
+                (scope === 'state' && !state.trim())
               }
             >
-              {loading ? 'Adding...' : 'Add Festival'}
+              {loading ? 'Adding...' : 'Add Holiday'}
             </Button>
           </DialogFooter>
         </DialogContent>

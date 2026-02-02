@@ -411,3 +411,51 @@ export const deletePlatformIntegration = async (req, res) => {
 }
 
 
+
+export async function deleteProductsByBrand(req, res) {
+    try {
+        const { brandId } = req.params;
+
+        if (!brandId) {
+            return res.status(400).json({
+                success: false,
+                error: 'brandId is required',
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(brandId)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid Brand ID format'
+            });
+        }
+
+        const brand = await Brand.findById(brandId);
+
+        if (!brand) {
+            return res.status(404).json({ success: false, error: 'Brand not found' });
+        }
+        const result = await Product.deleteMany({ brandId:brandId });
+
+        if (result.deletedCount === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No products found for this brand',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${result.deletedCount} products deleted successfully for brand ${brand.name}`,
+            deletedCount: result.deletedCount,
+            brand: brand.name
+        });
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+

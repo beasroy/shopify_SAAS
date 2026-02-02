@@ -1,12 +1,13 @@
 import FestivalDate from '../models/FestivalDate.js';
 import AdMetrics from '../models/AdMetrics.js';
 import Brand from '../models/Brands.js';
+import { generateHolidaysWithGPT } from '../services/holidayGenerationService.js';
 
-// Get festival dates for a brand (filtered by month to reduce load)
+// Get festival dates for a brand (includes global + brand-specific holidays)
 export const getFestivalDates = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { month } = req.query; // Optional: month in format YYYY-MM
+    const { month, country = 'IN' } = req.query; // Optional: month in format YYYY-MM, country code
 
     if (!brandId) {
       return res.status(400).json({
@@ -24,9 +25,6 @@ export const getFestivalDates = async (req, res) => {
       });
     }
 
-    // Build query - filter by month if provided
-    const query = { brandId };
-    
     let festivalDates = [];
     
     if (month) {
@@ -38,46 +36,66 @@ export const getFestivalDates = async (req, res) => {
       const monthEnd = new Date(year, monthIndex, 0); // Last day of the month
       monthEnd.setHours(23, 59, 59, 999);
       
-      // Get festivals that match the exact date range
-      const exactMatchQuery = { ...query, date: { $gte: monthStart, $lte: monthEnd } };
-      const exactFestivals = await FestivalDate.find(exactMatchQuery).lean();
-      
-      // Get all recurring festivals for this brand
-      const recurringQuery = { 
-        brandId, 
-        isRecurring: true 
+      // Get global holidays for the country
+      const globalQuery = {
+        type: 'global',
+        country: country.toUpperCase(),
+        date: { $gte: monthStart, $lte: monthEnd }
       };
-      const recurringFestivals = await FestivalDate.find(recurringQuery).lean();
+      const globalFestivals = await FestivalDate.find(globalQuery).lean();
+      
+      // Get brand-specific holidays
+      const brandQuery = {
+        type: 'brand',
+        brandId,
+        country: country.toUpperCase(),
+        date: { $gte: monthStart, $lte: monthEnd }
+      };
+      const brandFestivals = await FestivalDate.find(brandQuery).lean();
+      
+      // Get recurring festivals (both global and brand)
+      const recurringGlobalQuery = {
+        type: 'global',
+        country: country.toUpperCase(),
+        isRecurring: true
+      };
+      const recurringGlobalFestivals = await FestivalDate.find(recurringGlobalQuery).lean();
+      
+      const recurringBrandQuery = {
+        type: 'brand',
+        brandId,
+        country: country.toUpperCase(),
+        isRecurring: true
+      };
+      const recurringBrandFestivals = await FestivalDate.find(recurringBrandQuery).lean();
       
       // Filter recurring festivals that match the requested month
-      // For annually: include if month matches (day will be checked in frontend)
-      // For monthly: include if day exists in target month
-      // For weekly: include if day of week occurs in target month
-      const matchingRecurring = recurringFestivals.filter(festival => {
-        const festivalDate = new Date(festival.date);
-        const festivalMonth = festivalDate.getMonth(); // 0-11
-        const festivalDay = festivalDate.getDate(); // 1-31
-        const targetMonth = monthIndex - 1; // Convert to 0-11
-        
-        if (festival.recurrencePattern === 'annually') {
-          // Match same month (day will be checked in frontend for each date)
-          return festivalMonth === targetMonth;
-        } else if (festival.recurrencePattern === 'monthly') {
-          // Match same day of month (if day exists in target month)
-          const daysInTargetMonth = new Date(year, monthIndex, 0).getDate();
-          return festivalDay <= daysInTargetMonth;
-        } else if (festival.recurrencePattern === 'weekly') {
-          // Match same day of week - always include weekly recurring festivals
-          // The frontend will check the day of week for each date
-          return true;
-        }
-        return false;
-      });
+      const filterRecurring = (festivals) => {
+        return festivals.filter(festival => {
+          const festivalDate = new Date(festival.date);
+          const festivalMonth = festivalDate.getMonth(); // 0-11
+          const festivalDay = festivalDate.getDate(); // 1-31
+          const targetMonth = monthIndex - 1; // Convert to 0-11
+          
+          if (festival.recurrencePattern === 'annually') {
+            return festivalMonth === targetMonth;
+          } else if (festival.recurrencePattern === 'monthly') {
+            const daysInTargetMonth = new Date(year, monthIndex, 0).getDate();
+            return festivalDay <= daysInTargetMonth;
+          } else if (festival.recurrencePattern === 'weekly') {
+            return true;
+          }
+          return false;
+        });
+      };
       
-      // Combine exact matches and recurring festivals
-      festivalDates = [...exactFestivals, ...matchingRecurring];
+      const matchingRecurringGlobal = filterRecurring(recurringGlobalFestivals);
+      const matchingRecurringBrand = filterRecurring(recurringBrandFestivals);
       
-      // Remove duplicates (in case a recurring festival also has an exact match)
+      // Combine all festivals
+      festivalDates = [...globalFestivals, ...brandFestivals, ...matchingRecurringGlobal, ...matchingRecurringBrand];
+      
+      // Remove duplicates
       const uniqueFestivals = new Map();
       festivalDates.forEach(festival => {
         const key = `${festival._id}_${festival.date}`;
@@ -87,8 +105,19 @@ export const getFestivalDates = async (req, res) => {
       });
       festivalDates = Array.from(uniqueFestivals.values());
     } else {
-      // No month filter - get all festivals
-      festivalDates = await FestivalDate.find(query).sort({ date: 1 }).lean();
+      // No month filter - get all festivals (global + brand-specific)
+      const globalFestivals = await FestivalDate.find({
+        type: 'global',
+        country: country.toUpperCase()
+      }).sort({ date: 1 }).lean();
+      
+      const brandFestivals = await FestivalDate.find({
+        type: 'brand',
+        brandId,
+        country: country.toUpperCase()
+      }).sort({ date: 1 }).lean();
+      
+      festivalDates = [...globalFestivals, ...brandFestivals];
     }
 
     // Format dates for frontend
@@ -98,7 +127,11 @@ export const getFestivalDates = async (req, res) => {
       festivalName: festival.festivalName,
       description: festival.description,
       isRecurring: festival.isRecurring,
-      recurrencePattern: festival.recurrencePattern
+      recurrencePattern: festival.recurrencePattern,
+      type: festival.type,
+      scope: festival.scope,
+      state: festival.state,
+      country: festival.country
     }));
 
     res.status(200).json({
@@ -115,11 +148,11 @@ export const getFestivalDates = async (req, res) => {
   }
 };
 
-// Add a new festival date
+// Add a new festival date (brand-specific)
 export const addFestivalDate = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { date, festivalName, description, isRecurring, recurrencePattern } = req.body;
+    const { date, festivalName, description, isRecurring, recurrencePattern, country = 'IN', scope = 'national', state } = req.body;
 
     if (!brandId) {
       return res.status(400).json({
@@ -150,8 +183,11 @@ export const addFestivalDate = async (req, res) => {
 
     // Check if festival date already exists for this brand
     const existingFestival = await FestivalDate.findOne({
+      type: 'brand',
       brandId,
-      date: festivalDate
+      country: country.toUpperCase(),
+      date: festivalDate,
+      festivalName: festivalName.trim()
     });
 
     if (existingFestival) {
@@ -162,10 +198,14 @@ export const addFestivalDate = async (req, res) => {
     }
 
     const newFestivalDate = new FestivalDate({
+      type: 'brand',
       brandId,
+      country: country.toUpperCase(),
       date: festivalDate,
       festivalName: festivalName.trim(),
       description: description?.trim() || '',
+      scope: scope || 'national',
+      state: state || null,
       isRecurring: isRecurring || false,
       recurrencePattern: isRecurring ? (recurrencePattern || 'annually') : null
     });
@@ -257,10 +297,11 @@ export const updateFestivalDate = async (req, res) => {
   }
 };
 
-// Delete a festival date
+// Delete a festival date (only brand holidays can be deleted)
 export const deleteFestivalDate = async (req, res) => {
   try {
     const { festivalDateId } = req.params;
+    const { brandId } = req.query; // Brand ID from query to verify ownership
 
     if (!festivalDateId) {
       return res.status(400).json({
@@ -269,25 +310,126 @@ export const deleteFestivalDate = async (req, res) => {
       });
     }
 
-    const deletedFestivalDate = await FestivalDate.findByIdAndDelete(festivalDateId);
+    const festivalDate = await FestivalDate.findById(festivalDateId);
 
-    if (!deletedFestivalDate) {
+    if (!festivalDate) {
       return res.status(404).json({
         success: false,
         message: 'Festival date not found'
       });
     }
 
+    // Only allow deletion of brand holidays
+    if (festivalDate.type === 'global') {
+      return res.status(403).json({
+        success: false,
+        message: 'Global holidays cannot be deleted'
+      });
+    }
+
+    // Verify brand ownership
+    if (brandId && festivalDate.brandId.toString() !== brandId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete holidays belonging to your brand'
+      });
+    }
+
+    await FestivalDate.findByIdAndDelete(festivalDateId);
+
     res.status(200).json({
       success: true,
       message: 'Festival date deleted successfully',
-      data: deletedFestivalDate
+      data: festivalDate
     });
   } catch (error) {
     console.error('Error deleting festival date:', error);
     res.status(500).json({
       success: false,
       message: 'Error deleting festival date',
+      error: error.message
+    });
+  }
+};
+
+// Generate holidays using GPT
+export const generateHolidaysWithGPTController = async (req, res) => {
+  try {
+    const { country = 'IN', year } = req.body;
+
+    if (!country) {
+      return res.status(400).json({
+        success: false,
+        message: 'Country is required'
+      });
+    }
+
+    const targetYear = year || new Date().getFullYear();
+
+    // Check if holidays already exist for this country and year
+    const yearStart = new Date(targetYear, 0, 1);
+    yearStart.setHours(0, 0, 0, 0);
+    const yearEnd = new Date(targetYear, 11, 31);
+    yearEnd.setHours(23, 59, 59, 999);
+
+    const existingHolidays = await FestivalDate.find({
+      type: 'global',
+      country: country.toUpperCase(),
+      date: { $gte: yearStart, $lte: yearEnd }
+    });
+
+    if (existingHolidays.length > 0) {
+      return res.status(200).json({
+        success: true,
+        message: `Holidays for ${country} in ${targetYear} already exist (${existingHolidays.length} holidays found)`,
+        data: {
+          existingCount: existingHolidays.length,
+          year: targetYear,
+          country: country.toUpperCase()
+        }
+      });
+    }
+
+    // Generate holidays using GPT
+    const holidays = await generateHolidaysWithGPT(country, targetYear);
+
+    // Save holidays to database
+    const holidayDocuments = holidays.map(holiday => ({
+      type: 'global',
+      country: country.toUpperCase(),
+      date: holiday.date,
+      festivalName: holiday.name,
+      description: holiday.description || '',
+      scope: holiday.scope,
+      state: holiday.state || null,
+      isRecurring: holiday.isRecurring,
+      recurrencePattern: holiday.recurrencePattern
+    }));
+
+    // Insert in batches to avoid overwhelming the database
+    const batchSize = 50;
+    let insertedCount = 0;
+
+    for (let i = 0; i < holidayDocuments.length; i += batchSize) {
+      const batch = holidayDocuments.slice(i, i + batchSize);
+      await FestivalDate.insertMany(batch, { ordered: false });
+      insertedCount += batch.length;
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully generated and stored ${insertedCount} holidays for ${country} in ${targetYear}`,
+      data: {
+        count: insertedCount,
+        year: targetYear,
+        country: country.toUpperCase()
+      }
+    });
+  } catch (error) {
+    console.error('Error generating holidays with GPT:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating holidays',
       error: error.message
     });
   }

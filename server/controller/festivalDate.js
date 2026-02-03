@@ -1,9 +1,7 @@
 import FestivalDate from '../models/FestivalDate.js';
-import AdMetrics from '../models/AdMetrics.js';
 import Brand from '../models/Brands.js';
-import { generateHolidaysWithGPT } from '../services/holidayGenerationService.js';
+import { generateHolidaysWithAPI } from '../services/holidayGenerationService.js';
 
-// Get festival dates for a brand (includes global + brand-specific holidays)
 export const getFestivalDates = async (req, res) => {
   try {
     const { brandId } = req.params;
@@ -53,48 +51,9 @@ export const getFestivalDates = async (req, res) => {
       };
       const brandFestivals = await FestivalDate.find(brandQuery).lean();
       
-      // Get recurring festivals (both global and brand)
-      const recurringGlobalQuery = {
-        type: 'global',
-        country: country.toUpperCase(),
-        isRecurring: true
-      };
-      const recurringGlobalFestivals = await FestivalDate.find(recurringGlobalQuery).lean();
-      
-      const recurringBrandQuery = {
-        type: 'brand',
-        brandId,
-        country: country.toUpperCase(),
-        isRecurring: true
-      };
-      const recurringBrandFestivals = await FestivalDate.find(recurringBrandQuery).lean();
-      
-      // Filter recurring festivals that match the requested month
-      const filterRecurring = (festivals) => {
-        return festivals.filter(festival => {
-          const festivalDate = new Date(festival.date);
-          const festivalMonth = festivalDate.getMonth(); // 0-11
-          const festivalDay = festivalDate.getDate(); // 1-31
-          const targetMonth = monthIndex - 1; // Convert to 0-11
-          
-          if (festival.recurrencePattern === 'annually') {
-            return festivalMonth === targetMonth;
-          } else if (festival.recurrencePattern === 'monthly') {
-            const daysInTargetMonth = new Date(year, monthIndex, 0).getDate();
-            return festivalDay <= daysInTargetMonth;
-          } else if (festival.recurrencePattern === 'weekly') {
-            return true;
-          }
-          return false;
-        });
-      };
-      
-      const matchingRecurringGlobal = filterRecurring(recurringGlobalFestivals);
-      const matchingRecurringBrand = filterRecurring(recurringBrandFestivals);
-      
       // Combine all festivals
-      festivalDates = [...globalFestivals, ...brandFestivals, ...matchingRecurringGlobal, ...matchingRecurringBrand];
-      
+        festivalDates = [...globalFestivals, ...brandFestivals];
+        
       // Remove duplicates
       const uniqueFestivals = new Map();
       festivalDates.forEach(festival => {
@@ -126,11 +85,8 @@ export const getFestivalDates = async (req, res) => {
       date: festival.date,
       festivalName: festival.festivalName,
       description: festival.description,
-      isRecurring: festival.isRecurring,
-      recurrencePattern: festival.recurrencePattern,
       type: festival.type,
       scope: festival.scope,
-      state: festival.state,
       country: festival.country
     }));
 
@@ -148,11 +104,11 @@ export const getFestivalDates = async (req, res) => {
   }
 };
 
-// Add a new festival date (brand-specific)
+
 export const addFestivalDate = async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { date, festivalName, description, isRecurring, recurrencePattern, country = 'IN', scope = 'national', state } = req.body;
+    const { date, festivalName, description, country = 'IN', scope = 'national' } = req.body;
 
     if (!brandId) {
       return res.status(400).json({
@@ -205,9 +161,6 @@ export const addFestivalDate = async (req, res) => {
       festivalName: festivalName.trim(),
       description: description?.trim() || '',
       scope: scope || 'national',
-      state: state || null,
-      isRecurring: isRecurring || false,
-      recurrencePattern: isRecurring ? (recurrencePattern || 'annually') : null
     });
 
     await newFestivalDate.save();
@@ -235,11 +188,11 @@ export const addFestivalDate = async (req, res) => {
   }
 };
 
-// Update a festival date
+
 export const updateFestivalDate = async (req, res) => {
   try {
     const { festivalDateId } = req.params;
-    const { date, festivalName, description, isRecurring, recurrencePattern } = req.body;
+    const { date, festivalName, description } = req.body;
 
     if (!festivalDateId) {
       return res.status(400).json({
@@ -256,10 +209,7 @@ export const updateFestivalDate = async (req, res) => {
     }
     if (festivalName) updateData.festivalName = festivalName.trim();
     if (description !== undefined) updateData.description = description?.trim() || '';
-    if (isRecurring !== undefined) {
-      updateData.isRecurring = isRecurring;
-      updateData.recurrencePattern = isRecurring ? (recurrencePattern || 'annually') : null;
-    }
+   
 
     const updatedFestivalDate = await FestivalDate.findByIdAndUpdate(
       festivalDateId,
@@ -297,7 +247,7 @@ export const updateFestivalDate = async (req, res) => {
   }
 };
 
-// Delete a festival date (only brand holidays can be deleted)
+
 export const deleteFestivalDate = async (req, res) => {
   try {
     const { festivalDateId } = req.params;
@@ -352,8 +302,8 @@ export const deleteFestivalDate = async (req, res) => {
   }
 };
 
-// Generate holidays using GPT
-export const generateHolidaysWithGPTController = async (req, res) => {
+// Generate holidays using Calendarific API
+export const generateHolidays = async (req, res) => {
   try {
     const { country = 'IN', year } = req.body;
 
@@ -390,8 +340,8 @@ export const generateHolidaysWithGPTController = async (req, res) => {
       });
     }
 
-    // Generate holidays using GPT
-    const holidays = await generateHolidaysWithGPT(country, targetYear);
+    // Generate holidays using Calendarific API
+    const holidays = await generateHolidaysWithAPI(country, targetYear);
 
     // Save holidays to database
     const holidayDocuments = holidays.map(holiday => ({
@@ -401,9 +351,7 @@ export const generateHolidaysWithGPTController = async (req, res) => {
       festivalName: holiday.name,
       description: holiday.description || '',
       scope: holiday.scope,
-      state: holiday.state || null,
-      isRecurring: holiday.isRecurring,
-      recurrencePattern: holiday.recurrencePattern
+
     }));
 
     // Insert in batches to avoid overwhelming the database
@@ -426,7 +374,7 @@ export const generateHolidaysWithGPTController = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error generating holidays with GPT:', error);
+    console.error('Error generating holidays with Calendarific API:', error);
     res.status(500).json({
       success: false,
       message: 'Error generating holidays',
@@ -435,109 +383,6 @@ export const generateHolidaysWithGPTController = async (req, res) => {
   }
 };
 
-// Get sales data for calendar dates (for hover tooltip)
-// Fetches last 3 months of sales data from a target month to reduce DB calls
-export const getCalendarSalesData = async (req, res) => {
-  try {
-    const { brandId } = req.params;
-    const { targetMonth } = req.query; // Optional: target month to fetch data for
 
-    if (!brandId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Brand ID is required'
-      });
-    }
 
-    // Verify brand exists
-    const brand = await Brand.findById(brandId);
-    if (!brand) {
-      return res.status(404).json({
-        success: false,
-        message: 'Brand not found'
-      });
-    }
-
-    // Calculate date range: 3 months centered around target month or last 3 months from today
-    let referenceDate = new Date();
-    if (targetMonth) {
-      referenceDate = new Date(targetMonth);
-    }
-    
-    // Calculate 3-month window: 1 month before, target month, 1 month after
-    const targetYear = referenceDate.getFullYear();
-    const targetMonthIndex = referenceDate.getMonth();
-    
-    // Start: 1st day of 1 month before target month
-    const startDate = new Date(targetYear, targetMonthIndex - 1, 1);
-    startDate.setHours(0, 0, 0, 0);
-    
-    // End: Last day of 1 month after target month
-    const endDate = new Date(targetYear, targetMonthIndex + 2, 0); // Day 0 = last day of previous month
-    endDate.setHours(23, 59, 59, 999);
-
-    // Get sales data from AdMetrics for the calculated date range
-    const salesData = await AdMetrics.find({
-      brandId,
-      date: { $gte: startDate, $lte: endDate }
-    })
-      .select('date totalSales refundAmount codOrderCount prepaidOrderCount')
-      .sort({ date: 1 })
-      .lean();
-
-    // Format data for frontend - key by date string (YYYY-MM-DD)
-    const salesByDate = {};
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    salesData.forEach(metric => {
-      const dateStr = metric.date.toISOString().split('T')[0];
-      const metricDate = new Date(metric.date);
-      metricDate.setHours(0, 0, 0, 0);
-
-      // Only include past dates (no sales for future dates)
-      if (metricDate <= todayStart) {
-        salesByDate[dateStr] = {
-          date: dateStr,
-          totalSales: metric.totalSales || 0,
-          refundAmount: metric.refundAmount || 0,
-          netSales: (metric.totalSales || 0) - (metric.refundAmount || 0),
-          codOrderCount: metric.codOrderCount || 0,
-          prepaidOrderCount: metric.prepaidOrderCount || 0,
-          totalOrders: (metric.codOrderCount || 0) + (metric.prepaidOrderCount || 0)
-        };
-      }
-    });
-
-    // Get all festival dates for this brand (not limited by date range)
-    const festivalDates = await FestivalDate.find({ brandId })
-      .select('date festivalName description')
-      .lean();
-
-    // Format festival dates
-    const festivalsByDate = {};
-    festivalDates.forEach(festival => {
-      const dateStr = festival.date.toISOString().split('T')[0];
-      festivalsByDate[dateStr] = {
-        festivalName: festival.festivalName,
-        description: festival.description
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        sales: salesByDate,
-        festivals: festivalsByDate
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching calendar sales data:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching calendar sales data',
-      error: error.message
-    });
-  }
-};
 

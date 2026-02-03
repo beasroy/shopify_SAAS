@@ -1,13 +1,10 @@
 import cron from 'node-cron';
-import { generateHolidaysWithGPT } from '../services/holidayGenerationService.js';
+import { generateHolidaysWithAPI } from '../services/holidayGenerationService.js';
 import FestivalDate from '../models/FestivalDate.js';
 
-/**
- * Yearly cron job to generate holidays for default countries
- * Runs on January 1st at 2 AM UTC
- */
+
 export const setupHolidayGenerationCron = () => {
-  // Run on January 1st at 2 AM UTC
+
   cron.schedule('0 6 1 1 *', async () => {
     console.log('🔄 [Cron] Starting yearly holiday generation job...');
     
@@ -36,8 +33,8 @@ export const setupHolidayGenerationCron = () => {
             continue;
           }
 
-          // Generate holidays using GPT
-          const holidays = await generateHolidaysWithGPT(country, currentYear);
+          // Generate holidays using Calendarific API
+          const holidays = await generateHolidaysWithAPI(country, currentYear);
 
             // Save holidays to database
             const holidayDocuments = holidays.map(holiday => ({
@@ -47,9 +44,7 @@ export const setupHolidayGenerationCron = () => {
               festivalName: holiday.name,
               description: holiday.description || '',
               scope: holiday.scope,
-              state: holiday.state || null,
-              isRecurring: holiday.isRecurring,
-              recurrencePattern: holiday.recurrencePattern
+      
             }));
 
           // Insert in batches
@@ -77,4 +72,3 @@ export const setupHolidayGenerationCron = () => {
 
   console.log('✅ [Cron] Yearly holiday generation cron scheduled (January 1st, 2 AM UTC)');
 };
-

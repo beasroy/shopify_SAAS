@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import {
   Select,
   SelectContent,
@@ -38,11 +38,8 @@ interface FestivalDate {
   date: string;
   festivalName: string;
   description?: string;
-  isRecurring?: boolean;
-  recurrencePattern?: string;
   type?: 'global' | 'brand';
-  scope?: 'national' | 'state' | 'regional';
-  state?: string;
+  scope?: 'national' | 'other';
   country?: string;
 }
 
@@ -80,17 +77,14 @@ export default function FestivalCalendarPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'global' | 'brand'>('all');
   const [monthFilter, setMonthFilter] = useState<string>('All Months');
-  const [scopeFilter, setScopeFilter] = useState<'all' | 'national' | 'state' | 'regional'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'national' | 'other'>('all');
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc'>('date-asc');
   
   // Form state
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [festivalName, setFestivalName] = useState('');
   const [festivalDescription, setFestivalDescription] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrencePattern, setRecurrencePattern] = useState<string>('');
-  const [scope, setScope] = useState<'national' | 'state' | 'regional'>('national');
-  const [state, setState] = useState('');
+  const [scope, setScope] = useState<'national' | 'other'>('national');
 
   // Fetch festival dates
   const fetchFestivalDates = useCallback(async () => {
@@ -155,11 +149,8 @@ export default function FestivalCalendarPage() {
           date: selectedDate,
           festivalName: festivalName.trim(),
           description: festivalDescription.trim() || undefined,
-          isRecurring: isRecurring,
-          recurrencePattern: isRecurring && recurrencePattern ? recurrencePattern : undefined,
           country: selectedCountry,
           scope: scope,
-          state: scope === 'state' ? state : undefined,
         },
         { withCredentials: true }
       );
@@ -205,10 +196,7 @@ export default function FestivalCalendarPage() {
     setSelectedDate('');
     setFestivalName('');
     setFestivalDescription('');
-    setIsRecurring(false);
-    setRecurrencePattern('');
     setScope('national');
-    setState('');
   };
 
   // Filter and sort holidays
@@ -390,8 +378,7 @@ export default function FestivalCalendarPage() {
               <SelectContent>
                 <SelectItem value="all">All Scopes</SelectItem>
                 <SelectItem value="national">National</SelectItem>
-                <SelectItem value="state">State</SelectItem>
-                <SelectItem value="regional">Regional</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
 
@@ -509,12 +496,7 @@ export default function FestivalCalendarPage() {
                                 {holiday.description}
                               </p>
                             )}
-                            {holiday.state && (
-                              <div className="inline-flex items-center gap-1 text-xs text-slate-600 mt-1">
-                                <span className="text-red-500">📍</span>
-                                <span>{holiday.state}</span>
-                              </div>
-                            )}
+                          
                           </CardContent>
                         </Card>
                       );
@@ -581,60 +563,12 @@ export default function FestivalCalendarPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="national">National</SelectItem>
-                  <SelectItem value="state">State</SelectItem>
-                  <SelectItem value="regional">Regional</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {scope === 'state' && (
-              <div className="space-y-2">
-                <Label htmlFor="state">State *</Label>
-                <Input
-                  id="state"
-                  placeholder="Enter state name"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isRecurring"
-                  checked={isRecurring}
-                  onCheckedChange={(checked) => {
-                    setIsRecurring(checked as boolean);
-                    if (!checked) {
-                      setRecurrencePattern('');
-                    }
-                  }}
-                />
-                <Label
-                  htmlFor="isRecurring"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  This is a recurring holiday/festival
-                </Label>
-              </div>
-              {isRecurring && (
-                <div className="space-y-2 pl-6">
-                  <Label htmlFor="recurrencePattern">Recurrence Type *</Label>
-                  <Select
-                    value={recurrencePattern}
-                    onValueChange={setRecurrencePattern}
-                  >
-                    <SelectTrigger id="recurrencePattern">
-                      <SelectValue placeholder="Select recurrence type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="annually">Annually (Every Year)</SelectItem>
-                      <SelectItem value="monthly">Monthly (Every Month)</SelectItem>
-                      <SelectItem value="weekly">Weekly (Every Week)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+      
+        
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -648,9 +582,7 @@ export default function FestivalCalendarPage() {
               disabled={
                 !festivalName.trim() || 
                 !selectedDate ||
-                loading || 
-                (isRecurring && !recurrencePattern) ||
-                (scope === 'state' && !state.trim())
+                loading 
               }
             >
               {loading ? 'Adding...' : 'Add Holiday'}

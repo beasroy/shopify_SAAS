@@ -37,23 +37,9 @@ const festivalDateSchema = new mongoose.Schema({
   },
   scope: {
     type: String,
-    enum: ['national', 'state', 'regional'],
+    enum: ['national','other'],
     default: 'national'
   },
-  state: {
-    type: String,
-    trim: true
-  },
-  isRecurring: {
-    type: Boolean,
-    default: false
-  },
-  // For recurring festivals, store the pattern (e.g., "annually", "monthly")
-  recurrencePattern: {
-    type: String,
-    enum: ['annually', 'monthly', 'weekly', null],
-    default: null
-  }
 }, {
   timestamps: true
 });

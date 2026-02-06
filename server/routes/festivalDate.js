@@ -4,8 +4,7 @@ import {
   addFestivalDate,
   updateFestivalDate,
   deleteFestivalDate,
-  getCalendarSalesData,
-  generateHolidaysWithGPTController
+  generateHolidays,
 } from '../controller/festivalDate.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 
@@ -14,11 +13,8 @@ const router = express.Router();
 // Get all festival dates for a brand
 router.get('/:brandId', verifyAuth, getFestivalDates);
 
-// Get calendar sales data (for hover tooltips)
-router.get('/sales/:brandId', verifyAuth, getCalendarSalesData);
-
-// Generate holidays using GPT
-router.post('/generate', verifyAuth, generateHolidaysWithGPTController);
+// Generate holidays using Calendarific API (saves to database)
+router.post('/generate', verifyAuth, generateHolidays);
 
 // Add a new festival date
 router.post('/:brandId', verifyAuth, addFestivalDate);
@@ -30,4 +26,3 @@ router.patch('/:festivalDateId', verifyAuth, updateFestivalDate);
 router.delete('/:festivalDateId', verifyAuth, deleteFestivalDate);
 
 export default router;
-

@@ -35,6 +35,7 @@ import BounceRatePage from './pages/BounceRate/BounceRatePage.tsx';
 import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
 import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.tsx';
 import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
+import AuthPage from './Auth/NewAuthPage.tsx';
 
 
 
@@ -51,7 +52,8 @@ function App() {
                 <Toaster />
                 <Routes>
                   <Route path='/' element={<LandingPage />} />
-                  <Route path="/login" element={<AuthForm />} />
+                  {/* <Route path="/login" element={<AuthForm />} /> */}
+                  <Route path="/login" element={<AuthPage />} />
                   <Route path="/dashboard" element={<GeneralDashboard />} />
                   <Route path="/admetrics/:brandId" element={<AnalyticsDashboard />} />
                   <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />

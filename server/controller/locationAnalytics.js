@@ -236,7 +236,13 @@ export async function getLocationSales(req, res) {
                 _id: {
                     // Use state for region dimension, city for others
                     locationKey: isRegionDimension
-                        ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] }}}}
+                        ? { 
+                            $toLower: { 
+                                $trim: { 
+                                    input: { $ifNull: ["$state", ""] }
+                                }
+                            }
+                        }
                         : "$cityNormalized",
                     originalLocation: isRegionDimension ? "$state" : "$city",
                     originalCity: "$city",
@@ -303,11 +309,22 @@ export async function getLocationSales(req, res) {
                     },
                     pipeline: [
                         {
+                            $addFields: {
+                                stateNormalizedLookup: {
+                                    $toLower: {
+                                        $trim: {
+                                            input: { $ifNull: ["$state", ""] }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
                             $match: {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$cityNormalized", "$$cityNorm"] },
-                                        { $eq: [{ $toLower: { $trim: { input: { $ifNull: ["$state", ""] }}}}, "$$stateNorm"] }
+                                        { $eq: ["$stateNormalizedLookup", "$$stateNorm"] }
                                     ]
                                 }
                             }

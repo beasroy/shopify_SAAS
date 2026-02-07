@@ -18,7 +18,6 @@ import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
 import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
-import './workers/cityClassificationWorker.js'; // Initialize city classification worker
 import setupBrandRoutes from "./routes/BrandSetup.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
@@ -32,10 +31,6 @@ import shopifyWebhookRoutes from "./routes/shopifyWebhook.js"
 import d2cCalculatorRoutes from "./routes/d2cCalculator.js"
 import scrapingRoutes from "./routes/scraping.js"
 import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
-//import { testSaundIndia } from "./services/apifyServiice.js";
-import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
-import { addReportData } from "./Report/Report.js";
-import backfillCityMetadata from "./scripts/backfillCityMetadata.js";
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 
@@ -124,21 +119,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a","69779a7cd639a12fc8b83477")
-//addReportData("68dfb7e4e78884ea57ff7b53")
 
-//getRefundsForDateRange("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
-
-//monthlyFetchTotalSales("68dd21f5e78884ea57ff762f","2025-05-01","2025-05-31")
-
-// getGoogleAdData("686fdb9b5e5aeabe99e78885","685304dd2051ac48a3ddcba8")
-// .then(console.log)
-// .catch(console.error)
-
-//monthlyFetchFBAdReport("68cc2437e78884ea57ff5385","2025-09-07","2025-09-07")
-//await testSaundIndia();
-
-//await backfillCityMetadata();
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {

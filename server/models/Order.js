@@ -49,6 +49,8 @@ OrderSchema.index({ brandId: 1, orderCreatedAt: 1 });
 OrderSchema.index({ brandId: 1, orderId: 1 }, { unique: true });
 // Index for location-based analytics (using original city/state, normalized in aggregation)
 OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1 });
+// Compound index for optimized location analytics aggregation pipeline
+OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1, state: 1 });
 
 
 

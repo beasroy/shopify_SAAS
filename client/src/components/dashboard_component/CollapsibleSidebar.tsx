@@ -18,7 +18,8 @@ import {
   Package,
   Eye,
   SquareDashedMousePointer,
-  Gauge
+  Gauge,
+  ChartBarIncreasing
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -157,6 +158,7 @@ export default function CollapsibleSidebar() {
   const allDashboards = [
     { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
     { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
+    { name: "Revenue Analytics", path: `/location-analytics/${selectedBrandId}`, icon: <ChartBarIncreasing size={20} /> },
     { name: "Festival Calendar", path: `/festival-calendar/${selectedBrandId}`, icon: <Calendar size={20} /> },
     { name: "Speed Insights", path: `/speed-insights`, icon: <Gauge size={20} /> },
     { name: "D2C Calculator", path: `/d2c-calculator/${selectedBrandId}`, icon: <Calculator size={20} /> },

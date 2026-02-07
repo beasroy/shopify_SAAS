@@ -4,35 +4,32 @@ import Order from '../models/Order.js';
 import CityMetadata from '../models/CityMetadata.js';
 
 
-/**
- * Daily cron job to classify unknown cities from yesterday's orders
- * Runs at 6 AM every day
- */
 export const setupLocationClassificationCron = () => {
     cron.schedule('0 6 * * *', async () => {
         console.log('🔄 [Cron] Starting daily city classification job...');
         
         try {
-            // 1. Get all unique city/state from yesterday's orders
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            yesterday.setHours(0, 0, 0, 0);
+            const now = new Date();
+            const yesterdayStart = new Date(now);
+            yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+            yesterdayStart.setHours(0, 0, 0, 0);
             
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const yesterdayEnd = new Date(now);
+            yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+            yesterdayEnd.setHours(23, 59, 59, 999);
             
-            console.log(`📅 [Cron] Checking orders from ${yesterday.toISOString()} to ${today.toISOString()}`);
+            console.log(`📅 [Cron] Checking orders from ${yesterdayStart.toISOString()} to ${yesterdayEnd.toISOString()} (yesterday only)`);
             
-            // Get unique city/state combinations from orders
+           
             const unknownCities = await Order.aggregate([
                 {
                     $match: {
                         orderCreatedAt: {
-                            $gte: yesterday,
-                            $lt: today
+                            $gte: yesterdayStart,
+                            $lte: yesterdayEnd
                         },
-                        city: { $exists: true, $ne: null, $ne: '' },
-                        state: { $exists: true, $ne: null, $ne: '' }
+                        city: { $exists: true, $ne: null, $nin: [null, ''] },
+                        state: { $exists: true, $ne: null, $nin: [null, ''] }
                     }
                 },
                 {
@@ -61,17 +58,38 @@ export const setupLocationClassificationCron = () => {
                 return;
             }
             
-            console.log(`📊 [Cron] Found ${unknownCities.length} unique city/state combinations`);
+            console.log(`📊 [Cron] Found ${unknownCities.length} unique city/state combinations from yesterday`);
             
             // 2. Check which cities are already in CityMetadata (match on city+state since country is dynamic)
-            const existing = await CityMetadata.find({}).select('cityNormalized state');
-            const existingCityStateSet = new Set(
-                existing.map(c => `${c.cityNormalized.toLowerCase()}_${c.state.toLowerCase()}`)
-            );
+            // Use aggregation to efficiently get unique city+state combinations
+            const existing = await CityMetadata.aggregate([
+                {
+                    $group: {
+                        _id: {
+                            cityNormalized: { $toLower: "$cityNormalized" },
+                            state: { $toLower: "$state" }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        key: { 
+                            $concat: [
+                                "$_id.cityNormalized", 
+                                "_", 
+                                "$_id.state"
+                            ] 
+                        }
+                    }
+                }
+            ]);
+            
+            const existingCityStateSet = new Set(existing.map(c => c.key));
             
             // 3. Filter out already classified cities
             const newCities = unknownCities.filter(c => {
-                const cityStateKey = `${c.cityNormalized}_${c.state.toLowerCase()}`;
+                const cityStateKey = `${c.cityNormalized}_${(c.state || '').toLowerCase().trim()}`;
                 return !existingCityStateSet.has(cityStateKey);
             });
             

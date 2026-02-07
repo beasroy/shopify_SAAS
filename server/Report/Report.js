@@ -717,20 +717,7 @@ export const calculateMetricsForAllBrands = async () => {
   }
 };
 
-function getYesterdayRangeUTC() {
-  const start = new Date();
-  start.setUTCDate(start.getUTCDate() - 1);
-  start.setUTCHours(0, 0, 0, 0);
 
-  const end = new Date();
-  end.setUTCDate(end.getUTCDate() - 1);
-  end.setUTCHours(23, 59, 59, 999);
-
-  return {
-    startDate: start.toISOString(),
-    endDate: end.toISOString()
-  };
-}
 
 
 async function fetchShopifyProducts(shopName, accessToken) {

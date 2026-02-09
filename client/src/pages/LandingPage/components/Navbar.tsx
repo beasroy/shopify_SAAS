@@ -19,7 +19,7 @@ function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isMenuOpen || isScrolled
         ? "bg-black/95 backdrop-blur-md"
         : "bg-transparent"
         }`}
@@ -94,7 +94,7 @@ function Navbar() {
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-primary-foreground/40">
                 <Button
                   onClick={() => navigate('/login')}
-                  variant="ghost" className="text-accent/90 hover:text-accent hover:bg-accent/10 justify-start">
+                  variant="ghost" className="text-accent/90 hover:text-accent hover:bg-accent/10 md:justify-start justify-center">
                   Request Demo
                 </Button>
                 <Button onClick={() => navigate('/login')} className="bg-accent-gradient text-primary-foreground">

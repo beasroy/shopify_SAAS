@@ -4,11 +4,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-/**
- * Classify cities using GPT API
- * @param {Array} cities - Array of city objects with {city, state, cityNormalized, lookupKey}
- * @returns {Promise<Array>} Array of classified city objects
- */
+
 export async function classifyCitiesWithGPT(cities) {
     if (!process.env.OPENAI_API_KEY) {
         throw new Error('OPENAI_API_KEY is not set in environment variables');
@@ -70,7 +66,7 @@ Return ONLY valid JSON, no other text.`;
 
     try {
         const response = await openai.chat.completions.create({
-            model: process.env.OPENAI_MODEL || "gpt-4o-mini", // Use gpt-4o-mini for cost efficiency
+            model: process.env.OPENAI_MODEL || "gpt-4o-mini", 
             messages: [
                 { 
                     role: "system", 
@@ -105,15 +101,22 @@ Return ONLY valid JSON, no other text.`;
         const resultCities = result.cities || (Array.isArray(result) ? result : []);
 
         cities.forEach((city, index) => {
+            // Skip cities with null/empty state or city
+            if (!city.city || !city.state) {
+                console.warn(`Skipping city with missing data: city=${city.city}, state=${city.state}`);
+                return;
+            }
+
             const classification = resultCities[index] || resultCities.find(
                 c => c.city?.toLowerCase() === city.cityNormalized && 
-                     c.state?.toLowerCase() === city.state?.toLowerCase()
+                     c.state?.toLowerCase() === (city.state || '').toLowerCase()
             );
 
             if (classification) {
                 // Generate lookupKey with country: city_state_country (normalized)
                 const countryNormalized = (classification.country || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
-                const lookupKey = `${city.cityNormalized}_${city.state.toLowerCase().replaceAll(/\s+/g, '')}_${countryNormalized}`;
+                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
+                const lookupKey = `${city.cityNormalized}_${stateNormalized}_${countryNormalized}`;
                 
                 classifications.push({
                     lookupKey: lookupKey,
@@ -130,7 +133,8 @@ Return ONLY valid JSON, no other text.`;
             } else {
                 // Fallback if classification not found
                 console.warn(`No classification found for ${city.city}, ${city.state}`);
-                const lookupKey = `${city.cityNormalized}_${city.state.toLowerCase().replaceAll(/\s+/g, '')}_unknown`;
+                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
+                const lookupKey = `${city.cityNormalized}_${stateNormalized}_unknown`;
                 classifications.push({
                     lookupKey: lookupKey,
                     city: city.city,

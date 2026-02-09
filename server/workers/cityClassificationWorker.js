@@ -102,6 +102,23 @@ cityClassificationWorker.on('error', (err) => {
     console.error('❌ [Worker] City classification worker error:', err);
 });
 
+// Graceful shutdown handler
+const shutdown = async () => {
+  console.log('\n🛑 Shutting down city classification worker...');
+  try {
+    await cityClassificationWorker.close();
+    console.log('✅ City classification worker closed gracefully');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error closing worker:', error);
+    process.exit(1);
+  }
+};
+
+// Handle shutdown signals
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 console.log('✅ City classification worker initialized');
 
 export default cityClassificationWorker;

@@ -1,20 +1,52 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { connectDB } from '../config/db.js';
 import { cityClassificationQueue } from '../config/shopifyQueues.js';
 import Order from '../models/Order.js';
 import CityMetadata from '../models/CityMetadata.js';
+import { acquireLock, releaseLock } from '../utils/lockUtils.js';
 
-dotenv.config();
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env file from server directory (parent of scripts directory)
+dotenv.config({ path: join(__dirname, '..', '.env') });
 
 /**
  * One-time script to backfill CityMetadata for all existing cities in Orders
  * Usage: node server/scripts/backfillCityMetadata.js
  */
 async function backfillCityMetadata() {
+    const lockKey = 'backfill-city-metadata';
+    let lockAcquired = false;
+    
     try {
         console.log('🔄 Starting city metadata backfill...');
         
+        // Check if backfill is already running
+        const lockAcquiredResult = await acquireLock(lockKey, 7200); // 2 hour TTL
+        if (!lockAcquiredResult) {
+            console.log('⚠️  Backfill is already running. Exiting...');
+            process.exit(0);
+        }
+        lockAcquired = true;
+        console.log('✅ Acquired lock for backfill process');
+        
         // Connect to database
+        if (!process.env.MONGO_URI && !process.env.MONGODB_URI) {
+            console.error('❌ Error: MongoDB connection string not found!');
+            console.error('   Please set either MONGO_URI or MONGODB_URI in your .env file');
+            console.error('   Example: MONGO_URI=mongodb://localhost:27017/your_database');
+            process.exit(1);
+        }
+        
+        // Use MONGODB_URI if MONGO_URI is not set (for compatibility)
+        if (!process.env.MONGO_URI && process.env.MONGODB_URI) {
+            process.env.MONGO_URI = process.env.MONGODB_URI;
+        }
+        
         await connectDB();
         console.log('✅ Connected to database');
         
@@ -56,14 +88,34 @@ async function backfillCityMetadata() {
         }
         
         // Check existing cities by cityNormalized + state (since lookupKey includes country from GPT)
-        // We'll match on city+state combination to avoid duplicates
-        const existing = await CityMetadata.find({}).select('cityNormalized state');
-        const existingCityStateSet = new Set(
-            existing.map(c => `${c.cityNormalized.toLowerCase()}_${c.state.toLowerCase()}`)
-        );
+        // Use aggregation to efficiently get unique city+state combinations
+        const existing = await CityMetadata.aggregate([
+            {
+                $group: {
+                    _id: {
+                        cityNormalized: { $toLower: "$cityNormalized" },
+                        state: { $toLower: "$state" }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    key: { 
+                        $concat: [
+                            "$_id.cityNormalized", 
+                            "_", 
+                            "$_id.state"
+                        ] 
+                    }
+                }
+            }
+        ]);
+        
+        const existingCityStateSet = new Set(existing.map(c => c.key));
         
         const newCities = allCities.filter(c => {
-            const cityStateKey = `${c.cityNormalized}_${c.state.toLowerCase()}`;
+            const cityStateKey = `${c.cityNormalized}_${(c.state || '').toLowerCase().trim()}`;
             return !existingCityStateSet.has(cityStateKey);
         });
         console.log(`🆕 ${newCities.length} new cities to classify (${allCities.length - newCities.length} already exist)`);
@@ -106,10 +158,23 @@ async function backfillCityMetadata() {
         // Wait a bit to ensure jobs are queued
         await new Promise(resolve => setTimeout(resolve, 2000));
         
+        // Release lock before exiting
+        if (lockAcquired) {
+            await releaseLock(lockKey);
+            console.log('✅ Released backfill lock');
+        }
+        
         process.exit(0);
         
     } catch (error) {
         console.error('❌ Error during backfill:', error);
+        
+        // Release lock on error
+        if (lockAcquired) {
+            await releaseLock(lockKey);
+            console.log('✅ Released backfill lock after error');
+        }
+        
         process.exit(1);
     }
 }

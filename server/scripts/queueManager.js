@@ -1,0 +1,476 @@
+/**
+ * Queue Management Utility
+ * 
+ * This script helps you check and manage BullMQ queues
+ * 
+ * Usage:
+ *   node server/scripts/queueManager.js status                    - Check all queue statuses
+ *   node server/scripts/queueManager.js status city-classification - Check specific queue
+ *   node server/scripts/queueManager.js clean city-classification  - Clean completed/failed jobs
+ *   node server/scripts/queueManager.js drain city-classification  - Remove all jobs
+ *   node server/scripts/queueManager.js pause city-classification - Pause queue
+ *   node server/scripts/queueManager.js resume city-classification - Resume queue
+ */
+
+import { cityClassificationQueue, shopifyOrderQueue, revenueCalculationQueue, historicalSyncQueue } from '../config/shopifyQueues.js';
+import { metricsQueue, connection as redis } from '../config/redis.js';
+import { releaseLock } from '../utils/lockUtils.js';
+
+const queues = {
+  'city-classification': cityClassificationQueue,
+  'shopify-orders': shopifyOrderQueue,
+  'revenue-calculation': revenueCalculationQueue,
+  'historical-sync': historicalSyncQueue,
+  'metrics-calculation': metricsQueue,
+};
+
+/**
+ * Get queue status
+ */
+async function getQueueStatus(queueName, queue) {
+  try {
+    const counts = await queue.getJobCounts();
+    const isPaused = await queue.isPaused();
+    
+    return {
+      name: queueName,
+      paused: isPaused,
+      waiting: counts.waiting || 0,
+      active: counts.active || 0,
+      completed: counts.completed || 0,
+      failed: counts.failed || 0,
+      delayed: counts.delayed || 0,
+      total: (counts.waiting || 0) + (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0)
+    };
+  } catch (error) {
+    console.error(`❌ Error getting status for ${queueName}:`, error.message);
+    return { name: queueName, error: error.message };
+  }
+}
+
+/**
+ * Display queue status
+ */
+async function showStatus(queueName = null) {
+  console.log('\n📊 Queue Status\n');
+  console.log('═'.repeat(80));
+  
+  if (queueName && queues[queueName]) {
+    // Show specific queue
+    const status = await getQueueStatus(queueName, queues[queueName]);
+    displayQueueStatus(status);
+  } else {
+    // Show all queues
+    const statuses = await Promise.all(
+      Object.entries(queues).map(([name, queue]) => getQueueStatus(name, queue))
+    );
+    
+    statuses.forEach(status => displayQueueStatus(status));
+  }
+  
+  console.log('═'.repeat(80));
+  console.log('\n💡 Tips:');
+  console.log('  - Use "clean" to remove completed/failed jobs');
+  console.log('  - Use "drain" to remove ALL jobs (use with caution!)');
+  console.log('  - Use "pause" to pause processing');
+  console.log('  - Use "resume" to resume processing\n');
+}
+
+/**
+ * Display single queue status
+ */
+function displayQueueStatus(status) {
+  if (status.error) {
+    console.log(`\n❌ ${status.name}: ${status.error}`);
+    return;
+  }
+  
+  const statusIcon = status.paused ? '⏸️' : '▶️';
+  console.log(`\n${statusIcon} ${status.name}`);
+  console.log(`   Waiting:    ${status.waiting}`);
+  console.log(`   Active:     ${status.active}`);
+  console.log(`   Completed:  ${status.completed}`);
+  console.log(`   Failed:     ${status.failed}`);
+  console.log(`   Delayed:    ${status.delayed}`);
+  console.log(`   Total:      ${status.total}`);
+}
+
+/**
+ * Clean completed and failed jobs
+ */
+async function cleanQueue(queueName, queue, options = {}) {
+  try {
+    console.log(`\n🧹 Cleaning queue: ${queueName}`);
+    
+    const { completed = true, failed = true, age = 3600 } = options;
+    
+    let cleaned = 0;
+    
+    if (completed) {
+      const completedCount = await queue.clean(age, 1000, 'completed');
+      cleaned += completedCount.length;
+      console.log(`   ✅ Removed ${completedCount.length} completed jobs`);
+    }
+    
+    if (failed) {
+      const failedCount = await queue.clean(age, 1000, 'failed');
+      cleaned += failedCount.length;
+      console.log(`   ✅ Removed ${failedCount.length} failed jobs`);
+    }
+    
+    console.log(`\n✅ Total cleaned: ${cleaned} jobs`);
+    return cleaned;
+  } catch (error) {
+    console.error(`❌ Error cleaning queue ${queueName}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Drain queue (remove all jobs)
+ */
+async function drainQueue(queueName, queue) {
+  try {
+    console.log(`\n⚠️  Draining queue: ${queueName}`);
+    console.log('   This will remove ALL jobs (waiting, active, completed, failed)');
+    
+    // Get counts before draining
+    const counts = await queue.getJobCounts();
+    const total = (counts.waiting || 0) + (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0);
+    
+    // Remove all job types
+    await queue.obliterate({ force: true });
+    
+    console.log(`\n✅ Drained ${total} jobs from ${queueName}`);
+  } catch (error) {
+    console.error(`❌ Error draining queue ${queueName}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Pause queue
+ */
+async function pauseQueue(queueName, queue) {
+  try {
+    const wasPaused = await queue.isPaused();
+    
+    if (wasPaused) {
+      console.log(`\nℹ️  Queue ${queueName} is already paused`);
+      return;
+    }
+    
+    await queue.pause();
+    console.log(`\n⏸️  Paused queue: ${queueName}`);
+    console.log('   Workers will finish current jobs but will not pick up new jobs');
+    console.log('   Use "resume" command to start processing again');
+    
+    // Show current job counts
+    const counts = await queue.getJobCounts();
+    if (counts.active > 0) {
+      console.log(`\n   ⚠️  Note: ${counts.active} job(s) are currently being processed`);
+      console.log('   These will complete before the pause takes full effect');
+    }
+  } catch (error) {
+    console.error(`❌ Error pausing queue ${queueName}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Resume queue
+ */
+async function resumeQueue(queueName, queue) {
+  try {
+    const wasPaused = await queue.isPaused();
+    
+    if (!wasPaused) {
+      console.log(`\nℹ️  Queue ${queueName} is already running`);
+      return;
+    }
+    
+    await queue.resume();
+    console.log(`\n▶️  Resumed queue: ${queueName}`);
+    console.log('   Workers will now process jobs from the queue');
+    
+    // Show waiting job counts
+    const counts = await queue.getJobCounts();
+    if (counts.waiting > 0) {
+      console.log(`\n   📋 ${counts.waiting} job(s) waiting to be processed`);
+    }
+  } catch (error) {
+    console.error(`❌ Error resuming queue ${queueName}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Release a lock
+ */
+async function releaseLockCommand(lockKey) {
+  try {
+    const fullKey = lockKey.startsWith('lock:') ? lockKey : `lock:${lockKey}`;
+    const exists = await redis.exists(fullKey);
+    
+    if (exists === 0) {
+      console.log(`\nℹ️  Lock "${lockKey}" does not exist (already released or never acquired)`);
+      return false;
+    }
+    
+    const released = await releaseLock(lockKey);
+    
+    if (released) {
+      console.log(`\n✅ Released lock: ${lockKey}`);
+    } else {
+      console.log(`\n❌ Failed to release lock: ${lockKey}`);
+    }
+    
+    return released;
+  } catch (error) {
+    console.error(`❌ Error releasing lock ${lockKey}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Check lock status
+ */
+async function checkLock(lockKey) {
+  try {
+    const fullKey = lockKey.startsWith('lock:') ? lockKey : `lock:${lockKey}`;
+    const exists = await redis.exists(fullKey);
+    const ttl = exists > 0 ? await redis.ttl(fullKey) : -2;
+    
+    console.log(`\n🔒 Lock Status: ${lockKey}`);
+    console.log(`   Exists: ${exists > 0 ? 'Yes' : 'No'}`);
+    
+    if (exists > 0) {
+      if (ttl > 0) {
+        const minutes = Math.floor(ttl / 60);
+        const seconds = ttl % 60;
+        console.log(`   TTL: ${minutes}m ${seconds}s (expires in ${ttl} seconds)`);
+      } else if (ttl === -1) {
+        console.log(`   TTL: No expiration (permanent lock)`);
+      }
+    }
+    
+    return exists > 0;
+  } catch (error) {
+    console.error(`❌ Error checking lock ${lockKey}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * List all locks
+ */
+async function listLocks() {
+  try {
+    const keys = await redis.keys('lock:*');
+    
+    console.log(`\n🔒 Active Locks: ${keys.length}\n`);
+    
+    if (keys.length === 0) {
+      console.log('   No active locks found');
+      return;
+    }
+    
+    for (const key of keys) {
+      const lockKey = key.replace('lock:', '');
+      const ttl = await redis.ttl(key);
+      
+      if (ttl > 0) {
+        const minutes = Math.floor(ttl / 60);
+        const seconds = ttl % 60;
+        console.log(`   ${lockKey}`);
+        console.log(`      TTL: ${minutes}m ${seconds}s`);
+      } else if (ttl === -1) {
+        console.log(`   ${lockKey}`);
+        console.log(`      TTL: No expiration`);
+      }
+      console.log('');
+    }
+  } catch (error) {
+    console.error(`❌ Error listing locks:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get failed jobs
+ */
+async function getFailedJobs(queueName, queue, limit = 10) {
+  try {
+    const failed = await queue.getFailed(0, limit);
+    
+    console.log(`\n❌ Failed Jobs in ${queueName}: ${failed.length}\n`);
+    
+    failed.forEach((job, index) => {
+      console.log(`${index + 1}. Job ID: ${job.id}`);
+      console.log(`   Name: ${job.name}`);
+      console.log(`   Failed at: ${job.failedReason ? new Date(job.failedReason) : 'N/A'}`);
+      console.log(`   Error: ${job.failedReason || 'N/A'}`);
+      console.log(`   Attempts: ${job.attemptsMade}/${job.opts.attempts || 3}`);
+      console.log('');
+    });
+    
+    return failed;
+  } catch (error) {
+    console.error(`❌ Error getting failed jobs:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Main function
+ */
+async function main() {
+  const command = process.argv[2];
+  const queueName = process.argv[3];
+  
+  if (!command) {
+    console.log(`
+📋 Queue Manager - BullMQ Queue Management Tool
+
+Usage:
+  node server/scripts/queueManager.js <command> [queue-name]
+
+Commands:
+  status [queue-name]              Show queue status(es)
+  clean [queue-name]                 Clean completed/failed jobs
+  drain [queue-name]                 Remove ALL jobs (use with caution!)
+  pause [queue-name]                 Pause queue processing
+  resume [queue-name]                Resume queue processing
+  failed [queue-name] [limit]        Show failed jobs (default: 10)
+  locks                              List all active locks
+  lock-status <lock-key>              Check if a lock exists
+  release-lock <lock-key>             Release a lock (e.g., backfill-city-metadata)
+
+Available Queues:
+  - city-classification
+  - shopify-orders
+  - revenue-calculation
+  - historical-sync
+  - metrics-calculation
+
+Examples:
+  node server/scripts/queueManager.js status
+  node server/scripts/queueManager.js status city-classification
+  node server/scripts/queueManager.js clean city-classification
+  node server/scripts/queueManager.js failed city-classification 20
+  node server/scripts/queueManager.js locks
+  node server/scripts/queueManager.js release-lock backfill-city-metadata
+    `);
+    process.exit(0);
+  }
+  
+  try {
+    switch (command) {
+      case 'status':
+        await showStatus(queueName);
+        break;
+        
+      case 'clean':
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        await cleanQueue(queueName, queues[queueName]);
+        break;
+        
+      case 'drain':
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        await drainQueue(queueName, queues[queueName]);
+        break;
+        
+      case 'pause':
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        await pauseQueue(queueName, queues[queueName]);
+        break;
+        
+      case 'resume':
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        await resumeQueue(queueName, queues[queueName]);
+        break;
+        
+      case 'failed': {
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        const limit = Number.parseInt(process.argv[4]) || 10;
+        await getFailedJobs(queueName, queues[queueName], limit);
+        break;
+      }
+        
+      case 'locks':
+        await listLocks();
+        break;
+        
+      case 'lock-status':
+        if (!queueName) {
+          console.error('❌ Please specify a lock key');
+          process.exit(1);
+        }
+        await checkLock(queueName);
+        break;
+        
+      case 'release-lock':
+        if (!queueName) {
+          console.error('❌ Please specify a lock key');
+          console.log('Common lock keys:');
+          console.log('  - backfill-city-metadata');
+          process.exit(1);
+        }
+        await releaseLockCommand(queueName);
+        break;
+        
+      default:
+        console.error(`❌ Unknown command: ${command}`);
+        console.log('Run without arguments to see usage');
+        process.exit(1);
+    }
+    
+    process.exit(0);
+  } catch (error) {
+    console.error('\n❌ Error:', error.message);
+    process.exit(1);
+  }
+}
+
+// Run if called directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
+
+export { showStatus, cleanQueue, drainQueue, pauseQueue, resumeQueue, getFailedJobs };
+

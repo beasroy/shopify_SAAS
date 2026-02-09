@@ -34,8 +34,8 @@ import BounceRatePage from './pages/BounceRate/BounceRatePage.tsx';
 import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
 import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.tsx';
 import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
-import AuthPage from './Auth/NewAuthPage.tsx';
 import LocationAnalyticsPage from './pages/LocationAnalytics/LocationAnalyticsPage.tsx';
+import AuthPage from './Auth/NewAuthPage.tsx';
 
 
 

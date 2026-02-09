@@ -89,8 +89,8 @@ const UseCasesSection = () => {
                                     key={role.id}
                                     onClick={() => setActiveRole(role.id)}
                                     className={`group flex items-center gap-2 px-5 py-3 rounded-xl transition-all duration-300 ${isActive
-                                            ? `bg-${role.color}/20 border border-${role.color}/50`
-                                            : "bg-primary-foreground/5 border border-primary-foreground/10 hover:bg-primary-foreground/10"
+                                        ? `bg-${role.color}/20 border border-${role.color}/50`
+                                        : "bg-primary-foreground/5 border border-primary-foreground/10 hover:bg-primary-foreground/10"
                                         }`}
                                 >
                                     <role.icon
@@ -130,8 +130,8 @@ const UseCasesSection = () => {
                                 {/* Revenue Card */}
                                 <div
                                     className={`p-4 rounded-xl transition-all duration-500 ${currentRole.highlightAreas.includes("revenue") || currentRole.highlightAreas.includes("profit")
-                                            ? "bg-accent/10 border-2 border-accent/40 scale-[1.02]"
-                                            : "bg-primary-foreground/5 border border-primary-foreground/10"
+                                        ? "bg-accent/10 border-2 border-accent/40 scale-[1.02]"
+                                        : "bg-primary-foreground/5 border border-primary-foreground/10"
                                         }`}
                                 >
                                     <div className="text-xs text-primary-foreground/50 mb-1">Total Revenue</div>
@@ -142,8 +142,8 @@ const UseCasesSection = () => {
                                 {/* ROAS Card */}
                                 <div
                                     className={`p-4 rounded-xl transition-all duration-500 ${currentRole.highlightAreas.includes("roas") || currentRole.highlightAreas.includes("campaigns")
-                                            ? "bg-brand-green/10 border-2 border-brand-green/40 scale-[1.02]"
-                                            : "bg-primary-foreground/5 border border-primary-foreground/10"
+                                        ? "bg-brand-green/10 border-2 border-brand-green/40 scale-[1.02]"
+                                        : "bg-primary-foreground/5 border border-primary-foreground/10"
                                         }`}
                                 >
                                     <div className="text-xs text-primary-foreground/50 mb-1">Blended ROAS</div>
@@ -154,8 +154,8 @@ const UseCasesSection = () => {
                                 {/* Budget Card */}
                                 <div
                                     className={`p-4 rounded-xl transition-all duration-500 ${currentRole.highlightAreas.includes("budget") || currentRole.highlightAreas.includes("growth")
-                                            ? "bg-brand-amber/10 border-2 border-brand-amber/40 scale-[1.02]"
-                                            : "bg-primary-foreground/5 border border-primary-foreground/10"
+                                        ? "bg-brand-amber/10 border-2 border-brand-amber/40 scale-[1.02]"
+                                        : "bg-primary-foreground/5 border border-primary-foreground/10"
                                         }`}
                                 >
                                     <div className="text-xs text-primary-foreground/50 mb-1">Ad Spend</div>
@@ -166,13 +166,13 @@ const UseCasesSection = () => {
                                 {/* Clients/Reporting Card */}
                                 <div
                                     className={`p-4 rounded-xl transition-all duration-500 ${currentRole.highlightAreas.includes("reporting") || currentRole.highlightAreas.includes("clients")
-                                            ? "bg-brand-coral/10 border-2 border-brand-coral/40 scale-[1.02]"
-                                            : "bg-primary-foreground/5 border border-primary-foreground/10"
+                                        ? "bg-brand-coral/10 border-2 border-brand-coral/40 scale-[1.02]"
+                                        : "bg-primary-foreground/5 border border-primary-foreground/10"
                                         }`}
                                 >
                                     <div className="text-xs text-primary-foreground/50 mb-1">CAC Payback</div>
                                     <div className="text-xl md:text-2xl font-bold text-primary-foreground">42d</div>
-                                    <div className="text-xs text-brand-green mt-1">-8d improvement</div>
+                                    <div className="text-xs text-brand-coral mt-1">-8d improvement</div>
                                 </div>
                             </div>
 

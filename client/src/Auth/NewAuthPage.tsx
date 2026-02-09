@@ -52,6 +52,7 @@ type AuthFormProps = {
     username?: string
     setUsername?: (username: string) => void
     setIsLogin?: (isLogin: boolean) => void
+    errors: { username: string, email: string, password: string, shop: string }
 }
 
 type OAuthButtonsProps = {
@@ -373,6 +374,7 @@ export default function AuthPage() {
                                         autoComplete="shop"
                                         className="h-11  focus:border-blue-500 focus:ring-blue-500"
                                     />
+                                    {errors.shop && <p className="text-red-500 text-sm">{errors.shop}</p>}
                                 </div>
                                 <Button
                                     onClick={handleShopifyLogin}
@@ -402,7 +404,7 @@ export default function AuthPage() {
                                         toggleShopifyLogin={toggleShopifyLogin}
                                         handleGoogleLogin={handleGoogleLogin}
                                         handleSubmit={handleSubmit}
-                                        // setIsLoading={setIsLoading}
+                                        errors={errors}
                                         isLoading={isLoading}
                                         email={email}
                                         setEmail={setEmail}
@@ -415,7 +417,7 @@ export default function AuthPage() {
                                     <SignupForm
                                         toggleShopifyLogin={handleShopifyLogin}
                                         handleGoogleLogin={handleGoogleLogin}
-                                        // setIsLoading={setIsLoading}
+                                        errors={errors}
                                         isLoading={isLoading}
                                         handleSubmit={handleSubmit}
                                         email={email}
@@ -451,7 +453,7 @@ export default function AuthPage() {
     )
 }
 
-function LoginForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoading, email, setEmail, password, setPassword }: AuthFormProps) {
+function LoginForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoading, email, setEmail, password, setPassword, errors }: AuthFormProps) {
 
     return (
         <div className="space-y-6">
@@ -469,6 +471,7 @@ function LoginForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoad
                         autoComplete="email"
                         className="h-11"
                     />
+                    {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -486,6 +489,7 @@ function LoginForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoad
                         autoComplete="current-password"
                         className="h-11"
                     />
+                    {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
                 </div>
 
                 <Button onClick={handleSubmit} type="submit" className="w-full h-11" >
@@ -506,7 +510,7 @@ function LoginForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoad
     )
 }
 
-function SignupForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoading, email, setEmail, password, setPassword, username, setUsername, setIsLogin }: AuthFormProps) {
+function SignupForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoading, email, setEmail, password, setPassword, username, setUsername, errors }: AuthFormProps) {
 
 
     return (
@@ -526,6 +530,7 @@ function SignupForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoa
                         autoComplete="name"
                         className="h-11"
                     />
+                    {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -541,6 +546,7 @@ function SignupForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoa
                         autoComplete="email"
                         className="h-11"
                     />
+                    {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -558,6 +564,7 @@ function SignupForm({ toggleShopifyLogin, handleGoogleLogin, handleSubmit, isLoa
                         className="h-11"
                     />
                     <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
+                    {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
                 </div>
 
                 <Button disabled={isLoading} type="submit" className="w-full h-11" >

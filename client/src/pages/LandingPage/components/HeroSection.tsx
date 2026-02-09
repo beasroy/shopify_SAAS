@@ -221,7 +221,7 @@ const HeroSection = () => {
             style={{ animationDelay: "0.4s" }}
           >
             <span className="text-sm text-primary-foreground/40">Connects with:</span>
-            {["Meta Ads", "Google Ads", "GA4", "Shopify"].map((platform, i) => (
+            {["Meta Ads", "Google Ads", "GA4", "Shopify"].map((platform) => (
               <div 
                 key={platform}
                 className="px-3 py-1.5 rounded-md glass-dark border border-primary-foreground/10 text-xs text-primary-foreground/60 hover:text-primary-foreground/90 hover:border-brand-blue/30 transition-all cursor-default"

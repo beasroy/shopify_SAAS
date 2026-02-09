@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import {
     LayoutDashboard, Calendar, Gauge, Calculator, Image, Eye, BarChart3,
     ShoppingCart, FileText, Target, Search, Package, Activity,
-    TrendingUp, DollarSign, Sparkles, ChevronLeft, ChevronRight
+    TrendingUp, Sparkles, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import {
@@ -205,7 +205,7 @@ const FeatureVisual = ({ index, isActive }: { index: number; isActive: boolean }
 };
 
 // Specific chart visualizations
-const FeatureChart = ({ index, colorClass, isActive }: { index: number; colorClass: string; isActive: boolean }) => {
+const FeatureChart = ({ index, isActive }: { index: number; colorClass?: string; isActive: boolean }) => {
     // Different mini charts based on feature index
     const charts: Record<number, JSX.Element> = {
         0: ( // Marketing Insights - Platform bars

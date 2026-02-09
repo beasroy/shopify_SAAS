@@ -120,7 +120,6 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-calculateMetricsForSingleBrand("69779a7dd639a12fc8b8347a", "69779a7cd639a12fc8b83477")
 
 
 const PORT = process.env.PORT || 5000;

@@ -1251,6 +1251,7 @@ export async function getRegionWiseConversions(req, res) {
       "Total Sessions": regionData.TotalSessions,
       "Total Purchases": regionData.TotalPurchases,
       "Avg Conv. Rate": regionData.TotalSessions > 0 ? (regionData.TotalPurchases / regionData.TotalSessions) * 100 : 0.00,
+      "Total Bounce Rate": regionData.TotalSessions > 0 ? (regionData.TotalBounceRate / regionData.TotalSessions) * 100 : 0.00,
       MonthlyData: Object.values(regionData.MonthlyData)
     }))
 
@@ -1295,6 +1296,157 @@ export async function getRegionWiseConversions(req, res) {
   }
 }
 
+// export async function getPageWiseConversions(req, res) {
+//   try {
+//     const { brandId } = req.params;
+//     const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+//     const brand = await Brand.findById(brandId).lean();
+
+//     if (!brand) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Brand not found.'
+//       });
+//     }
+
+//     const propertyId = brand.ga4Account?.PropertyID;
+
+//     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+//     const refreshToken = brand.googleAnalyticsRefreshToken;
+//     if (!refreshToken || refreshToken.trim() === '') {
+//       console.warn(`No refresh token found for Brand ID: ${brandId}`);
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     const accessToken = await getGoogleAccessToken(refreshToken);
+
+//     const requestBody = {
+//       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+//       dimensions: [
+//         { name: 'yearMonth' },
+//         { name: 'landingPage' }
+//       ],
+//       metrics: [
+//         { name: 'sessions' },
+//         { name: 'ecommercePurchases' },
+//         { name: "bounceRate" }
+//       ]
+//     };
+
+
+
+//     const response = await axios.post(
+//       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+//       requestBody,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//           Accept: 'application/json',
+//           'Content-Type': 'application/json',
+//         },
+//       }
+//     )
+
+//     const Rows = response?.data?.rows || [];
+
+//     console.log("========>", Rows[0]);
+//     console.log("========>", Rows[1]);
+
+//     const groupedData = Rows.reduce((acc, row) => {
+//       const yearMonth = row.dimensionValues[0]?.value;
+//       const landingPage = row.dimensionValues[1]?.value;
+//       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
+//       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);  // Get purchases if they exist, otherwise 0
+//       const directBounceRate = parseFloat(row.metricValues[2]?.value || 0);
+
+//       // Initialize region if it doesn't exist
+//       if (!acc[landingPage]) {
+//         acc[landingPage] = {
+//           MonthlyData: {},
+//           TotalSessions: 0,
+//           TotalPurchases: 0,
+//           SummedBounceWeighted: 0,
+//         };
+//       }
+
+//       // Initialize month data if it doesn't exist
+//       if (!acc[landingPage].MonthlyData[yearMonth]) {
+//         acc[landingPage].MonthlyData[yearMonth] = {
+//           Month: yearMonth,
+//           Sessions: 0,
+//           Purchases: 0,
+//           "Conv. Rate": 0.00,
+//           "Bounce Rate": 0.00
+//         };
+//       }
+
+//       // Update metrics
+//       acc[landingPage].MonthlyData[yearMonth].Sessions += sessions;
+//       acc[landingPage].MonthlyData[yearMonth].Purchases += purchases;
+//       acc[landingPage].TotalSessions += sessions;
+//       acc[landingPage].TotalPurchases += purchases;
+//       acc[landingPage].TotalBounceRate += directBounceRate * sessions;
+
+//       // Calculate monthly conversion rate
+//       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
+//       acc[landingPage].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+//       acc[landingPage].MonthlyData[yearMonth]["Bounce Rate"] = bounceRate > 0 ? (bounceRate / sessions) * 100 : 0.00;
+
+
+//       return acc;
+//     }, {});
+
+//     let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => ({
+//       "Landing Page": LandingPage,
+//       "Total Sessions": LandingPageData.TotalSessions,
+//       "Total Purchases": LandingPageData.TotalPurchases,
+//       "Avg Conv. Rate": LandingPageData.TotalSessions > 0 ? (LandingPageData.TotalPurchases / LandingPageData.TotalSessions) * 100 : 0.00,
+//       "Total Bounce Rate": LandingPageData.TotalBounceRate > 0 ? (LandingPageData.TotalBounceRate / LandingPageData.TotalSessions) * 100 : 0.00,
+//       MonthlyData: Object.values(LandingPageData.MonthlyData)
+//     }))
+
+
+//     data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+//     let limitedData = data.slice(0, 500);
+
+//     if (sessionsFilter || convRateFilter) {
+//       limitedData = limitedData.filter(item => {
+//         const sessionCondition = sessionsFilter
+//           ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+//           : true;
+
+//         const convRateCondition = convRateFilter
+//           ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+//           : true;
+
+//         return sessionCondition && convRateCondition;
+//       });
+//     }
+
+//     const activeFilters = {};
+//     if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+//     if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+//     res.status(200).json({
+//       reportType: `Monthly Data for All Landing Page Sorted by Conversions`,
+//       activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
+//       data: limitedData,
+//     });
+
+//   } catch (error) {
+//     console.error('Error fetching Landing Pages-Based Monthly Data:', error);
+
+//     if (error.response && error.response.status === 403) {
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     res.status(500).json({ error: 'Failed to fetch Landing Pages-Based Monthly Data.' });
+//   }
+// }
+
 export async function getPageWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
@@ -1329,7 +1481,8 @@ export async function getPageWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases' }
+        { name: 'ecommercePurchases' },
+        { name: "bounceRate" }
       ]
     };
 
@@ -1349,12 +1502,15 @@ export async function getPageWiseConversions(req, res) {
 
     const Rows = response?.data?.rows || [];
 
-
     const groupedData = Rows.reduce((acc, row) => {
       const yearMonth = row.dimensionValues[0]?.value;
       const landingPage = row.dimensionValues[1]?.value;
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);  // Get purchases if they exist, otherwise 0
+
+      const bounceRate = Number(row.metricValues[2]?.value || 0); // 0–1
+      const bouncedSessions = sessions * bounceRate;
+
 
       // Initialize region if it doesn't exist
       if (!acc[landingPage]) {
@@ -1362,6 +1518,9 @@ export async function getPageWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
+          WeightedBounceSum: 0,
+          TotalBouncedSessions: 0,
+          MonthlyBouncedSessions: 0
         };
       }
 
@@ -1371,9 +1530,14 @@ export async function getPageWiseConversions(req, res) {
           Month: yearMonth,
           Sessions: 0,
           Purchases: 0,
-          "Conv. Rate": 0.00
+          "Conv. Rate": 0.00,
+          "Bounce Rate": 0.00,
+          MonthlyBouncedSessions: 0,
+          _weightedBounce: 0
         };
       }
+
+      const monthRef = acc[landingPage].MonthlyData[yearMonth];
 
       // Update metrics
       acc[landingPage].MonthlyData[yearMonth].Sessions += sessions;
@@ -1381,9 +1545,22 @@ export async function getPageWiseConversions(req, res) {
       acc[landingPage].TotalSessions += sessions;
       acc[landingPage].TotalPurchases += purchases;
 
+      acc[landingPage].TotalBouncedSessions += bouncedSessions
+      acc[landingPage].MonthlyData[yearMonth].MonthlyBouncedSessions += bouncedSessions;
+
+      monthRef["Bounce Rate"] = monthRef.Sessions > 0
+        ? parseFloat(((monthRef.MonthlyBouncedSessions / monthRef.Sessions) * 100).toFixed(2))
+        : 0;
+
+
+
+
       // Calculate monthly conversion rate
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[landingPage].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+      monthRef["Bounce Rate"] = monthRef.Sessions > 0
+        ? parseFloat(((monthRef.MonthlyBouncedSessions / monthRef.Sessions) * 100).toFixed(2))
+        : 0;
 
 
       return acc;
@@ -1394,6 +1571,8 @@ export async function getPageWiseConversions(req, res) {
       "Total Sessions": LandingPageData.TotalSessions,
       "Total Purchases": LandingPageData.TotalPurchases,
       "Avg Conv. Rate": LandingPageData.TotalSessions > 0 ? (LandingPageData.TotalPurchases / LandingPageData.TotalSessions) * 100 : 0.00,
+      "Total Bounce Rate": LandingPageData.TotalSessions > 0 ? parseFloat(((LandingPageData.TotalBouncedSessions / LandingPageData.TotalSessions) * 100).toFixed(2)) : 0,
+
       MonthlyData: Object.values(LandingPageData.MonthlyData)
     }))
 
@@ -2684,6 +2863,150 @@ export async function getSourceWiseConversions(req, res) {
   }
 }
 
+// export async function getPagePathWiseConversions(req, res) {
+//   try {
+//     const { brandId } = req.params;
+//     const { startDate, endDate, sessionsFilter, convRateFilter } = req.body;
+
+//     const brand = await Brand.findById(brandId).lean();
+
+//     if (!brand) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Brand not found.'
+//       });
+//     }
+
+//     const propertyId = brand.ga4Account?.PropertyID;
+
+//     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+
+//     const refreshToken = brand.googleAnalyticsRefreshToken;
+//     if (!refreshToken || refreshToken.trim() === '') {
+//       console.warn(`No refresh token found for Brand ID: ${brandId}`);
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     const accessToken = await getGoogleAccessToken(refreshToken);
+
+//     const requestBody = {
+//       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+//       dimensions: [
+//         { name: 'yearMonth' },
+//         { name: 'pagePath' }
+//       ],
+//       metrics: [
+//         { name: 'sessions' },
+//         { name: 'ecommercePurchases' }
+//       ]
+//     };
+
+
+//     const response = await axios.post(
+//       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+//       requestBody,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//           Accept: 'application/json',
+//           'Content-Type': 'application/json',
+//         },
+//       })
+
+//     const Rows = response?.data?.rows || [];
+
+
+//     // Process data starting with sessions
+//     const groupedData = Rows.reduce((acc, row) => {
+//       const yearMonth = row.dimensionValues[0]?.value;
+//       const PagePath = row.dimensionValues[1]?.value;
+//       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
+//       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
+//       const bounceRate = Number(row.metricValues[2]?.value || 0);
+
+
+
+//       // Initialize region if it doesn't exist
+//       if (!acc[PagePath]) {
+//         acc[PagePath] = {
+//           MonthlyData: {},
+//           TotalSessions: 0,
+//           TotalPurchases: 0,
+//         };
+//       }
+
+//       // Initialize month data if it doesn't exist
+//       if (!acc[PagePath].MonthlyData[yearMonth]) {
+//         acc[PagePath].MonthlyData[yearMonth] = {
+//           Month: yearMonth,
+//           Sessions: 0,
+//           Purchases: 0,
+//           "Conv. Rate": 0.00
+//         };
+//       }
+
+//       // Update metrics
+//       acc[PagePath].MonthlyData[yearMonth].Sessions += sessions;
+//       acc[PagePath].MonthlyData[yearMonth].Purchases += purchases;
+//       acc[PagePath].TotalSessions += sessions;
+//       acc[PagePath].TotalPurchases += purchases;
+
+//       // Calculate monthly conversion rate
+//       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
+//       acc[PagePath].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+
+
+//       return acc;
+//     }, {});
+
+
+//     // Convert grouped data to an array format
+//     let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => ({
+//       "Page Path": pagePath,
+//       "Total Sessions": pagePathData.TotalSessions,
+//       "Total Purchases": pagePathData.TotalPurchases,
+//       "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions) * 100 : 0.00,
+//       "MonthlyData": Object.values(pagePathData.MonthlyData),
+//     }))
+
+//     data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"])
+
+//     let limitedData = data.slice(0, 500);
+//     if (sessionsFilter || convRateFilter) {
+//       limitedData = limitedData.filter(item => {
+//         const sessionCondition = sessionsFilter
+//           ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+//           : true;
+
+//         const convRateCondition = convRateFilter
+//           ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+//           : true;
+
+//         return sessionCondition && convRateCondition;
+//       });
+//     }
+//     const activeFilters = {};
+//     if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+//     if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+
+//     res.status(200).json({
+//       reportType: `Monthly Data for All Pagepath Sorted by Month`,
+//       activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
+//       data: limitedData,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching Pagepath-Based Monthly Data:', error);
+
+//     if (error.response && error.response.status === 403) {
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     res.status(500).json({ error: 'Failed to fetch Pagepath-Based Monthly Data.' });
+//   }
+// }
+
 export async function getPagePathWiseConversions(req, res) {
   try {
     const { brandId } = req.params;
@@ -2719,7 +3042,8 @@ export async function getPagePathWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases' }
+        { name: 'ecommercePurchases' },
+        { name: "bounceRate" }
       ]
     };
 
@@ -2744,6 +3068,10 @@ export async function getPagePathWiseConversions(req, res) {
       const PagePath = row.dimensionValues[1]?.value;
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
+      const bounceRate = Number(row.metricValues[2]?.value || 0);
+      const bouncedSessions = sessions * bounceRate;
+
+
 
       // Initialize region if it doesn't exist
       if (!acc[PagePath]) {
@@ -2751,6 +3079,8 @@ export async function getPagePathWiseConversions(req, res) {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
+          TotalBouncedSessions: 0,
+          MonthlyBouncedSessions: 0,
         };
       }
 
@@ -2760,9 +3090,13 @@ export async function getPagePathWiseConversions(req, res) {
           Month: yearMonth,
           Sessions: 0,
           Purchases: 0,
-          "Conv. Rate": 0.00
+          "Conv. Rate": 0.00,
+          "Bounce Rate": 0.00,
+          MonthlyBouncedSessions: 0,
         };
       }
+
+      const monthRef = acc[PagePath].MonthlyData[yearMonth];
 
       // Update metrics
       acc[PagePath].MonthlyData[yearMonth].Sessions += sessions;
@@ -2770,9 +3104,15 @@ export async function getPagePathWiseConversions(req, res) {
       acc[PagePath].TotalSessions += sessions;
       acc[PagePath].TotalPurchases += purchases;
 
+      acc[PagePath].TotalBouncedSessions += bouncedSessions
+      acc[PagePath].MonthlyData[yearMonth].MonthlyBouncedSessions += bouncedSessions;
+
       // Calculate monthly conversion rate
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[PagePath].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+      monthRef["Bounce Rate"] = monthRef.Sessions > 0
+        ? parseFloat(((monthRef.MonthlyBouncedSessions / monthRef.Sessions) * 100).toFixed(2))
+        : 0;
 
 
       return acc;
@@ -2785,6 +3125,7 @@ export async function getPagePathWiseConversions(req, res) {
       "Total Sessions": pagePathData.TotalSessions,
       "Total Purchases": pagePathData.TotalPurchases,
       "Avg Conv. Rate": pagePathData.TotalSessions > 0 ? (pagePathData.TotalPurchases / pagePathData.TotalSessions) * 100 : 0.00,
+      "Total Bounce Rate": pagePathData.TotalSessions > 0 ? parseFloat(((pagePathData.TotalBouncedSessions / pagePathData.TotalSessions) * 100).toFixed(2)) : 0,
       "MonthlyData": Object.values(pagePathData.MonthlyData),
     }))
 
@@ -2824,6 +3165,159 @@ export async function getPagePathWiseConversions(req, res) {
     res.status(500).json({ error: 'Failed to fetch Pagepath-Based Monthly Data.' });
   }
 }
+
+// export async function getPageTitleWiseConversions(req, res) {
+//   try {
+//     const { brandId } = req.params;
+//     const {
+//       startDate,
+//       endDate,
+//       sessionsFilter,
+//       convRateFilter
+//     } = req.body;
+
+//     // Validate filter formats if provided
+//     if (sessionsFilter && (!sessionsFilter.value || !sessionsFilter.operator)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Sessions filter must include both value and operator'
+//       });
+//     }
+
+//     if (convRateFilter && (!convRateFilter.value || !convRateFilter.operator)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Conversion rate filter must include both value and operator'
+//       });
+//     }
+
+//     const brand = await Brand.findById(brandId).lean();
+
+//     if (!brand) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Brand not found.'
+//       });
+//     }
+
+//     const propertyId = brand.ga4Account?.PropertyID;
+
+//     const { adjustedStartDate, adjustedEndDate } = getAdjustedDates(startDate, endDate);
+
+//     const refreshToken = brand.googleAnalyticsRefreshToken;
+//     if (!refreshToken || refreshToken.trim() === '') {
+//       console.warn(`No refresh token found for Brand ID: ${brandId}`);
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     const accessToken = await getGoogleAccessToken(refreshToken);
+
+//     const requestBody = {
+//       dateRanges: [{ startDate: adjustedStartDate, endDate: adjustedEndDate }],
+//       dimensions: [
+//         { name: 'yearMonth' },
+//         { name: 'pageTitle' }
+//       ],
+//       metrics: [
+//         { name: 'sessions' },
+//         { name: 'ecommercePurchases' }
+//       ]
+//     };
+
+//     const response = await axios.post(
+//       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+//       requestBody,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//           Accept: 'application/json',
+//           'Content-Type': 'application/json',
+//         },
+//       })
+
+//     const Rows = response?.data?.rows || [];
+
+//     const groupedData = Rows.reduce((acc, row) => {
+//       const yearMonth = row.dimensionValues[0]?.value;
+//       const PageTitle = row.dimensionValues[1]?.value;
+//       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
+//       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
+
+//       if (!acc[PageTitle]) {
+//         acc[PageTitle] = {
+//           MonthlyData: {},
+//           TotalSessions: 0,
+//           TotalPurchases: 0,
+//         };
+//       }
+
+//       if (!acc[PageTitle].MonthlyData[yearMonth]) {
+//         acc[PageTitle].MonthlyData[yearMonth] = {
+//           Month: yearMonth,
+//           Sessions: 0,
+//           Purchases: 0,
+//           "Conv. Rate": 0.00
+//         };
+//       }
+
+//       acc[PageTitle].MonthlyData[yearMonth].Sessions += sessions;
+//       acc[PageTitle].MonthlyData[yearMonth].Purchases += purchases;
+//       acc[PageTitle].TotalSessions += sessions;
+//       acc[PageTitle].TotalPurchases += purchases;
+
+//       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
+//       acc[PageTitle].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+
+//       return acc;
+//     }, {});
+
+//     let data = Object.entries(groupedData)
+//       .map(([pageTitle, pageTitleData]) => ({
+//         "Page Title": pageTitle,
+//         "Total Sessions": pageTitleData.TotalSessions,
+//         "Total Purchases": pageTitleData.TotalPurchases,
+//         "Avg Conv. Rate": pageTitleData.TotalSessions > 0 ? (pageTitleData.TotalPurchases / pageTitleData.TotalSessions) * 100 : 0.00,
+//         "MonthlyData": Object.values(pageTitleData.MonthlyData),
+//       }));
+
+
+//     data = data.sort((a, b) => b["Total Sessions"] - a["Total Sessions"]);
+
+//     let limitedData = data.slice(0, 500);
+
+//     if (sessionsFilter || convRateFilter) {
+//       limitedData = limitedData.filter(item => {
+//         const sessionCondition = sessionsFilter
+//           ? compareValues(item["Total Sessions"], sessionsFilter.value, sessionsFilter.operator)
+//           : true;
+
+//         const convRateCondition = convRateFilter
+//           ? compareValues(item["Avg Conv. Rate"], convRateFilter.value, convRateFilter.operator)
+//           : true;
+
+//         return sessionCondition && convRateCondition;
+//       });
+//     }
+
+//     const activeFilters = {};
+//     if (sessionsFilter) activeFilters.sessions = sessionsFilter;
+//     if (convRateFilter) activeFilters.conversionRate = convRateFilter;
+
+//     res.status(200).json({
+//       reportType: `Monthly Data for All PageTitle Sorted by Month`,
+//       activeFilters: Object.keys(activeFilters).length > 0 ? activeFilters : 'none',
+//       data: limitedData,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching PageTitle-Based Monthly Data:', error);
+
+//     if (error.response && error.response.status === 403) {
+//       return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+//     }
+
+//     res.status(500).json({ error: 'Failed to fetch Pagetitle-Based Monthly Data.' });
+//   }
+// }
 
 export async function getPageTitleWiseConversions(req, res) {
   try {
@@ -2879,7 +3373,8 @@ export async function getPageTitleWiseConversions(req, res) {
       ],
       metrics: [
         { name: 'sessions' },
-        { name: 'ecommercePurchases' }
+        { name: 'ecommercePurchases' },
+        { name: "bounceRate" }
       ]
     };
 
@@ -2901,12 +3396,16 @@ export async function getPageTitleWiseConversions(req, res) {
       const PageTitle = row.dimensionValues[1]?.value;
       const sessions = parseInt(row.metricValues[0]?.value || 0, 10);
       const purchases = parseInt(row.metricValues[1]?.value || 0, 10);
+      const bounceRate = Number(row.metricValues[2]?.value || 0);
+      const bouncedSessions = sessions * bounceRate;
 
       if (!acc[PageTitle]) {
         acc[PageTitle] = {
           MonthlyData: {},
           TotalSessions: 0,
           TotalPurchases: 0,
+          TotalBouncedSessions: 0,
+          MonthlyBouncedSessions: 0,
         };
       }
 
@@ -2915,17 +3414,27 @@ export async function getPageTitleWiseConversions(req, res) {
           Month: yearMonth,
           Sessions: 0,
           Purchases: 0,
-          "Conv. Rate": 0.00
+          "Conv. Rate": 0.00,
+          "Bounce Rate": 0.00,
+          MonthlyBouncedSessions: 0,
         };
       }
+
+      const monthRef = acc[PageTitle].MonthlyData[yearMonth];
 
       acc[PageTitle].MonthlyData[yearMonth].Sessions += sessions;
       acc[PageTitle].MonthlyData[yearMonth].Purchases += purchases;
       acc[PageTitle].TotalSessions += sessions;
       acc[PageTitle].TotalPurchases += purchases;
 
+      acc[PageTitle].TotalBouncedSessions += bouncedSessions
+      acc[PageTitle].MonthlyData[yearMonth].MonthlyBouncedSessions += bouncedSessions;
+
       const monthlyConvRate = sessions > 0 ? (purchases / sessions) * 100 : 0.00;
       acc[PageTitle].MonthlyData[yearMonth]["Conv. Rate"] = monthlyConvRate;
+      monthRef["Bounce Rate"] = monthRef.Sessions > 0
+        ? parseFloat(((monthRef.MonthlyBouncedSessions / monthRef.Sessions) * 100).toFixed(2))
+        : 0;
 
       return acc;
     }, {});

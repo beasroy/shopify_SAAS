@@ -274,7 +274,7 @@ export default function NewConversionTable({
         case "sessions":
           return Math.round(value).toLocaleString(locale)
         default:
-        // return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
+          // return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
           return value.toLocaleString(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -306,14 +306,14 @@ export default function NewConversionTable({
     return (
       <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
         <div className="space-y-1">
-          <div className="font-medium truncate">{renderCell(bounceRate, "bounceRate")}</div>
+          {/* <div className="font-medium truncate">{renderCell(bounceRate, "bounceRate")}</div> */}
           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
           {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
           {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
           {ConvValueCost !== undefined && <div className="text-xs truncate">Conv.rate: {ConvValueCost.toLocaleString(locale)}</div>}
           {ConvValueCost !== undefined && <div className="text-xs truncate"> {renderCell(convRate, "percentage")}</div>}
           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
-          {purchases !== undefined && <div className="text-xs truncate">Purchases: {purchases.toLocaleString(locale)}</div>}
+          <div className="text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
           {engagementRate !== undefined && <div className="text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>}
         </div>
       </td>
@@ -543,7 +543,7 @@ export default function NewConversionTable({
                       }`}
                   >
                     <div className="truncate">{month}</div>
-                    <div className="text-xs mt-1 truncate">{primaryColumn === "All Page" ? "Bounce Rate": "Sessions / Conv Rate"}</div>
+                    <div className="text-xs mt-1 truncate">{primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}</div>
 
                     {/* Resize handle for monthly columns */}
                     <div

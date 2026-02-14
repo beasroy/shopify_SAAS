@@ -35,6 +35,8 @@ import scrapingRoutes from "./routes/scraping.js"
 import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
+import productRoutes from "./routes/product.js";
+
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
@@ -96,21 +98,21 @@ dataOperationRouter.use("/google", googleRoutes);
 dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)
 dataOperationRouter.use("/highlights", dashboardHighlightsRoutes)
-dataOperationRouter.use("/zoho",zohoRoutes);
+dataOperationRouter.use("/zoho", zohoRoutes);
 dataOperationRouter.use("/analytics", locationAnalyticsRoutes);
-dataOperationRouter.use("/app",shopifyAppRoutes)
-dataOperationRouter.use("/shopify/webhooks",webhookRoutes)
-dataOperationRouter.use("/pricing",pricingRoutes)
-dataOperationRouter.use("/cache",cacheRoutes)
-dataOperationRouter.use("/ads",creativeRoutes)
-dataOperationRouter.use("/",shopifyWebhookRoutes)
-dataOperationRouter.use("/shopify",shopifyRoutes)
-dataOperationRouter.use("/d2c-calculator",d2cCalculatorRoutes)
-dataOperationRouter.use("/scraping",scrapingRoutes)
-dataOperationRouter.use("/pageSpeedInsights",pageSpeedInsightsRoutes)
-dataOperationRouter.use("/festival-dates",festivalDateRoutes)
-
-
+dataOperationRouter.use("/app", shopifyAppRoutes)
+dataOperationRouter.use("/shopify/webhooks", webhookRoutes)
+dataOperationRouter.use("/pricing", pricingRoutes)
+dataOperationRouter.use("/cache", cacheRoutes)
+dataOperationRouter.use("/ads", creativeRoutes)
+dataOperationRouter.use("/", shopifyWebhookRoutes)
+dataOperationRouter.use("/shopify", shopifyRoutes)
+dataOperationRouter.use("/d2c-calculator", d2cCalculatorRoutes)
+dataOperationRouter.use("/scraping", scrapingRoutes)
+dataOperationRouter.use("/pageSpeedInsights", pageSpeedInsightsRoutes)
+dataOperationRouter.use("/festival-dates", festivalDateRoutes)
+dataOperationRouter.use("/festival-dates", festivalDateRoutes)
+dataOperationRouter.use("/product", productRoutes)
 
 
 // Workers are initialized automatically when imported above
@@ -124,6 +126,7 @@ if (isDevelopment) {
 }
 
 await calculateMetricsForSingleBrand('68cc2437e78884ea57ff5385', '68cc2437e78884ea57ff5382');
+
 
 const PORT = process.env.PORT || 5000;
 

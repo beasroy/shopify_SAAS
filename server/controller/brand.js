@@ -1,7 +1,7 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
-import Product from "../models/Product.js";
+
 
 import { metricsQueue } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
@@ -410,29 +410,7 @@ export const deletePlatformIntegration = async (req, res) => {
     }
 }
 
-export async function deleteAllProducts(req, res) {
-    try {
-        const result = await Product.deleteMany({});
 
-        if (result.deletedCount === 0) {
-            return res.status(200).json({
-                success: true,
-                message: 'No products found',
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: `${result.deletedCount} products deleted successfully`,
-        });
-    } catch (error) {
-        console.error(`Error deleting products:`, error);
-        return res.status(500).json({
-            success: false,
-            error: 'Internal server error'
-        });
-    }
-}
 
 export async function deleteProductsByBrand(req, res) {
     try {
@@ -480,3 +458,4 @@ export async function deleteProductsByBrand(req, res) {
         });
     }
 }
+

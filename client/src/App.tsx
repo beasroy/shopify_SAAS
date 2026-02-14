@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import AuthForm from "./Auth/AuthForm.tsx";
 import { Toaster } from "@/components/ui/toaster"
 import AnalyticsDashboard from './pages/AnalyticsDashboard/AnalyticsDashboard.tsx';
 import GeneralDashboard from './pages/GeneralisedDashboard/GeneralDashboard.tsx'
@@ -36,6 +35,7 @@ import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
 import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.tsx';
 import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
 import LocationAnalyticsPage from './pages/LocationAnalytics/LocationAnalyticsPage.tsx';
+import AuthPage from './Auth/NewAuthPage.tsx';
 
 
 
@@ -52,7 +52,7 @@ function App() {
                 <Toaster />
                 <Routes>
                   <Route path='/' element={<LandingPage />} />
-                  <Route path="/login" element={<AuthForm />} />
+                  <Route path="/login" element={<AuthPage />} />
                   <Route path="/dashboard" element={<GeneralDashboard />} />
                   <Route path="/admetrics/:brandId" element={<AnalyticsDashboard />} />
                   <Route path='/ecommerce-reports/:brandId' element={<ReportsPage />} />

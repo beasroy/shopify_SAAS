@@ -448,9 +448,7 @@ export const calculateMetrics = async (req, res) => {
     }
 
     if (
-      COGSMultiplier === 0 &&
-      Object.keys(additionalCOGS)?.length === 0 &&
-      uploadedFileList?.length === 0
+      COGSMultiplier === 0 && Object.keys(additionalCOGS)?.length === 0 && uploadedFileList?.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -544,7 +542,46 @@ export const calculateMetrics = async (req, res) => {
       cogsDataToSave.additionalCOGS = additionalCOGSData;
     } else if (uploadedFileList?.length > 0) {
 
-      const cogsResult = await calculateCOGSFROMCSVLIST(uploadedFileList, brandId, startDate, endDate);
+      const cleanedList = []
+      const seen = new Set()
+
+      const invalidItem = uploadedFileList.find((item) => {
+
+        const productId = item.productId?.toString().trim();
+        const unitCost = item.unitCost?.toString().trim();
+
+        // 1. Missing or empty
+        if (!productId || !unitCost) {
+          return true;
+        }
+
+        // 2. unitCost must be a valid positive number
+        const costNumber = Number(unitCost);
+        if (!Number.isFinite(costNumber) || costNumber <= 0) {
+          return true;
+        }
+        // 3. Check if productId is already seen & handke duplicate
+        if (!seen.has(productId)) {
+
+          seen.add(productId);
+          cleanedList.push({
+            productId,
+            unitCost
+          });
+        }
+
+        return false;
+      });
+
+      if (invalidItem) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid CSV data: productId must be present and unitCost must be a positive number.'
+        });
+      }
+
+
+      const cogsResult = await calculateCOGSFROMCSVLIST(cleanedList, brandId, startDate, endDate);
       COGS = cogsResult?.totalCOGS || 0;
 
     }

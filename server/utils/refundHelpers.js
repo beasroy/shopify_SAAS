@@ -4,13 +4,8 @@ import Brand from '../models/Brands.js';
 import moment from 'moment-timezone';
 import axios from 'axios';
 
-/**
- * Calculate total refund amount from refund payload
- * Based on the refunds/create webhook payload structure
- * Formula: subtotal + discount + tax + shipping
- */
+
 export const calculateRefundAmount = (refundPayload) => {
-  // 1. Calculate subtotal from refund line items (product price after discount, before tax)
   let subtotal = 0;
   if (Array.isArray(refundPayload.refund_line_items)) {
     refundPayload.refund_line_items.forEach(item => {
@@ -18,7 +13,6 @@ export const calculateRefundAmount = (refundPayload) => {
     });
   }
 
-  // 2. Calculate tax from refund line items
   let tax = 0;
   if (Array.isArray(refundPayload.refund_line_items)) {
     refundPayload.refund_line_items.forEach(item => {
@@ -26,38 +20,16 @@ export const calculateRefundAmount = (refundPayload) => {
     });
   }
 
-  // 3. Calculate discount and shipping from order adjustments
-  // Order adjustments can include discount refunds and shipping refunds
-  // Amounts are typically negative, so we subtract to add them
+  
   let discount = 0;
   let shipping = 0;
-  
-  if (Array.isArray(refundPayload.order_adjustments)) {
-    refundPayload.order_adjustments.forEach(adjustment => {
-      const amount = Number(adjustment.amount || 0);
-      const reason = (adjustment.reason || '').toLowerCase();
-      
-      // Shipping adjustments are typically negative, so subtract to add
-      if (reason.includes('shipping') || reason.includes('delivery')) {
-        shipping -= amount; // Subtract negative to add positive
-      } else {
-        // Other adjustments (discounts, etc.) - subtract negative to add positive
-        discount -= amount;
-      }
-    });
-  }
 
-  // 4. Total refund = subtotal + discount + tax + shipping
   const totalRefund = subtotal + discount + tax + shipping;
 
   return Math.max(0, totalRefund); // Ensure non-negative
 };
 
-/**
- * Set OrderRefund entry for an order (used during historical sync)
- * Sets the total refund amount from all refunds in the order
- * This should be used when processing historical orders where we have the complete refund picture
- */
+
 export const setOrderRefund = async (brandId, orderId, totalRefundAmount, refundCount = 1) => {
   try {
     
@@ -84,9 +56,7 @@ export const setOrderRefund = async (brandId, orderId, totalRefundAmount, refund
   }
 };
 
-/**
- * Fetch order from Shopify REST API and create Order document if it doesn't exist
- */
+
 async function fetchAndCreateOrder(brandId, orderId) {
   try {
     const brand = await Brand.findById(brandId);
@@ -122,7 +92,8 @@ async function fetchAndCreateOrder(brandId, orderId) {
       orderCreatedAt: new Date(shopifyOrder.created_at),
       brandId: brandId,
       city: shopifyOrder.shipping_address?.city || null,
-      state: shopifyOrder.shipping_address?.province || null
+      state: shopifyOrder.shipping_address?.province || null,
+      country: shopifyOrder.shipping_address?.country || null
     });
 
     console.log(`✅ Created Order document for order ${orderId} from Shopify`);
@@ -137,11 +108,7 @@ async function fetchAndCreateOrder(brandId, orderId) {
   }
 }
 
-/**
- * Update OrderRefund entry for an order (used for webhook refunds)
- * Aggregates multiple refunds per order - ADDS to existing amount
- * If Order doesn't exist, fetches it from Shopify and creates it
- */
+
 export const updateOrderRefund = async (brandId, orderId, refundAmount) => {
   try {
     // Find existing order entry

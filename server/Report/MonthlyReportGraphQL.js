@@ -95,6 +95,7 @@ export const ORDERS_QUERY = `
           shippingAddress {
             city
             province
+            country
           }
           totalPriceSet {
             shopMoney {
@@ -474,6 +475,7 @@ export function convertGraphQLOrderToRESTFormat(graphQLOrder) {
     tags: graphQLOrder.tags,
     city: graphQLOrder.shippingAddress?.city || '',
     state: graphQLOrder.shippingAddress?.province || '',
+    country: graphQLOrder.shippingAddress?.country || '',
     cancelled_at: graphQLOrder.cancelledAt,
     total_price: graphQLOrder.totalPriceSet?.shopMoney?.amount || '0',
     subtotal_price: graphQLOrder.subtotalPriceSet?.shopMoney?.amount || '0',
@@ -556,7 +558,7 @@ export function calculateRefundAmount(order) {
  * Uses findOneAndUpdate with upsert for atomic operation
  * Updates existing orders (may have been created from refund webhook) or creates new ones
  */
-async function setOrder(brandId, orderId, created_at, city, state, totalPrice, refundAmount, cancelled_at, refundCount) {
+async function setOrder(brandId, orderId, created_at, city, state, country, totalPrice, refundAmount, cancelled_at, refundCount) {
   try {
     if (!brandId || !orderId || !created_at) {
       throw new Error('Missing required fields: brandId, orderId, or created_at');
@@ -572,6 +574,7 @@ async function setOrder(brandId, orderId, created_at, city, state, totalPrice, r
       brandId: brandId,
       city: city || null,
       state: state || null,
+      country: country || null,
       totalSales: totalPrice,
     };
 
@@ -612,7 +615,7 @@ export async function storeOrderData(brandId, order, totalPrice, refundAmount, r
     return;
   }
   try {
-    await setOrder(brandId, order.id, order.created_at, order.city, order.state, totalPrice, refundAmount, order.cancelled_at, refundCount);
+    await setOrder(brandId, order.id, order.created_at, order.city, order.state, order.country, totalPrice, refundAmount, order.cancelled_at, refundCount);
   } catch (error) {
     console.error(`Error storing order info for order ${order.id}:`, error);
   }

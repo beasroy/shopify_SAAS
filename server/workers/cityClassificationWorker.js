@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { createRedisConnection } from '../config/redis.js';
+import { connection } from '../config/redis.js';
 import { connectDB, getConnectionStatus } from '../config/db.js';
 import CityMetadata from '../models/CityMetadata.js';
 import { classifyCitiesWithGPT } from '../services/gptService.js';
@@ -76,7 +76,7 @@ const cityClassificationWorker = new Worker(
         }
     },
     {
-        connection: createRedisConnection(),
+        connection: connection, // Use the same connection as the queue
         concurrency: isDevelopment ? 1 : 2, // Process 1-2 batches concurrently
         limiter: {
             max: isDevelopment ? 5 : 10, // Max jobs per duration
@@ -90,16 +90,34 @@ const cityClassificationWorker = new Worker(
 );
 
 // Event handlers for city classification worker
+cityClassificationWorker.on('ready', () => {
+    console.log('✅ [Worker] City classification worker is ready and waiting for jobs');
+});
+
+cityClassificationWorker.on('active', (job) => {
+    console.log(`🔄 [Worker] Job ${job.id} is now active (starting to process)`);
+});
+
 cityClassificationWorker.on('completed', (job) => {
     console.log(`✅ [Worker] City classification job ${job.id} completed`);
 });
 
 cityClassificationWorker.on('failed', (job, err) => {
     console.error(`❌ [Worker] City classification job ${job.id} failed:`, err.message);
+    if (err.stack) {
+        console.error('   Stack:', err.stack);
+    }
 });
 
 cityClassificationWorker.on('error', (err) => {
     console.error('❌ [Worker] City classification worker error:', err);
+    if (err.stack) {
+        console.error('   Stack:', err.stack);
+    }
+});
+
+cityClassificationWorker.on('stalled', (jobId) => {
+    console.warn(`⚠️  [Worker] Job ${jobId} stalled (taking too long)`);
 });
 
 // Graceful shutdown handler
@@ -120,6 +138,10 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 console.log('✅ City classification worker initialized');
+console.log(`   Queue: city-classification`);
+console.log(`   Concurrency: ${isDevelopment ? 1 : 2}`);
+console.log(`   Rate limit: ${isDevelopment ? 5 : 10} jobs per minute`);
+console.log(`   Waiting for jobs...`);
 
 export default cityClassificationWorker;
 

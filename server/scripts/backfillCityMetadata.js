@@ -125,6 +125,54 @@ async function backfillCityMetadata() {
             process.exit(0);
         }
         
+        // Ensure Redis connection is established before queueing
+        console.log('🔌 Verifying Redis connection...');
+        try {
+            const queueConnection = cityClassificationQueue.opts.connection;
+            
+            // Test connection by trying to ping Redis
+            if (queueConnection) {
+                try {
+                    await queueConnection.ping();
+                    console.log('   ✅ Redis connection verified (ping successful)');
+                } catch (pingError) {
+                    // If ping fails, try to connect
+                    console.log('   Attempting to connect to Redis...');
+                    if (queueConnection.status !== 'ready' && queueConnection.status !== 'connecting') {
+                        await queueConnection.connect();
+                    }
+                    // Wait a bit for connection to establish
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Try ping again
+                    await queueConnection.ping();
+                    console.log('   ✅ Redis connected and verified');
+                }
+            } else {
+                throw new Error('No Redis connection found in queue configuration');
+            }
+        } catch (error) {
+            console.error('   ❌ Failed to connect to Redis:', error.message);
+            console.error('   Stack:', error.stack);
+            throw new Error(`Redis connection failed: ${error.message}`);
+        }
+        
+        // Ensure Redis connection is ready before queuing
+        const queueConnection = cityClassificationQueue.opts.connection;
+        if (queueConnection.status !== 'ready') {
+            console.log('   Ensuring Redis connection is ready...');
+            await queueConnection.connect();
+            // Wait for connection to be fully ready
+            let attempts = 0;
+            while (queueConnection.status !== 'ready' && attempts < 10) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            if (queueConnection.status !== 'ready') {
+                throw new Error('Redis connection failed to become ready');
+            }
+            console.log('   ✅ Redis connection ready');
+        }
+        
         // Queue batch jobs
         const batchSize = 20;
         let batchNumber = 1;
@@ -132,31 +180,173 @@ async function backfillCityMetadata() {
         
         console.log(`📦 Creating ${totalBatches} batch jobs...`);
         
+        let successCount = 0;
+        let errorCount = 0;
+        const queuedJobIds = [];
+        
         for (let i = 0; i < newCities.length; i += batchSize) {
             const batch = newCities.slice(i, i + batchSize);
             
-            await cityClassificationQueue.add('classify-cities-batch', {
-                type: 'batch',
-                cities: batch,
-                batchNumber: batchNumber++,
-                totalBatches: totalBatches
-            }, {
-                priority: 1,
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 2000
+            try {
+                // Add job with explicit jobId to ensure it's tracked
+                const job = await cityClassificationQueue.add('classify-cities-batch', {
+                    type: 'batch',
+                    cities: batch,
+                    batchNumber: batchNumber++,
+                    totalBatches: totalBatches
+                }, {
+                    priority: 1,
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 2000
+                    },
+                    // Don't remove jobs immediately - let them stay in queue
+                    removeOnComplete: false,
+                    removeOnFail: false
+                });
+                
+                if (job && job.id) {
+                    queuedJobIds.push(job.id);
+                    
+                    // Wait a bit longer to ensure job is persisted
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    // Verify job was actually persisted by trying to get it back
+                    try {
+                        const verifyJob = await cityClassificationQueue.getJob(job.id);
+                        if (verifyJob && verifyJob.id) {
+                            console.log(`✅ Queued batch ${batchNumber - 1}/${totalBatches} (${batch.length} cities) - Job ID: ${job.id} [verified in Redis]`);
+                            successCount++;
+                        } else {
+                            console.error(`⚠️  Queued batch ${batchNumber - 1}/${totalBatches} but job not found in Redis - Job ID: ${job.id}`);
+                            console.error(`   This indicates the job was created but not persisted to Redis`);
+                            errorCount++;
+                        }
+                    } catch (verifyError) {
+                        console.error(`⚠️  Error verifying job ${job.id}:`, verifyError.message);
+                        console.log(`✅ Queued batch ${batchNumber - 1}/${totalBatches} (${batch.length} cities) - Job ID: ${job.id} [verification failed]`);
+                        successCount++; // Count as success since we got a job ID
+                    }
+                } else {
+                    console.error(`❌ Failed to queue batch ${batchNumber - 1}/${totalBatches} - No job ID returned`);
+                    errorCount++;
                 }
-            });
-            
-            console.log(`✅ Queued batch ${batchNumber - 1}/${totalBatches} (${batch.length} cities)`);
+            } catch (error) {
+                console.error(`❌ Error queueing batch ${batchNumber - 1}/${totalBatches}:`, error.message);
+                if (error.stack) {
+                    console.error(`   Stack:`, error.stack);
+                }
+                errorCount++;
+            }
         }
         
-        console.log(`\n✅ Backfill complete! Queued ${totalBatches} batch jobs`);
+        if (errorCount > 0) {
+            console.log(`\n⚠️  Warning: ${errorCount} batches failed to queue (${successCount} succeeded)`);
+        }
+        
+        console.log(`\n✅ Backfill complete! Queued ${successCount}/${totalBatches} batch jobs successfully`);
+        if (errorCount > 0) {
+            console.log(`⚠️  ${errorCount} batches failed to queue`);
+        }
         console.log('ℹ️  Monitor the queue to see job progress');
         
-        // Wait a bit to ensure jobs are queued
+        // Wait a bit to ensure jobs are queued, then verify
         await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify jobs were actually added
+        try {
+            // First, check Redis directly
+            const queueConnection = cityClassificationQueue.opts.connection;
+            
+            // Check multiple Redis keys to see what's actually there
+            const waitKey = 'city-classification:wait';
+            const waitCount = await queueConnection.llen(waitKey).catch(() => 0);
+            
+            // Also check if job IDs exist in Redis
+            let foundJobCount = 0;
+            for (const jobId of queuedJobIds.slice(0, 5)) { // Check first 5
+                try {
+                    const jobKey = `city-classification:${jobId}`;
+                    const exists = await queueConnection.exists(jobKey);
+                    if (exists) foundJobCount++;
+                } catch (e) {
+                    // Ignore errors
+                }
+            }
+            
+            const counts = await cityClassificationQueue.getJobCounts();
+            const total = (counts.waiting || 0) + (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0);
+            
+            console.log(`\n📊 Queue verification:`);
+            console.log(`   Jobs queued: ${successCount}`);
+            console.log(`   Job IDs collected: ${queuedJobIds.length}`);
+            console.log(`   Waiting (BullMQ): ${counts.waiting || 0}`);
+            console.log(`   Waiting (Redis direct LLEN): ${waitCount}`);
+            console.log(`   Job keys found in Redis: ${foundJobCount}/5 checked`);
+            console.log(`   Active: ${counts.active || 0}`);
+            console.log(`   Completed: ${counts.completed || 0}`);
+            console.log(`   Failed: ${counts.failed || 0}`);
+            console.log(`   Delayed: ${counts.delayed || 0}`);
+            console.log(`   Total (BullMQ): ${total}`);
+            
+            // Try to get a few jobs directly
+            const sampleJobs = await cityClassificationQueue.getWaiting(0, 5).catch(() => []);
+            console.log(`   Sample waiting jobs (getWaiting): ${sampleJobs.length}`);
+            
+            if (total === 0 && waitCount === 0 && successCount > 0) {
+                console.log(`\n⚠️  WARNING: Jobs were queued but not found in queue!`);
+                console.log(`   This could indicate:`);
+                console.log(`   1. Jobs were processed immediately by a worker`);
+                console.log(`   2. Redis connection issue (different instance/database)`);
+                console.log(`   3. Queue name mismatch`);
+                console.log(`   4. Jobs were added but immediately removed`);
+                console.log(`   5. Redis eviction policy removed the keys`);
+                
+                // Check Redis eviction policy
+                try {
+                    const maxmemory = await queueConnection.config('GET', 'maxmemory-policy');
+                    console.log(`\n   Redis eviction policy: ${maxmemory[1] || 'unknown'}`);
+                    if (maxmemory[1] && maxmemory[1] !== 'noeviction') {
+                        console.log(`   ⚠️  WARNING: Redis eviction policy is "${maxmemory[1]}"`);
+                        console.log(`   ⚠️  BullMQ requires "noeviction" policy to prevent job loss`);
+                        console.log(`   💡 Fix with: redis-cli CONFIG SET maxmemory-policy noeviction`);
+                    }
+                } catch (e) {
+                    // Ignore
+                }
+                
+                // Check if cities were actually classified in the database
+                console.log(`\n🔍 Checking database to see if cities were classified...`);
+                const classifiedCount = await CityMetadata.countDocuments({
+                    source: 'gpt',
+                    processingStatus: 'completed',
+                    processedAt: { $gte: new Date(Date.now() - 60000) } // Last minute
+                });
+                
+                if (classifiedCount > 0) {
+                    console.log(`   ✅ Found ${classifiedCount} cities classified in the last minute!`);
+                    console.log(`   ✅ Jobs WERE processed successfully by a worker`);
+                } else {
+                    console.log(`   ❌ No cities classified in the last minute`);
+                    console.log(`   ⚠️  Jobs were queued but NOT processed`);
+                    console.log(`   💡 The worker needs to be running to process jobs.`);
+                    console.log(`   💡 If your server is running, the worker should start automatically.`);
+                    console.log(`   💡 Otherwise, start the worker manually:`);
+                    console.log(`      node server/workers/cityClassificationWorker.js`);
+                }
+            } else if (waitCount > 0 && total === 0) {
+                console.log(`\n⚠️  WARNING: Jobs found in Redis (${waitCount}) but BullMQ counts show 0!`);
+                console.log(`   This suggests a BullMQ connection or state issue.`);
+                console.log(`   Jobs are in Redis and should be processed by the worker.`);
+            } else if (waitCount > 0 || total > 0) {
+                console.log(`\n✅ Jobs are waiting in the queue (${waitCount} in Redis, ${counts.waiting} via BullMQ)`);
+                console.log(`   The worker should process them automatically.`);
+            }
+        } catch (error) {
+            console.error(`\n❌ Error verifying queue:`, error.message);
+            console.error(`   Stack:`, error.stack);
+        }
         
         // Release lock before exiting
         if (lockAcquired) {

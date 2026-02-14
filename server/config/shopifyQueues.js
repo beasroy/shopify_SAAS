@@ -57,6 +57,8 @@ export const cityClassificationQueue = new Queue('city-classification', {
       type: 'exponential',
       delay: 2000
     },
+    // Don't remove jobs immediately - keep them for monitoring
+    // They'll be cleaned up by the worker after processing
     removeOnComplete: {
       age: 86400, // Keep for 24 hours
       count: 1000

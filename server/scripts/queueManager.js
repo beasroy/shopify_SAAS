@@ -29,8 +29,16 @@ const queues = {
  */
 async function getQueueStatus(queueName, queue) {
   try {
+    // BullMQ handles Redis connection automatically with lazyConnect
+    // Just call the methods and they will connect if needed
     const counts = await queue.getJobCounts();
     const isPaused = await queue.isPaused();
+    
+    // Also try to get some actual jobs for debugging
+    const waitingJobs = await queue.getWaiting(0, 5);
+    const activeJobs = await queue.getActive(0, 5);
+    const completedJobs = await queue.getCompleted(0, 5);
+    const failedJobs = await queue.getFailed(0, 5);
     
     return {
       name: queueName,
@@ -40,10 +48,18 @@ async function getQueueStatus(queueName, queue) {
       completed: counts.completed || 0,
       failed: counts.failed || 0,
       delayed: counts.delayed || 0,
-      total: (counts.waiting || 0) + (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0)
+      total: (counts.waiting || 0) + (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0),
+      // Debug info
+      _debug: {
+        waitingJobsCount: waitingJobs.length,
+        activeJobsCount: activeJobs.length,
+        completedJobsCount: completedJobs.length,
+        failedJobsCount: failedJobs.length
+      }
     };
   } catch (error) {
     console.error(`❌ Error getting status for ${queueName}:`, error.message);
+    console.error('   Stack:', error.stack);
     return { name: queueName, error: error.message };
   }
 }
@@ -54,6 +70,10 @@ async function getQueueStatus(queueName, queue) {
 async function showStatus(queueName = null) {
   console.log('\n📊 Queue Status\n');
   console.log('═'.repeat(80));
+  
+  // BullMQ handles Redis connection automatically with lazyConnect
+  // The connection will be established when we call queue methods
+  // No need to manually connect
   
   if (queueName && queues[queueName]) {
     // Show specific queue
@@ -93,6 +113,18 @@ function displayQueueStatus(status) {
   console.log(`   Failed:     ${status.failed}`);
   console.log(`   Delayed:    ${status.delayed}`);
   console.log(`   Total:      ${status.total}`);
+  
+  // Show debug info if available
+  if (status._debug) {
+    if (status.total === 0 && (status._debug.waitingJobsCount > 0 || status._debug.activeJobsCount > 0 || 
+        status._debug.completedJobsCount > 0 || status._debug.failedJobsCount > 0)) {
+      console.log(`   ⚠️  Debug: Found jobs but counts show 0 (possible Redis connection issue)`);
+      console.log(`      Waiting samples: ${status._debug.waitingJobsCount}`);
+      console.log(`      Active samples: ${status._debug.activeJobsCount}`);
+      console.log(`      Completed samples: ${status._debug.completedJobsCount}`);
+      console.log(`      Failed samples: ${status._debug.failedJobsCount}`);
+    }
+  }
 }
 
 /**
@@ -322,6 +354,176 @@ async function getFailedJobs(queueName, queue, limit = 10) {
 }
 
 /**
+ * Check Redis keys for a queue
+ */
+async function checkRedisKeys(queueName) {
+  try {
+    console.log(`\n🔍 Checking Redis keys for queue: ${queueName}\n`);
+    
+    // BullMQ uses specific key patterns
+    const keyPatterns = [
+      `${queueName}:wait`,
+      `${queueName}:active`,
+      `${queueName}:completed`,
+      `${queueName}:failed`,
+      `${queueName}:delayed`,
+      `${queueName}:meta`,
+      `${queueName}:id`,
+      `${queueName}:events`,
+      `${queueName}:priority`,
+    ];
+    
+    console.log('Checking for Redis keys with patterns:');
+    keyPatterns.forEach(pattern => console.log(`  - ${pattern}*`));
+    console.log('');
+    
+    // Get all keys matching the queue name
+    const allKeys = await redis.keys(`${queueName}:*`);
+    
+    if (allKeys.length === 0) {
+      console.log('❌ No Redis keys found for this queue!');
+      console.log('   This means:');
+      console.log('   1. Jobs were never added to Redis');
+      console.log('   2. Jobs were added to a different Redis database');
+      console.log('   3. Jobs were added to a different Redis instance');
+      console.log('   4. All jobs were processed and cleaned up');
+      console.log('');
+      const db = redis.options?.db || 0;
+      console.log(`   Current Redis config: host=${redis.options?.host || '127.0.0.1'}, port=${redis.options?.port || '6379'}, db=${db}`);
+    } else {
+      console.log(`✅ Found ${allKeys.length} Redis keys:\n`);
+      
+      // Group keys by type
+      const grouped = {};
+      allKeys.forEach(key => {
+        const parts = key.split(':');
+        const type = parts[parts.length - 1] || 'unknown';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(key);
+      });
+      
+      Object.entries(grouped).forEach(([type, keys]) => {
+        console.log(`   ${type}: ${keys.length} key(s)`);
+        if (keys.length <= 5) {
+          keys.forEach(key => console.log(`      - ${key}`));
+        } else {
+          keys.slice(0, 5).forEach(key => console.log(`      - ${key}`));
+          console.log(`      ... and ${keys.length - 5} more`);
+        }
+        console.log('');
+      });
+      
+      // Check for job IDs in wait/active lists
+      const waitKey = `${queueName}:wait`;
+      const activeKey = `${queueName}:active`;
+      
+      if (allKeys.includes(waitKey)) {
+        const waitCount = await redis.llen(waitKey);
+        console.log(`   Waiting jobs (list length): ${waitCount}`);
+      }
+      
+      if (allKeys.includes(activeKey)) {
+        const activeCount = await redis.llen(activeKey);
+        console.log(`   Active jobs (list length): ${activeCount}`);
+      }
+    }
+    
+    return allKeys;
+  } catch (error) {
+    console.error(`❌ Error checking Redis keys:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * List recent jobs (all states)
+ */
+async function listRecentJobs(queueName, queue, limit = 20) {
+  try {
+    console.log(`\n📋 Recent Jobs in ${queueName} (showing up to ${limit} of each type)\n`);
+    
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
+      queue.getWaiting(0, limit),
+      queue.getActive(0, limit),
+      queue.getCompleted(0, limit),
+      queue.getFailed(0, limit),
+      queue.getDelayed(0, limit)
+    ]);
+    
+    if (waiting.length > 0) {
+      console.log(`⏳ Waiting (${waiting.length}):`);
+      waiting.forEach((job, index) => {
+        console.log(`   ${index + 1}. ID: ${job.id}, Name: ${job.name}, Created: ${new Date(job.timestamp).toISOString()}`);
+        if (job.data.batchNumber) {
+          console.log(`      Batch: ${job.data.batchNumber}/${job.data.totalBatches || '?'}, Cities: ${job.data.cities?.length || 0}`);
+        }
+      });
+      console.log('');
+    }
+    
+    if (active.length > 0) {
+      console.log(`🔄 Active (${active.length}):`);
+      active.forEach((job, index) => {
+        console.log(`   ${index + 1}. ID: ${job.id}, Name: ${job.name}, Started: ${job.processedOn ? new Date(job.processedOn).toISOString() : 'N/A'}`);
+        if (job.data.batchNumber) {
+          console.log(`      Batch: ${job.data.batchNumber}/${job.data.totalBatches || '?'}, Cities: ${job.data.cities?.length || 0}`);
+        }
+      });
+      console.log('');
+    }
+    
+    if (completed.length > 0) {
+      console.log(`✅ Completed (${completed.length}):`);
+      completed.forEach((job, index) => {
+        console.log(`   ${index + 1}. ID: ${job.id}, Name: ${job.name}`);
+        console.log(`      Finished: ${job.finishedOn ? new Date(job.finishedOn).toISOString() : 'N/A'}`);
+        if (job.data.batchNumber) {
+          console.log(`      Batch: ${job.data.batchNumber}/${job.data.totalBatches || '?'}`);
+        }
+        if (job.returnvalue) {
+          console.log(`      Result: ${JSON.stringify(job.returnvalue)}`);
+        }
+      });
+      console.log('');
+    }
+    
+    if (failed.length > 0) {
+      console.log(`❌ Failed (${failed.length}):`);
+      failed.forEach((job, index) => {
+        console.log(`   ${index + 1}. ID: ${job.id}, Name: ${job.name}`);
+        console.log(`      Failed: ${job.failedReason || 'N/A'}`);
+        if (job.data.batchNumber) {
+          console.log(`      Batch: ${job.data.batchNumber}/${job.data.totalBatches || '?'}`);
+        }
+      });
+      console.log('');
+    }
+    
+    if (delayed.length > 0) {
+      console.log(`⏰ Delayed (${delayed.length}):`);
+      delayed.forEach((job, index) => {
+        console.log(`   ${index + 1}. ID: ${job.id}, Name: ${job.name}, Delayed until: ${job.opts.delay ? new Date(Date.now() + job.opts.delay).toISOString() : 'N/A'}`);
+      });
+      console.log('');
+    }
+    
+    if (waiting.length === 0 && active.length === 0 && completed.length === 0 && failed.length === 0 && delayed.length === 0) {
+      console.log('   No jobs found in any state');
+      console.log('   This could mean:');
+      console.log('   1. Jobs were processed and removed (check removeOnComplete settings)');
+      console.log('   2. Jobs were never added (check for errors during queue.add)');
+      console.log('   3. Redis connection issue (different Redis instance/database)');
+      console.log('');
+    }
+    
+    return { waiting, active, completed, failed, delayed };
+  } catch (error) {
+    console.error(`❌ Error listing jobs:`, error.message);
+    throw error;
+  }
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -342,6 +544,8 @@ Commands:
   pause [queue-name]                 Pause queue processing
   resume [queue-name]                Resume queue processing
   failed [queue-name] [limit]        Show failed jobs (default: 10)
+  list [queue-name] [limit]          List recent jobs in all states (default: 20)
+  check-keys [queue-name]            Check Redis keys directly for a queue
   locks                              List all active locks
   lock-status <lock-key>              Check if a lock exists
   release-lock <lock-key>             Release a lock (e.g., backfill-city-metadata)
@@ -356,6 +560,8 @@ Available Queues:
 Examples:
   node server/scripts/queueManager.js status
   node server/scripts/queueManager.js status city-classification
+  node server/scripts/queueManager.js list city-classification
+  node server/scripts/queueManager.js check-keys city-classification
   node server/scripts/queueManager.js clean city-classification
   node server/scripts/queueManager.js failed city-classification 20
   node server/scripts/queueManager.js locks
@@ -429,6 +635,29 @@ Examples:
         }
         const limit = Number.parseInt(process.argv[4]) || 10;
         await getFailedJobs(queueName, queues[queueName], limit);
+        break;
+      }
+        
+      case 'list': {
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        if (!queues[queueName]) {
+          console.error(`❌ Queue "${queueName}" not found`);
+          process.exit(1);
+        }
+        const limit = Number.parseInt(process.argv[4]) || 20;
+        await listRecentJobs(queueName, queues[queueName], limit);
+        break;
+      }
+        
+      case 'check-keys': {
+        if (!queueName) {
+          console.error('❌ Please specify a queue name');
+          process.exit(1);
+        }
+        await checkRedisKeys(queueName);
         break;
       }
         

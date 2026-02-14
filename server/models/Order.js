@@ -39,6 +39,9 @@ const OrderSchema = new mongoose.Schema({
     state: {
         type: String,
     },
+    country: {
+        type: String,
+    },
 }, {
     timestamps: true
 });
@@ -51,6 +54,7 @@ OrderSchema.index({ brandId: 1, orderId: 1 }, { unique: true });
 OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1 });
 // Compound index for optimized location analytics aggregation pipeline
 OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1, state: 1 });
+OrderSchema.index({ brandId: 1, orderCreatedAt: -1, city: 1, state: 1, country: 1 });
 
 
 

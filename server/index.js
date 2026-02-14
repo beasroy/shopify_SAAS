@@ -19,6 +19,8 @@ import summaryRoutes from "./routes/summary.js"
 import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
+// Import worker to start it automatically (side effect import)
+import "./workers/cityClassificationWorker.js";
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
@@ -35,6 +37,7 @@ import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
 
+import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
 
@@ -82,7 +85,6 @@ const dataOperationRouter = express.Router();
 app.use('/api', dataOperationRouter);
 
 dataOperationRouter.use("/auth", authRoutes);
-// dataOperationRouter.use("/shopify",spotifyRoutes);
 dataOperationRouter.use("/analytics", analyticsRoutes);
 dataOperationRouter.use("/brands", brandRoutes);
 dataOperationRouter.use("/metrics", fbMetricrRoutes);
@@ -113,6 +115,9 @@ dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
 
 
+// Workers are initialized automatically when imported above
+// The city classification worker will start processing jobs from the queue
+
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');
 } else {
@@ -120,6 +125,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
+await calculateMetricsForSingleBrand('68cc2437e78884ea57ff5385', '68cc2437e78884ea57ff5382');
 
 
 const PORT = process.env.PORT || 5000;

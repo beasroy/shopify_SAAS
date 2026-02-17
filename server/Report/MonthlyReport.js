@@ -92,7 +92,7 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
                 if (batchRequests.length >= 50 || currentDay.isSame(chunkEnd)) {
                     try {
                         const response = await axios.post(
-                            'https://graph.facebook.com/v21.0/',
+                            'https://graph.facebook.com/v22.0/',
                             { batch: batchRequests },
                             {
                                 headers: { 'Content-Type': 'application/json' },

@@ -3,20 +3,17 @@ import { useTokenError } from "@/context/TokenErrorContext";
 import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { RootState } from "@/store/index.ts";
-import { ChartBar, Maximize, Minimize, RefreshCw, Landmark, Route, Captions } from "lucide-react";
+import { ChartBar, Maximize, Minimize, RefreshCw, Route, Captions } from "lucide-react";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
 import ConnectPlatform from '../ReportPage/ConnectPlatformPage';
 import { SideTab } from "@/components/ui/side-tab";
 import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
 import { Card, CardContent } from "@/components/ui/card";
-import PerformanceSummary from "../ConversionReportPage/components/PerformanceSummary";
-import { metricConfigs } from "@/data/constant";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import NumberFormatSelector from "@/components/dashboard_component/NumberFormatSelector";
 import { Button } from "@/components/ui/button";
 import ExcelDownload from "../ConversionReportPage/components/ExcelDownload";
-import LandingPageConversion from "./components/LandingPageConversion";
 import PagePathConversion from "./components/PagePathConversion";
 import PageTitleConversion from "./components/PageTitleConversion";
 
@@ -34,11 +31,12 @@ const ProductPage: React.FC = () => {
     const hasGA4Account = selectedBrand?.ga4Account ?? false;
     const { tokenError } = useTokenError();
 
-    const [activeTab, setActiveTab] = React.useState('landingPage');
+    const [activeTab, setActiveTab] = React.useState('pagePath');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
-    const [currentFilter, setCurrentFilter] = React.useState<string[] | undefined>(undefined);
     const [tabData, setTabData] = React.useState<any[]>([]);
     const [refreshTrigger, setRefreshTrigger] = React.useState(0);
+    const [pagePathFilter, setPagePathFilter] = React.useState<'all' | 'collection' | 'product'>('all');
+    const [pageTitleFilter, setPageTitleFilter] = React.useState<'all' | 'collection' | 'product'>('all');
 
     const toggleFullScreen = () => {
         setIsFullScreen(!isFullScreen);
@@ -48,13 +46,6 @@ const ProductPage: React.FC = () => {
         setRefreshTrigger(prev => prev + 1);
     }, []);
 
-    const handleCategoryFilter = (items: (string | number)[] | undefined) => {
-        if (items === undefined) {
-            setCurrentFilter(undefined);
-        } else {
-            setCurrentFilter(items.map(item => String(item)));
-        }
-    };
 
     const handleTabDataUpdate = (data: any[], tabType?: string) => {
         if (tabType === activeTab) {
@@ -64,7 +55,6 @@ const ProductPage: React.FC = () => {
 
     const getPrimaryColumnForTab = (tab: string): string => {
         const columnMap: Record<string, string> = {
-            'landingPage': 'Landing Page',
             'pagePath': 'Page Path',
             'pageTitle': 'Page Title'
         };
@@ -73,7 +63,6 @@ const ProductPage: React.FC = () => {
 
     const getSecondaryColumnsForTab = (tab: string): string[] => {
         const columnMap: Record<string, string[]> = {
-            'landingPage': ['Total Sessions', 'Avg Conv. Rate'],
             'pagePath': ['Total Sessions', 'Avg Conv. Rate'],
             'pageTitle': ['Total Sessions', 'Avg Conv. Rate']
         };
@@ -82,7 +71,6 @@ const ProductPage: React.FC = () => {
 
     const getFileNameForTab = (tab: string): string => {
         const fileMap: Record<string, string> = {
-            'landingPage': 'LandingPage_Product_Report',
             'pagePath': 'PagePath_Product_Report',
             'pageTitle': 'PageTitle_Product_Report'
         };
@@ -90,7 +78,6 @@ const ProductPage: React.FC = () => {
     };
 
     const tabs = [
-        { label: 'Landing Page', value: 'landingPage', icon: <Landmark className="w-4 h-4" /> },
         { label: 'Page Path', value: 'pagePath', icon: <Route className="w-4 h-4" /> },
         { label: 'Page Title', value: 'pageTitle', icon: <Captions className="w-4 h-4" /> }
     ];
@@ -98,7 +85,8 @@ const ProductPage: React.FC = () => {
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         setTabData([]);
-        setCurrentFilter(undefined);
+        setPagePathFilter('all'); // Reset filter when switching tabs
+        setPageTitleFilter('all'); // Reset filter when switching tabs
     };
 
     if (tokenError) {
@@ -159,13 +147,34 @@ const ProductPage: React.FC = () => {
                                     <Card id={`${activeTab}-report`} className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
                                         <CardContent className="p-3">
                                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-                                                <div className="flex-grow items-center gap-3">
-                                                    <PerformanceSummary
-                                                        data={tabData}
-                                                        primaryColumn={getPrimaryColumnForTab(activeTab)}
-                                                        metricConfig={metricConfigs.sessionsAndConversion || {}}
-                                                        onCategoryFilter={handleCategoryFilter}
-                                                    />
+                                                {/* Filter tabs for Page Path and Page Title */}
+                                                <div className="flex gap-2">
+                                                    {activeTab === 'pagePath' && (
+                                                        <>
+                                                            <Button
+                                                                variant={pagePathFilter === 'all' ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                onClick={() => setPagePathFilter('all')}
+                                                            >
+                                                                All
+                                                            </Button>
+                                                            <Button
+                                                                variant={pagePathFilter === 'collection' ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                onClick={() => setPagePathFilter('collection')}
+                                                            >
+                                                                Collection
+                                                            </Button>
+                                                            <Button
+                                                                variant={pagePathFilter === 'product' ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                onClick={() => setPagePathFilter('product')}
+                                                            >
+                                                                Product
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                              
                                                 </div>
                                                 <div className="flex flex-row items-center gap-1.5 ">
                                                     <div className="transition-transform duration-300 ease-in-out hover:scale-105">
@@ -196,26 +205,21 @@ const ProductPage: React.FC = () => {
                                             </div>
                                             <div className="rounded-md overflow-hidden">
                                                 <div id={activeTab}>
-                                                    {activeTab === 'landingPage' && (
-                                                        <LandingPageConversion
-                                                            isFullScreen={isFullScreen}
-                                                            currentFilter={currentFilter}
-                                                            onDataUpdate={handleTabDataUpdate}
-                                                            refreshTrigger={refreshTrigger}
-                                                        />
-                                                    )}
                                                     {activeTab === 'pagePath' && (
-                                                        <PagePathConversion
-                                                            isFullScreen={isFullScreen}
-                                                            currentFilter={currentFilter}
-                                                            onDataUpdate={handleTabDataUpdate}
-                                                            refreshTrigger={refreshTrigger}
-                                                        />
+                                                        <>
+                                                           
+                                                            <PagePathConversion
+                                                                isFullScreen={isFullScreen}
+                                                                pagePathFilter={pagePathFilter}
+                                                                onDataUpdate={handleTabDataUpdate}
+                                                                refreshTrigger={refreshTrigger}
+                                                            />
+                                                        </>
                                                     )}
                                                     {activeTab === 'pageTitle' && (
                                                         <PageTitleConversion
                                                             isFullScreen={isFullScreen}
-                                                            currentFilter={currentFilter}
+                                                            pageTitleFilter={pageTitleFilter}
                                                             onDataUpdate={handleTabDataUpdate}
                                                             refreshTrigger={refreshTrigger}
                                                         />

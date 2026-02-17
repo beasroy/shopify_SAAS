@@ -171,7 +171,7 @@ export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccoun
   ]);
 
   const response = await axios.post(
-    `https://graph.facebook.com/v21.0/`,
+    `https://graph.facebook.com/v22.0/`,
     { batch: batchRequests },
     {
       headers: { 'Content-Type': 'application/json' },

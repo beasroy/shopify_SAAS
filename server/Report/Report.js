@@ -360,7 +360,7 @@ export const fetchFBAdReport = async (brandId) => {
     }));
 
     const response = await axios.post(
-      `https://graph.facebook.com/v21.0/`,
+      `https://graph.facebook.com/v22.0/`,
       { batch: batchRequests },
       {
         headers: {

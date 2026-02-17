@@ -30,6 +30,8 @@ export type FunnelRow = {
   checkoutRate: string
   purchases: number
   purchaseRate: string
+  atcToCheckoutRate: string
+  checkoutToPurchaseRate: string
   aov?: number
   averageItemsPerOrder?: number
   codOrderCount?: number
@@ -58,6 +60,8 @@ const allColumns: ColumnDef[] = [
   { key: "checkoutRate", header: "Checkout Rate", width: 150, minWidth: 130, align: "right" },
   { key: "purchases", header: "Purchases", width: 130, minWidth: 110, align: "right" },
   { key: "purchaseRate", header: "Purchase Rate", width: 150, minWidth: 130, align: "right" },
+  { key: "atcToCheckoutRate", header: "ATC To Checkout Rate", width: 150, minWidth: 130, align: "right" },
+  { key: "checkoutToPurchaseRate", header: "Checkout To Purchase Rate", width: 150, minWidth: 130, align: "right" },
   { key: "aov", header: "AOV", width: 120, minWidth: 110, align: "right" },
   { key: "averageItemsPerOrder", header: "Avg Items/Order", width: 150, minWidth: 130, align: "right" },
   { key: "codOrderCount", header: "COD Orders", width: 130, minWidth: 110, align: "right" },
@@ -126,6 +130,8 @@ export default function ReportTable({
       'Checkout Rate': 'checkoutRate',
       'Purchases': 'purchases',
       'Purchase Rate': 'purchaseRate',
+      'ATC To Checkout Rate': 'atcToCheckoutRate',
+      'Checkout To Purchase Rate': 'checkoutToPurchaseRate',
       'AOV': 'aov',
       'Avg Items/Order': 'averageItemsPerOrder',
       'COD Orders': 'codOrderCount',

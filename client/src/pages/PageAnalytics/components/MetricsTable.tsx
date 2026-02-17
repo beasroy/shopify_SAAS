@@ -43,13 +43,14 @@ export default function MetricsTable({
   const columns = React.useMemo(() => {
     const baseColumns: ColumnDef[] = [
       { key: primaryColumn, header: primaryColumn, width: 300, minWidth: 150, align: "left" },
+      { key: "Bounce Rate", header: "Bounce Rate", width: 140, minWidth: 130, align: "right" },
       { key: "Sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
+      { key: "Sales", header: "Sales", width: 140, minWidth: 130, align: "right" },
       { key: "Purchases", header: "Purchases", width: 120, minWidth: 110, align: "right" },
       { key: "ATC", header: "ATC", width: 100, minWidth: 90, align: "right" },
       { key: "ATC Rate", header: "ATC Rate", width: 130, minWidth: 120, align: "right" },
       { key: "Checkout", header: "Checkout", width: 120, minWidth: 110, align: "right" },
       { key: "Checkout Rate", header: "Checkout Rate", width: 150, minWidth: 140, align: "right" },
-      { key: "Bounce Rate", header: "Bounce Rate", width: 140, minWidth: 130, align: "right" },
       { key: "Conversion Rate", header: "Conversion Rate", width: 160, minWidth: 150, align: "right" },
     ]
     return baseColumns

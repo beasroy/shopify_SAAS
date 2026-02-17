@@ -19,6 +19,8 @@ interface EcommerceMetric {
   "Purchase Rate": string
   "Add To Cart Rate": string
   "Checkout Rate": string
+  "ATC To Checkout Rate": string
+  "Checkout To Purchase Rate": string
 }
 
 interface EcommerceMetricsProps {
@@ -218,7 +220,9 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         codOrderCount: codOrderCount,
         prepaidOrderCount: prepaidOrderCount,
         productsLaunched: productsLaunched,
-        returningCustomerPercentage: returningCustomerPercentage
+        returningCustomerPercentage: returningCustomerPercentage,
+        atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
+        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
       };
     });
   }, [data, aovData, paymentOrdersData, apiErrors]);

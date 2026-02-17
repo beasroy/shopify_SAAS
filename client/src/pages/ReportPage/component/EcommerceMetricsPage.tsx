@@ -19,6 +19,8 @@ interface EcommerceMetric {
   "Purchase Rate": string
   "Add To Cart Rate": string
   "Checkout Rate": string
+  "ATC To Checkout Rate": string
+  "Checkout To Purchase Rate": string
 }
 
 interface EcommerceMetricsProps {
@@ -73,7 +75,9 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
       checkouts: parseInt(item['Checkouts']) || 0,
       checkoutRate: item['Checkout Rate'] || '0%',
       purchases: parseInt(item['Purchases']) || 0,
-      purchaseRate: item['Purchase Rate'] || '0%'
+      purchaseRate: item['Purchase Rate'] || '0%',
+      atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
+      checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
     }));
   }, [data]);
 

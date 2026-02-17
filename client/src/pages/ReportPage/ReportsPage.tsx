@@ -50,7 +50,7 @@ const ReportsPage: React.FC = () => {
 
   const baseColumns = [
     'Sessions', 'Add To Cart', 'Add To Cart Rate', 
-    'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate'
+    'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate', 'ATC To Checkout Rate', 'Checkout To Purchase Rate'
   ];
 
   // Get columns based on active tab - AOV, Avg Items/Order, COD Orders, and Prepaid Orders are only available for monthly metrics
@@ -88,7 +88,7 @@ const ReportsPage: React.FC = () => {
       },
       {
         label: "Rates View", 
-        columns: [timeColumn, 'Sessions', 'Add To Cart Rate', 'Checkout Rate', 'Purchase Rate']
+        columns: [timeColumn, 'Sessions', 'Add To Cart Rate', 'Checkout Rate', 'Purchase Rate', 'ATC To Checkout Rate', 'Checkout To Purchase Rate']
       }
     ];
   };

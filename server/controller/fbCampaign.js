@@ -228,7 +228,7 @@ export const fetchCampaignData = async (adAccountIds, accessToken, startDate, en
     console.log(`[API] Fetching campaign data for ${adAccountIds.length} accounts from ${startDate} to ${endDate}`);
     
     const response = await axios.post(
-      `https://graph.facebook.com/v21.0/`,
+      `https://graph.facebook.com/v22.0/`,
       { batch: batchRequests },
       {
         headers: { 'Content-Type': 'application/json' },

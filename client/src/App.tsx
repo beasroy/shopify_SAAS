@@ -29,7 +29,7 @@ import AddBrandDashboard from './pages/GeneralisedDashboard/AddBrandDashboard.ts
 import AutoLogout from './components/dashboard_component/AutoLogout.tsx';
 import CreativesLibrary from './pages/CreativesLibrary/CreativesLibrary.tsx';
 import D2CCalculator from './pages/D2CCalculator/D2CCalculator.tsx';
-import ProductPage from './pages/Product/ProductPage.tsx';
+import PageAnalytics from './pages/PageAnalytics/PageAnalytics.tsx';
 import BounceRatePage from './pages/BounceRate/BounceRatePage.tsx';
 import FollowedBrands from './pages/FollowedBrands/FollowedBrands.tsx';
 import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.tsx';
@@ -62,7 +62,7 @@ function App() {
                   <Route path='/meta-reports/:brandId' element={<FbReportPage />} />
                   <Route path='/google-reports/:brandId' element={<GoogleAdsDashboard />} />
                   <Route path="/conversion-reports/:brandId" element={<ConversionLens />} />
-                  <Route path="/product-reports/:brandId" element={<ProductPage />} />
+                  <Route path="/page-analytics/:brandId" element={<PageAnalytics />} />
                   <Route path="/callback" element={<GoogleCallback />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/shopify" element={<ShopifyAuth />} />

@@ -17,7 +17,6 @@ import {
   ShoppingCart,
   Package,
   Eye,
-  SquareDashedMousePointer,
   Gauge,
   ChartBarIncreasing
 } from "lucide-react"
@@ -177,8 +176,8 @@ export default function CollapsibleSidebar() {
       ],
     },
     { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
-    { name: "Product", path: `/product-reports/${selectedBrandId}`, icon: <Package size={20} /> },
-    { name: "Bounce Rate", path: `/bounce-rate-reports/${selectedBrandId}`, icon: <SquareDashedMousePointer size={20} /> },
+    { name: "Page Analytics", path: `/page-analytics/${selectedBrandId}`, icon: <Package size={20} /> },
+    //{ name: "Bounce Rate", path: `/bounce-rate-reports/${selectedBrandId}`, icon: <SquareDashedMousePointer size={20} /> },
     //{ name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
   ]
 

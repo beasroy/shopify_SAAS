@@ -296,7 +296,7 @@ export default function NewConversionTable({
 
     const sessions = monthData["Sessions"]
     const convRate = monthData["Conv. Rate"]
-    const purchases = monthData["Purchases"]
+    // const purchases = monthData["Purchases"]
     const cost = monthData["Cost"]
     const clicks = monthData["Clicks"]
     const ConvValueCost = monthData["Conv. Value/ Cost"]

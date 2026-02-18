@@ -5,26 +5,27 @@ import { format } from 'date-fns';
 import { useParams } from 'react-router-dom';
 import createAxiosInstance from "../../ConversionReportPage/components/axiosInstance";
 import Loader from "@/components/dashboard_component/loader";
-import NewConversionTable from "../../ConversionReportPage/components/ConversionTable";
+import MetricsTable, { MetricsRow } from "./MetricsTable";
 
 interface ConversionComponentProps {
   isFullScreen: boolean;
-  currentFilter: string[] | undefined;
+  pagePathFilter?: 'all' | 'collection' | 'product';
   onDataUpdate: (data: any[], tabType: string) => void;
   refreshTrigger: number;
 }
 
 type ApiResponse = {
   reportType: string;
-  data: Array<{
-    [key: string]: any;
-    MonthlyData?: Array<{ Month: string;[key: string]: any }>
-  }>;
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  data: MetricsRow[];
 };
 
 const PagePathConversion: React.FC<ConversionComponentProps> = ({
   isFullScreen,
-  currentFilter,
+  pagePathFilter = 'all',
   onDataUpdate,
   refreshTrigger
 }) => {
@@ -34,7 +35,6 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
-  const locale = useSelector((state: RootState) => state.locale.locale);
   const { brandId } = useParams();
 
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
@@ -52,12 +52,12 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post(`/api/analytics/pagePathConversionReport/${brandId}`, {
+      const response = await axiosInstance.post(`/api/analytics/pagePathMetricsReport/${brandId}`, {
         startDate: startDate, 
         endDate: endDate
       }, { withCredentials: true });
 
-      const fetchedData = response.data || [];
+      const fetchedData = response.data || null;
       setApiResponse(fetchedData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -73,18 +73,27 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
     }
   }, [fetchData, refreshTrigger]);
 
-  // Update parent with data
-  useEffect(() => {
-    if (apiResponse?.data && onDataUpdate) {
-      onDataUpdate(apiResponse.data, 'pagePath');
+  // Filter data based on pagePathFilter
+  const filteredData = useMemo(() => {
+    if (!apiResponse?.data) return [];
+    
+    if (pagePathFilter === 'all') {
+      return apiResponse.data;
     }
-  }, [apiResponse?.data, onDataUpdate]);
+    
+    const filterTerm = pagePathFilter.toLowerCase();
+    return apiResponse.data.filter((row) => {
+      const pagePath = String(row["Page Path"] || '').toLowerCase();
+      return pagePath.includes(filterTerm);
+    });
+  }, [apiResponse?.data, pagePathFilter]);
 
-  // Extract columns dynamically from the API response
-  const primaryColumn = "Page Path";
-  const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
-  const monthlyDataKey = "MonthlyData";
-  
+  // Update parent with filtered data
+  useEffect(() => {
+    if (filteredData && onDataUpdate) {
+      onDataUpdate(filteredData, 'pagePath');
+    }
+  }, [filteredData, onDataUpdate]);
 
   if (loading) {
     return <Loader isLoading={loading} />;
@@ -92,14 +101,10 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
 
   return (
     <div className="rounded-md overflow-hidden">
-      <NewConversionTable
-        data={apiResponse?.data || []}
-        primaryColumn={primaryColumn}
-        secondaryColumns={secondaryColumns}
-        monthlyDataKey={monthlyDataKey}
-        isFullScreen={isFullScreen}
-        locale={locale}
-        filter={currentFilter}
+      <MetricsTable
+        rows={filteredData}
+        primaryColumn="Page Path"
+        initialPageSize={isFullScreen ? "all" : "50"}
       />
     </div>
   );

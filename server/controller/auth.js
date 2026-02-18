@@ -419,7 +419,7 @@ export const handleFbCallback = async (req, res) => {
             return res.status(400).send('Authorization code not provided');
         }
 
-        const tokenResponse = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
+        const tokenResponse = await axios.get('https://graph.facebook.com/v22.0/oauth/access_token', {
             params: {
                 client_id: process.env.FACEBOOK_APP_ID,
                 client_secret: process.env.FACEBOOK_APP_SECRET,
@@ -429,7 +429,7 @@ export const handleFbCallback = async (req, res) => {
         });
         const { access_token } = tokenResponse.data;
 
-        const longLivedTokenResponse = await axios.get('https://graph.facebook.com/v17.0/oauth/access_token', {
+        const longLivedTokenResponse = await axios.get('https://graph.facebook.com/v22.0/oauth/access_token', {
             params: {
                 grant_type: 'fb_exchange_token',
                 client_id: process.env.FACEBOOK_APP_ID,

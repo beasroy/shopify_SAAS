@@ -104,7 +104,7 @@ export const getMetaMetrics = async (req, res) => {
 
         // Send batch request to Facebook Graph API
         const response = await axios.post(
-            `https://graph.facebook.com/v21.0/`,
+            `https://graph.facebook.com/v22.0/`,
             { batch: batchRequests },
             {
                 headers: {

@@ -18,6 +18,8 @@ interface DaywiseMetric {
   "Purchase Rate": string
   "Add To Cart Rate": string
   "Checkout Rate": string
+  "ATC To Checkout Rate": string
+  "Checkout To Purchase Rate": string
 }
 
 interface DaywiseMetricProps {
@@ -63,7 +65,9 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
         checkouts: parseInt(item['Checkouts']) || 0,
         checkoutRate: item['Checkout Rate'] || '0%',
         purchases: parseInt(item['Purchases']) || 0,
-        purchaseRate: item['Purchase Rate'] || '0%'
+        purchaseRate: item['Purchase Rate'] || '0%',
+        atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
+        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
       };
       return transformedItem;
     });

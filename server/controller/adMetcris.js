@@ -89,7 +89,7 @@ const fetchAdAccountInsights = async (adAccountIds, accessToken, startDate, endD
   }));
 
   const response = await axios.post(
-    `https://graph.facebook.com/v21.0/`,
+    `https://graph.facebook.com/v22.0/`,
     { batch: batchRequests },
     {
       headers: { 'Content-Type': 'application/json' },
@@ -160,7 +160,7 @@ const fetchInterestData = async (adAccountIds, accessToken, startDate, endDate) 
     }));
 
     const response = await axios.post(
-      `https://graph.facebook.com/v21.0/`,
+      `https://graph.facebook.com/v22.0/`,
       { batch: batchRequests },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -207,7 +207,7 @@ const fetchInterestData = async (adAccountIds, accessToken, startDate, endDate) 
               if (adSetData.interests.length === 0) return null;
 
               const metricsResponse = await axios.get(
-                `https://graph.facebook.com/v21.0/${adSetData.adSetId}/insights`,
+                `https://graph.facebook.com/v22.0/${adSetData.adSetId}/insights`,
                 {
                   params: {
                     fields: 'spend,action_values',
@@ -353,7 +353,7 @@ export const fetchFBAdAccountData = async (req, res) => {
     try {
       console.log(`[API] Validating Facebook access token...`);
       const tokenValidationResponse = await axios.get(
-        `https://graph.facebook.com/v21.0/debug_token`,
+        `https://graph.facebook.com/v22.0/debug_token`,
         {
           params: {
             input_token: accessToken,

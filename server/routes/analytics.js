@@ -5,9 +5,9 @@ import {
     getDeviceTypeWiseConversions, getGenderWiseConversions, getPageWiseConversions,
     getChannelWiseConversions, getDailyAddToCartAndCheckouts, getGenderMetrics,
     getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions,
-    getSourceWiseConversions, getBrowserWiseConversions, getPagePathWiseConversions, getPageTitleWiseConversions,
+    getSourceWiseConversions, getBrowserWiseConversions,
     getCountryWiseConversions, getDayWiseAddToCartAndCheckouts, getMonthlyAddToCartAndCheckouts,
-    getBounceRate
+    getBounceRate, getPagePathWiseMetrics, getPageTitleWiseMetrics
 } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
@@ -34,8 +34,8 @@ router.post('/campaignConversionReport/:brandId', verifyAuth, getCampaignWiseCon
 router.post('/operatingSystemConversionReport/:brandId', verifyAuth, getOperatingSystemWiseConversions)
 router.post('/browserConversionReport/:brandId', verifyAuth, getBrowserWiseConversions)
 router.post('/sourceConversionReport/:brandId', verifyAuth, getSourceWiseConversions)
-router.post('/pagePathConversionReport/:brandId', verifyAuth, getPagePathWiseConversions)
-router.post('/pageTitleConversionReport/:brandId', verifyAuth, getPageTitleWiseConversions)
+router.post('/pagePathMetricsReport/:brandId', verifyAuth, getPagePathWiseMetrics)
+router.post('/pageTitleMetricsReport/:brandId', verifyAuth, getPageTitleWiseMetrics)
 router.post('/countryConversionReport/:brandId', verifyAuth, getCountryWiseConversions)
 router.post('/bounceRateReportHome/:brandId', verifyAuth, getBounceRate)
 export default router;

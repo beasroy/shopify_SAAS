@@ -125,7 +125,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-await calculateMetricsForSingleBrand('68cc2437e78884ea57ff5385', '68cc2437e78884ea57ff5382');
+await calculateMetricsForSingleBrand('68ca95ad548d518de4fca1af', '68ca95ad548d518de4fca1ac');
 
 
 const PORT = process.env.PORT || 5000;

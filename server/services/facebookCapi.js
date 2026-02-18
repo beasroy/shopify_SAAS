@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 FB_PIXEL_ID = process.env.META_DATASET_ID
 FB_CAPI_ACCESS_TOKEN = process.env.META_CAPI_TOKEN
-FB_API_VERSION = "v18.0"
+FB_API_VERSION = "v22.0"
 
 const FB_URL = `https://graph.facebook.com/${FB_API_VERSION}/${FB_PIXEL_ID}/events`;
 

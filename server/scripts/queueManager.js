@@ -18,7 +18,7 @@ import { releaseLock } from '../utils/lockUtils.js';
 
 const queues = {
   'city-classification': cityClassificationQueue,
-  'shopify-orders': shopifyOrderQueue,
+  'shopify-order': shopifyOrderQueue,
   'revenue-calculation': revenueCalculationQueue,
   'historical-sync': historicalSyncQueue,
   'metrics-calculation': metricsQueue,

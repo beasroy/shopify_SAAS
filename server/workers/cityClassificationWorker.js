@@ -114,6 +114,19 @@ cityClassificationWorker.on('error', (err) => {
     if (err.stack) {
         console.error('   Stack:', err.stack);
     }
+    
+    // Handle Redis OOM errors specifically
+    if (err.message && err.message.includes('OOM')) {
+        console.error('\n⚠️  REDIS OUT OF MEMORY ERROR DETECTED!');
+        console.error('   Redis has hit its maxmemory limit and cannot accept new commands.');
+        console.error('\n💡 To fix this issue:');
+        console.error('   1. Run cleanup script: node server/scripts/cleanupRedis.js city-classification');
+        console.error('   2. For aggressive cleanup: node server/scripts/cleanupRedis.js city-classification --aggressive');
+        console.error('   3. To drain queue completely: node server/scripts/cleanupRedis.js --drain city-classification');
+        console.error('   4. Check Redis memory: redis-cli INFO memory');
+        console.error('   5. Increase Redis maxmemory if needed');
+        console.error('\n   The worker will continue retrying, but jobs may fail until Redis memory is freed.\n');
+    }
 });
 
 cityClassificationWorker.on('stalled', (jobId) => {

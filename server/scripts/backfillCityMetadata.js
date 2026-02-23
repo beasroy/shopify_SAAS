@@ -201,9 +201,17 @@ async function backfillCityMetadata() {
                         type: 'exponential',
                         delay: 2000
                     },
-                    // Don't remove jobs immediately - let them stay in queue
-                    removeOnComplete: false,
-                    removeOnFail: false
+                    // Clean up jobs after processing to prevent Redis OOM
+                    // Keep completed jobs for 1 hour for monitoring, then auto-clean
+                    removeOnComplete: {
+                        age: 3600, // 1 hour
+                        count: 500 // Keep max 500 completed jobs
+                    },
+                    // Keep failed jobs for 24 hours for debugging
+                    removeOnFail: {
+                        age: 86400, // 24 hours
+                        count: 100 // Keep max 100 failed jobs
+                    }
                 });
                 
                 if (job && job.id) {

@@ -1,4 +1,5 @@
 
+import { useSelector } from 'react-redux'
 import DataChallengeSection from './components/DataChallengeSection'
 import FeaturesSection from './components/FeaturesSection'
 import FinalCTASection from './components/FinalCTASection'
@@ -11,9 +12,23 @@ import NewFooter from './components/New_Footer'
 import TrustSection from './components/TrustSection'
 import UseCasesSection from './components/UseCasesSection'
 import WhyParallelsSection from './components/WhyParallelsSection'
+import { RootState } from '@/store'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+
 import './landingPage.css'
 
 function LandingPage() {
+
+  const user = useSelector((state: RootState) => state.user.user);
+  const isLoggedIn = Boolean(user?.id);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/dashboard');
+    }
+  }, [isLoggedIn]);
+  
   return (
     <div className="landing-page landing-page-container text-accent flex min-h-screen flex-col gradient-bg">
       <Navbar />
@@ -29,7 +44,6 @@ function LandingPage() {
         <TrustSection />
         <FinalCTASection />
         <NewFooter />
-
       </main>
     </div>
   )

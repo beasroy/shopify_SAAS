@@ -36,6 +36,7 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
+import masterDashboardRoutes from "./routes/masterDashboard.js";
 
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
@@ -113,6 +114,7 @@ dataOperationRouter.use("/pageSpeedInsights", pageSpeedInsightsRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
+dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
 // Workers are initialized automatically when imported above
@@ -125,7 +127,7 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-await calculateMetricsForSingleBrand('68ca95ad548d518de4fca1af', '68ca95ad548d518de4fca1ac');
+// await calculateMetricsForSingleBrand('68ca95ad548d518de4fca1af', '68ca95ad548d518de4fca1ac');
 
 
 const PORT = process.env.PORT || 5000;
@@ -149,3 +151,76 @@ server.listen(PORT, '0.0.0.0', () => {
 
 
 
+
+// queue.js
+import { Queue } from 'bullmq';
+
+// import IORedis from 'ioredis';
+// import { fetchLandingPages, fetchPageSpeed } from "./controller/analytics.js";
+// import PageSpeedInsight from "./models/PageSpeedInsight.js";
+
+
+
+
+// const brandId = "68ca95ad548d518de4fca1af"
+// const baseUrl = "https://parallels.messold.com"
+// import { connection } from "./config/redis.js";
+
+// export const pageSpeedQueue = new Queue('pageSpeed', { connection });
+
+// export async function enqueuePageSpeedJobs(brandId, baseUrl) {
+//   const paths = await fetchLandingPages(brandId);
+
+//   console.log(`Fetched ${paths.length} paths....`);
+
+//   for (const path of paths) {
+//     await pageSpeedQueue.add("analyze-page", {
+//       brandId,
+//       baseUrl,
+//       path,
+//     });
+//   }
+
+//   console.log("All jobs added to queue");
+// }
+
+// import { Worker } from "bullmq";
+
+
+// new Worker(
+//   "pageSpeed",
+//   async job => {
+//     const { brandId, baseUrl, path } = job.data;
+
+//     const pagePath = !path || path === "(not set)" ? "/" : path;
+//     const fullUrl = baseUrl.replace(/\/$/, "") + pagePath;
+
+//     const performance = await fetchPageSpeed(fullUrl);
+
+//     await PageSpeedInsight.updateOne(
+//       { brandId, path },
+//       {
+//         $set: {
+//           brandId,
+//           path,
+//           fullUrl,
+//           ...performance,
+//           lastUpdated: new Date(),
+//           page: "pagePath",
+//         },
+//       },
+//       { upsert: true }
+//     );
+
+//     console.log(`✔ Processed ${path}`);
+//   },
+//   {
+//     connection,
+//     concurrency: 3,
+//   }
+// );
+
+
+// enqueuePageSpeedJobs(brandId, baseUrl)
+// await fetchLandingPages(brandId)
+// clear.js

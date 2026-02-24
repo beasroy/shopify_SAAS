@@ -36,6 +36,7 @@ import FestivalCalendarPage from './pages/FestivalCalendar/FestivalCalendarPage.
 import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
 import LocationAnalyticsPage from './pages/LocationAnalytics/LocationAnalyticsPage.tsx';
 import AuthPage from './Auth/NewAuthPage.tsx';
+import MasterDashboard from './pages/MasterDashboard/MasterDashboard.tsx';
 
 
 
@@ -80,6 +81,7 @@ function App() {
                   <Route path="/festival-calendar/:brandId" element={<FestivalCalendarPage />} />
                   <Route path="/speed-insights" element={<SpeedInsightsPage />} />
                   <Route path="/location-analytics/:brandId" element={<LocationAnalyticsPage />} />
+                  <Route path="/master-dashboard/:brandId" element={<MasterDashboard />} />
                 </Routes>
               </TutorialManager>
             </AutoLogout>

@@ -3035,7 +3035,7 @@ export async function getBounceRate(req, res) {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
-const CONCURRENCY_LIMIT = 5; 
+const CONCURRENCY_LIMIT = 5;
 const STALE_DAYS = 7;
 const MAX_RETRIES = 3;
 
@@ -3072,7 +3072,7 @@ async function retryWithBackoff(fn, retries = MAX_RETRIES) {
 }
 
 
-async function fetchLandingPages(brandId, startDate, endDate) {
+export async function fetchLandingPages(brandId) {
 
 
   const brand = await Brand.findById(brandId).lean();
@@ -3097,11 +3097,11 @@ async function fetchLandingPages(brandId, startDate, endDate) {
   const requestBody = {
 
     dateRanges: [{
-      startDate: "730daysAgo",
+      startDate: "180daysAgo",
       endDate: "today"
     }],
     dimensions: [
-      { name: 'yearMonth' },
+      // { name: 'yearMonth' },
       { name: 'pagePath' }
     ],
     metrics: [
@@ -3126,14 +3126,15 @@ async function fetchLandingPages(brandId, startDate, endDate) {
   )
 
   const Rows = response?.data?.rows || [];
-
-  const paths = Rows?.map(row => row.dimensionValues[1].value) || [];
+  console.log("Rows length---------------->", Rows?.length);
+  const paths = Rows?.map(row => row.dimensionValues[0]?.value) || [];
 
   return [...new Set(paths)];
 }
 
 
-async function fetchPageSpeed(url) {
+export async function fetchPageSpeed(url) {
+  
   const response = await retryWithBackoff(() =>
     axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
       params: {
@@ -3146,7 +3147,7 @@ async function fetchPageSpeed(url) {
   );
 
   const lighthouse = response.data.lighthouseResult;
-
+  console.log("PageSpeed for:", url, lighthouse.categories.performance.score * 100);
   return {
     perfScore: lighthouse.categories.performance.score * 100,
     fcp: lighthouse.audits["first-contentful-paint"]?.displayValue,
@@ -3273,7 +3274,7 @@ export async function getPagePathWiseMetrics(req, res) {
         { name: 'sessions' },
         { name: 'ecommercePurchases' },
         { name: "bounceRate" },
-        { name: 'purchaseRevenue'},
+        { name: 'purchaseRevenue' },
         { name: 'addToCarts' },
         { name: 'checkouts' },
       ]
@@ -3292,7 +3293,15 @@ export async function getPagePathWiseMetrics(req, res) {
       })
 
     const Rows = response?.data?.rows || [];
+   
+    const pagePaths = await PageSpeedInsight.find({
+      brandId,
+      page: "pagePath",
+      // path: { $in: Rows.map(row => row.dimensionValues[0]?.value) }
+    }).lean();
 
+    console.log(pagePaths?.length);
+    console.log(pagePaths.find(page => page.path === "/collections/women-dupatta"));
     // Process data - aggregate all metrics per pagePath (no month-wise separation)
     const groupedData = Rows.reduce((acc, row) => {
       const pagePath = row.dimensionValues[0]?.value || 'Unknown';
@@ -3333,7 +3342,10 @@ export async function getPagePathWiseMetrics(req, res) {
       const purchases = pagePathData.purchases;
       const addToCarts = pagePathData.addToCarts;
       const checkouts = pagePathData.checkouts;
-      
+
+      const cleanGA4Path = pagePath.replace(/\/$/, "");
+      // console.log("cleanGA4Path", cleanGA4Path);
+      const perfScore = pagePaths.find(page => page.path.replace(/\/$/, "") === cleanGA4Path)?.perfScore ?? 0;
       // Calculate rates
       const atcRate = sessions > 0 ? (addToCarts / sessions) * 100 : 0;
       const checkoutRate = sessions > 0 ? (checkouts / sessions) * 100 : 0;
@@ -3352,6 +3364,7 @@ export async function getPagePathWiseMetrics(req, res) {
         "Bounce Rate": Number.parseFloat(bounceRate.toFixed(2)),
         "Conversion Rate": Number.parseFloat(conversionRate.toFixed(2)),
         "Sales": totalRevenue.toFixed(2),
+        "PerfScore": perfScore,
       };
     })
 
@@ -3415,10 +3428,10 @@ export async function getPageTitleWiseMetrics(req, res) {
         { name: 'sessions' },
         { name: 'ecommercePurchases' },
         { name: "bounceRate" },
-        { name: 'purchaseRevenue'},
+        { name: 'purchaseRevenue' },
         { name: 'addToCarts' },
         { name: 'checkouts' },
- 
+
       ]
     };
 
@@ -3478,7 +3491,7 @@ export async function getPageTitleWiseMetrics(req, res) {
       const purchases = pageTitleData.purchases;
       const addToCarts = pageTitleData.addToCarts;
       const checkouts = pageTitleData.checkouts;
-      
+
       // Calculate rates
       const atcRate = sessions > 0 ? (addToCarts / sessions) * 100 : 0;
       const checkoutRate = sessions > 0 ? (checkouts / sessions) * 100 : 0;

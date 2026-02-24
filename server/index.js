@@ -19,8 +19,7 @@ import summaryRoutes from "./routes/summary.js"
 import dashboardHighlightsRoutes from "./routes/dashboardHighlights.js"
 import { setupCronJobs } from "./controller/cron-job.js";
 import setupBrandRoutes from "./routes/BrandSetup.js";
-// Import worker to start it automatically (side effect import)
-import "./workers/cityClassificationWorker.js";
+
 import userRoutes from "./routes/user.js";
 import zohoRoutes from "./routes/zohoTicket.js";
 import shopifyAppRoutes from "./routes/app_sync.js"
@@ -38,7 +37,6 @@ import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
 import masterDashboardRoutes from "./routes/masterDashboard.js";
 
-import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
 
 
 
@@ -127,7 +125,6 @@ if (isDevelopment) {
   console.log('Cron jobs initialized in production environment');
 }
 
-// await calculateMetricsForSingleBrand('68ca95ad548d518de4fca1af', '68ca95ad548d518de4fca1ac');
 
 
 const PORT = process.env.PORT || 5000;

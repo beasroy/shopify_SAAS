@@ -1,8 +1,7 @@
 import { Queue } from 'bullmq';
 import { connection } from './redis.js';
 
-// Single queue for all Shopify order operations
-export const shopifyOrderQueue = new Queue('shopify-orders', {
+export const shopifyOrderQueue = new Queue('shopify-order', {
   connection,
   defaultJobOptions: {
     attempts: 3,
@@ -11,11 +10,11 @@ export const shopifyOrderQueue = new Queue('shopify-orders', {
       delay: 2000
     },
     removeOnComplete: {
-      age: 86400, // Keep for 24 hours
+      age: 86400, 
       count: 1000
     },
     removeOnFail: {
-      age: 604800 // Keep failed for 7 days
+      age: 604800 
     }
   }
 });
@@ -57,17 +56,17 @@ export const cityClassificationQueue = new Queue('city-classification', {
       type: 'exponential',
       delay: 2000
     },
-    // Don't remove jobs immediately - keep them for monitoring
-    // They'll be cleaned up by the worker after processing
+    // Auto-cleanup to prevent Redis OOM errors
     removeOnComplete: {
-      age: 86400, // Keep for 24 hours
-      count: 1000
+      age: 86400, 
+      count: 500 
     },
     removeOnFail: {
-      age: 604800 // Keep failed for 7 days
+      age: 604800, 
+      count: 100 
     }
   }
 });
 
-console.log('✅ Shopify queues initialized');
+console.log('✅ Queues initialized');
 

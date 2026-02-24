@@ -64,7 +64,7 @@ function Navbar() {
             <Button
               onClick={() => navigate('/login')}
               className="bg-accent-gradient text-accent hover:opacity-90 transition-opacity py-5">
-              Get Early Access
+              Sign In
             </Button>
           </div>
 
@@ -98,7 +98,7 @@ function Navbar() {
                   Request Demo
                 </Button>
                 <Button onClick={() => navigate('/login')} className="bg-accent-gradient text-primary-foreground">
-                  Get Early Access
+                  Sign In
                 </Button>
               </div>
             </nav>

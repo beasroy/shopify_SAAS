@@ -23,70 +23,55 @@ export const getGoogleAuthURL = async (req, res) => {
     try {
         const { context, source, brandId } = req.query;
 
-        const scopes = [
-            'https://www.googleapis.com/auth/adwords',
-            'https://www.googleapis.com/auth/analytics.readonly',
-            'https://www.googleapis.com/auth/analytics.edit',
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile'
-        ];
+        const isAdOrAnalyticsSetup = context === 'googleAdSetup' || context === 'googleAnalyticsSetup';
 
-        // Check if user has a refresh token based on context
-        let hasRefreshToken = false;
+        // Use extended scopes only for Ads/Analytics setup
+        const scopes = isAdOrAnalyticsSetup
+            ? [
+                'https://www.googleapis.com/auth/adwords',
+                'https://www.googleapis.com/auth/analytics.readonly',
+                'https://www.googleapis.com/auth/analytics.edit',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/userinfo.profile'
+              ]
+            : [
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/userinfo.profile'
+              ];
 
-        if (context === 'googleAdSetup' || context === 'googleAnalyticsSetup') {
-            // For Google Ads or Analytics setup, check Brand model
+
+        let requireConsent = false;
+
+        if (isAdOrAnalyticsSetup) {
+            requireConsent = true; 
+
             if (brandId) {
                 try {
                     const brand = await Brand.findById(brandId).lean();
                     if (brand) {
-                        if (context === 'googleAdSetup' && brand.googleAdsRefreshToken) {
-                            hasRefreshToken = true;
-                        } else if (context === 'googleAnalyticsSetup' && brand.googleAnalyticsRefreshToken) {
-                            hasRefreshToken = true;
-                        }
+                        const alreadyHasToken =
+                            (context === 'googleAdSetup' && brand.googleAdsRefreshToken) ||
+                            (context === 'googleAnalyticsSetup' && brand.googleAnalyticsRefreshToken);
+
+                        if (alreadyHasToken) requireConsent = false;
                     }
                 } catch (error) {
                     console.error('Error checking brand refresh token:', error);
-                    // Continue with consent prompt if check fails
-                }
-            }
-        } else if (context === 'userLogin') {
-            // For user login, check User model
-            const token = req.cookies.token;
-            if (token) {
-                try {
-                    const decoded = jwt.verify(token, SECRET_KEY);
-                    const user = await User.findById(decoded.id).lean();
-                    if (user && user.googleLoginRefreshToken) {
-                        hasRefreshToken = true;
-                    }
-                } catch (error) {
-                    console.error('Error checking user refresh token:', error);
-                    // Continue with consent prompt if check fails
+                    // Keep requireConsent = true as fallback
                 }
             }
         }
 
-        // Only prompt for consent if refresh token doesn't exist
         const authUrlConfig = {
             access_type: 'offline',
             scope: scopes,
             state: JSON.stringify({ context: context || 'default', source: source || '/dashboard' }),
+            ...(requireConsent && { prompt: 'consent' }),
         };
-
-        // Add prompt: 'consent' only if refresh token doesn't exist
-        if (!hasRefreshToken) {
-            authUrlConfig.prompt = 'consent';
-        }
-
 
         const url = oauth2Client.generateAuthUrl(authUrlConfig);
 
-        res.status(200).json({ 
-            authUrl: url,
-            hasRefreshToken, // Optional: return this for debugging/frontend info
-        });
+        res.status(200).json({ authUrl: url });
     } catch (error) {
         console.error('Error generating Google Auth URL:', error);
         res.status(500).json({

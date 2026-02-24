@@ -1,4 +1,4 @@
-import { shopifyOrderQueue } from '../config/shopifyQueues.js';
+import { shopifyOrderQueue } from '../config/Queues.js';
 
 
 export const handleOrderCreated = async (req, res) => {

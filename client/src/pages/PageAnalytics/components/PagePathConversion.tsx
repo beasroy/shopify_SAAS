@@ -10,7 +10,7 @@ import MetricsTable, { MetricsRow } from "./MetricsTable";
 interface ConversionComponentProps {
   isFullScreen: boolean;
   pagePathFilter?: 'all' | 'collection' | 'product';
-  onDataUpdate: (data: any[], tabType: string) => void;
+  // onDataUpdate: (data: any[], tabType: string) => void;
   refreshTrigger: number;
 }
 
@@ -26,7 +26,7 @@ type ApiResponse = {
 const PagePathConversion: React.FC<ConversionComponentProps> = ({
   isFullScreen,
   pagePathFilter = 'all',
-  onDataUpdate,
+  // onDataUpdate,
   refreshTrigger
 }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
@@ -88,12 +88,12 @@ const PagePathConversion: React.FC<ConversionComponentProps> = ({
     });
   }, [apiResponse?.data, pagePathFilter]);
 
-  // Update parent with filtered data
-  useEffect(() => {
-    if (filteredData && onDataUpdate) {
-      onDataUpdate(filteredData, 'pagePath');
-    }
-  }, [filteredData, onDataUpdate]);
+  // // Update parent with filtered data
+  // useEffect(() => {
+  //   if (filteredData && onDataUpdate) {
+  //     onDataUpdate(filteredData, 'pagePath');
+  //   }
+  // }, [filteredData, onDataUpdate]);
 
   if (loading) {
     return <Loader isLoading={loading} />;

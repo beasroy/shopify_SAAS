@@ -346,30 +346,7 @@ const ConversionLens: React.FC = () => {
                             refreshTrigger={refreshTrigger}
                           />
                         )}
-                        {/* {activeTab === 'landingPage' && (
-                          <LandingPageConversion 
-                            isFullScreen={isFullScreen}
-                            currentFilter={currentFilter}
-                            onDataUpdate={handleTabDataUpdate}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )}
-                        {activeTab === 'pagePath' && (
-                          <PagePathConversion 
-                            isFullScreen={isFullScreen}
-                            currentFilter={currentFilter}
-                            onDataUpdate={handleTabDataUpdate}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )}
-                        {activeTab === 'pageTitle' && (
-                          <PageTitleConversion 
-                            isFullScreen={isFullScreen}
-                            currentFilter={currentFilter}
-                            onDataUpdate={handleTabDataUpdate}
-                            refreshTrigger={refreshTrigger}
-                          />
-                        )} */}
+                      
                       </div>
                     </div>
                   </CardContent>

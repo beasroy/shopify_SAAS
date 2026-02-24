@@ -10,23 +10,12 @@ export async function classifyCitiesWithGPT(cities) {
         throw new Error('OPENAI_API_KEY is not set in environment variables');
     }
 
-    // Build city list for prompt
-    const cityList = cities.map((c, i) => 
-        `${i + 1}. ${c.city}, ${c.state}`
+    // Build city list for prompt (country comes from input; GPT does not need to generate it)
+    const cityList = cities.map((c, i) =>
+        `${i + 1}. ${c.city}, ${c.state}${c.country ? ', ' + c.country : ''}`
     ).join('\n');
 
-const prompt = `You are a geography expert. For each city, identify the country and classify it accordingly.
-
-IMPORTANT CONTEXT:
-- Tier classification (tier1, tier2, tier3) is a specific system used in India to categorize cities based on population, economic development, and infrastructure. This classification is NOT applicable to cities outside India.
-- For non-Indian cities, use "tier3" as a placeholder since the tier system doesn't apply to them. This is just for data consistency, not an actual classification.
-
-For each city, provide:
-1. Country: The country name (e.g., "India", "United States", "United Kingdom", "Canada", etc.)
-
-2. Metro status: "metro" or "non-metro"
-   - For India: Use standard metro/non-metro classification
-   - For other countries: Classify based on whether the city is a major metropolitan area with significant population and economic activity
+const prompt = `You are a geography expert. For each city, classify it accordingly. The country is already provided in the list — do not infer or generate country; use the given country if needed for region/tier rules.
 
 3. Tier: "tier1", "tier2", or "tier3"
    - For Indian cities: Use the official tier classification system:
@@ -51,7 +40,7 @@ For each city, provide:
 Cities to classify:
 ${cityList}
 
-Return a JSON object with a "cities" array. Each city object should have:
+Return a JSON object with a "cities" array. Each city object should have :
 {
   "city": "Mumbai",
   "state": "Maharashtra",
@@ -113,8 +102,9 @@ Return ONLY valid JSON, no other text.`;
             );
 
             if (classification) {
-                // Generate lookupKey with country: city_state_country (normalized)
-                const countryNormalized = (classification.country || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
+                // Use country from input (cities array); GPT does not return it
+                const country = city.country || 'unknown';
+                const countryNormalized = country.toLowerCase().replaceAll(/\s+/g, '');
                 const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
                 const lookupKey = `${city.cityNormalized}_${stateNormalized}_${countryNormalized}`;
                 
@@ -122,25 +112,27 @@ Return ONLY valid JSON, no other text.`;
                     lookupKey: lookupKey,
                     city: city.city,
                     state: city.state,
+                    country: country,
                     cityNormalized: city.cityNormalized,
-                    // Note: country is embedded in lookupKey (city_state_country), not stored separately
                     metroStatus: classification.metroStatus || 'non-metro',
                     tier: classification.tier || 'tier3', // Default to tier3 if not specified
-                    region: classification.region || (classification.country?.toLowerCase() === 'india' ? 'central' : 'other'),
+                    region: classification.region || (country.toLowerCase() === 'india' ? 'central' : 'other'),
                     isCoastal: classification.isCoastal || false,
                     confidence: 0.9
                 });
             } else {
                 // Fallback if classification not found
                 console.warn(`No classification found for ${city.city}, ${city.state}`);
+                const country = city.country || 'unknown';
+                const countryNormalized = country.toLowerCase().replaceAll(/\s+/g, '');
                 const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
-                const lookupKey = `${city.cityNormalized}_${stateNormalized}_unknown`;
+                const lookupKey = `${city.cityNormalized}_${stateNormalized}_${countryNormalized}`;
                 classifications.push({
                     lookupKey: lookupKey,
                     city: city.city,
                     state: city.state,
+                    country: country,
                     cityNormalized: city.cityNormalized,
-                    // Note: country is embedded in lookupKey (city_state_country), not stored separately
                     metroStatus: 'non-metro',
                     tier: 'tier3', // Default to tier3 for unclassified cities
                     region: 'other',

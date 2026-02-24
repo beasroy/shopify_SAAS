@@ -7,7 +7,7 @@ import {
     getLandingPageMetrics, getLocationMetrics, getAgeWiseConversions,
     getSourceWiseConversions, getBrowserWiseConversions,
     getCountryWiseConversions, getDayWiseAddToCartAndCheckouts, getMonthlyAddToCartAndCheckouts,
-    getBounceRate, getPagePathWiseMetrics, getPageTitleWiseMetrics
+    getBounceRate, getPagePathWiseMetrics,
 } from "../controller/analytics.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
@@ -35,7 +35,6 @@ router.post('/operatingSystemConversionReport/:brandId', verifyAuth, getOperatin
 router.post('/browserConversionReport/:brandId', verifyAuth, getBrowserWiseConversions)
 router.post('/sourceConversionReport/:brandId', verifyAuth, getSourceWiseConversions)
 router.post('/pagePathMetricsReport/:brandId', verifyAuth, getPagePathWiseMetrics)
-router.post('/pageTitleMetricsReport/:brandId', verifyAuth, getPageTitleWiseMetrics)
 router.post('/countryConversionReport/:brandId', verifyAuth, getCountryWiseConversions)
 router.post('/bounceRateReportHome/:brandId', verifyAuth, getBounceRate)
 export default router;

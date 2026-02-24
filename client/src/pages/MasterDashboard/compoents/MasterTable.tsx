@@ -11,48 +11,68 @@ import {
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Ga4Logo } from "@/data/logo"
 
+
 export type MetricsRow = {
-  [key: string]: string | number
-  "Sessions": number
-  "Purchases": number
-  "ATC": number
-  "ATC Rate": number
-  "Checkout": number
-  "Checkout Rate": number
-  "Bounce Rate": number
-  "Conversion Rate": number
+  // [key: string]: string | number | undefined
+  // brandId: string;
+  // brandName: string;
+  // fbLiveSpend: number | string;
+  // fbPurchases: number | string;
+  // fbRevenue: number | string;
+  // googleSpend: number | string;
+  // metaSpend: number | string;
+  // month?: number | string;
+  // refundAmount: number | string;
+  // totalSales: number | string;
+  // totalSpend: number | string;
+  // year?: number | string;
+
+  brandId: string;
+  brandName: string;
+
+  totalSales: String | number;
+  refundAmount: String | number;
+  netSales: String | number;
+
+  metaSpend: String | number;
+  metaRevenue: String | number;
+  googleSpend: String | number;
+  totalSpend: String | number;
+
+  metaROAS: String | number;
+  overallROAS: String | number;
+
 }
 
 type ColumnDef = {
-  key: string
+  key: keyof MetricsRow
   header: string
   width: number
   minWidth?: number
   align?: "left" | "right" | "center"
 }
 
-export default function MetricsTable({
-  rows,
-  primaryColumn = "Page Path",
+export default function MasterTable({
+  brands,
+  primaryColumn = "Brand Name",
   initialPageSize = "50",
 }: {
-  rows: MetricsRow[]
-  primaryColumn?: "Page Path" | "Page Title"
+  brands: MetricsRow[]
+  primaryColumn?: "Brand Name" | "Brands"
   initialPageSize?: "25" | "50" | "100" | "200" | "all"
 }) {
   const columns = React.useMemo(() => {
     const baseColumns: ColumnDef[] = [
-      { key: primaryColumn, header: primaryColumn, width: 300, minWidth: 150, align: "left" },
-      { key: "Bounce Rate", header: "Bounce Rate", width: 140, minWidth: 130, align: "right" },
-      { key: "Sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
-      { key: "Sales", header: "Sales", width: 140, minWidth: 130, align: "right" },
-      { key: "Purchases", header: "Purchases", width: 120, minWidth: 110, align: "right" },
-      { key: "ATC", header: "ATC", width: 100, minWidth: 90, align: "right" },
-      { key: "ATC Rate", header: "ATC Rate", width: 130, minWidth: 120, align: "right" },
-      { key: "Checkout", header: "Checkout", width: 120, minWidth: 110, align: "right" },
-      { key: "Checkout Rate", header: "Checkout Rate", width: 150, minWidth: 140, align: "right" },
-      { key: "Conversion Rate", header: "Conversion Rate", width: 160, minWidth: 150, align: "right" },
-      { key: "PerfScore", header: "Page Performance", width: 160, minWidth: 150, align: "right" },
+      { key: "brandName", header: primaryColumn, width: 300, minWidth: 150, align: "left" },
+      { key: "totalSales", header: "Total Sales", width: 140, minWidth: 130, align: "right" },
+      { key: "refundAmount", header: "Refund Amount", width: 140, minWidth: 130, align: "right" },
+      { key: "netSales", header: "Net Sales", width: 140, minWidth: 130, align: "right" },
+      { key: "metaSpend", header: "Meta Spend", width: 140, minWidth: 130, align: "right" },
+      { key: "metaRevenue", header: "Meta Revenue", width: 140, minWidth: 130, align: "right" },
+      { key: "googleSpend", header: "Google Spend", width: 140, minWidth: 130, align: "right" },
+      { key: "totalSpend", header: "Total Spend", width: 140, minWidth: 130, align: "right" },
+      { key: "metaROAS", header: "Meta ROAS", width: 140, minWidth: 130, align: "right" },
+      { key: "overallROAS", header: "Overall ROAS", width: 140, minWidth: 130, align: "right" },
     ]
     return baseColumns
   }, [primaryColumn])
@@ -62,6 +82,7 @@ export default function MetricsTable({
   const [containerWidth, setContainerWidth] = React.useState<number>(0)
   const columnsKeyRef = React.useRef<string>('')
   const hasInitializedRef = React.useRef<boolean>(false)
+
 
   // Measure container width
   React.useEffect(() => {
@@ -105,7 +126,7 @@ export default function MetricsTable({
   }, [columns, containerWidth])
 
   const [rowsPerPage, setRowsPerPage] = React.useState<number>(
-    initialPageSize === "all" ? rows.length : Number.parseInt(initialPageSize, 10)
+    initialPageSize === "all" ? brands.length : Number.parseInt(initialPageSize, 10)
   )
   const [currentPage, setCurrentPage] = React.useState(1)
 
@@ -113,15 +134,15 @@ export default function MetricsTable({
     setCurrentPage(1)
   }, [rowsPerPage])
 
-  const totalPages = Math.ceil(rows.length / rowsPerPage)
+  const totalPages = Math.ceil(brands.length / rowsPerPage)
   const startIndex = (currentPage - 1) * rowsPerPage
-  const endIndex = initialPageSize === "all" ? rows.length : startIndex + rowsPerPage
-  const currentRows = rows.slice(startIndex, endIndex)
+  const endIndex = initialPageSize === "all" ? brands.length : startIndex + rowsPerPage
+  const currentRows = brands.slice(startIndex, endIndex)
 
-  const renderCell = (row: MetricsRow, key: string) => {
+  const renderCell = (row: MetricsRow, key: keyof MetricsRow) => {
     const value = row[key]
 
-    if (key === primaryColumn) {
+    if (key === "brandName") {
       return (
         <span className="font-medium text-gray-900">
           {String(value)}
@@ -138,6 +159,7 @@ export default function MetricsTable({
 
     return String(value ?? '')
   }
+
 
   return (
     <div ref={containerRef} className="w-full h-[calc(100vh-100px)] flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -160,14 +182,14 @@ export default function MetricsTable({
                     key={String(col.key)}
                     style={{ width: `${width}px`, minWidth: `${width}px` }}
                     className={cn(
-                      "px-3 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider",
+                      "px-3 py-3 text-xs font-semibold text-blue-900 uppercase tracking-wider",
                       "border-b border-l last:border-r border-gray-200",
                       alignClass,
                       isFirst && "sticky left-0 z-40 bg-gray-50 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      <Ga4Logo width="1rem" height="1rem" />
+                    <div className="flex justify-center items-center text-center gap-2">
+                      {/* <Ga4Logo width="1rem" height="1rem" /> */}
                       <span>{col.header}</span>
                     </div>
                   </th>
@@ -231,7 +253,7 @@ export default function MetricsTable({
             value={initialPageSize === "all" ? "all" : String(rowsPerPage)}
             onValueChange={(value) => {
               if (value === "all") {
-                setRowsPerPage(rows.length)
+                setRowsPerPage(brands.length)
               } else {
                 setRowsPerPage(Number.parseInt(value, 10))
               }
@@ -252,7 +274,7 @@ export default function MetricsTable({
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-700">
-            {startIndex + 1}-{Math.min(endIndex, rows.length)} of {rows.length}
+            {startIndex + 1}-{Math.min(endIndex, brands.length)} of {brands.length}
           </span>
           <div className="flex gap-1">
             <Button
@@ -297,4 +319,3 @@ export default function MetricsTable({
     </div>
   )
 }
-

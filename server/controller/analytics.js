@@ -2,6 +2,19 @@ import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
+import PageSpeedInsight from '../models/PageSpeedInsight.js';
+import pLimit from "p-limit";
+import { GoogleAdsApi } from "google-ads-api";
+
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+});
+
+const PSI_API_KEY = process.env.GOOGLE_API_KEY;
+const PSI_ENDPOINT = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+
 config();
 
 // Helper function to compare values based on operator
@@ -1369,7 +1382,6 @@ export async function getPageWiseConversions(req, res) {
       const bounceRate = Number(row.metricValues[2]?.value || 0); // 0–1
       const bouncedSessions = sessions * bounceRate;
 
-
       // Initialize region if it doesn't exist
       if (!acc[landingPage]) {
         acc[landingPage] = {
@@ -1424,7 +1436,10 @@ export async function getPageWiseConversions(req, res) {
       return acc;
     }, {});
 
+    const pagesPathData = await PageSpeedInsight.find({ brandId, page: "landingPage" });
+
     let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => ({
+      "perfScore": pagesPathData.find(page => page.path === LandingPage)?.perfScore,
       "Landing Page": LandingPage,
       "Total Sessions": LandingPageData.TotalSessions,
       "Total Purchases": LandingPageData.TotalPurchases,
@@ -3025,6 +3040,218 @@ export async function getBounceRate(req, res) {
   }
 }
 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
+const CONCURRENCY_LIMIT = 5;
+const STALE_DAYS = 7;
+const MAX_RETRIES = 3;
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isStale(date) {
+  if (!date) return true;
+  const diff = Date.now() - new Date(date).getTime();
+  return diff > STALE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+async function retryWithBackoff(fn, retries = MAX_RETRIES) {
+  let attempt = 0;
+
+  while (attempt < retries) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err.response?.status === 429) {
+        const delay = 1000 * Math.pow(2, attempt);
+        console.log(`Rate limited. Retrying in ${delay}ms`);
+        await sleep(delay);
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error("Max retries reached");
+}
+
+
+export async function fetchLandingPages(brandId) {
+
+
+  const brand = await Brand.findById(brandId).lean();
+
+  if (!brand) {
+    return {
+      success: false,
+      message: 'Brand not found.'
+    };
+  }
+
+  const propertyId = brand.ga4Account?.PropertyID;
+
+  const refreshToken = brand.googleAnalyticsRefreshToken;
+  if (!refreshToken || refreshToken.trim() === '') {
+    console.warn(`No refresh token found for Brand ID: ${brandId}`);
+    // return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    throw new Error('Access to Google Analytics API is forbidden. Check your credentials or permissions.');
+  }
+
+  const accessToken = await getGoogleAccessToken(refreshToken);
+
+  const requestBody = {
+
+    dateRanges: [{
+      startDate: "180daysAgo",
+      endDate: "today"
+    }],
+    dimensions: [
+      // { name: 'yearMonth' },
+      { name: 'pagePath' }
+    ],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'ecommercePurchases' },
+      { name: "bounceRate" }
+    ]
+  };
+
+
+
+  const response = await axios.post(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    requestBody,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+
+  const Rows = response?.data?.rows || [];
+  console.log("Rows length---------------->", Rows?.length);
+  const paths = Rows?.map(row => row.dimensionValues[0]?.value) || [];
+
+  return [...new Set(paths)];
+}
+
+
+export async function fetchPageSpeed(url) {
+
+  const response = await retryWithBackoff(() =>
+    axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
+      params: {
+        url,
+        category: "performance",
+        strategy: "mobile",
+        key: GOOGLE_API_KEY
+      }
+    })
+  );
+
+  const lighthouse = response.data.lighthouseResult;
+  console.log("PageSpeed for:", url, lighthouse.categories.performance.score * 100);
+  return {
+    perfScore: lighthouse.categories.performance.score * 100,
+    fcp: lighthouse.audits["first-contentful-paint"]?.displayValue,
+    lcp: lighthouse.audits["largest-contentful-paint"]?.displayValue,
+    tbt: lighthouse.audits["total-blocking-time"]?.displayValue,
+    cls: lighthouse.audits["cumulative-layout-shift"]?.displayValue
+  };
+}
+
+
+export async function runPageSpeedJob(brandId, baseUrl, page) {
+  console.log("Starting PageSpeed Job...");
+
+  // Step 1: Fetch paths
+  const paths = await fetchLandingPages(brandId);
+  console.log(`Fetched ${paths.length} landing pages from GA`);
+
+  if (paths.length === 0) {
+    console.log("No paths found");
+    return;
+  }
+
+  // Step 2: Get existing records
+  const existingRecords = await PageSpeedInsight.find({
+    brandId,
+    path: { $in: paths }
+  }).lean();
+
+  const existingMap = new Map();
+  existingRecords.forEach(doc => {
+    existingMap.set(doc.path, doc);
+  });
+
+  // Step 3: Filter stale pages
+  const pathsToProcess = paths.filter(path => {
+    const record = existingMap.get(path);
+    return !record || isStale(record.lastUpdated);
+  });
+
+  console.log(`Processing ${pathsToProcess.length} stale/new pages`);
+
+  const limit = pLimit(CONCURRENCY_LIMIT);
+
+  const results = [];
+
+  const tasks = pathsToProcess.map(path =>
+    limit(async () => {
+      try {
+        // const pagePath = !path || path === '(not set)' ? "/" : path;
+        let normalizedPath;
+
+        if (!path || path === '(not set)' || path === '/') {
+          normalizedPath = '/';
+        } else {
+          normalizedPath = path.replace(/\/+$/, '');
+        }
+        const fullUrl = baseUrl.replace(/\/$/, "") + normalizedPath;
+
+        const performance = await fetchPageSpeed(fullUrl);
+
+        results.push({
+          brandId,
+          path: normalizedPath,
+          fullUrl,
+          ...performance,
+          lastUpdated: new Date(),
+          page
+        });
+
+        console.log(`✔ Processed ${path}`);
+      } catch (err) {
+        console.error(`❌ Failed ${path}`, err.message);
+      }
+    })
+  );
+
+  await Promise.all(tasks);
+
+  if (!results.length) {
+    console.log("No updates needed.");
+    return;
+  }
+
+  // Step 4: Bulk Write
+  const bulkOps = results.map(data => ({
+    updateOne: {
+      filter: { brandId: data.brandId, path: data.path },
+      update: { $set: data },
+      upsert: true
+    }
+  }));
+
+  await PageSpeedInsight.bulkWrite(bulkOps);
+
+  console.log(`Bulk updated ${results.length} pages`);
+}
 
 export async function getPagePathWiseMetrics(req, res) {
   try {
@@ -3062,7 +3289,7 @@ export async function getPagePathWiseMetrics(req, res) {
         { name: 'sessions' },
         { name: 'ecommercePurchases' },
         { name: "bounceRate" },
-        { name: 'purchaseRevenue'},
+        { name: 'purchaseRevenue' },
         { name: 'addToCarts' },
         { name: 'checkouts' },
       ]
@@ -3081,6 +3308,12 @@ export async function getPagePathWiseMetrics(req, res) {
       })
 
     const Rows = response?.data?.rows || [];
+
+    const pagePaths = await PageSpeedInsight.find({
+      brandId,
+      page: "pagePath",
+      // path: { $in: Rows.map(row => row.dimensionValues[0]?.value) }
+    }).lean();
 
     // Process data - aggregate all metrics per pagePath (no month-wise separation)
     const groupedData = Rows.reduce((acc, row) => {
@@ -3115,6 +3348,15 @@ export async function getPagePathWiseMetrics(req, res) {
       acc[pagePath].checkouts += checkouts;
       return acc;
     }, {});
+    let cpc = 0;
+    try {
+      const data = await fetchGoogleAdAndCampaignMetrics(brandId, adjustedStartDate, adjustedEndDate);
+      cpc = data.data.cpc || 0;
+      
+    } catch (error) {
+      console.error('Error fetching Page Path Wise Metrics:', error);
+      return res.status(500).json({ error: 'Failed to fetch Page Path Wise Metrics.' });
+    }
 
     // Convert grouped data to an array format with calculated rates
     let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => {
@@ -3122,7 +3364,10 @@ export async function getPagePathWiseMetrics(req, res) {
       const purchases = pagePathData.purchases;
       const addToCarts = pagePathData.addToCarts;
       const checkouts = pagePathData.checkouts;
-      
+
+      const cleanGA4Path = pagePath.replace(/\/$/, "");
+      // console.log("cleanGA4Path", cleanGA4Path);
+      const perfScore = pagePaths.find(page => page.path.replace(/\/$/, "") === cleanGA4Path)?.perfScore ?? 0;
       // Calculate rates
       const atcRate = sessions > 0 ? (addToCarts / sessions) * 100 : 0;
       const checkoutRate = sessions > 0 ? (checkouts / sessions) * 100 : 0;
@@ -3130,6 +3375,8 @@ export async function getPagePathWiseMetrics(req, res) {
       // Calculate bounce rate from aggregated bounced sessions
       const bounceRate = sessions > 0 ? (pagePathData.bouncedSessions / sessions) * 100 : 0;
       const totalRevenue = pagePathData.purchaseRevenue;
+      const estimatedCost = sessions * cpc || 0;
+      
       return {
         "Page Path": pagePath,
         "Sessions": sessions,
@@ -3141,6 +3388,8 @@ export async function getPagePathWiseMetrics(req, res) {
         "Bounce Rate": Number.parseFloat(bounceRate.toFixed(2)),
         "Conversion Rate": Number.parseFloat(conversionRate.toFixed(2)),
         "Sales": totalRevenue.toFixed(2),
+        "PerfScore": perfScore,
+        "Estimated Cost": Number(estimatedCost.toFixed(2)),
       };
     })
 
@@ -3169,4 +3418,98 @@ export async function getPagePathWiseMetrics(req, res) {
 
 
 
+export async function fetchGoogleAdAndCampaignMetrics(brandId, startDate, endDate) {
+  try {
+    const brand = await Brand.findById(brandId).lean();
 
+    const refreshToken = brand.googleAdsRefreshToken;
+    const googleAdAccounts = brand.googleAdAccount || [];
+
+    if (!refreshToken || googleAdAccounts.length === 0) {
+      return ({
+        success: true,
+        data: null,
+      });
+    }
+
+    // if (!startDate || !endDate) {
+    //   startDate = moment().startOf("month").format("YYYY-MM-DD");
+    //   endDate = moment().format("YYYY-MM-DD");
+    // }
+
+    let totalSpend = 0;
+    let totalClicks = 0;
+
+    // =============================
+    // 1️⃣ FETCH GOOGLE ADS DATA
+    // =============================
+    for (const adAccount of googleAdAccounts) {
+      const { clientId, managerId } = adAccount;
+
+      if (!clientId || !managerId) continue;
+
+      const customer = client.Customer({
+        customer_id: clientId,
+        refresh_token: refreshToken,
+        login_customer_id: managerId,
+      });
+
+      const report = await customer.report({
+        entity: "customer",
+        metrics: ["metrics.cost_micros", "metrics.clicks"],
+        from_date: startDate,
+        to_date: endDate,
+      });
+
+      for (const row of report) {
+        const spend = (row.metrics.cost_micros || 0) / 1_000_000;
+        totalSpend += spend;
+        totalClicks += row.metrics.clicks || 0;
+      }
+    }
+
+    const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+    // =============================
+    // 2️⃣ FETCH GA4 SESSIONS
+    // =============================
+    const propertyId = brand.ga4PropertyId;
+
+    let sessions = 0;
+
+    if (propertyId) {
+      const ga4Response = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [{ name: "sessions" }],
+      });
+
+      sessions = ga4Response[0]?.rows?.[0]?.metricValues?.[0]?.value
+        ? Number(ga4Response[0].rows[0].metricValues[0].value)
+        : 0;
+    }
+
+    // =============================
+    // 3️⃣ ESTIMATE COST
+    // =============================
+    const estimatedCost = sessions * cpc;
+
+    return {
+      success: true,
+      data: {
+        totalSpend: Number(totalSpend.toFixed(2)),
+        totalClicks,
+        cpc: Number(cpc.toFixed(4)),
+        sessions,
+        estimatedCost: Number(estimatedCost.toFixed(2)),
+      },
+    };
+
+  } catch (error) {
+    console.error("Failed:", error);
+    return {
+      success: false,
+      message: "Internal server error",
+    };
+  }
+}

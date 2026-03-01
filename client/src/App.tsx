@@ -81,7 +81,7 @@ function App() {
                   <Route path="/festival-calendar/:brandId" element={<FestivalCalendarPage />} />
                   <Route path="/speed-insights" element={<SpeedInsightsPage />} />
                   <Route path="/location-analytics/:brandId" element={<LocationAnalyticsPage />} />
-                  <Route path="/master-dashboard/:brandId" element={<MasterDashboard />} />
+                  <Route path="/master-dashboard/" element={<MasterDashboard />} />
                 </Routes>
               </TutorialManager>
             </AutoLogout>

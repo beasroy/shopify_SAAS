@@ -13,7 +13,7 @@ const client = new GoogleAdsApi({
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
 });
 
-export const getAggregatedFbMetrics = (fbAdAccounts) => {
+const getAggregatedFbMetrics = (fbAdAccounts) => {
   if (!fbAdAccounts || fbAdAccounts.length === 0) {
     return {
       totalSpent: 0,
@@ -709,8 +709,5 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     });
   }
 }
-
-
-
 
 

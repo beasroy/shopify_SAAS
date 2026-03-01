@@ -4,6 +4,13 @@ import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 import PageSpeedInsight from '../models/PageSpeedInsight.js';
 import pLimit from "p-limit";
+import { GoogleAdsApi } from "google-ads-api";
+
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+});
 
 const PSI_API_KEY = process.env.GOOGLE_API_KEY;
 const PSI_ENDPOINT = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
@@ -3078,10 +3085,10 @@ export async function fetchLandingPages(brandId) {
   const brand = await Brand.findById(brandId).lean();
 
   if (!brand) {
-    return res.status(404).json({
+    return {
       success: false,
       message: 'Brand not found.'
-    });
+    };
   }
 
   const propertyId = brand.ga4Account?.PropertyID;
@@ -3089,7 +3096,8 @@ export async function fetchLandingPages(brandId) {
   const refreshToken = brand.googleAnalyticsRefreshToken;
   if (!refreshToken || refreshToken.trim() === '') {
     console.warn(`No refresh token found for Brand ID: ${brandId}`);
-    return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    // return res.status(403).json({ error: 'Access to Google Analytics API is forbidden. Check your credentials or permissions.' });
+    throw new Error('Access to Google Analytics API is forbidden. Check your credentials or permissions.');
   }
 
   const accessToken = await getGoogleAccessToken(refreshToken);
@@ -3134,7 +3142,7 @@ export async function fetchLandingPages(brandId) {
 
 
 export async function fetchPageSpeed(url) {
-  
+
   const response = await retryWithBackoff(() =>
     axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
       params: {
@@ -3196,14 +3204,21 @@ export async function runPageSpeedJob(brandId, baseUrl, page) {
   const tasks = pathsToProcess.map(path =>
     limit(async () => {
       try {
-        const pagePath = !path || path === '(not set)' ? "/" : path;
-        const fullUrl = baseUrl.replace(/\/$/, "") + pagePath;
+        // const pagePath = !path || path === '(not set)' ? "/" : path;
+        let normalizedPath;
+
+        if (!path || path === '(not set)' || path === '/') {
+          normalizedPath = '/';
+        } else {
+          normalizedPath = path.replace(/\/+$/, '');
+        }
+        const fullUrl = baseUrl.replace(/\/$/, "") + normalizedPath;
 
         const performance = await fetchPageSpeed(fullUrl);
 
         results.push({
           brandId,
-          path,
+          path: normalizedPath,
           fullUrl,
           ...performance,
           lastUpdated: new Date(),
@@ -3293,15 +3308,13 @@ export async function getPagePathWiseMetrics(req, res) {
       })
 
     const Rows = response?.data?.rows || [];
-   
+
     const pagePaths = await PageSpeedInsight.find({
       brandId,
       page: "pagePath",
       // path: { $in: Rows.map(row => row.dimensionValues[0]?.value) }
     }).lean();
 
-    console.log(pagePaths?.length);
-    console.log(pagePaths.find(page => page.path === "/collections/women-dupatta"));
     // Process data - aggregate all metrics per pagePath (no month-wise separation)
     const groupedData = Rows.reduce((acc, row) => {
       const pagePath = row.dimensionValues[0]?.value || 'Unknown';
@@ -3335,6 +3348,15 @@ export async function getPagePathWiseMetrics(req, res) {
       acc[pagePath].checkouts += checkouts;
       return acc;
     }, {});
+    let cpc = 0;
+    try {
+      const data = await fetchGoogleAdAndCampaignMetrics(brandId, adjustedStartDate, adjustedEndDate);
+      cpc = data.data.cpc || 0;
+      
+    } catch (error) {
+      console.error('Error fetching Page Path Wise Metrics:', error);
+      return res.status(500).json({ error: 'Failed to fetch Page Path Wise Metrics.' });
+    }
 
     // Convert grouped data to an array format with calculated rates
     let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => {
@@ -3353,6 +3375,8 @@ export async function getPagePathWiseMetrics(req, res) {
       // Calculate bounce rate from aggregated bounced sessions
       const bounceRate = sessions > 0 ? (pagePathData.bouncedSessions / sessions) * 100 : 0;
       const totalRevenue = pagePathData.purchaseRevenue;
+      const estimatedCost = sessions * cpc || 0;
+      
       return {
         "Page Path": pagePath,
         "Sessions": sessions,
@@ -3365,6 +3389,7 @@ export async function getPagePathWiseMetrics(req, res) {
         "Conversion Rate": Number.parseFloat(conversionRate.toFixed(2)),
         "Sales": totalRevenue.toFixed(2),
         "PerfScore": perfScore,
+        "Estimated Cost": Number(estimatedCost.toFixed(2)),
       };
     })
 
@@ -3393,4 +3418,98 @@ export async function getPagePathWiseMetrics(req, res) {
 
 
 
+export async function fetchGoogleAdAndCampaignMetrics(brandId, startDate, endDate) {
+  try {
+    const brand = await Brand.findById(brandId).lean();
 
+    const refreshToken = brand.googleAdsRefreshToken;
+    const googleAdAccounts = brand.googleAdAccount || [];
+
+    if (!refreshToken || googleAdAccounts.length === 0) {
+      return ({
+        success: true,
+        data: null,
+      });
+    }
+
+    // if (!startDate || !endDate) {
+    //   startDate = moment().startOf("month").format("YYYY-MM-DD");
+    //   endDate = moment().format("YYYY-MM-DD");
+    // }
+
+    let totalSpend = 0;
+    let totalClicks = 0;
+
+    // =============================
+    // 1️⃣ FETCH GOOGLE ADS DATA
+    // =============================
+    for (const adAccount of googleAdAccounts) {
+      const { clientId, managerId } = adAccount;
+
+      if (!clientId || !managerId) continue;
+
+      const customer = client.Customer({
+        customer_id: clientId,
+        refresh_token: refreshToken,
+        login_customer_id: managerId,
+      });
+
+      const report = await customer.report({
+        entity: "customer",
+        metrics: ["metrics.cost_micros", "metrics.clicks"],
+        from_date: startDate,
+        to_date: endDate,
+      });
+
+      for (const row of report) {
+        const spend = (row.metrics.cost_micros || 0) / 1_000_000;
+        totalSpend += spend;
+        totalClicks += row.metrics.clicks || 0;
+      }
+    }
+
+    const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+    // =============================
+    // 2️⃣ FETCH GA4 SESSIONS
+    // =============================
+    const propertyId = brand.ga4PropertyId;
+
+    let sessions = 0;
+
+    if (propertyId) {
+      const ga4Response = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [{ name: "sessions" }],
+      });
+
+      sessions = ga4Response[0]?.rows?.[0]?.metricValues?.[0]?.value
+        ? Number(ga4Response[0].rows[0].metricValues[0].value)
+        : 0;
+    }
+
+    // =============================
+    // 3️⃣ ESTIMATE COST
+    // =============================
+    const estimatedCost = sessions * cpc;
+
+    return {
+      success: true,
+      data: {
+        totalSpend: Number(totalSpend.toFixed(2)),
+        totalClicks,
+        cpc: Number(cpc.toFixed(4)),
+        sessions,
+        estimatedCost: Number(estimatedCost.toFixed(2)),
+      },
+    };
+
+  } catch (error) {
+    console.error("Failed:", error);
+    return {
+      success: false,
+      message: "Internal server error",
+    };
+  }
+}

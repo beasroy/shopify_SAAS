@@ -18,7 +18,7 @@ function getPercentageChange(current, previous) {
   return Number(((current - previous) / previous * 100).toFixed(2));
 }
 // Helper function for date formatting
-const formatDate = date => date.toISOString().split('T')[0];
+export const formatDate = date => date.toISOString().split('T')[0];
 
 export function buildMetricObject(period, currentStart, currentEnd, prevStart, prevEnd, currentValue, prevValue) {
   const isSpend = typeof currentValue === 'number' && currentValue % 1 !== 0;
@@ -123,7 +123,7 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
   }
 }
 // Helper function for retrying API calls with exponential backoff
-async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
+export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
   let lastError;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -141,7 +141,7 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
 }
 
 // Helper function to calculate metrics comparison between current and previous periods
-function calculateMetrics(current, previous) {
+export function calculateMetrics(current, previous) {
   const numCurrent = Number(current);
   const numPrevious = Number(previous);
   const roundedCurrent = Number(numCurrent.toFixed(2));

@@ -8,74 +8,81 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
 
 
 
 export type MetricsRow = {
-  // [key: string]: string | number | undefined
-  // brandId: string;
-  // brandName: string;
-  // fbLiveSpend: number | string;
-  // fbPurchases: number | string;
-  // fbRevenue: number | string;
-  // googleSpend: number | string;
-  // metaSpend: number | string;
-  // month?: number | string;
-  // refundAmount: number | string;
-  // totalSales: number | string;
-  // totalSpend: number | string;
-  // year?: number | string;
 
   brandId: string;
   brandName: string;
 
-  totalSales: String | number;
-  refundAmount: String | number;
-  netSales: String | number;
+  // Facebook / Meta Metrics
+  fbTotalCPC: number | string;
+  fbTotalCPP: number | string;
+  fbTotalCTR: number | string;
+  metaROAS: number | string;
+  metaRevenue: number | string;
+  metaSpend: number | string;
 
-  metaSpend: String | number;
-  metaRevenue: String | number;
-  googleSpend: String | number;
-  totalSpend: String | number;
+  // Google Metrics (Note: These appear as strings in your data)
+  googleSpend: number | string;
+  googleTotalCPC: string | number;
+  googleTotalCPP: string | number;
+  googleTotalCTR: string | number;
 
-  metaROAS: String | number;
-  overallROAS: String | number;
+  // Aggregate Financial Metrics
+  netSales: number | string;
+  overallROAS: number | string;
+  refundAmount: number | string;
+  totalSales: number | string;
+  totalSpend: number | string;
 
+  // Funnel Metrics
+  atc: number | string;
+  atcRate: number | string;
+  checkouts: number | string;
+  checkoutRate: number | string;
+  purchases: number | string;
+  purchaseRate: number | string;
+
+  metaSalesTrend: "up" | "down" | "neutral";
+  metaSalesChange: number | string;
 }
 
-type ColumnDef = {
-  key: keyof MetricsRow
-  header: string
-  width: number
-  minWidth?: number
-  align?: "left" | "right" | "center"
-}
 
 export default function MasterTable({
   brands,
-  primaryColumn = "Brand Name",
+  columnConfig,
+  visibleColumns,
+  columnOrder,
   initialPageSize = "50",
 }: {
   brands: MetricsRow[]
-  primaryColumn?: "Brand Name" | "Brands"
+  columnConfig: {
+    key: keyof MetricsRow
+    header: string
+    width: number
+    minWidth?: number
+    align?: "left" | "right" | "center"
+  }[]
+  visibleColumns: string[]
+  columnOrder: string[]
   initialPageSize?: "25" | "50" | "100" | "200" | "all"
 }) {
+
+
   const columns = React.useMemo(() => {
-    const baseColumns: ColumnDef[] = [
-      { key: "brandName", header: primaryColumn, width: 300, minWidth: 150, align: "left" },
-      { key: "totalSales", header: "Total Sales", width: 140, minWidth: 130, align: "right" },
-      { key: "refundAmount", header: "Refund Amount", width: 140, minWidth: 130, align: "right" },
-      { key: "netSales", header: "Net Sales", width: 140, minWidth: 130, align: "right" },
-      { key: "metaSpend", header: "Meta Spend", width: 140, minWidth: 130, align: "right" },
-      { key: "metaRevenue", header: "Meta Revenue", width: 140, minWidth: 130, align: "right" },
-      { key: "googleSpend", header: "Google Spend", width: 140, minWidth: 130, align: "right" },
-      { key: "totalSpend", header: "Total Spend", width: 140, minWidth: 130, align: "right" },
-      { key: "metaROAS", header: "Meta ROAS", width: 140, minWidth: 130, align: "right" },
-      { key: "overallROAS", header: "Overall ROAS", width: 140, minWidth: 130, align: "right" },
-    ]
-    return baseColumns
-  }, [primaryColumn])
+    const columnMap = new Map(
+      columnConfig.map(col => [col.key as string, col])
+    )
+
+    return columnOrder
+      .filter(key => visibleColumns.includes(key))
+      .map(key => columnMap.get(key))
+      .filter(Boolean) as typeof columnConfig
+  }, [columnConfig, visibleColumns, columnOrder])
+
 
   const [widths, setWidths] = React.useState<number[]>([])
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -142,6 +149,48 @@ export default function MasterTable({
   const renderCell = (row: MetricsRow, key: keyof MetricsRow) => {
     const value = row[key]
 
+    if (key === "totalSales") {
+      let currencyValue = ''
+      if (typeof value === "number") {
+
+        if (key.includes("Rate")) {
+          currencyValue = `${value.toFixed(2)}%`
+        } else {
+          currencyValue = `${value.toLocaleString('en-US')}`
+
+        }
+      }
+      const revenueTrend = row.metaSalesTrend
+      return (
+        <span className={cn(
+          " font-medium flex items-center justify-center gap-2",
+          // {
+          //   "text-green-600": revenueTrend === "up",
+          //   "text-red-600": revenueTrend === "down",
+          //   "text-gray-600": revenueTrend === "neutral"
+          // }
+        )}>
+          {currencyValue}
+          {revenueTrend === "up" && <span className="text-green-600 flex items-center justify-center my-auto">{
+            <>
+              (<ArrowUpIcon className="h-3 w-3" /> {Math.abs(Number(row.metaSalesChange))}%)
+            </>
+          }</span>}
+          {revenueTrend === "down" && <span className="text-red-600 flex items-center justify-center gap-1">{
+            <>
+              (<ArrowDownIcon className="h-3 w-3" /> {Math.abs(Number(row.metaSalesChange))}%)
+            </>
+          }</span>}
+          {revenueTrend === "neutral" && <span className="text-gray-600 flex items-center justify-center gap-1">{
+            <>
+              ( {Math.abs(Number(row.metaSalesChange))}%)
+            </>
+          }</span>}
+        </span>
+      )
+
+    }
+
     if (key === "brandName") {
       return (
         <span className="font-medium text-gray-900">
@@ -182,7 +231,7 @@ export default function MasterTable({
                     key={String(col.key)}
                     style={{ width: `${width}px`, minWidth: `${width}px` }}
                     className={cn(
-                      "px-3 py-3 text-xs font-semibold text-blue-900 uppercase tracking-wider",
+                      "px-3 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider",
                       "border-b border-l last:border-r border-gray-200",
                       alignClass,
                       isFirst && "sticky left-0 z-40 bg-gray-50 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"

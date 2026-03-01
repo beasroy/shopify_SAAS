@@ -8,7 +8,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowDownUp } from 'lucide-react'
 import { Ga4Logo } from "@/data/logo"
 
 export type MetricsRow = {
@@ -21,6 +21,8 @@ export type MetricsRow = {
   "Checkout Rate": number
   "Bounce Rate": number
   "Conversion Rate": number
+  "Estimated Cost": number
+  "PerfScore": number
 }
 
 type ColumnDef = {
@@ -35,24 +37,45 @@ export default function MetricsTable({
   rows,
   primaryColumn = "Page Path",
   initialPageSize = "50",
+  onSort,
+  sortConfig,
 }: {
   rows: MetricsRow[]
   primaryColumn?: "Page Path" | "Page Title"
   initialPageSize?: "25" | "50" | "100" | "200" | "all"
+  onSort?: (columnKey: string) => void
+  sortConfig?: {
+    key: string
+    direction: "asc" | "desc"
+  } | null
 }) {
   const columns = React.useMemo(() => {
     const baseColumns: ColumnDef[] = [
+      // { key: primaryColumn, header: primaryColumn, width: 300, minWidth: 150, align: "left" },
+      // { key: "Bounce Rate", header: "Bounce Rate", width: 140, minWidth: 130, align: "right" },
+      // { key: "Sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
+      // { key: "Estimated Cost", header: "Est. Cost", width: 120, minWidth: 250, align: "right" },
+      // { key: "Sales", header: "Sales", width: 140, minWidth: 130, align: "right" },
+      // { key: "Purchases", header: "Purchases", width: 120, minWidth: 110, align: "right" },
+      // { key: "ATC", header: "ATC", width: 100, minWidth: 90, align: "right" },
+      // { key: "ATC Rate", header: "ATC Rate", width: 130, minWidth: 120, align: "right" },
+      // { key: "Checkout", header: "Checkout", width: 120, minWidth: 110, align: "right" },
+      // { key: "Checkout Rate", header: "Checkout Rate", width: 150, minWidth: 140, align: "right" },
+      // { key: "Conversion Rate", header: "Conversion Rate", width: 160, minWidth: 150, align: "right" },
+      // { key: "PerfScore", header: "Page Performance", width: 160, minWidth: 150, align: "right" },
+
       { key: primaryColumn, header: primaryColumn, width: 300, minWidth: 150, align: "left" },
-      { key: "Bounce Rate", header: "Bounce Rate", width: 140, minWidth: 130, align: "right" },
+      { key: "Bounce Rate", header: "Bounce Rate", width: 170, align: "right" },
       { key: "Sessions", header: "Sessions", width: 120, minWidth: 110, align: "right" },
+      { key: "Estimated Cost", header: "Est. Cost", width: 150, align: "right" },
       { key: "Sales", header: "Sales", width: 140, minWidth: 130, align: "right" },
       { key: "Purchases", header: "Purchases", width: 120, minWidth: 110, align: "right" },
       { key: "ATC", header: "ATC", width: 100, minWidth: 90, align: "right" },
-      { key: "ATC Rate", header: "ATC Rate", width: 130, minWidth: 120, align: "right" },
+      { key: "ATC Rate", header: "ATC Rate", width: 140, minWidth: 140, align: "right" },
       { key: "Checkout", header: "Checkout", width: 120, minWidth: 110, align: "right" },
-      { key: "Checkout Rate", header: "Checkout Rate", width: 150, minWidth: 140, align: "right" },
-      { key: "Conversion Rate", header: "Conversion Rate", width: 160, minWidth: 150, align: "right" },
-      { key: "PerfScore", header: "Page Performance", width: 160, minWidth: 150, align: "right" },
+      { key: "Checkout Rate", header: "Checkout Rate", width: 180, minWidth: 180, align: "right" },
+      { key: "Conversion Rate", header: "Conversion Rate", width: 190, minWidth: 190, align: "right" },
+      { key: "PerfScore", header: "Page Performance", width: 210, minWidth: 200, align: "right" },
     ]
     return baseColumns
   }, [primaryColumn])
@@ -62,7 +85,7 @@ export default function MetricsTable({
   const [containerWidth, setContainerWidth] = React.useState<number>(0)
   const columnsKeyRef = React.useRef<string>('')
   const hasInitializedRef = React.useRef<boolean>(false)
-
+  console.log(widths)
   // Measure container width
   React.useEffect(() => {
     const measureContainer = () => {
@@ -143,10 +166,12 @@ export default function MetricsTable({
     <div ref={containerRef} className="w-full h-[calc(100vh-100px)] flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse">
-          <thead className="bg-gray-50 sticky top-0 z-30">
+          <thead className="bg-gray-50 sticky top-0 z-50">
             <tr>
               {columns.map((col, idx) => {
-                const width = widths[idx] ?? col.width
+                // const width = widths[idx] ?? col.width
+                const width = col.width
+                const isActive = sortConfig?.key === col.key
                 const isFirst = idx === 0
                 const alignClass =
                   col.align === "right"
@@ -163,12 +188,15 @@ export default function MetricsTable({
                       "px-3 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider",
                       "border-b border-l last:border-r border-gray-200",
                       alignClass,
-                      isFirst && "sticky left-0 z-40 bg-gray-50 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]"
+                      isFirst && "sticky left-0 z-40 bg-gray-50 shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]",
+                      // isActive && "bg-blue-50 text-blue-700",
+                      isActive ? "text-blue-600 font-bold" : "text-gray-700"
                     )}
                   >
-                    <div className="flex items-center gap-2">
+                    <div onClick={() => col.key !== "Page Path" ? onSort?.(col.key) : null} className="flex items-center gap-2 cursor-pointer">
                       <Ga4Logo width="1rem" height="1rem" />
                       <span>{col.header}</span>
+                      {col.key !== "Page Path" && <ArrowDownUp width="1rem" height="1rem" />}
                     </div>
                   </th>
                 )

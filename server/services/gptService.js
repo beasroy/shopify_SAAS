@@ -1,21 +1,34 @@
 import OpenAI from 'openai';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import dotenv from 'dotenv';
+import { getCanonicalCity } from '../utils/cityAliases.js';
+
+// Load .env when this module is used standalone (e.g. by cityClassificationWorker run without server)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
+// #region agent log
+fetch('http://127.0.0.1:7791/ingest/2df78964-76d9-43ce-8aef-0f2a37dc308a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'48a575'},body:JSON.stringify({sessionId:'48a575',location:'gptService.js:init',message:'OpenAI client initialized',data:{hasOpenAIKey:!!process.env.OPENAI_API_KEY},timestamp:Date.now(),hypothesisId:'H1',runId:'post-fix'})}).catch(()=>{});
+// #endregion
 
 export async function classifyCitiesWithGPT(cities) {
     if (!process.env.OPENAI_API_KEY) {
         throw new Error('OPENAI_API_KEY is not set in environment variables');
     }
 
-    // Build city list for prompt (country comes from input; GPT does not need to generate it)
-    const cityList = cities.map((c, i) =>
-        `${i + 1}. ${c.city}, ${c.state}${c.country ? ', ' + c.country : ''}`
-    ).join('\n');
+    // Only apply alias when the city is in our alias map (e.g. Bangalore → Bengaluru); otherwise use as-is
+    const cityList = cities.map((c, i) => {
+        const canonical = getCanonicalCity(c.city);
+        const displayCity = canonical ? canonical.charAt(0).toUpperCase() + canonical.slice(1) : (c.city || '');
+        return `${i + 1}. ${displayCity}, ${c.state}${c.country ? ', ' + c.country : ''}`;
+    }).join('\n');
 
-const prompt = `You are a geography expert. For each city, classify it accordingly. The country is already provided in the list — do not infer or generate country; use the given country if needed for region/tier rules.
+const prompt = `You are a geography expert. Classify the following cities using your full geography knowledge — you can classify any city. The country is already provided in the list; use it for region/tier rules. When a city has well-known alternate names (e.g. Bangalore/Bengaluru, Delhi/New Delhi, Bombay/Mumbai), use the canonical or official form in your response so we can match consistently.
 
 3. Tier: "tier1", "tier2", or "tier3"
    - For Indian cities: Use the official tier classification system:
@@ -37,10 +50,10 @@ const prompt = `You are a geography expert. For each city, classify it according
    - true if the city is located on a coastline or has direct access to a sea/ocean
    - false otherwise
 
-Cities to classify:
+Reference city list (for this run — use for context; classify these and any city using your knowledge):
 ${cityList}
 
-Return a JSON object with a "cities" array. Each city object should have :
+Return a JSON object with a "cities" array. Include one classification per city in the reference list above. Each city object should have:
 {
   "city": "Mumbai",
   "state": "Maharashtra",
@@ -96,24 +109,28 @@ Return ONLY valid JSON, no other text.`;
                 return;
             }
 
+            const cityCanonical = getCanonicalCity(city.city);
+            const stateNorm = (city.state || '').toLowerCase().trim();
+            // Match by canonical so Bangalore and Bengaluru get the same classification
             const classification = resultCities[index] || resultCities.find(
-                c => c.city?.toLowerCase() === city.cityNormalized && 
-                     c.state?.toLowerCase() === (city.state || '').toLowerCase()
+                r => getCanonicalCity(r.city) === cityCanonical &&
+                     (r.state?.toLowerCase().trim() || '') === stateNorm
             );
 
             if (classification) {
                 // Use country from input (cities array); GPT does not return it
                 const country = city.country || 'unknown';
-                const countryNormalized = country.toLowerCase().replaceAll(/\s+/g, '');
-                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
-                const lookupKey = `${city.cityNormalized}_${stateNormalized}_${countryNormalized}`;
+                const countryNormalized = String(country).toLowerCase().replaceAll(/\s+/g, '') || 'unknown';
+                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '') || 'unknown';
+                // lookupKey uses canonical city so Bangalore and Bengaluru share the same key
+                const lookupKey = `${cityCanonical}_${stateNormalized}_${countryNormalized}`;
                 
                 classifications.push({
                     lookupKey: lookupKey,
                     city: city.city,
                     state: city.state,
                     country: country,
-                    cityNormalized: city.cityNormalized,
+                    cityNormalized: cityCanonical,
                     metroStatus: classification.metroStatus || 'non-metro',
                     tier: classification.tier || 'tier3', // Default to tier3 if not specified
                     region: classification.region || (country.toLowerCase() === 'india' ? 'central' : 'other'),
@@ -124,15 +141,15 @@ Return ONLY valid JSON, no other text.`;
                 // Fallback if classification not found
                 console.warn(`No classification found for ${city.city}, ${city.state}`);
                 const country = city.country || 'unknown';
-                const countryNormalized = country.toLowerCase().replaceAll(/\s+/g, '');
-                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '');
-                const lookupKey = `${city.cityNormalized}_${stateNormalized}_${countryNormalized}`;
+                const countryNormalized = String(country).toLowerCase().replaceAll(/\s+/g, '') || 'unknown';
+                const stateNormalized = (city.state || 'unknown').toLowerCase().replaceAll(/\s+/g, '') || 'unknown';
+                const lookupKey = `${cityCanonical}_${stateNormalized}_${countryNormalized}`;
                 classifications.push({
                     lookupKey: lookupKey,
                     city: city.city,
                     state: city.state,
                     country: country,
-                    cityNormalized: city.cityNormalized,
+                    cityNormalized: cityCanonical,
                     metroStatus: 'non-metro',
                     tier: 'tier3', // Default to tier3 for unclassified cities
                     region: 'other',

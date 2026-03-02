@@ -1,55 +1,13 @@
 import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import { parseDate, validateDateRange } from '../utils/dateUtils.js';
+import { getCityCanonicalSwitch } from '../utils/cityAliases.js';
 import { connection as redis } from '../config/redis.js';
 
 // Constants
 const MAX_LOCATIONS_PER_DIMENSION = 1000;
 const CACHE_TTL = 300; // 5 minutes in seconds
 const MAX_DATE_RANGE_DAYS = 365;
-
-/**
- * Generate date range array for filling missing dates
- */
-function generateDateRange(startDate, endDate) {
-    const dates = [];
-    let current = new Date(startDate);
-    const end = new Date(endDate);
-    
-    while (current <= end) {
-        dates.push(current.toISOString().split('T')[0]);
-        const nextDate = new Date(current);
-        nextDate.setDate(nextDate.getDate() + 1);
-        current = nextDate;
-    }
-    
-    return dates;
-}
-
-/**
- * Fill missing dates in daily breakdown with zero sales
- * Optimized to only generate missing dates
- */
-function fillMissingDates(dailyBreakdown, startDate, endDate) {
-    const existingDates = new Set(dailyBreakdown.map(d => d.date));
-    const allDates = generateDateRange(startDate, endDate);
-    
-    // Only add missing dates
-    const missingDates = allDates.filter(date => !existingDates.has(date));
-    
-    missingDates.forEach(date => {
-        dailyBreakdown.push({
-            date,
-            sales: 0,
-            orderCount: 0
-        });
-    });
-    
-    // Sort by date
-    dailyBreakdown.sort((a, b) => a.date.localeCompare(b.date));
-    
-    return dailyBreakdown;
-}
 
 /**
  * Transform aggregation results to API response format
@@ -90,31 +48,23 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
             };
         }
         
-        // Fill missing dates in daily breakdown
-        const filledBreakdown = fillMissingDates(
-            location.dailyBreakdown || [],
-            startDate,
-            endDate
-        );
-        
-        // For region dimension, show state; for others, show city
-        // Add null checks with fallback values
-        const locationData = dimension === 'region' 
+        // For region dimension, show state; for others, show city; include country from Order
+        const locationData = dimension === 'region'
             ? {
                 state: location.originalState || location.originalLocation || 'Unknown',
+                country: location.originalCountry || 'unknown',
                 totalSales: location.totalSales || 0,
                 orderCount: location.totalOrderCount || 0,
                 monthlyTotal: location.totalSales || 0,
-                dailyBreakdown: filledBreakdown,
                 isClassified
             }
             : {
                 city: location.originalCity || location.originalLocation || 'Unknown',
                 state: location.originalState || 'Unknown',
+                country: location.originalCountry || 'unknown',
                 totalSales: location.totalSales || 0,
                 orderCount: location.totalOrderCount || 0,
                 monthlyTotal: location.totalSales || 0,
-                dailyBreakdown: filledBreakdown,
                 isClassified
             };
         
@@ -230,38 +180,31 @@ export async function getLocationSales(req, res) {
         // Build aggregation pipeline - for region dimension, group by state; for others, group by city
         const isRegionDimension = dimension === 'region';
         
-        // Build the grouping stage based on dimension
+        // Group by location only (no date); sum totalSales and count orders directly
         const locationGroupStage = {
             $group: {
                 _id: {
-                    // Use state for region dimension, city for others
                     locationKey: isRegionDimension
-                        ? { 
-                            $toLower: { 
-                                $trim: { 
-                                    input: { $ifNull: ["$state", ""] }
-                                }
-                            }
-                        }
-                        : "$cityNormalized",
+                        ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
+                        : "$lookupKey",
                     originalLocation: isRegionDimension ? "$state" : "$city",
                     originalCity: "$city",
                     originalState: "$state",
-                    date: "$orderDate",
+                    originalCountry: { $ifNull: ["$country", "unknown"] },
                     metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
                     region: { $ifNull: ["$cityMeta.region", null] },
                     tier: { $ifNull: ["$cityMeta.tier", null] },
                     isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
                     isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
                 },
-                dailySales: { $sum: "$totalSales" },
-                dailyOrderCount: { $sum: 1 }
+                totalSales: { $sum: "$totalSales" },
+                totalOrderCount: { $sum: 1 }
             }
         };
         
-        // MongoDB aggregation pipeline
+        // MongoDB aggregation pipeline: filter by startDate/endDate, then group by location
         const pipeline = [
-            // Stage 1: Match orders
+            // Stage 1: Match orders in the selected date range only
             {
                 $match: {
                     brandId: new mongoose.Types.ObjectId(brandId),
@@ -270,65 +213,104 @@ export async function getLocationSales(req, res) {
                     state: { $exists: true, $ne: null, $nin: [null, ''] }
                 }
             },
-            // Stage 2: Normalize and create lookup key
+            // Stage 2: Normalize city, state, country and build lookupKey (same format as CityMetadata: city_state_country, no spaces in state/country)
             {
                 $addFields: {
-                    cityNormalized: { 
-                        $toLower: { 
-                            $trim: { 
-                                input: { $ifNull: ["$city", ""] }
-                            }
+                    cityNormalized: {
+                        $toLower: {
+                            $trim: { input: { $ifNull: ["$city", ""] } }
                         }
                     },
-                    stateNormalized: { 
-                        $toLower: { 
-                            $trim: { 
-                                input: { $ifNull: ["$state", ""] }
-                            }
+                    stateNormalized: {
+                        $toLower: {
+                            $trim: { input: { $ifNull: ["$state", ""] } }
                         }
                     },
-                    // Note: lookupKey will be matched dynamically based on city+state
-                    // since country is determined by GPT
+                    // Remove spaces/tabs/newlines so lookupKey matches gptService. Each $replaceAll has exactly one find/replacement; chain by nesting.
+                    stateNormalizedNoSpaces: {
+                        $replaceAll: {
+                            input: {
+                                $replaceAll: {
+                                    input: {
+                                        $replaceAll: {
+                                            input: {
+                                                $replaceAll: {
+                                                    input: { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } },
+                                                    find: " ",
+                                                    replacement: ""
+                                                }
+                                            },
+                                            find: "\t",
+                                            replacement: ""
+                                        }
+                                    },
+                                    find: "\n",
+                                    replacement: ""
+                                }
+                            },
+                            find: "\r",
+                            replacement: ""
+                        }
+                    },
+                    countryNormalized: {
+                        $replaceAll: {
+                            input: {
+                                $replaceAll: {
+                                    input: {
+                                        $replaceAll: {
+                                            input: {
+                                                $replaceAll: {
+                                                    input: { $toLower: { $trim: { input: { $ifNull: ["$country", "unknown"] } } } },
+                                                    find: " ",
+                                                    replacement: ""
+                                                }
+                                            },
+                                            find: "\t",
+                                            replacement: ""
+                                        }
+                                    },
+                                    find: "\n",
+                                    replacement: ""
+                                }
+                            },
+                            find: "\r",
+                            replacement: ""
+                        }
+                    },
                     orderDate: {
-                        $dateToString: { 
-                            format: "%Y-%m-%d", 
-                            date: "$orderCreatedAt" 
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$orderCreatedAt"
                         }
                     }
                 }
             },
-            // Stage 3: Lookup CityMetadata by cityNormalized + state
-            // Note: lookupKey includes country (determined by GPT), but we match on city+state
-            // This works for single-country deployments. Multi-country support would require country field in Order model.
+            // Bangalore/Bengaluru and Delhi/New Delhi -> same canonical for lookupKey
+            {
+                $addFields: {
+                    cityCanonical: getCityCanonicalSwitch()
+                }
+            },
+            {
+                $addFields: {
+                    lookupKey: {
+                        $concat: [
+                            "$cityCanonical",
+                            "_",
+                            "$stateNormalizedNoSpaces",
+                            "_",
+                            { $cond: [{ $eq: [{ $strLenCP: "$countryNormalized" }, 0] }, "unknown", "$countryNormalized"] }
+                        ]
+                    }
+                }
+            },
+            // Stage 3: Lookup CityMetadata by lookupKey (city_state_country from Order, stored in DB)
             {
                 $lookup: {
                     from: "citymetadatas",
-                    let: { 
-                        cityNorm: "$cityNormalized",
-                        stateNorm: "$stateNormalized"
-                    },
+                    let: { orderLookupKey: "$lookupKey" },
                     pipeline: [
-                        {
-                            $addFields: {
-                                stateNormalizedLookup: {
-                                    $toLower: {
-                                        $trim: {
-                                            input: { $ifNull: ["$state", ""] }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        {
-                            $match: {
-                                $expr: {
-                                    $and: [
-                                        { $eq: ["$cityNormalized", "$$cityNorm"] },
-                                        { $eq: ["$stateNormalizedLookup", "$$stateNorm"] }
-                                    ]
-                                }
-                            }
-                        }
+                        { $match: { $expr: { $eq: ["$lookupKey", "$$orderLookupKey"] } } }
                     ],
                     as: "cityMeta"
                 }
@@ -340,98 +322,9 @@ export async function getLocationSales(req, res) {
                     preserveNullAndEmptyArrays: true
                 }
             },
-            // Stage 5: Group by location + date (for daily breakdown)
-            // For region dimension, group by state; for others, group by city
-            // This stage already merges data by location+date, so no duplicates should occur
+            // Stage 5: Group by location for this date range; totalSales and totalOrderCount per location
             locationGroupStage,
-            // Stage 6: Group by location (aggregate daily data)
-            // Group only by normalized locationKey to merge cities with different casing
-            // Merge duplicate dates here if they exist
-            {
-                $group: {
-                    _id: {
-                        locationKey: "$_id.locationKey",
-                        originalState: "$_id.originalState",
-                        metroStatus: "$_id.metroStatus",
-                        region: "$_id.region",
-                        tier: "$_id.tier",
-                        isCoastal: "$_id.isCoastal",
-                        isClassified: "$_id.isClassified"
-                    },
-                    // Pick the first non-null original city name as canonical version
-                    originalLocation: { $first: "$_id.originalLocation" },
-                    originalCity: { $first: "$_id.originalCity" },
-                    totalSales: { $sum: "$dailySales" },
-                    totalOrderCount: { $sum: "$dailyOrderCount" },
-                    dailyBreakdown: {
-                        $push: {
-                            date: "$_id.date",
-                            sales: "$dailySales",
-                            orderCount: "$dailyOrderCount"
-                        }
-                    }
-                }
-            },
-            // Stage 7: Add fields for easier access
-            {
-                $addFields: {
-                    metroStatus: "$_id.metroStatus",
-                    region: "$_id.region",
-                    tier: "$_id.tier",
-                    isCoastal: "$_id.isCoastal",
-                    isClassified: "$_id.isClassified",
-                    originalCity: { $ifNull: ["$originalCity", "$originalLocation"] },
-                    originalState: "$_id.originalState",
-                    originalLocation: { $ifNull: ["$originalLocation", "$originalCity"] },
-                    locationKey: "$_id.locationKey"
-                }
-            },
-            // Stage 8: Merge daily breakdown by date (sum sales and orderCount for same dates)
-            // Unwind, group by date, then reconstruct
-            {
-                $unwind: "$dailyBreakdown"
-            },
-            {
-                $group: {
-                    _id: {
-                        locationKey: "$locationKey",
-                        originalState: "$_id.originalState",
-                        metroStatus: "$_id.metroStatus",
-                        region: "$_id.region",
-                        tier: "$_id.tier",
-                        isCoastal: "$_id.isCoastal",
-                        isClassified: "$_id.isClassified",
-                        originalLocation: "$originalLocation",
-                        originalCity: "$originalCity",
-                        date: "$dailyBreakdown.date"
-                    },
-                    sales: { $sum: "$dailyBreakdown.sales" },
-                    orderCount: { $sum: "$dailyBreakdown.orderCount" }
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        locationKey: "$_id.locationKey",
-                        originalState: "$_id.originalState",
-                        metroStatus: "$_id.metroStatus",
-                        region: "$_id.region",
-                        tier: "$_id.tier",
-                        isCoastal: "$_id.isCoastal",
-                        isClassified: "$_id.isClassified",
-                        originalLocation: "$_id.originalLocation",
-                        originalCity: "$_id.originalCity"
-                    },
-                    dailyBreakdown: {
-                        $push: {
-                            date: "$_id.date",
-                            sales: "$sales",
-                            orderCount: "$orderCount"
-                        }
-                    }
-                }
-            },
-            // Stage 9: Add fields, recalculate totals, and sort daily breakdown
+            // Stage 6: Add fields for easier access
             {
                 $addFields: {
                     metroStatus: "$_id.metroStatus",
@@ -441,29 +334,9 @@ export async function getLocationSales(req, res) {
                     isClassified: "$_id.isClassified",
                     originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
                     originalState: "$_id.originalState",
+                    originalCountry: "$_id.originalCountry",
                     originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
-                    locationKey: "$_id.locationKey",
-                    // Sort daily breakdown by date
-                    dailyBreakdown: {
-                        $sortArray: {
-                            input: "$dailyBreakdown",
-                            sortBy: { date: 1 }
-                        }
-                    },
-                    totalSales: {
-                        $reduce: {
-                            input: "$dailyBreakdown",
-                            initialValue: 0,
-                            in: { $add: ["$$value", "$$this.sales"] }
-                        }
-                    },
-                    totalOrderCount: {
-                        $reduce: {
-                            input: "$dailyBreakdown",
-                            initialValue: 0,
-                            in: { $add: ["$$value", "$$this.orderCount"] }
-                        }
-                    }
+                    locationKey: "$_id.locationKey"
                 }
             }
         ];
@@ -550,10 +423,9 @@ export async function getLocationSales(req, res) {
             },
             fromCache: false
         };
-        
-        // Cache the response
+  
         try {
-            await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(responseData));
+            await redis.set(cacheKey, JSON.stringify(responseData), 'EX', CACHE_TTL);
         } catch (cacheError) {
             console.warn('⚠️  Cache write error:', cacheError.message);
             // Continue even if cache write fails

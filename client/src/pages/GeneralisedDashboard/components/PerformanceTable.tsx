@@ -5,7 +5,7 @@ import { RefreshCw, Minimize2, Maximize2, ArrowUpIcon, ArrowDownIcon } from "luc
 import { cn } from "@/lib/utils";
 
 export type Trend = "up" | "down" | "neutral";
-export type Period = "yesterday" | "last7Days" | "last30Days";
+export type Period = "yesterday" | "last7Days" | "last14Days" | "last30Days" | "quarterly";
 export type Source = "meta" | "google" | "analytics";
 export type Platform = "Facebook" | "Google Ads" | "Google Analytics";
 
@@ -52,7 +52,9 @@ export default function PerformanceTable({
     const periodLabels: Record<Period, string> = {
       "yesterday": "Yesterday",
       "last7Days": "Last 7 Days",
-      "last30Days": "Last 30 Days"
+      "last14Days": "Last 14 Days",
+      "last30Days": "Last 30 Days",
+      "quarterly": "Quarterly"
     };
   
     const metricLabels: Record<string, string> = {
@@ -80,7 +82,7 @@ export default function PerformanceTable({
     const getAllMetrics = () => {
       const metricsSet = new Set<string>();
       
-      ['yesterday', 'last7Days', 'last30Days'].forEach((period) => {
+      ['yesterday', 'last7Days', 'last14Days', 'last30Days', 'quarterly'].forEach((period) => {
         if (performanceData.meta?.[period as Period] && apiStatus.meta) {
           Object.keys(performanceData.meta[period as Period]).forEach(key => metricsSet.add(key));
         }
@@ -131,13 +133,13 @@ export default function PerformanceTable({
         );
       }
   
-    const periods: Period[] = ['yesterday', 'last7Days', 'last30Days'];
+    const periods: Period[] = ['yesterday', 'last7Days', 'last14Days', 'last30Days', 'quarterly'];
     const DEFAULT_VISIBLE_ROWS = 4;
     const visibleMetrics = isExpanded ? allMetrics : allMetrics.slice(0, DEFAULT_VISIBLE_ROWS);
     const hasMoreRows = allMetrics.length > DEFAULT_VISIBLE_ROWS;
   
     return (
-      <div className="bg-white border rounded-lg shadow-md p-6 overflow-x-auto">
+      <div className="bg-white border rounded-lg shadow-md p-6">
         {/* Header with Title and Action Buttons */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-slate-800">Performance Overview</h2>
@@ -170,6 +172,7 @@ export default function PerformanceTable({
           </div>
         </div>
         
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -252,6 +255,7 @@ export default function PerformanceTable({
             ))}
           </tbody>
         </table>
+        </div>
         
         {/* Footer indicator when collapsed */}
         {!isExpanded && hasMoreRows && (

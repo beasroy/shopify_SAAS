@@ -35,7 +35,6 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
-import masterDashboardRoutes from "./routes/masterDashboard.js";
 
 
 
@@ -115,8 +114,7 @@ dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
-// Workers are initialized automatically when imported above
-// The city classification worker will start processing jobs from the queue
+
 
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');
@@ -124,7 +122,6 @@ if (isDevelopment) {
   setupCronJobs(); // Start metrics caching cron job
   console.log('Cron jobs initialized in production environment');
 }
-
 
 
 const PORT = process.env.PORT || 5000;

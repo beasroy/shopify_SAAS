@@ -1,5 +1,6 @@
 import { Worker } from 'bullmq';
 import { connection } from '../config/redis.js';
+import { CITY_CLASSIFICATION_PREFIX } from '../config/Queues.js';
 import { connectDB, getConnectionStatus } from '../config/db.js';
 import CityMetadata from '../models/CityMetadata.js';
 import { classifyCitiesWithGPT } from '../services/gptService.js';
@@ -18,7 +19,7 @@ const ensureMongoConnection = async () => {
     }
 };
 
-// Create worker for city classification
+// Create worker for city classification (same connection + prefix as queue for in-process backfill)
 const cityClassificationWorker = new Worker(
     'city-classification',
     async (job) => {
@@ -29,6 +30,14 @@ const cityClassificationWorker = new Worker(
             await ensureMongoConnection();
 
             if (type === 'batch') {
+                if (!Array.isArray(cities)) {
+                    throw new TypeError('Job data "cities" must be an array');
+                }
+                if (cities.length === 0) {
+                    console.log(`🔄 [Worker] Batch ${batchNumber}/${totalBatches} has no cities, skipping`);
+                    return { success: true, classified: 0, batchNumber, totalBatches };
+                }
+
                 console.log(`🔄 [Worker] Processing batch ${batchNumber}/${totalBatches} with ${cities.length} cities`);
 
                 // 1. Call GPT API to classify cities
@@ -67,16 +76,12 @@ const cityClassificationWorker = new Worker(
 
         } catch (error) {
             console.error(`❌ [Worker] Error processing batch ${batchNumber}:`, error);
-            
-            // Mark cities as failed in metadata (if classifications were created before error)
-            // Note: We can't mark them as failed if GPT call failed before creating classifications
-            // This is a best-effort attempt to update status if partial data exists
-            
             throw error;
         }
     },
     {
-        connection: connection, // Use the same connection as the queue
+        connection,
+        prefix: CITY_CLASSIFICATION_PREFIX,
         concurrency: isDevelopment ? 1 : 2, // Process 1-2 batches concurrently
         limiter: {
             max: isDevelopment ? 5 : 10, // Max jobs per duration
@@ -110,11 +115,14 @@ cityClassificationWorker.on('failed', (job, err) => {
 });
 
 cityClassificationWorker.on('error', (err) => {
+    if (err && err.message === 'Connection is closed') {
+        return; // Expected when backfill closes worker; backfill handles exit
+    }
     console.error('❌ [Worker] City classification worker error:', err);
     if (err.stack) {
         console.error('   Stack:', err.stack);
     }
-    
+
     // Handle Redis OOM errors specifically
     if (err.message && err.message.includes('OOM')) {
         console.error('\n⚠️  REDIS OUT OF MEMORY ERROR DETECTED!');

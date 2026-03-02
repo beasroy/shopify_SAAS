@@ -47,9 +47,11 @@ export const historicalSyncQueue = new Queue('historical-sync', {
   }
 });
 
-// Queue for city classification
+// Queue for city classification (explicit prefix so backfill and worker use same Redis keys)
+export const CITY_CLASSIFICATION_PREFIX = 'bull';
 export const cityClassificationQueue = new Queue('city-classification', {
   connection,
+  prefix: CITY_CLASSIFICATION_PREFIX,
   defaultJobOptions: {
     attempts: 3,
     backoff: {

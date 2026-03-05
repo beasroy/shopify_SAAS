@@ -6,7 +6,7 @@ import { getCanonicalCity } from '../utils/cityAliases.js';
 
 // Load .env when this module is used standalone (e.g. by cityClassificationWorker run without server)
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__dirname, '..', '.env') });
+dotenv.config({ path: join(__dirname, '..', '.env') }); 
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY

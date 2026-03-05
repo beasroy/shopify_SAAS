@@ -7,7 +7,7 @@ import { classifyCitiesWithGPT } from '../services/gptService.js';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Ensure MongoDB connection before processing jobs
+ 
 const ensureMongoConnection = async () => {
     const { isConnected, cachedConnection } = getConnectionStatus();
 
@@ -143,15 +143,15 @@ cityClassificationWorker.on('stalled', (jobId) => {
 
 // Graceful shutdown handler
 const shutdown = async () => {
-  console.log('\n🛑 Shutting down city classification worker...');
-  try {
-    await cityClassificationWorker.close();
-    console.log('✅ City classification worker closed gracefully');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Error closing worker:', error);
-    process.exit(1);
-  }
+    console.log('\n🛑 Shutting down city classification worker...');
+    try {
+        await cityClassificationWorker.close();
+        console.log('✅ City classification worker closed gracefully');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error closing worker:', error);
+        process.exit(1);
+    }
 };
 
 // Handle shutdown signals

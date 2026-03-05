@@ -15,13 +15,14 @@ const MAX_DATE_RANGE_DAYS = 365;
 function transformToResponse(aggregatedData, dimension, startDate, endDate) {
     const result = {};
     const summary = {};
-    
+    console.log("aggregatedData--->", aggregatedData);
+    console.log("dimension--->", dimension);
     // Group by dimension value
     aggregatedData.forEach(location => {
         // Get dimension value based on parameter
         let dimValue;
         let isClassified = location.isClassified !== false;
-        
+
         switch (dimension) {
             case 'metro':
                 dimValue = location.metroStatus || 'unclassified';
@@ -38,7 +39,7 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
             default:
                 dimValue = location.metroStatus || 'unclassified';
         }
-        
+
         if (!result[dimValue]) {
             result[dimValue] = [];
             summary[dimValue] = {
@@ -47,7 +48,7 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
                 locationCount: 0 // Changed from cityCount to locationCount
             };
         }
-        
+
         // For region dimension, show state; for others, show city; include country from Order
         const locationData = dimension === 'region'
             ? {
@@ -67,26 +68,26 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
                 monthlyTotal: location.totalSales || 0,
                 isClassified
             };
-        
+
         result[dimValue].push(locationData);
-        
+
         // Update summary
         summary[dimValue].totalSales += location.totalSales || 0;
         summary[dimValue].totalOrderCount += location.totalOrderCount || 0;
         summary[dimValue].locationCount += 1;
     });
-    
+
     // Sort locations by totalSales (descending) within each dimension
     // Apply result limits to prevent extremely large responses
     Object.keys(result).forEach(dim => {
         result[dim].sort((a, b) => b.totalSales - a.totalSales);
-        
+
         // Limit results per dimension
         if (result[dim].length > MAX_LOCATIONS_PER_DIMENSION) {
             result[dim] = result[dim].slice(0, MAX_LOCATIONS_PER_DIMENSION);
         }
     });
-    
+
     return { data: result, summary };
 }
 
@@ -96,10 +97,10 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
  */
 export async function getLocationSales(req, res) {
     const requestStartTime = Date.now();
-    
+
     try {
         const { brandId, dimension = 'metro', startDate, endDate } = req.query;
-        
+
         // Validate brandId
         if (!brandId) {
             return res.status(400).json({
@@ -107,14 +108,14 @@ export async function getLocationSales(req, res) {
                 message: 'brandId is required'
             });
         }
-        
+
         if (!mongoose.Types.ObjectId.isValid(brandId)) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid brandId format'
             });
         }
-        
+
         // Validate dimension
         const validDimensions = ['metro', 'region', 'tier', 'coastal'];
         if (!validDimensions.includes(dimension)) {
@@ -123,48 +124,48 @@ export async function getLocationSales(req, res) {
                 message: `dimension must be one of: ${validDimensions.join(', ')}`
             });
         }
-        
+
         // Build cache key
         const cacheKey = `location-analytics:${brandId}:${dimension}:${startDate || 'default'}:${endDate || 'default'}`;
-        
+
         // Try to get from cache
-        try {
-            const cachedData = await redis.get(cacheKey);
-            if (cachedData) {
-                const parsed = JSON.parse(cachedData);
-                const totalTime = Date.now() - requestStartTime;
-                console.log(`✅ Cache hit for location analytics: ${totalTime}ms`);
-                return res.json({
-                    ...parsed,
-                    fromCache: true,
-                    queryTime: totalTime
-                });
-            }
-        } catch (cacheError) {
-            console.warn('⚠️  Cache read error:', cacheError.message);
-            // Continue with fresh query if cache fails
-        }
-        
+        // try {
+        //     const cachedData = await redis.get(cacheKey);
+        //     if (cachedData) {
+        //         const parsed = JSON.parse(cachedData);
+        //         const totalTime = Date.now() - requestStartTime;
+        //         console.log(`✅ Cache hit for location analytics: ${totalTime}ms`);
+        //         return res.json({
+        //             ...parsed,
+        //             fromCache: true,
+        //             queryTime: totalTime
+        //         });
+        //     }
+        // } catch (cacheError) {
+        //     console.warn('⚠️  Cache read error:', cacheError.message);
+        //     // Continue with fresh query if cache fails
+        // }
+
         // Determine date range (default: current month till yesterday)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // Parse dates using UTC to avoid timezone issues
-        const start = startDate 
+        const start = startDate
             ? parseDate(startDate)
             : new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-        
-        const end = endDate 
+
+        const end = endDate
             ? parseDate(endDate)
             : new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - 1));
-        
+
         if (!start || !end) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid date format. Use YYYY-MM-DD format'
             });
         }
-        
+
         // Validate date range
         const validation = validateDateRange(start, end, today, MAX_DATE_RANGE_DAYS);
         if (!validation.isValid) {
@@ -173,36 +174,63 @@ export async function getLocationSales(req, res) {
                 message: validation.message
             });
         }
-        
+
         start.setUTCHours(0, 0, 0, 0);
         end.setUTCHours(23, 59, 59, 999);
-        
+
         // Build aggregation pipeline - for region dimension, group by state; for others, group by city
         const isRegionDimension = dimension === 'region';
-        
+
         // Group by location only (no date); sum totalSales and count orders directly
+        // const locationGroupStage = {
+        //     $group: {
+        //         _id: {
+        //             locationKey: isRegionDimension
+        //                 ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
+        //                 : "$lookupKey",
+        //             originalLocation: isRegionDimension ? "$state" : "$city",
+        //             originalCity: "$city",
+        //             originalState: "$state",
+        //             originalCountry: { $ifNull: ["$country", "unknown"] },
+        //             metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
+        //             region: { $ifNull: ["$cityMeta.region", null] },
+        //             tier: { $ifNull: ["$cityMeta.tier", null] },
+        //             isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
+        //             isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
+        //         },
+        //         totalSales: { $sum: "$totalSales" },
+        //         totalOrderCount: { $sum: 1 }
+        //     }
+        // };
+
         const locationGroupStage = {
             $group: {
                 _id: {
                     locationKey: isRegionDimension
                         ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
-                        : "$lookupKey",
-                    originalLocation: isRegionDimension ? "$state" : "$city",
-                    originalCity: "$city",
-                    originalState: "$state",
-                    originalCountry: { $ifNull: ["$country", "unknown"] },
-                    metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
-                    region: { $ifNull: ["$cityMeta.region", null] },
-                    tier: { $ifNull: ["$cityMeta.tier", null] },
-                    isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
-                    isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
+                        : "$lookupKey"
                 },
+
                 totalSales: { $sum: "$totalSales" },
-                totalOrderCount: { $sum: 1 }
+                totalOrderCount: { $sum: 1 },
+
+                // Pick one representative value
+                originalCity: { $first: "$city" },
+                originalState: { $first: "$state" },
+                originalCountry: { $first: { $ifNull: ["$country", "unknown"] } },
+
+                metroStatus: { $first: "$cityMeta.metroStatus" },
+                region: { $first: "$cityMeta.region" },
+                tier: { $first: "$cityMeta.tier" },
+                isCoastal: { $first: "$cityMeta.isCoastal" },
+                isClassified: {
+                    $first: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
+                }
             }
         };
-        
+
         // MongoDB aggregation pipeline: filter by startDate/endDate, then group by location
+
         const pipeline = [
             // Stage 1: Match orders in the selected date range only
             {
@@ -327,23 +355,24 @@ export async function getLocationSales(req, res) {
             // Stage 6: Add fields for easier access
             {
                 $addFields: {
-                    metroStatus: "$_id.metroStatus",
-                    region: "$_id.region",
-                    tier: "$_id.tier",
-                    isCoastal: "$_id.isCoastal",
-                    isClassified: "$_id.isClassified",
-                    originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
-                    originalState: "$_id.originalState",
-                    originalCountry: "$_id.originalCountry",
-                    originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
+                    // metroStatus: "$_id.metroStatus",
+                    // region: "$_id.region",
+                    // tier: "$_id.tier",
+                    // isCoastal: "$_id.isCoastal",
+                    // isClassified: "$_id.isClassified",
+                    // originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
+                    // originalState: "$_id.originalState",
+                    // originalCountry: "$_id.originalCountry",
+                    // originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
                     locationKey: "$_id.locationKey"
+
                 }
             }
         ];
-        
+
         // Add performance monitoring
         const queryStartTime = Date.now();
-        
+
         // Execute aggregation with optimizations
         // Try to use the compound index, but fall back gracefully if it doesn't exist
         // The Order model has: { brandId: 1, orderCreatedAt: -1, city: 1, state: 1 }
@@ -360,22 +389,23 @@ export async function getLocationSales(req, res) {
             results = await Order.aggregate(pipeline)
                 .allowDiskUse(true); // Allow disk use for large aggregations
         }
-        
+
         const queryExecutionTime = Date.now() - queryStartTime;
-        
+
         // Log slow queries
         if (queryExecutionTime > 1000) {
             console.warn(`⚠️  Slow location analytics query: ${queryExecutionTime}ms for brandId=${brandId}, dimension=${dimension}`);
         }
-        
+
         // Log result size warnings
         if (results.length > 10000) {
             console.warn(`⚠️  Large result set: ${results.length} locations for brandId=${brandId}`);
         }
-        
+        console.log("results--->", results);
+
         // Transform to response format
         const response = transformToResponse(results, dimension, start, end);
-        
+
         // Count unclassified locations - use correct fields based on dimension
         const unclassifiedLocations = results
             .filter(c => !c.isClassified)
@@ -388,17 +418,17 @@ export async function getLocationSales(req, res) {
         const unclassifiedSales = results
             .filter(c => !c.isClassified)
             .reduce((sum, c) => sum + (c.totalSales || 0), 0);
-        
+
         // Log unclassified location count
         if (unclassifiedLocations.length > 0) {
             console.log(`ℹ️  Found ${unclassifiedLocations.length} unclassified locations for brandId=${brandId}, dimension=${dimension}`);
         }
-        
+
         // Check if results were truncated
         const resultsTruncated = Object.values(response.data).some(
             locations => locations.length >= MAX_LOCATIONS_PER_DIMENSION
         );
-        
+
         const totalTime = Date.now() - requestStartTime;
         const responseData = {
             success: true,
@@ -423,16 +453,16 @@ export async function getLocationSales(req, res) {
             },
             fromCache: false
         };
-  
+
         try {
             await redis.set(cacheKey, JSON.stringify(responseData), 'EX', CACHE_TTL);
         } catch (cacheError) {
             console.warn('⚠️  Cache write error:', cacheError.message);
             // Continue even if cache write fails
         }
-        
+
         res.json(responseData);
-        
+
     } catch (error) {
         console.error('Location analytics error:', error);
         res.status(500).json({

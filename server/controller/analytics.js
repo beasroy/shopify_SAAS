@@ -2,6 +2,15 @@ import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
+import { GoogleAdsApi } from "google-ads-api";
+
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+});
+
+
 config();
 
 // Helper function to compare values based on operator
@@ -1369,7 +1378,6 @@ export async function getPageWiseConversions(req, res) {
       const bounceRate = Number(row.metricValues[2]?.value || 0); // 0–1
       const bouncedSessions = sessions * bounceRate;
 
-
       // Initialize region if it doesn't exist
       if (!acc[landingPage]) {
         acc[landingPage] = {
@@ -1424,7 +1432,10 @@ export async function getPageWiseConversions(req, res) {
       return acc;
     }, {});
 
+    const pagesPathData = await PageSpeedInsight.find({ brandId, page: "landingPage" });
+
     let data = Object.entries(groupedData).map(([LandingPage, LandingPageData]) => ({
+      "perfScore": pagesPathData.find(page => page.path === LandingPage)?.perfScore,
       "Landing Page": LandingPage,
       "Total Sessions": LandingPageData.TotalSessions,
       "Total Purchases": LandingPageData.TotalPurchases,
@@ -3026,6 +3037,7 @@ export async function getBounceRate(req, res) {
 }
 
 
+
 export async function getPagePathWiseMetrics(req, res) {
   try {
     const { brandId } = req.params;
@@ -3062,7 +3074,7 @@ export async function getPagePathWiseMetrics(req, res) {
         { name: 'sessions' },
         { name: 'ecommercePurchases' },
         { name: "bounceRate" },
-        { name: 'purchaseRevenue'},
+        { name: 'purchaseRevenue' },
         { name: 'addToCarts' },
         { name: 'checkouts' },
       ]
@@ -3081,6 +3093,7 @@ export async function getPagePathWiseMetrics(req, res) {
       })
 
     const Rows = response?.data?.rows || [];
+
 
     // Process data - aggregate all metrics per pagePath (no month-wise separation)
     const groupedData = Rows.reduce((acc, row) => {
@@ -3115,6 +3128,15 @@ export async function getPagePathWiseMetrics(req, res) {
       acc[pagePath].checkouts += checkouts;
       return acc;
     }, {});
+    let cpc = 0;
+    try {
+      const data = await fetchGoogleAdAndCampaignMetrics(brandId, adjustedStartDate, adjustedEndDate);
+      cpc = data.data.cpc || 0;
+      
+    } catch (error) {
+      console.error('Error fetching Page Path Wise Metrics:', error);
+      return res.status(500).json({ error: 'Failed to fetch Page Path Wise Metrics.' });
+    }
 
     // Convert grouped data to an array format with calculated rates
     let data = Object.entries(groupedData).map(([pagePath, pagePathData]) => {
@@ -3122,7 +3144,8 @@ export async function getPagePathWiseMetrics(req, res) {
       const purchases = pagePathData.purchases;
       const addToCarts = pagePathData.addToCarts;
       const checkouts = pagePathData.checkouts;
-      
+
+     
       // Calculate rates
       const atcRate = sessions > 0 ? (addToCarts / sessions) * 100 : 0;
       const checkoutRate = sessions > 0 ? (checkouts / sessions) * 100 : 0;
@@ -3130,6 +3153,8 @@ export async function getPagePathWiseMetrics(req, res) {
       // Calculate bounce rate from aggregated bounced sessions
       const bounceRate = sessions > 0 ? (pagePathData.bouncedSessions / sessions) * 100 : 0;
       const totalRevenue = pagePathData.purchaseRevenue;
+      const estimatedCost = sessions * cpc || 0;
+      
       return {
         "Page Path": pagePath,
         "Sessions": sessions,
@@ -3141,6 +3166,7 @@ export async function getPagePathWiseMetrics(req, res) {
         "Bounce Rate": Number.parseFloat(bounceRate.toFixed(2)),
         "Conversion Rate": Number.parseFloat(conversionRate.toFixed(2)),
         "Sales": totalRevenue.toFixed(2),
+        "Estimated Cost": Number(estimatedCost.toFixed(2)),
       };
     })
 
@@ -3169,4 +3195,98 @@ export async function getPagePathWiseMetrics(req, res) {
 
 
 
+export async function fetchGoogleAdAndCampaignMetrics(brandId, startDate, endDate) {
+  try {
+    const brand = await Brand.findById(brandId).lean();
 
+    const refreshToken = brand.googleAdsRefreshToken;
+    const googleAdAccounts = brand.googleAdAccount || [];
+
+    if (!refreshToken || googleAdAccounts.length === 0) {
+      return ({
+        success: true,
+        data: null,
+      });
+    }
+
+    // if (!startDate || !endDate) {
+    //   startDate = moment().startOf("month").format("YYYY-MM-DD");
+    //   endDate = moment().format("YYYY-MM-DD");
+    // }
+
+    let totalSpend = 0;
+    let totalClicks = 0;
+
+    // =============================
+    // 1️⃣ FETCH GOOGLE ADS DATA
+    // =============================
+    for (const adAccount of googleAdAccounts) {
+      const { clientId, managerId } = adAccount;
+
+      if (!clientId || !managerId) continue;
+
+      const customer = client.Customer({
+        customer_id: clientId,
+        refresh_token: refreshToken,
+        login_customer_id: managerId,
+      });
+
+      const report = await customer.report({
+        entity: "customer",
+        metrics: ["metrics.cost_micros", "metrics.clicks"],
+        from_date: startDate,
+        to_date: endDate,
+      });
+
+      for (const row of report) {
+        const spend = (row.metrics.cost_micros || 0) / 1_000_000;
+        totalSpend += spend;
+        totalClicks += row.metrics.clicks || 0;
+      }
+    }
+
+    const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+    // =============================
+    // 2️⃣ FETCH GA4 SESSIONS
+    // =============================
+    const propertyId = brand.ga4PropertyId;
+
+    let sessions = 0;
+
+    if (propertyId) {
+      const ga4Response = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [{ name: "sessions" }],
+      });
+
+      sessions = ga4Response[0]?.rows?.[0]?.metricValues?.[0]?.value
+        ? Number(ga4Response[0].rows[0].metricValues[0].value)
+        : 0;
+    }
+
+    // =============================
+    // 3️⃣ ESTIMATE COST
+    // =============================
+    const estimatedCost = sessions * cpc;
+
+    return {
+      success: true,
+      data: {
+        totalSpend: Number(totalSpend.toFixed(2)),
+        totalClicks,
+        cpc: Number(cpc.toFixed(4)),
+        sessions,
+        estimatedCost: Number(estimatedCost.toFixed(2)),
+      },
+    };
+
+  } catch (error) {
+    console.error("Failed:", error);
+    return {
+      success: false,
+      message: "Internal server error",
+    };
+  }
+}

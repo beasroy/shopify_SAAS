@@ -13,7 +13,7 @@ const client = new GoogleAdsApi({
   developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
 });
 
-export const getAggregatedFbMetrics = (fbAdAccounts) => {
+const getAggregatedFbMetrics = (fbAdAccounts) => {
   if (!fbAdAccounts || fbAdAccounts.length === 0) {
     return {
       totalSpent: 0,
@@ -57,7 +57,7 @@ export const getAggregatedFbMetrics = (fbAdAccounts) => {
   };
 };
 
-const splitDateRangeIntoBatches = (startDate, endDate, monthsPerBatch = 3) => {
+export const splitDateRangeIntoBatches = (startDate, endDate, monthsPerBatch = 3) => {
   const batches = [];
   let currentStart = moment(startDate);
   const finalEnd = moment(endDate);
@@ -81,7 +81,7 @@ const splitDateRangeIntoBatches = (startDate, endDate, monthsPerBatch = 3) => {
   return batches;
 };
 
-const fetchAdAccountInsights = async (adAccountIds, accessToken, startDate, endDate) => {
+export const fetchAdAccountInsights = async (adAccountIds, accessToken, startDate, endDate) => {
 
   const batchRequests = adAccountIds.map((accountId) => ({
     method: 'GET',
@@ -451,7 +451,7 @@ export const fetchFBAdAccountData = async (req, res) => {
 };
 
 // Utility function to merge account data across batches
-const mergeAccountDataAcrossBatches = (batchedAccounts) => {
+export const mergeAccountDataAcrossBatches = (batchedAccounts) => {
   const accountMap = {};
 
   // Group by account ID
@@ -709,8 +709,5 @@ export async function fetchGoogleAdAndCampaignMetrics(req, res) {
     });
   }
 }
-
-
-
 
 

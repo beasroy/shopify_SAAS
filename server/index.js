@@ -35,8 +35,10 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
+import masterDashboardRoutes from "./routes/masterDashboard.js";
+import { tryCatch } from "bullmq";
 
-import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+
 
 const app = express();
 const server = createServer(app);
@@ -110,6 +112,7 @@ dataOperationRouter.use("/pageSpeedInsights", pageSpeedInsightsRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
+dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
 
@@ -120,8 +123,6 @@ if (isDevelopment) {
   setupCronJobs(); // Start metrics caching cron job
   console.log('Cron jobs initialized in production environment');
 }
-
-await calculateMetricsForSingleBrand('694ebc88428591822f4ec366', '694eb289428591822f4ec02c');
 
 
 const PORT = process.env.PORT || 5000;
@@ -144,4 +145,78 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 
+import Order from "./models/Order.js";
+import CityMetadata from "./models/CityMetadata.js";
+import { getCanonicalCity } from "./utils/cityAliases.js";
+import { parseDate } from "./utils/dateUtils.js";
 
+function buildLookupKey(city, state, country) {
+  const cityCanonical = getCanonicalCity(city);
+  const stateNorm = (state || '').toLowerCase().trim().replaceAll(/\s+/g, '');
+  const countryNorm = (country || 'unknown').toLowerCase().trim().replaceAll(/\s+/g, '') || 'unknown';
+  return `${cityCanonical}_${stateNorm}_${countryNorm}`;
+}
+
+async function backfillCityMetadataCountryListCheck() {
+  try {
+    const startDate = '2026-02-01';
+    const endDate = '2026-03-02';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Parse dates using UTC to avoid timezone issues
+    const start = startDate
+      ? parseDate(startDate)
+      : new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
+
+    const end = endDate
+      ? parseDate(endDate)
+      : new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - 1));
+
+    console.log("start", start, "end", end);
+
+    const allCities = await Order.aggregate([
+      {
+        $match: {
+          city: { $exists: true, $ne: null, $ne: '' },
+          orderCreatedAt: { $gte: start, $lte: end },
+          state: { $exists: true, $ne: null, $ne: '' }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            city: { $toLower: { $trim: { input: '$city' } } },
+            state: { $toLower: { $trim: { input: '$state' } } },
+            country: { $toLower: { $trim: { input: { $ifNull: ['$country', 'unknown'] } } } }
+          },
+          originalCity: { $first: '$city' },
+          originalState: { $first: '$state' },
+          originalCountry: { $first: '$country' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          cityNormalized: '$_id.city',
+          city: '$originalCity',
+          state: '$originalState',
+          country: { $ifNull: ['$originalCountry', 'unknown'] }
+        }
+      }
+    ]);
+    const existingLookupKeys = new Set(await CityMetadata.distinct('lookupKey'));
+
+    const newCities = allCities.filter(c => {
+      const key = buildLookupKey(c.city, c.state, c.country);
+      // console.log(key, existingLookupKeys.has(key));
+      return !existingLookupKeys.has(key);
+    });
+    console.log("newCities",  newCities.slice(-25));
+
+  } catch (error) {
+    console.error('Error backfilling city metadata country list:', error);
+  }
+}
+backfillCityMetadataCountryListCheck();

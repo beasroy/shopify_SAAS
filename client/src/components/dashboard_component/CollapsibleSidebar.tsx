@@ -18,7 +18,8 @@ import {
   Package,
   Eye,
   Gauge,
-  ChartBarIncreasing
+  ChartBarIncreasing,
+  SquareDashedMousePointer
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
@@ -179,6 +180,7 @@ export default function CollapsibleSidebar() {
     { name: "Page Analytics", path: `/page-analytics/${selectedBrandId}`, icon: <Package size={20} /> },
     //{ name: "Bounce Rate", path: `/bounce-rate-reports/${selectedBrandId}`, icon: <SquareDashedMousePointer size={20} /> },
     //{ name: "Performance Metrics", path: `/performance-metrics`, icon: <Target size={20} /> },
+    { name: "Master Dashboard", path: `/master-dashboard/`, icon: <SquareDashedMousePointer size={20} /> },
   ]
 
   const isItemDisabled = (item: DashboardItem | SubItem): boolean => {

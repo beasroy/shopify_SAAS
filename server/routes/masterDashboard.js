@@ -14,4 +14,4 @@ router.get('/fb-ad-data', verifyAuth, fetchFBAdAccountData);
 router.get('/google-ad-data', fetchGoogleAdAndCampaignMetrics);
 router.get('/brand-funnel-metrics', getBrandWiseFunnelMetrics);
 router.get('/meta-sales-summary', fetchSalesSummary);
-export default router;
+export default router; 

@@ -35,7 +35,8 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
-
+import masterDashboardRoutes from "./routes/masterDashboard.js";
+import { tryCatch } from "bullmq";
 
 
 
@@ -144,77 +145,78 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 
+import Order from "./models/Order.js";
+import CityMetadata from "./models/CityMetadata.js";
+import { getCanonicalCity } from "./utils/cityAliases.js";
+import { parseDate } from "./utils/dateUtils.js";
 
+function buildLookupKey(city, state, country) {
+  const cityCanonical = getCanonicalCity(city);
+  const stateNorm = (state || '').toLowerCase().trim().replaceAll(/\s+/g, '');
+  const countryNorm = (country || 'unknown').toLowerCase().trim().replaceAll(/\s+/g, '') || 'unknown';
+  return `${cityCanonical}_${stateNorm}_${countryNorm}`;
+}
 
-// queue.js
-import { Queue } from 'bullmq';
+async function backfillCityMetadataCountryListCheck() {
+  try {
+    const startDate = '2026-02-01';
+    const endDate = '2026-03-02';
 
-// import IORedis from 'ioredis';
-// import { fetchLandingPages, fetchPageSpeed } from "./controller/analytics.js";
-// import PageSpeedInsight from "./models/PageSpeedInsight.js";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
+    // Parse dates using UTC to avoid timezone issues
+    const start = startDate
+      ? parseDate(startDate)
+      : new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
 
+    const end = endDate
+      ? parseDate(endDate)
+      : new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - 1));
 
+    console.log("start", start, "end", end);
 
-// const brandId = "68ca95ad548d518de4fca1af"
-// const baseUrl = "https://parallels.messold.com"
-// import { connection } from "./config/redis.js";
+    const allCities = await Order.aggregate([
+      {
+        $match: {
+          city: { $exists: true, $ne: null, $ne: '' },
+          orderCreatedAt: { $gte: start, $lte: end },
+          state: { $exists: true, $ne: null, $ne: '' }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            city: { $toLower: { $trim: { input: '$city' } } },
+            state: { $toLower: { $trim: { input: '$state' } } },
+            country: { $toLower: { $trim: { input: { $ifNull: ['$country', 'unknown'] } } } }
+          },
+          originalCity: { $first: '$city' },
+          originalState: { $first: '$state' },
+          originalCountry: { $first: '$country' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          cityNormalized: '$_id.city',
+          city: '$originalCity',
+          state: '$originalState',
+          country: { $ifNull: ['$originalCountry', 'unknown'] }
+        }
+      }
+    ]);
+    const existingLookupKeys = new Set(await CityMetadata.distinct('lookupKey'));
 
-// export const pageSpeedQueue = new Queue('pageSpeed', { connection });
+    const newCities = allCities.filter(c => {
+      const key = buildLookupKey(c.city, c.state, c.country);
+      // console.log(key, existingLookupKeys.has(key));
+      return !existingLookupKeys.has(key);
+    });
+    console.log("newCities",  newCities.slice(-25));
 
-// export async function enqueuePageSpeedJobs(brandId, baseUrl) {
-//   const paths = await fetchLandingPages(brandId);
-
-//   console.log(`Fetched ${paths.length} paths....`);
-
-//   for (const path of paths) {
-//     await pageSpeedQueue.add("analyze-page", {
-//       brandId,
-//       baseUrl,
-//       path,
-//     });
-//   }
-
-//   console.log("All jobs added to queue");
-// }
-
-// import { Worker } from "bullmq";
-
-
-// new Worker(
-//   "pageSpeed",
-//   async job => {
-//     const { brandId, baseUrl, path } = job.data;
-
-//     const pagePath = !path || path === "(not set)" ? "/" : path;
-//     const fullUrl = baseUrl.replace(/\/$/, "") + pagePath;
-
-//     const performance = await fetchPageSpeed(fullUrl);
-
-//     await PageSpeedInsight.updateOne(
-//       { brandId, path },
-//       {
-//         $set: {
-//           brandId,
-//           path,
-//           fullUrl,
-//           ...performance,
-//           lastUpdated: new Date(),
-//           page: "pagePath",
-//         },
-//       },
-//       { upsert: true }
-//     );
-
-//     console.log(`✔ Processed ${path}`);
-//   },
-//   {
-//     connection,
-//     concurrency: 3,
-//   }
-// );
-
-
-// enqueuePageSpeedJobs(brandId, baseUrl)
-// await fetchLandingPages(brandId)
-// clear.js
+  } catch (error) {
+    console.error('Error backfilling city metadata country list:', error);
+  }
+}
+backfillCityMetadataCountryListCheck();

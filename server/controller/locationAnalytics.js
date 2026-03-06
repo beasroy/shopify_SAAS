@@ -15,8 +15,7 @@ const MAX_DATE_RANGE_DAYS = 365;
 function transformToResponse(aggregatedData, dimension, startDate, endDate) {
     const result = {};
     const summary = {};
-    console.log("aggregatedData--->", aggregatedData);
-    console.log("dimension--->", dimension);
+
     // Group by dimension value
     aggregatedData.forEach(location => {
         // Get dimension value based on parameter
@@ -129,22 +128,22 @@ export async function getLocationSales(req, res) {
         const cacheKey = `location-analytics:${brandId}:${dimension}:${startDate || 'default'}:${endDate || 'default'}`;
 
         // Try to get from cache
-        // try {
-        //     const cachedData = await redis.get(cacheKey);
-        //     if (cachedData) {
-        //         const parsed = JSON.parse(cachedData);
-        //         const totalTime = Date.now() - requestStartTime;
-        //         console.log(`✅ Cache hit for location analytics: ${totalTime}ms`);
-        //         return res.json({
-        //             ...parsed,
-        //             fromCache: true,
-        //             queryTime: totalTime
-        //         });
-        //     }
-        // } catch (cacheError) {
-        //     console.warn('⚠️  Cache read error:', cacheError.message);
-        //     // Continue with fresh query if cache fails
-        // }
+        try {
+            const cachedData = await redis.get(cacheKey);
+            if (cachedData) {
+                const parsed = JSON.parse(cachedData);
+                const totalTime = Date.now() - requestStartTime;
+                console.log(`✅ Cache hit for location analytics: ${totalTime}ms`);
+                return res.json({
+                    ...parsed,
+                    fromCache: true,
+                    queryTime: totalTime
+                });
+            }
+        } catch (cacheError) {
+            console.warn('⚠️  Cache read error:', cacheError.message);
+            // Continue with fresh query if cache fails
+        }
 
         // Determine date range (default: current month till yesterday)
         const today = new Date();
@@ -182,52 +181,28 @@ export async function getLocationSales(req, res) {
         const isRegionDimension = dimension === 'region';
 
         // Group by location only (no date); sum totalSales and count orders directly
-        // const locationGroupStage = {
-        //     $group: {
-        //         _id: {
-        //             locationKey: isRegionDimension
-        //                 ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
-        //                 : "$lookupKey",
-        //             originalLocation: isRegionDimension ? "$state" : "$city",
-        //             originalCity: "$city",
-        //             originalState: "$state",
-        //             originalCountry: { $ifNull: ["$country", "unknown"] },
-        //             metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
-        //             region: { $ifNull: ["$cityMeta.region", null] },
-        //             tier: { $ifNull: ["$cityMeta.tier", null] },
-        //             isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
-        //             isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
-        //         },
-        //         totalSales: { $sum: "$totalSales" },
-        //         totalOrderCount: { $sum: 1 }
-        //     }
-        // };
-
         const locationGroupStage = {
             $group: {
                 _id: {
                     locationKey: isRegionDimension
                         ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
-                        : "$lookupKey"
+                        : "$lookupKey",
+                    originalLocation: isRegionDimension ? "$state" : "$city",
+                    originalCity: "$city",
+                    originalState: "$state",
+                    originalCountry: { $ifNull: ["$country", "unknown"] },
+                    metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
+                    region: { $ifNull: ["$cityMeta.region", null] },
+                    tier: { $ifNull: ["$cityMeta.tier", null] },
+                    isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
+                    isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
                 },
-
                 totalSales: { $sum: "$totalSales" },
-                totalOrderCount: { $sum: 1 },
-
-                // Pick one representative value
-                originalCity: { $first: "$city" },
-                originalState: { $first: "$state" },
-                originalCountry: { $first: { $ifNull: ["$country", "unknown"] } },
-
-                metroStatus: { $first: "$cityMeta.metroStatus" },
-                region: { $first: "$cityMeta.region" },
-                tier: { $first: "$cityMeta.tier" },
-                isCoastal: { $first: "$cityMeta.isCoastal" },
-                isClassified: {
-                    $first: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
-                }
+                totalOrderCount: { $sum: 1 }
             }
         };
+
+
 
         // MongoDB aggregation pipeline: filter by startDate/endDate, then group by location
 
@@ -355,15 +330,15 @@ export async function getLocationSales(req, res) {
             // Stage 6: Add fields for easier access
             {
                 $addFields: {
-                    // metroStatus: "$_id.metroStatus",
-                    // region: "$_id.region",
-                    // tier: "$_id.tier",
-                    // isCoastal: "$_id.isCoastal",
-                    // isClassified: "$_id.isClassified",
-                    // originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
-                    // originalState: "$_id.originalState",
-                    // originalCountry: "$_id.originalCountry",
-                    // originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
+                    metroStatus: "$_id.metroStatus",
+                    region: "$_id.region",
+                    tier: "$_id.tier",
+                    isCoastal: "$_id.isCoastal",
+                    isClassified: "$_id.isClassified",
+                    originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
+                    originalState: "$_id.originalState",
+                    originalCountry: "$_id.originalCountry",
+                    originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
                     locationKey: "$_id.locationKey"
 
                 }
@@ -401,7 +376,7 @@ export async function getLocationSales(req, res) {
         if (results.length > 10000) {
             console.warn(`⚠️  Large result set: ${results.length} locations for brandId=${brandId}`);
         }
-        console.log("results--->", results);
+        
 
         // Transform to response format
         const response = transformToResponse(results, dimension, start, end);

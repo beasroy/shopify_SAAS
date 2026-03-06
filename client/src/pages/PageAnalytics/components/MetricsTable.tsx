@@ -75,7 +75,6 @@ export default function MetricsTable({
       { key: "Checkout", header: "Checkout", width: 120, minWidth: 110, align: "right" },
       { key: "Checkout Rate", header: "Checkout Rate", width: 180, minWidth: 180, align: "right" },
       { key: "Conversion Rate", header: "Conversion Rate", width: 190, minWidth: 190, align: "right" },
-      { key: "PerfScore", header: "Page Performance", width: 210, minWidth: 200, align: "right" },
     ]
     return baseColumns
   }, [primaryColumn])

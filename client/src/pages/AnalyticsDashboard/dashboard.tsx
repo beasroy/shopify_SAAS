@@ -21,15 +21,15 @@ export default function Dashboard() {
   const [googleAdMetrics, setGoogleAdMetrics] = useState<GoogleAdAccountData>();
   const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<'Facebook' | 'Google Ads' | null>(null);
-  
-  const locale = useSelector((state:RootState) => state.locale.locale)
+
+  const locale = useSelector((state: RootState) => state.locale.locale)
   const { brandId } = useParams();
   const navigate = useNavigate();
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const brands = useSelector((state: RootState) => state.brand.brands);
   const user = useSelector((state: RootState) => state.user.user);
-  
+
   const [rawMetrics, setRawMetrics] = useState({
     totalSpent: 0,
     totalRevenue: 0,
@@ -40,7 +40,7 @@ export default function Dashboard() {
     totalCPM: 0,
     totalCPP: 0,
   });
- 
+
   const date = useMemo(() => ({
     from: dateFrom,
     to: dateTo
@@ -115,7 +115,7 @@ export default function Dashboard() {
     fetchAdData();
     const intervalId = setInterval(fetchAdData, 3 * 60 * 60 * 1000); // 3 hours
     return () => clearInterval(intervalId);
-}, [fetchAdData]);
+  }, [fetchAdData]);
 
   const calculateFacebookMetrics = (fbData: AdAccountData[]) => {
     let totalSpent = 0;
@@ -290,7 +290,7 @@ export default function Dashboard() {
     return <ConnectAccountsPage />;
   }
 
-  if(isLoading){
+  if (isLoading) {
     return <Loader isLoading={isLoading} />
   }
 
@@ -314,15 +314,15 @@ export default function Dashboard() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">Connect Your Ad Accounts</h2>
             <p className="text-gray-600">Connect your advertising accounts to start tracking your metrics</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            <ConnectPlatformCard 
-              platform="Facebook" 
-              onClick={() => handleConnectPlatform("Facebook")} 
+            <ConnectPlatformCard
+              platform="Facebook"
+              onClick={() => handleConnectPlatform("Facebook")}
             />
-            <ConnectPlatformCard 
-              platform="Google Ads" 
-              onClick={() => handleConnectPlatform("Google Ads")} 
+            <ConnectPlatformCard
+              platform="Google Ads"
+              onClick={() => handleConnectPlatform("Google Ads")}
             />
           </div>
 
@@ -387,9 +387,9 @@ export default function Dashboard() {
               label: 'ROAS (Ads only)',
               value: accountMetrics.purchase_roas && accountMetrics.purchase_roas.length > 0
                 ? parseFloat(String(accountMetrics.purchase_roas[0].value)).toLocaleString(locale, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })
                 : '0'
             },
             { label: 'Ads Purchases', value: accountMetrics.purchases?.value || '0' },

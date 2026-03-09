@@ -35,8 +35,9 @@ import locationAnalyticsRoutes from "./routes/locationAnalytics.js"
 import pageSpeedInsightsRoutes from "./routes/pageSpeedInsights.js";
 import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
+import masterDashboardRoutes from "./routes/masterDashboard.js";
 
-import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+
 
 const app = express();
 const server = createServer(app);
@@ -110,6 +111,7 @@ dataOperationRouter.use("/pageSpeedInsights", pageSpeedInsightsRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
+dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
 
@@ -120,8 +122,6 @@ if (isDevelopment) {
   setupCronJobs(); // Start metrics caching cron job
   console.log('Cron jobs initialized in production environment');
 }
-
-await calculateMetricsForSingleBrand('694ebc88428591822f4ec366', '694eb289428591822f4ec02c');
 
 
 const PORT = process.env.PORT || 5000;
@@ -142,6 +142,4 @@ server.listen(PORT, '0.0.0.0', () => {
 
 
 });
-
-
 

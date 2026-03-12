@@ -155,7 +155,7 @@ export default function PerformanceTable({
       <div className="bg-white border rounded-lg shadow-md p-6">
         {/* Header with Title and Action Buttons */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Performance Overview</h2>
+          <h2 className="text-xl font-bold text-slate-800">Performance Overview.</h2>
           <div className="flex gap-2">
             <Button
               onClick={onRefresh}

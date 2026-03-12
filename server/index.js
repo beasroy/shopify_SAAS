@@ -37,6 +37,9 @@ import festivalDateRoutes from "./routes/festivalDate.js";
 import productRoutes from "./routes/product.js";
 import masterDashboardRoutes from "./routes/masterDashboard.js";
 
+import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+
+
 
 
 const app = express();
@@ -114,7 +117,7 @@ dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
-
+calculateMetricsForSingleBrand("690b24d5b5eeef0b8b4ed79f","690b24d5b5eeef0b8b4ed79c");
 
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');

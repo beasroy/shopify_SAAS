@@ -64,6 +64,11 @@ Return a JSON object with a "cities" array. Include one classification per city 
   "isCoastal": true
 }
 
+6. MetroStatus: MUST be exactly "metro" or "non-metro" — never "unknown" or any other value.
+   - "metro": Cities that are official/metropolitan areas (Mumbai, Delhi, Bangalore, Chennai, etc.)
+   - "non-metro": All other cities and towns, including smaller places like Dhoraji, Morbi, etc.
+   - If unsure, use "non-metro".
+
 Return ONLY valid JSON, no other text.`;
 
     try {
@@ -131,7 +136,7 @@ Return ONLY valid JSON, no other text.`;
                     state: city.state,
                     country: country,
                     cityNormalized: cityCanonical,
-                    metroStatus: classification.metroStatus || 'non-metro',
+                    metroStatus: (classification.metroStatus === 'metro' ? 'metro' : 'non-metro'),
                     tier: classification.tier || 'tier3', // Default to tier3 if not specified
                     region: classification.region || (country.toLowerCase() === 'india' ? 'central' : 'other'),
                     isCoastal: classification.isCoastal || false,

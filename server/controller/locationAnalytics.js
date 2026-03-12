@@ -48,25 +48,16 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
             };
         }
 
-        // For region dimension, show state; for others, show city; include country from Order
-        const locationData = dimension === 'region'
-            ? {
-                state: location.originalState || location.originalLocation || 'Unknown',
-                country: location.originalCountry || 'unknown',
-                totalSales: location.totalSales || 0,
-                orderCount: location.totalOrderCount || 0,
-                monthlyTotal: location.totalSales || 0,
-                isClassified
-            }
-            : {
-                city: location.originalCity || location.originalLocation || 'Unknown',
-                state: location.originalState || 'Unknown',
-                country: location.originalCountry || 'unknown',
-                totalSales: location.totalSales || 0,
-                orderCount: location.totalOrderCount || 0,
-                monthlyTotal: location.totalSales || 0,
-                isClassified
-            };
+        // For all dimensions (including region), show city, state, country for city-level granularity
+        const locationData = {
+            city: location.originalCity || location.originalLocation || 'Unknown',
+            state: location.originalState || 'Unknown',
+            country: location.originalCountry || 'unknown',
+            totalSales: location.totalSales || 0,
+            orderCount: location.totalOrderCount || 0,
+            monthlyTotal: location.totalSales || 0,
+            isClassified
+        };
 
         result[dimValue].push(locationData);
 
@@ -177,25 +168,24 @@ export async function getLocationSales(req, res) {
         start.setUTCHours(0, 0, 0, 0);
         end.setUTCHours(23, 59, 59, 999);
 
-        // Build aggregation pipeline - for region dimension, group by state; for others, group by city
-        const isRegionDimension = dimension === 'region';
-
-        // Group by location only (no date); sum totalSales and count orders directly
+        // Build aggregation pipeline - group by city for all dimensions (metro, region, tier, coastal)
+        // Group ONLY by lookupKey (canonical city_state_country) so MUMBAI/Mumbai/mumbai merge into one
+        // Use $first for display fields; prefer cityMeta.city for canonical display when classified
         const locationGroupStage = {
             $group: {
-                _id: {
-                    locationKey: isRegionDimension
-                        ? { $toLower: { $trim: { input: { $ifNull: ["$state", ""] } } } }
-                        : "$lookupKey",
-                    originalLocation: isRegionDimension ? "$state" : "$city",
-                    originalCity: "$city",
-                    originalState: "$state",
-                    originalCountry: { $ifNull: ["$country", "unknown"] },
-                    metroStatus: { $ifNull: ["$cityMeta.metroStatus", null] },
-                    region: { $ifNull: ["$cityMeta.region", null] },
-                    tier: { $ifNull: ["$cityMeta.tier", null] },
-                    isCoastal: { $ifNull: ["$cityMeta.isCoastal", null] },
-                    isClassified: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
+                _id: "$lookupKey",
+                locationKey: { $first: "$lookupKey" },
+                originalCity: {
+                    $first: { $ifNull: ["$cityMeta.city", "$city"] }
+                },
+                originalState: { $first: "$state" },
+                originalCountry: { $first: { $ifNull: ["$country", "unknown"] } },
+                metroStatus: { $first: "$cityMeta.metroStatus" },
+                region: { $first: "$cityMeta.region" },
+                tier: { $first: "$cityMeta.tier" },
+                isCoastal: { $first: "$cityMeta.isCoastal" },
+                isClassified: {
+                    $first: { $cond: [{ $ne: ["$cityMeta", null] }, true, false] }
                 },
                 totalSales: { $sum: "$totalSales" },
                 totalOrderCount: { $sum: 1 }
@@ -327,20 +317,10 @@ export async function getLocationSales(req, res) {
             },
             // Stage 5: Group by location for this date range; totalSales and totalOrderCount per location
             locationGroupStage,
-            // Stage 6: Add fields for easier access
+            // Stage 6: Add originalLocation alias for consistency (same as originalCity after grouping)
             {
                 $addFields: {
-                    metroStatus: "$_id.metroStatus",
-                    region: "$_id.region",
-                    tier: "$_id.tier",
-                    isCoastal: "$_id.isCoastal",
-                    isClassified: "$_id.isClassified",
-                    originalCity: { $ifNull: ["$_id.originalCity", "$_id.originalLocation"] },
-                    originalState: "$_id.originalState",
-                    originalCountry: "$_id.originalCountry",
-                    originalLocation: { $ifNull: ["$_id.originalLocation", "$_id.originalCity"] },
-                    locationKey: "$_id.locationKey"
-
+                    originalLocation: "$originalCity"
                 }
             }
         ];
@@ -381,15 +361,10 @@ export async function getLocationSales(req, res) {
         // Transform to response format
         const response = transformToResponse(results, dimension, start, end);
 
-        // Count unclassified locations - use correct fields based on dimension
+        // Count unclassified locations (city-level for all dimensions)
         const unclassifiedLocations = results
             .filter(c => !c.isClassified)
-            .map(c => {
-                if (dimension === 'region') {
-                    return c.originalState || c.originalLocation || 'Unknown';
-                }
-                return c.originalCity || c.originalLocation || 'Unknown';
-            });
+            .map(c => c.originalCity || c.originalLocation || 'Unknown');
         const unclassifiedSales = results
             .filter(c => !c.isClassified)
             .reduce((sum, c) => sum + (c.totalSales || 0), 0);

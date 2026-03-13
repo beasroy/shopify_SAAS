@@ -1,9 +1,664 @@
+// import React, { useEffect, useMemo, useState } from "react"
+// import axios from "axios"
+// import { format } from "date-fns"
+// import { useParams } from "react-router-dom"
+// import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar"
+// import { ChevronDown, Download, Maximize, Minimize, } from "lucide-react"
+// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
+// import { Card, CardContent } from "@/components/ui/card"
+// import { FacebookLogo, GoogleLogo, ShopifyLogo } from "@/data/logo.tsx"
+// import { useSelector } from "react-redux"
+// import type { RootState } from "@/store"
+// import { Button } from "@/components/ui/button"
+// import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange"
+// import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal"
+// import type { ITooltipHeaderProps, IMonthlyAggregate } from "@/interfaces/index"
+// import Loader from "@/components/dashboard_component/loader"
+// import { baseURL } from "@/data/constant"
+// import DataBuilding from "./components/DataBuilding"
+// import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
+// import HeaderNotificationDropdown from "@/components/dashboard_component/HeaderNotificationDropdown"
+
+
+// export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
+//   return formatCurrencyUtil(amount, currencyCode);
+// };
+
+// function TooltipHeader({
+//   title,
+//   tooltip,
+//   colSpan = 1,
+//   rowSpan,
+//   isSubHeader = false,
+//   isImportant = false,
+//   isFirstInSection = false, // Add this new prop
+// }: Readonly<ITooltipHeaderProps & { isImportant?: boolean; isFirstInSection?: boolean }>) {
+//   return (
+//     <th
+//       className={`
+//         ${isSubHeader ? "text-xs font-medium" : "font-semibold text-sm"}
+//         text-center whitespace-nowrap p-2
+//         ${isSubHeader ? "bg-slate-100" : "bg-slate-200"}
+//         ${isImportant ? "bg-blue-50 !font-bold text-blue-800" : ""}
+//         relative overflow-hidden
+//         ${!isSubHeader ? "sticky top-0 z-10" : ""}
+//         font-inter border-b border-r border-slate-300
+//         ${isFirstInSection ? "border-l-2 border-l-slate-300 shadow-sm" : ""}
+//       `}
+//       colSpan={colSpan}
+//       rowSpan={rowSpan}
+//     >
+//       <TooltipProvider>
+//         <Tooltip>
+//           <TooltipTrigger asChild>
+//             <span
+//               className={`
+//                 flex items-center justify-center gap-1 cursor-help
+//                 ${isImportant ? "text-blue-800" : ""}
+//               `}
+//             >
+//               {isImportant && <span className="text-blue-500">●</span>}
+//               {title}
+//             </span>
+//           </TooltipTrigger>
+//           <TooltipContent className="mb-3 z-20 w-fit">
+//             <div className="text-gray-700 bg-white p-2 rounded-md text-sm border shadow-lg max-w-fit">
+//               {isImportant && <div className="font-semibold text-blue-600 mb-1">Key Metric</div>}
+//               {tooltip}
+//             </div>
+//           </TooltipContent>
+//         </Tooltip>
+//       </TooltipProvider>
+//     </th>
+//   )
+// }
+
+// // Excel-like cell component
+// function Cell({
+//   children,
+//   isNumeric = false,
+//   isHeader = false,
+//   isSticky = false,
+//   isExpanded = false,
+//   isImportant = false,
+//   isFirstInSection = false, // Add this new prop
+//   className = "",
+// }: {
+//   children?: React.ReactNode
+//   isNumeric?: boolean
+//   isHeader?: boolean
+//   isSticky?: boolean
+//   isExpanded?: boolean
+//   isImportant?: boolean
+//   isFirstInSection?: boolean
+//   className?: string
+// }) {
+//   return (
+//     <td
+//       className={`
+//         border-b border-r border-slate-200
+//         ${isNumeric ? "text-right font-roboto tabular-nums" : "text-left"} 
+//         ${isHeader ? "font-medium font-dm-sans" : ""}
+//         ${isSticky ? "sticky z-10" : ""}
+//         ${isExpanded ? "bg-blue-50/30" : "bg-white hover:bg-slate-50/80"}
+//         ${isSticky && isExpanded ? "bg-blue-50/30" : ""}
+//         ${isImportant ? "font-semibold text-blue-700" : ""}
+//         ${isFirstInSection ? "border-l-2 border-l-slate-300 shadow-sm" : ""}
+//         transition-colors
+//         ${className}
+//       `}
+//     >
+//       {children}
+//     </td>
+//   )
+// }
+
+// export const ExcelMetricsPage: React.FC = () => {
+//   const [metricsData, setMetricsData] = useState<IMonthlyAggregate[]>([])
+//   const [loading, setLoading] = useState<boolean>(true)
+//   const [error, setError] = useState<string | null>(null)
+//   const [isFullScreen, setIsFullScreen] = useState<boolean>(false)
+//   const [currency, setCurrency] = useState<string>('USD')
+//   const dateFrom = useSelector((state: RootState) => state.date.from)
+//   const dateTo = useSelector((state: RootState) => state.date.to)
+//   const [expandedMonths, setExpandedMonths] = useState<string[]>([])
+//   const { brandId } = useParams()
+//   const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId)
+//   const brandName = useSelector(
+//     (state: RootState) => state.brand.brands.find((brand) => brand._id === selectedBrandId)?.name,
+//   )
+
+//   const date = useMemo(
+//     () => ({
+//       from: dateFrom,
+//       to: dateTo,
+//     }),
+//     [dateFrom, dateTo],
+//   )
+
+//   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
+//   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
+
+//   const toggleFullScreen = () => {
+//     setIsFullScreen(!isFullScreen)
+//   }
+
+//   const getTableHeight = () => {
+//     if (isFullScreen) {
+//       return "h-screen"
+//     }
+//     return "h-full"
+//   }
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       setLoading(true)
+//       setError(null)
+//       try {
+//         const queryParams: Record<string, string> = {}
+
+//         if (startDate) queryParams.startDate = startDate
+//         if (endDate) queryParams.endDate = endDate
+
+//         // Fetch currency first
+//         const currencyResponse = await axios.get(`${baseURL}/api/brands/currency/${brandId}`, {
+//           withCredentials: true,
+//         })
+//         setCurrency(currencyResponse.data)
+
+//         // Then fetch metrics data
+//         const reportResponse = await axios.get(`${baseURL}/api/report/${brandId}`, {
+//           params: queryParams,
+//           withCredentials: true,
+//         })
+//         const metricsData: IMonthlyAggregate[] = reportResponse.data.data
+//         setMetricsData(metricsData)
+//       } catch (err) {
+//         console.error(err)
+//         const message =
+//           axios.isAxiosError(err) && err.response?.data?.message ? err.response.data.message : "Something went wrong"
+//         setError(message)
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+//     // fetchData()
+//   }, [brandId, startDate, endDate, baseURL])
+
+//   const toggleMonth = (monthYear: string) => {
+//     setExpandedMonths((prev) => (prev.includes(monthYear) ? prev.filter((m) => m !== monthYear) : [...prev, monthYear]))
+//   }
+
+//   const formatCurrency = (value: number) => {
+//     return formatCurrencyUtil(value, currency);
+//   }
+
+//   // Format number without currency symbol (for Meta, Google, and Meta + Google sections)
+//   const formatNumber = (value: number) => {
+//     return new Intl.NumberFormat('en-US', {
+//       minimumFractionDigits: 2,
+//       maximumFractionDigits: 2
+//     }).format(value);
+//   }
+
+//   const formatPercentage = (value: number) => {
+//     return `${value.toFixed(2)}`
+//   }
+
+//   const processedData = useMemo(() => {
+//     const safeDivide = (numerator: number, denominator: number) => (denominator ? numerator / denominator : 0)
+
+//     return metricsData.map((monthData: IMonthlyAggregate) => {
+//       const processedDailyMetrics = monthData.dailyMetrics.map((daily) => ({
+//         ...daily,
+//         metaROAS: safeDivide(daily.metaRevenue, daily.metaSpend),
+//         googleSales: (daily.googleSpend) * (daily.googleROAS),
+//         adSales: (daily.totalSpend) * (daily.grossROI || 0),
+//         ROI: safeDivide(daily.totalSales, daily.totalSpend),
+//       }))
+
+//       const metaSales = processedDailyMetrics.reduce((sum, daily) => sum + (daily.metaRevenue || 0), 0)
+//       const googleSales = processedDailyMetrics.reduce((sum, daily) => sum + daily.googleSales, 0)
+//       const totalAdSales = metaSales + googleSales || 0
+
+//       return {
+//         ...monthData,
+//         metaSales,
+//         googleSales,
+//         totalAdSales,
+//         metaROAS: safeDivide(metaSales, monthData.metaSpend),
+//         googleROAS: safeDivide(googleSales, monthData.googleSpend),
+//         grossROI: safeDivide(totalAdSales, monthData.totalSpend),
+//         netROI: safeDivide(monthData.shopifySales, monthData.totalSpend),
+//         ROI: safeDivide(monthData.totalSales, monthData.totalSpend),
+//         dailyMetrics: processedDailyMetrics,
+//       }
+//     })
+//   }, [metricsData])
+
+//   useMemo(() => {
+//     if (!processedData.length) return null
+
+//     const totalSales = processedData.reduce((sum, month) => sum + month.totalSales, 0)
+//     const totalSpend = processedData.reduce((sum, month) => sum + month.totalSpend, 0)
+//     const totalROI = totalSpend ? totalSales / totalSpend : 0
+//     const metaSpend = processedData.reduce((sum, month) => sum + month.metaSpend, 0)
+//     const googleSpend = processedData.reduce((sum, month) => sum + month.googleSpend, 0)
+//     const metaSales = processedData.reduce((sum, month) => sum + month.metaSales, 0)
+//     const googleSales = processedData.reduce((sum, month) => sum + month.googleSales, 0)
+//     const metaROAS = metaSpend ? metaSales / metaSpend : 0
+//     const googleROAS = googleSpend ? googleSales / googleSpend : 0
+
+//     return {
+//       totalSales,
+//       totalSpend,
+//       totalROI,
+//       metaSpend,
+//       googleSpend,
+//       metaSales,
+//       googleSales,
+//       metaROAS,
+//       googleROAS,
+//     }
+//   }, [processedData])
+
+//   const renderTable = (): React.ReactNode => {
+//     if (error) {
+//       return <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200">{error}</div>
+//     }
+
+//     return (
+//       <div className="border rounded-lg shadow-sm overflow-hidden bg-white h-full flex flex-col font-karla">
+//         <div className={`${getTableHeight()} overflow-auto flex-1`}>
+//           <table className="w-full border-collapse font-inter">
+//             <thead className="sticky top-0 z-20">
+//               <tr>
+//                 <th className="w-10 sticky left-0 z-30 bg-slate-200 border-b border-r border-slate-300" rowSpan={2} />
+//                 <th
+//                   className="sticky left-[40px] z-20 text-center whitespace-nowrap p-2 font-semibold text-sm bg-slate-200 border-b border-r border-slate-300 border-l-2 border-l-slate-300 "
+//                   rowSpan={2}
+//                 >
+//                   Date
+//                 </th>
+//                 <TooltipHeader
+//                   title="Shopify (Actual Sales Data)"
+//                   tooltip="Shopify Metrics"
+//                   colSpan={3}
+//                   isFirstInSection={true}
+//                 />
+//                 <TooltipHeader title="Meta + Google" tooltip="Meta + Google" colSpan={3} isFirstInSection={true} />
+//                 <TooltipHeader
+//                   title="Meta (Facebook & Instagram Ads)"
+//                   tooltip="Meta Metrics"
+//                   colSpan={3}
+//                   isFirstInSection={true}
+//                 />
+//                 <TooltipHeader title="Google Ads" tooltip="Google Metrics" colSpan={3} isFirstInSection={true} />
+//               </tr>
+//               <tr>
+//                 {/* <TooltipHeader
+//                   title="Net Sales"
+//                   tooltip="Net Sales = Gross Sales - Discount"
+//                   isSubHeader
+//                   isFirstInSection={true}
+//                 />
+//                 <TooltipHeader
+//                   title="Net ROI"
+//                   tooltip="Net ROI = Net Sales / Total Spend"
+//                   isSubHeader
+//                   isImportant={true}
+//                 /> */}
+//                 <TooltipHeader title="Total Sales" tooltip="Total Sales" isSubHeader isFirstInSection={true} />
+//                 <TooltipHeader title="Total Returns" tooltip="Net Returns + Shipping Returned + Return Fees + Taxes Returned" isSubHeader />
+//                 <TooltipHeader
+//                   title="ROAS"
+//                   tooltip="ROAS = Total Sales / Total Spend"
+//                   isSubHeader
+//                   isImportant={true}
+//                 />
+//                 <TooltipHeader
+//                   title="Spend"
+//                   tooltip="Total Spent = Meta Spent + Google Spent"
+//                   isSubHeader
+//                   isFirstInSection={true}
+//                 />
+//                 <TooltipHeader title="Sales" tooltip="Sales = (MetaSales + GoogleSales)" isSubHeader />
+//                 <TooltipHeader
+//                   title="ROI"
+//                   tooltip="ROI = (MetaSales + GoogleSales)/ Total Spent"
+//                   isSubHeader
+//                   isImportant={true}
+//                 />
+//                 <TooltipHeader title="Spend" tooltip="Meta Spent" isSubHeader isFirstInSection={true} />
+//                 <TooltipHeader title="Sales" tooltip="Meta Sales = Meta Spent * Meta ROAS" isSubHeader />
+//                 <TooltipHeader title="ROAS" tooltip="Meta ROAS" isSubHeader isImportant={true} />
+//                 <TooltipHeader title="Spend" tooltip="Google Spent" isSubHeader isFirstInSection={true} />
+//                 <TooltipHeader title="Sales" tooltip="Google Sales = Google Spent * Google ROAS" isSubHeader />
+//                 <TooltipHeader title="ROAS" tooltip="Google ROAS" isSubHeader isImportant={true} />
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {processedData.map((monthData: any) => {
+//                 const monthYear = `${monthData.year}-${monthData.month.toString().padStart(2, "0")}`
+//                 const isExpanded = expandedMonths.includes(monthYear)
+//                 return (
+//                   <React.Fragment key={monthYear}>
+//                     <tr
+//                       className={`
+//                         ${isExpanded ? "bg-blue-50" : "bg-white hover:bg-slate-50/80"} 
+//                         cursor-pointer transition-colors 
+//                       `}
+//                       onClick={() => toggleMonth(monthYear)}
+//                     >
+//                       <Cell isSticky isExpanded={isExpanded} className="w-10 px-2 py-2 sticky left-0">
+//                         <div
+//                           className={`
+//                             w-6 h-6 rounded-full flex items-center justify-center
+//                             transition-all duration-300 transform
+//                             ${isExpanded ? "rotate-180 bg-blue-500" : "bg-blue-100 hover:bg-blue-200"}
+//                           `}
+//                         >
+//                           <ChevronDown className={`w-4 h-4 ${isExpanded ? "text-white" : "text-blue-500"}`} />
+//                         </div>
+//                       </Cell>
+//                       <Cell
+//                         isHeader
+//                         isSticky
+//                         isExpanded={isExpanded}
+//                         className="sticky left-[40px] px-3 py-2.5 whitespace-nowrap bg-slate-50/80 text-sm border-l-2 border-l-slate-300 "
+//                       >
+//                         {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
+//                       </Cell>
+//                       {/* <Cell
+//                         isNumeric
+//                         isExpanded={isExpanded}
+//                         className="px-3 py-2.5 font-medium text-sm"
+//                         isFirstInSection={true}
+//                       >
+//                         {formatCurrency(monthData.shopifySales)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+//                         {formatPercentage(monthData.netROI)}
+//                       </Cell> */}
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm" isFirstInSection={true}>
+//                         {formatCurrency(monthData.totalSales)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+//                         {formatCurrency(monthData.refundAmount)}
+//                       </Cell>
+
+//                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+//                         {formatPercentage(monthData.ROI)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+//                         {formatNumber(monthData.totalSpend)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+//                         {formatNumber(monthData.totalAdSales)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+//                         {formatPercentage(monthData.grossROI)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+//                         {formatNumber(monthData.metaSpend)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+//                         {formatNumber(monthData.metaSales)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+//                         {formatPercentage(monthData.metaROAS)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+//                         {formatNumber(monthData.googleSpend)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+//                         {formatNumber(monthData.googleSales)}
+//                       </Cell>
+//                       <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+//                         {formatPercentage(monthData.googleROAS)}
+//                       </Cell>
+//                     </tr>
+//                     {isExpanded &&
+//                       monthData.dailyMetrics.map((daily: any) => (
+//                         <tr key={daily._id} className="bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+//                           <Cell isSticky className="w-10 px-2 py-1.5 sticky left-0 bg-slate-50/50" />
+//                           <Cell
+//                             isSticky
+//                             className="sticky left-[40px] px-3 py-1.5 text-xs text-gray-600 bg-slate-50/80 border-l-2 border-l-slate-300 "
+//                           >
+//                             {format(new Date(daily.date), "dd/MM/yyyy")}
+//                           </Cell>
+//                           {/* <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+//                             {formatCurrency(daily.shopifySales)}
+//                           </Cell>
+//                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+//                             {formatPercentage(daily.netROI)}
+//                           </Cell> */}
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+//                             {formatCurrency(daily.totalSales)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs">
+//                             {formatCurrency(daily.refundAmount)}
+//                           </Cell>
+
+//                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+//                             {formatPercentage(daily.ROI)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+//                             {formatNumber(daily.totalSpend)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs">
+//                             {formatNumber(daily.adSales)}
+//                           </Cell>
+//                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+//                             {formatPercentage(daily.grossROI)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+//                             {formatNumber(daily.metaSpend)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs">
+//                             {formatNumber(daily.metaRevenue)}
+//                           </Cell>
+//                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+//                             {formatPercentage(daily.metaROAS)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+//                             {formatNumber(daily.googleSpend)}
+//                           </Cell>
+//                           <Cell isNumeric className="px-3 py-1.5 text-xs">
+//                             {formatNumber(daily.googleSales)}
+//                           </Cell>
+//                           <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+//                             {formatPercentage(daily.googleROAS)}
+//                           </Cell>
+//                         </tr>
+//                       ))}
+//                   </React.Fragment>
+//                 )
+//               })}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+//     )
+//   }
+
+//   const handleExport = () => {
+//     try {
+//       if (!processedData || !processedData.length) {
+//         // Visible feedback if there is no data to export
+//         window.alert("No metrics data available to export for the selected date range.")
+//         return
+//       }
+
+//       const headers = [
+//         "Level",
+//         "Month",
+//         "Date",
+//         "Total Sales",
+//         "Refund Amount",
+//         "ROI",
+//         "Total Spend",
+//         "Total Ad Sales",
+//         "Gross ROI",
+//         "Meta Spend",
+//         "Meta Sales",
+//         "Meta ROAS",
+//         "Google Spend",
+//         "Google Sales",
+//         "Google ROAS",
+//       ]
+
+//       const rows: (string | number)[][] = []
+
+//       processedData.forEach((monthData: any) => {
+//         const monthLabel = format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")
+
+//         // Monthly summary row
+//         rows.push([
+//           "Month",
+//           monthLabel,
+//           "",
+//           monthData.totalSales ?? 0,
+//           monthData.refundAmount ?? 0,
+//           monthData.ROI ?? 0,
+//           monthData.totalSpend ?? 0,
+//           monthData.totalAdSales ?? 0,
+//           monthData.grossROI ?? 0,
+//           monthData.metaSpend ?? 0,
+//           monthData.metaSales ?? 0,
+//           monthData.metaROAS ?? 0,
+//           monthData.googleSpend ?? 0,
+//           monthData.googleSales ?? 0,
+//           monthData.googleROAS ?? 0,
+//         ])
+
+//         // Daily rows
+//         monthData.dailyMetrics.forEach((daily: any) => {
+//           rows.push([
+//             "Day",
+//             monthLabel,
+//             format(new Date(daily.date), "dd/MM/yyyy"),
+//             daily.totalSales ?? 0,
+//             daily.refundAmount ?? 0,
+//             daily.ROI ?? 0,
+//             daily.totalSpend ?? 0,
+//             daily.adSales ?? 0,
+//             daily.grossROI ?? 0,
+//             daily.metaSpend ?? 0,
+//             daily.metaRevenue ?? 0,
+//             daily.metaROAS ?? 0,
+//             daily.googleSpend ?? 0,
+//             daily.googleSales ?? 0,
+//             daily.googleROAS ?? 0,
+//           ])
+//         })
+//       })
+
+//       const escapeCell = (value: string | number) => {
+//         const str = String(value ?? "")
+//         // Escape quotes and wrap in quotes so Excel parses correctly
+//         const escaped = str.replace(/"/g, '""')
+//         return `"${escaped}"`
+//       }
+
+//       const csvBody =
+//         [headers, ...rows]
+//           .map((row) => row.map(escapeCell).join(","))
+//           .join("\r\n")
+
+//       // Add BOM so Excel (especially on Windows) detects UTF-8 correctly
+//       const csvContent = `\uFEFF${csvBody}`
+
+//       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+//       const url = URL.createObjectURL(blob)
+
+//       const link = document.createElement("a")
+//       const fromPart = startDate || "start"
+//       const toPart = endDate || "end"
+//       link.href = url
+//       link.download = `monthly-ad-metrics-${brandName ?? "brand"}-${fromPart}-to-${toPart}.csv`
+//       document.body.appendChild(link)
+//       link.click()
+//       document.body.removeChild(link)
+//       URL.revokeObjectURL(url)
+//     } catch (err) {
+//       console.error("Failed to export metrics CSV", err)
+//       window.alert("Something went wrong while exporting. Please check the console for details.")
+//     }
+//   }
+
+//   const renderContent = () => {
+//     if (loading) return <Loader isLoading={loading} />
+//     if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
+//     return (
+//       <div className="flex-1 h-screen overflow-hidden bg-slate-100 flex flex-col">
+//         <div className="p-3 flex-1 flex flex-col min-h-0">
+//           {/* Combined Date Controls and Metrics Table Card */}
+//           <Card
+//             id="metrics-table"
+//             className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : ""} shadow-md flex-1 flex flex-col min-h-0`}
+//           >
+//             <CardContent className="p-2 md:p-3 flex-1 flex flex-col min-h-0">
+//               {/* Date and Controls Section */}
+//               <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-3 gap-4 flex-shrink-0">
+//                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+//                   <h2 className="lg:text-xl text-lg font-semibold text-slate-800">Cross-Platform Performance</h2>
+//                   <div className="lg:flex hidden flex-row gap-3 items-center">
+//                     <ShopifyLogo width={20} height={20} />
+//                     <FacebookLogo width={20} height={20} />
+//                     <GoogleLogo width={20} height={20} />
+//                   </div>
+//                 </div>
+//                 <div className="flex flex-row items-center gap-3">
+//                   <DatePickerWithRange
+//                     defaultDate={{
+//                       from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+//                       to: new Date(),
+//                     }}
+//                   />
+//                   <Button onClick={toggleFullScreen} size="icon" variant="outline" className="bg-white md:flex hidden">
+//                     {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+//                   </Button>
+//                   <Button onClick={handleExport} variant="outline" size="sm" className="gap-2 bg-white">
+//                     <Download className="h-4 w-4" />
+//                     <span className="lg:block hidden">Export</span>
+//                   </Button>
+//                   <HeaderNotificationDropdown />
+//                 </div>
+//               </div>
+
+//               {/* Metrics Table */}
+//               <div className="flex-1 overflow-hidden min-h-0">
+//                 {renderTable()}
+//               </div>
+//             </CardContent>
+//           </Card>
+//         </div>
+//       </div>
+//     )
+//   }
+
+//   return (
+//     <div className="flex h-screen bg-gray-100">
+//       <CollapsibleSidebar />
+//       <div className="flex-1 h-screen overflow-auto">
+//         {renderContent()}
+//       </div>
+//       <HelpDeskModal />
+//     </div>
+//   )
+// }
+
+
+// ABOVE ORIGINAL CODE
+
 import React, { useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar"
-import {ChevronDown, Download, Maximize, Minimize,} from "lucide-react"
+import { ChevronDown, Download, Maximize, Minimize, } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import { FacebookLogo, GoogleLogo, ShopifyLogo } from "@/data/logo.tsx"
@@ -31,13 +686,13 @@ function TooltipHeader({
   rowSpan,
   isSubHeader = false,
   isImportant = false,
-  isFirstInSection = false, // Add this new prop
+  isFirstInSection = false,
 }: Readonly<ITooltipHeaderProps & { isImportant?: boolean; isFirstInSection?: boolean }>) {
   return (
     <th
       className={`
-        ${isSubHeader ? "text-xs font-medium" : "font-semibold text-sm"}
-        text-center whitespace-nowrap p-2
+        ${isSubHeader ? "text-xs font-medium" : "font-semibold text-xs sm:text-sm"}
+        text-center whitespace-nowrap p-1.5 sm:p-2
         ${isSubHeader ? "bg-slate-100" : "bg-slate-200"}
         ${isImportant ? "bg-blue-50 !font-bold text-blue-800" : ""}
         relative overflow-hidden
@@ -62,7 +717,7 @@ function TooltipHeader({
             </span>
           </TooltipTrigger>
           <TooltipContent className="mb-3 z-20 w-fit">
-            <div className="text-gray-700 bg-white p-2 rounded-md text-sm border shadow-lg max-w-fit">
+            <div className="text-gray-700 bg-white p-2 rounded-md text-xs sm:text-sm border shadow-lg max-w-fit">
               {isImportant && <div className="font-semibold text-blue-600 mb-1">Key Metric</div>}
               {tooltip}
             </div>
@@ -81,7 +736,7 @@ function Cell({
   isSticky = false,
   isExpanded = false,
   isImportant = false,
-  isFirstInSection = false, // Add this new prop
+  isFirstInSection = false,
   className = "",
 }: {
   children?: React.ReactNode
@@ -264,18 +919,27 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const renderTable = (): React.ReactNode => {
     if (error) {
-      return <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200">{error}</div>
+      return <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-200 text-sm">{error}</div>
     }
 
     return (
       <div className="border rounded-lg shadow-sm overflow-hidden bg-white h-full flex flex-col font-karla">
+        {/* Scroll hint for mobile */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border-b border-slate-200 sm:hidden flex-shrink-0">
+          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 12h8M8 17h4" />
+          </svg>
+          <span className="text-xs text-slate-400">Scroll horizontally to see all columns</span>
+        </div>
+
         <div className={`${getTableHeight()} overflow-auto flex-1`}>
-          <table className="w-full border-collapse font-inter">
+          {/* min-w ensures table never collapses — allows horizontal scroll on small screens */}
+          <table className="w-full min-w-[900px] border-collapse font-inter">
             <thead className="sticky top-0 z-20">
               <tr>
-                <th className="w-10 sticky left-0 z-30 bg-slate-200 border-b border-r border-slate-300" rowSpan={2} />
+                <th className="w-8 sm:w-10 sticky left-0 z-30 bg-slate-200 border-b border-r border-slate-300" rowSpan={2} />
                 <th
-                  className="sticky left-[40px] z-20 text-center whitespace-nowrap p-2 font-semibold text-sm bg-slate-200 border-b border-r border-slate-300 border-l-2 border-l-slate-300 "
+                  className="sticky left-[32px] sm:left-[40px] z-20 text-center whitespace-nowrap p-1.5 sm:p-2 font-semibold text-xs sm:text-sm bg-slate-200 border-b border-r border-slate-300 border-l-2 border-l-slate-300"
                   rowSpan={2}
                 >
                   Date
@@ -296,18 +960,6 @@ export const ExcelMetricsPage: React.FC = () => {
                 <TooltipHeader title="Google Ads" tooltip="Google Metrics" colSpan={3} isFirstInSection={true} />
               </tr>
               <tr>
-                {/* <TooltipHeader
-                  title="Net Sales"
-                  tooltip="Net Sales = Gross Sales - Discount"
-                  isSubHeader
-                  isFirstInSection={true}
-                />
-                <TooltipHeader
-                  title="Net ROI"
-                  tooltip="Net ROI = Net Sales / Total Spend"
-                  isSubHeader
-                  isImportant={true}
-                /> */}
                 <TooltipHeader title="Total Sales" tooltip="Total Sales" isSubHeader isFirstInSection={true} />
                 <TooltipHeader title="Total Returns" tooltip="Net Returns + Shipping Returned + Return Fees + Taxes Returned" isSubHeader />
                 <TooltipHeader
@@ -338,11 +990,11 @@ export const ExcelMetricsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {processedData.map((monthData: any) => {
+              {processedData.map((monthData: any, index: number) => {
                 const monthYear = `${monthData.year}-${monthData.month.toString().padStart(2, "0")}`
                 const isExpanded = expandedMonths.includes(monthYear)
                 return (
-                  <React.Fragment key={monthYear}>
+                  <React.Fragment key={monthYear + index.toString()}>
                     <tr
                       className={`
                         ${isExpanded ? "bg-blue-50" : "bg-white hover:bg-slate-50/80"} 
@@ -350,125 +1002,106 @@ export const ExcelMetricsPage: React.FC = () => {
                       `}
                       onClick={() => toggleMonth(monthYear)}
                     >
-                      <Cell isSticky isExpanded={isExpanded} className="w-10 px-2 py-2 sticky left-0">
+                      <Cell isSticky isExpanded={isExpanded} className="w-8 sm:w-10 px-1.5 sm:px-2 py-1.5 sm:py-2 sticky left-0">
                         <div
                           className={`
-                            w-6 h-6 rounded-full flex items-center justify-center
+                            w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center
                             transition-all duration-300 transform
                             ${isExpanded ? "rotate-180 bg-blue-500" : "bg-blue-100 hover:bg-blue-200"}
                           `}
                         >
-                          <ChevronDown className={`w-4 h-4 ${isExpanded ? "text-white" : "text-blue-500"}`} />
+                          <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 ${isExpanded ? "text-white" : "text-blue-500"}`} />
                         </div>
                       </Cell>
                       <Cell
                         isHeader
                         isSticky
                         isExpanded={isExpanded}
-                        className="sticky left-[40px] px-3 py-2.5 whitespace-nowrap bg-slate-50/80 text-sm border-l-2 border-l-slate-300 "
+                        className="sticky left-[32px] sm:left-[40px] px-2 sm:px-3 py-2 sm:py-2.5 whitespace-nowrap bg-slate-50/80 text-xs sm:text-sm border-l-2 border-l-slate-300"
                       >
                         {format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")}
                       </Cell>
-                      {/* <Cell
-                        isNumeric
-                        isExpanded={isExpanded}
-                        className="px-3 py-2.5 font-medium text-sm"
-                        isFirstInSection={true}
-                      >
-                        {formatCurrency(monthData.shopifySales)}
-                      </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
-                        {formatPercentage(monthData.netROI)}
-                      </Cell> */}
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 font-medium text-sm" isFirstInSection={true}>
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 font-medium text-xs sm:text-sm" isFirstInSection={true}>
                         {formatCurrency(monthData.totalSales)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatCurrency(monthData.refundAmount)}
                       </Cell>
-
-                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatPercentage(monthData.ROI)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm" isFirstInSection={true}>
                         {formatNumber(monthData.totalSpend)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatNumber(monthData.totalAdSales)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatPercentage(monthData.grossROI)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm" isFirstInSection={true}>
                         {formatNumber(monthData.metaSpend)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatNumber(monthData.metaSales)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatPercentage(monthData.metaROAS)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm" isFirstInSection={true}>
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm" isFirstInSection={true}>
                         {formatNumber(monthData.googleSpend)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatNumber(monthData.googleSales)}
                       </Cell>
-                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-3 py-2.5 text-sm">
+                      <Cell isNumeric isExpanded={isExpanded} isImportant className="px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm">
                         {formatPercentage(monthData.googleROAS)}
                       </Cell>
                     </tr>
                     {isExpanded &&
                       monthData.dailyMetrics.map((daily: any) => (
                         <tr key={daily._id} className="bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
-                          <Cell isSticky className="w-10 px-2 py-1.5 sticky left-0 bg-slate-50/50" />
+                          <Cell isSticky className="w-8 sm:w-10 px-1.5 sm:px-2 py-1 sm:py-1.5 sticky left-0 bg-slate-50/50" />
                           <Cell
                             isSticky
-                            className="sticky left-[40px] px-3 py-1.5 text-xs text-gray-600 bg-slate-50/80 border-l-2 border-l-slate-300 "
+                            className="sticky left-[32px] sm:left-[40px] px-2 sm:px-3 py-1 sm:py-1.5 text-xs text-gray-600 bg-slate-50/80 border-l-2 border-l-slate-300"
                           >
                             {format(new Date(daily.date), "dd/MM/yyyy")}
                           </Cell>
-                          {/* <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
-                            {formatCurrency(daily.shopifySales)}
-                          </Cell>
-                          <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
-                            {formatPercentage(daily.netROI)}
-                          </Cell> */}
-                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs" isFirstInSection={true}>
                             {formatCurrency(daily.totalSales)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatCurrency(daily.refundAmount)}
                           </Cell>
-
-                          <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric isImportant className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatPercentage(daily.ROI)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs" isFirstInSection={true}>
                             {formatNumber(daily.totalSpend)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatNumber(daily.adSales)}
                           </Cell>
-                          <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric isImportant className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatPercentage(daily.grossROI)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs" isFirstInSection={true}>
                             {formatNumber(daily.metaSpend)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatNumber(daily.metaRevenue)}
                           </Cell>
-                          <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric isImportant className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatPercentage(daily.metaROAS)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs" isFirstInSection={true}>
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs" isFirstInSection={true}>
                             {formatNumber(daily.googleSpend)}
                           </Cell>
-                          <Cell isNumeric className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatNumber(daily.googleSales)}
                           </Cell>
-                          <Cell isNumeric isImportant className="px-3 py-1.5 text-xs">
+                          <Cell isNumeric isImportant className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs">
                             {formatPercentage(daily.googleROAS)}
                           </Cell>
                         </tr>
@@ -486,7 +1119,6 @@ export const ExcelMetricsPage: React.FC = () => {
   const handleExport = () => {
     try {
       if (!processedData || !processedData.length) {
-        // Visible feedback if there is no data to export
         window.alert("No metrics data available to export for the selected date range.")
         return
       }
@@ -514,7 +1146,6 @@ export const ExcelMetricsPage: React.FC = () => {
       processedData.forEach((monthData: any) => {
         const monthLabel = format(new Date(monthData.year, monthData.month - 1), "MMM yyyy")
 
-        // Monthly summary row
         rows.push([
           "Month",
           monthLabel,
@@ -533,7 +1164,6 @@ export const ExcelMetricsPage: React.FC = () => {
           monthData.googleROAS ?? 0,
         ])
 
-        // Daily rows
         monthData.dailyMetrics.forEach((daily: any) => {
           rows.push([
             "Day",
@@ -557,7 +1187,6 @@ export const ExcelMetricsPage: React.FC = () => {
 
       const escapeCell = (value: string | number) => {
         const str = String(value ?? "")
-        // Escape quotes and wrap in quotes so Excel parses correctly
         const escaped = str.replace(/"/g, '""')
         return `"${escaped}"`
       }
@@ -567,7 +1196,6 @@ export const ExcelMetricsPage: React.FC = () => {
           .map((row) => row.map(escapeCell).join(","))
           .join("\r\n")
 
-      // Add BOM so Excel (especially on Windows) detects UTF-8 correctly
       const csvContent = `\uFEFF${csvBody}`
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
@@ -592,39 +1220,53 @@ export const ExcelMetricsPage: React.FC = () => {
     if (loading) return <Loader isLoading={loading} />
     if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
     return (
-      <div className="flex-1 h-screen overflow-hidden bg-slate-100 flex flex-col">
-        <div className="p-3 flex-1 flex flex-col min-h-0">
-          {/* Combined Date Controls and Metrics Table Card */}
+      <div className="flex-1 min-h-0 overflow-hidden bg-slate-100 flex flex-col">
+        <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
           <Card
             id="metrics-table"
             className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : ""} shadow-md flex-1 flex flex-col min-h-0`}
           >
-            <CardContent className="p-2 md:p-3 flex-1 flex flex-col min-h-0">
-              {/* Date and Controls Section */}
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-3 gap-4 flex-shrink-0">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                  <h2 className="text-xl font-semibold text-slate-800">Cross-Platform Performance</h2>
-                  <div className="flex flex-row gap-3 items-center">
-                  <ShopifyLogo width={20} height={20} />
-                    <FacebookLogo width={20} height={20} />
-                    <GoogleLogo width={20} height={20} />
+            <CardContent className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
+              {/* Header: stacks on mobile, row on sm+ */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2 sm:gap-4 flex-shrink-0">
+                {/* Left: title + logos */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 min-w-0">
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-slate-800 truncate">
+                    Cross-Platform Performance
+                  </h2>
+                  <div className="lg:flex hidden flex-row gap-3 items-center">
+                    <ShopifyLogo width={18} height={18} />
+                    <FacebookLogo width={18} height={18} />
+                    <GoogleLogo width={18} height={18} />
                   </div>
                 </div>
-                <div className="flex flex-row items-center gap-3">
-                  <DatePickerWithRange
-                    defaultDate={{
-                      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                      to: new Date(),
-                    }}
-                  />
-                  <Button onClick={toggleFullScreen} size="icon" variant="outline" className="bg-white">
+
+                {/* Right: controls — wraps on very small screens */}
+                <div className="flex flex-row flex-wrap items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <DatePickerWithRange
+                      defaultDate={{
+                        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                        to: new Date(),
+                      }}
+                    />
+                  </div>
+                  {/* Fullscreen button hidden on mobile (not useful on small screens) */}
+                  <Button
+                    onClick={toggleFullScreen}
+                    size="icon"
+                    variant="outline"
+                    className="bg-white flex flex-shrink-0"
+                  >
                     {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                   </Button>
-                  <Button onClick={handleExport} variant="outline" size="sm" className="gap-2 bg-white">
-                    <Download className="h-4 w-4" />
-                    Export
+                  <Button onClick={handleExport} variant="outline" size="sm" className="gap-1.5 bg-white flex-shrink-0">
+                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden md:block text-sm">Export</span>
                   </Button>
-                  <HeaderNotificationDropdown />
+                  <span className="md:block hidden">
+                    <HeaderNotificationDropdown />
+                  </span>
                 </div>
               </div>
 
@@ -642,8 +1284,9 @@ export const ExcelMetricsPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <div className="flex-1 h-screen overflow-auto">
-      {renderContent()}
+      {/* flex-1 + min-w-0 ensures the content area doesn't overflow the sidebar */}
+      <div className="flex-1 min-w-0 h-screen overflow-auto">
+        {renderContent()}
       </div>
       <HelpDeskModal />
     </div>

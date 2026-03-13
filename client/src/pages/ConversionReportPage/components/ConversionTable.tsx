@@ -1,50 +1,1207 @@
-import React from "react"
+// import React from "react"
 
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
-import { useMemo, useState, useEffect, useRef } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// import { Button } from "@/components/ui/button"
+// import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+// import { useMemo, useState, useEffect, useRef } from "react"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// export interface MonthlyData {
+//   Month: string
+//   [key: string]: number | string
+// }
+
+// export interface RowData {
+//   [key: string]: number | string | MonthlyData[]
+// }
+
+// interface SimpleConversionTableProps {
+//   data: RowData[]
+//   primaryColumn: string
+//   secondaryColumns?: string[]
+//   monthlyDataKey: string
+//   isFullScreen: boolean
+//   locale: string
+//   filter?: string[]
+// }
+
+// // Column definition interface for resizing
+// interface ColumnDef {
+//   key: string
+//   header: string
+//   width: number
+//   minWidth?: number
+//   maxWidth?: number
+//   align?: "left" | "right" | "center"
+// }
+
+// // Drag state interface
+// type DragState = {
+//   index: number
+//   startX: number
+//   startWidth: number
+// }
+
+// // Utility function to clamp values
+// function clamp(n: number, min: number, max?: number) {
+//   if (max != null) return Math.min(Math.max(n, min), max)
+//   return Math.max(n, min)
+// }
+
+// export default function NewConversionTable({
+//   data,
+//   primaryColumn,
+//   secondaryColumns,
+//   monthlyDataKey,
+//   isFullScreen,
+//   locale,
+//   filter,
+// }: SimpleConversionTableProps) {
+//   const [currentPage, setCurrentPage] = useState(1)
+//   const [rowsPerPage, setRowsPerPage] = useState(50)
+
+//   // Column resizing state
+//   const [widths, setWidths] = useState<number[]>([])
+//   const dragRef = useRef<DragState | null>(null)
+//   const [resizingIndex, setResizingIndex] = useState<number | null>(null)
+
+//   // Get months helper function - moved before it's used
+//   const getMonths = () => {
+//     if (!Array.isArray(data)) {
+//       return []
+//     }
+
+//     const getMonthName = (monthNumber: string): string => {
+//       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+//       return months[Number.parseInt(monthNumber) - 1]
+//     }
+
+//     const allMonths = new Set<string>()
+//     data.forEach((row) => {
+//       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+//       if (Array.isArray(monthlyData)) {
+//         monthlyData.forEach((month) => {
+//           if (month?.Month) {
+//             const year = month.Month.slice(0, 4)
+//             const monthNum = month.Month.slice(4)
+//             allMonths.add(`${getMonthName(monthNum)}-${year}`)
+//           }
+//         })
+//       }
+//     })
+
+//     // Sort months in reverse chronological order (newest first)
+//     return Array.from(allMonths).sort((a, b) => {
+//       const [monthA, yearA] = a.split('-')
+//       const [monthB, yearB] = b.split('-')
+
+//       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+//       const monthIndexA = months.indexOf(monthA)
+//       const monthIndexB = months.indexOf(monthB)
+
+//       // First compare years
+//       if (yearA !== yearB) {
+//         return parseInt(yearB) - parseInt(yearA) // Reverse order (newest year first)
+//       }
+
+//       return monthIndexB - monthIndexA // Reverse order (newest month first)
+//     })
+//   }
+
+//   // Define columns with their widths and constraints
+//   const columns = useMemo((): ColumnDef[] => {
+//     const cols: ColumnDef[] = [
+//       { key: primaryColumn, header: primaryColumn, width: 130, minWidth: 100, maxWidth: 300, align: "left" }
+//     ]
+
+//     if (secondaryColumns) {
+//       secondaryColumns.forEach((col) => {
+//         cols.push({
+//           key: col,
+//           header: col,
+//           width: 130,
+//           minWidth: 100,
+//           maxWidth: 200,
+//           align: "right"
+//         })
+//       })
+//     }
+
+//     // Add monthly columns
+//     const months = getMonths()
+//     months.forEach((month) => {
+//       cols.push({
+//         key: month,
+//         header: month,
+//         width: 120,
+//         minWidth: 100,
+//         maxWidth: 150,
+//         align: "right"
+//       })
+//     })
+
+//     return cols
+//   }, [primaryColumn, secondaryColumns, monthlyDataKey, data])
+
+//   // Update widths when columns change
+//   useEffect(() => {
+//     setWidths(columns.map((c) => c.width))
+//   }, [columns])
+
+//   // Ensure widths array matches columns array length
+//   const safeWidths = useMemo(() => {
+//     return columns.map((col, index) => widths[index] || col.width)
+//   }, [columns, widths])
+
+//   // Column resize event handlers
+//   useEffect(() => {
+//     const onMove = (e: PointerEvent) => {
+//       const drag = dragRef.current
+//       if (!drag) return
+//       const delta = e.clientX - drag.startX
+//       const def = columns[drag.index]
+//       setWidths((prev) => {
+//         const next = [...prev]
+//         next[drag.index] = clamp(
+//           drag.startWidth + delta,
+//           def.minWidth ?? 80,
+//           def.maxWidth
+//         )
+//         return next
+//       })
+//     }
+
+//     const onUp = () => {
+//       dragRef.current = null
+//       setResizingIndex(null)
+//       document.body.style.cursor = ""
+//       document.body.classList.remove("select-none")
+//     }
+
+//     window.addEventListener("pointermove", onMove)
+//     window.addEventListener("pointerup", onUp)
+//     return () => {
+//       window.removeEventListener("pointermove", onMove)
+//       window.removeEventListener("pointerup", onUp)
+//     }
+//   }, [columns])
+
+//   const startDrag = (e: React.PointerEvent, index: number) => {
+//     dragRef.current = { index, startX: e.clientX, startWidth: widths[index] }
+//     setResizingIndex(index)
+//     document.body.style.cursor = "col-resize"
+//     document.body.classList.add("select-none")
+//       ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+//   }
+
+//   const filteredData = useMemo(() => {
+//     // If no filter is applied (undefined), show all data
+//     if (filter === undefined) {
+//       return data
+//     }
+
+//     // If filter is applied but empty array, show no results
+//     if (filter.length === 0) {
+//       return []
+//     }
+
+//     // If filter has items, apply the filter
+//     return data.filter((row) => {
+//       const primaryValue = String(row[primaryColumn])
+//       return filter.includes(primaryValue)
+//     })
+//   }, [data, filter, primaryColumn])
+
+//   const months = useMemo(() => {
+//     return getMonths()
+//   }, [data, monthlyDataKey])
+
+//   const thresholds = useMemo(() => {
+//     let totalSessions = 0,
+//       totalConvRate = 0,
+//       totalMonths = 0,
+//       totalCostG = 0,
+//       totalConvValueCostG = 0
+
+//     data.forEach((row) => {
+//       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+
+//       if (Array.isArray(monthlyData)) {
+//         monthlyData.forEach((month) => {
+//           if (typeof month["Sessions"] === "number" && typeof month["Conv. Rate"] === "number") {
+//             totalSessions += Number(month["Sessions"])
+//             totalConvRate += Number(month["Conv. Rate"])
+//             totalMonths++
+//           }
+
+//           if (typeof month["Cost"] === "number" && typeof month["Conv. Value/ Cost"] === "number") {
+//             totalCostG += Number(month["Cost"])
+//             totalConvValueCostG += Number(month["Conv. Value/ Cost"])
+//             totalMonths++
+//           }
+//         })
+//       }
+//     })
+
+//     return {
+//       avgSessions: totalMonths > 0 ? totalSessions / totalMonths : 0,
+//       avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
+//       totalCostG: totalMonths > 0 ? totalCostG / totalMonths : 0,
+//       totalConvValueCostG: totalMonths > 0 ? totalConvValueCostG / totalMonths : 0,
+//     }
+//   }, [data, monthlyDataKey])
+
+//   useEffect(() => {
+//     setCurrentPage(1)
+//   }, [filter])
+
+//   // Reset to page 1 when rows per page changes
+//   useEffect(() => {
+//     setCurrentPage(1)
+//   }, [rowsPerPage])
+
+//   const handleRowsPerPageChange = (value: string) => {
+//     const newRowsPerPage = value === "all" ? filteredData.length : parseInt(value)
+//     setRowsPerPage(newRowsPerPage)
+//   }
+
+//   const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions" | "bounceRate") => {
+//     if (typeof value === "number") {
+//       switch (type) {
+//         case "spend":
+//           return Math.round(value).toLocaleString(locale)
+//         case "percentage":
+//           return `${Number.parseFloat(value.toLocaleString(locale)).toFixed(2)}%`
+//         case "sessions":
+//           return Math.round(value).toLocaleString(locale)
+//         default:
+//           // return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
+//           return value.toLocaleString(locale, {
+//             minimumFractionDigits: 2,
+//             maximumFractionDigits: 2,
+//           })
+//       }
+//     }
+//     return value
+//   }
+
+//   const renderMonthCell = (monthData: MonthlyData | undefined) => {
+//     if (!monthData) {
+//       return (
+//         <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+//           <div className="truncate">—</div>
+//           <div className="truncate">—</div>
+//         </td>
+//       )
+//     }
+
+//     const sessions = monthData["Sessions"]
+//     const convRate = monthData["Conv. Rate"]
+//     // const purchases = monthData["Purchases"]
+//     const cost = monthData["Cost"]
+//     const clicks = monthData["Clicks"]
+//     const ConvValueCost = monthData["Conv. Value/ Cost"]
+//     const bounceRate = monthData["Bounce Rate"]
+//     const engagementRate = monthData["Engagement Rate"]
+
+//     return (
+//       <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+//         <div className="space-y-1">
+//           {/* <div className="font-medium truncate">{renderCell(bounceRate, "bounceRate")}</div> */}
+//           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
+//           {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
+//           {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
+//           {ConvValueCost !== undefined && <div className="text-xs truncate">Conv.rate: {ConvValueCost.toLocaleString(locale)}</div>}
+//           {ConvValueCost !== undefined && <div className="text-xs truncate"> {renderCell(convRate, "percentage")}</div>}
+//           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
+//           <div className="text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
+//           {engagementRate !== undefined && <div className="text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>}
+//         </div>
+//       </td>
+//     )
+//   }
+
+//   const renderSummaryCell = (row: RowData, column: string, columnIndex: number) => {
+//     console.log(
+//       "column====> =", column,
+//       row[column],
+//     )
+//     const value = row[column]
+//     // Calculate dynamic left position based on actual column widths
+//     const getLeftPosition = (index: number) => {
+//       if (index === 0) return 0
+//       if (index === 1) return safeWidths[0]
+//       if (index === 2) return safeWidths[0] + safeWidths[1]
+//       return 0
+//     }
+
+//     if (typeof value !== "number") {
+//       return (
+//         <td
+//           className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+//             }`}
+//           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
+//         >
+//           {""}
+//         </td>
+//       )
+//     }
+
+//     const totalPurchases =
+//       typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null
+//     const conversionValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null
+
+//     if (column.includes("Sessions")) {
+//       return (
+//         <td
+//           className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+//             } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+//           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
+//         >
+//           <div className="text-right">
+//             <div className="font-medium truncate">{renderCell(value, "sessions")}</div>
+//           </div>
+//         </td>
+//       )
+//     }
+
+//     if (column.includes("Rate") || column.includes("Value")) {
+//       return (
+//         <td
+//           className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+//             } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+//           style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
+//         >
+//           <div className="text-right">
+//             <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
+//             {totalPurchases && <div className="text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
+//             {conversionValue && <div className="text-xs mt-1 truncate">Total Conv Value: {conversionValue}</div>}
+//           </div>
+//         </td>
+//       )
+//     }
+
+//     return (
+//       <td
+//         className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
+//           } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
+//         style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
+//       >
+//         <div className="text-right font-medium truncate">{renderCell(value)}</div>
+//       </td>
+//     )
+//   }
+
+//   const renderDataRow = (row: RowData, index: number) => {
+//     return (
+//       <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150 group">
+//         <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-white group-hover:bg-blue-50 border-r border-b border-gray-200">
+//           <div className="truncate">
+//             {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
+//               ? renderCell(row[primaryColumn])
+//               : ""}
+//           </div>
+//         </td>
+//         {secondaryColumns?.map((column, columnIndex) => {
+//           // Add 1 to account for the primary column
+//           const absoluteIndex = columnIndex + 1
+//           return <React.Fragment key={column}>{renderSummaryCell(row, column, absoluteIndex)}</React.Fragment>
+//         })}
+//         {months.map((month) => {
+//           const getMonthNumber = (monthName: string): number => {
+//             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+//             return months.indexOf(monthName) + 1
+//           }
+//           const [monthName, year] = month.split("-")
+//           const monthNum = getMonthNumber(monthName)
+//           const monthFormat = `${year}${monthNum.toString().padStart(2, "0")}`
+
+//           const monthData = (row[monthlyDataKey] as MonthlyData[]).find((m) => m.Month === monthFormat)
+//           return <React.Fragment key={month}>{renderMonthCell(monthData)}</React.Fragment>
+//         })}
+//       </tr>
+//     )
+//   }
+
+//   const displayData = useMemo(() => {
+//     if (isFullScreen) {
+//       return filteredData
+//     }
+//     return filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+//   }, [isFullScreen, filteredData, currentPage, rowsPerPage])
+
+//   const totalRows = filteredData.length
+//   const totalPages = Math.ceil(totalRows / rowsPerPage)
+//   const goToPage = (page: number) => {
+//     const pageNumber = Math.max(1, Math.min(page, totalPages))
+//     setCurrentPage(pageNumber)
+//   }
+
+//   const renderColumnHeader = (column: string, columnIndex: number) => {
+//     let thresholdValue = ""
+//     if (column === "Total Sessions") {
+//       thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`
+//     } else if (column === "Avg Conv. Rate") {
+//       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`
+//     } else if (column === "Total Cost") {
+//       thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`
+//     } else if (column === "Conv. Value / Cost") {
+//       thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`
+//     }
+
+//     const isFirst = columnIndex < 3
+//     const active = resizingIndex === columnIndex
+
+//     // Calculate dynamic left position based on actual column widths
+//     const getLeftPosition = (index: number) => {
+//       if (index === 0) return 0
+//       if (index === 1) return safeWidths[0]
+//       if (index === 2) return safeWidths[0] + safeWidths[1]
+//       return 0
+//     }
+
+//     return (
+//       <th
+//         key={column}
+//         className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${isFirst ? `z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
+//           } ${active ? "border-blue-500" : ""}`}
+//         style={isFirst ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
+//       >
+//         <div className="flex flex-col">
+//           <span className="truncate">{column}</span>
+//           {thresholdValue && <span className="text-xs font-normal mt-0.5 truncate">{thresholdValue}</span>}
+//         </div>
+
+//         {/* Resize handle */}
+//         <div
+//           role="separator"
+//           aria-orientation="vertical"
+//           aria-label={`Resize ${column} column`}
+//           onPointerDown={(e) => startDrag(e, columnIndex)}
+//           className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
+//             ? "bg-blue-500/15"
+//             : "hover:bg-gray-200/30 active:bg-gray-200/50"
+//             }`}
+//         >
+//           <div
+//             className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
+//               }`}
+//           />
+//         </div>
+//       </th>
+//     )
+//   }
+
+//   return (
+//     <div className="w-full overflow-hidden flex flex-col">
+//       <div className={`relative overflow-x-auto ${isFullScreen ? 'max-h-[calc(100vh-80px)]' : ''
+//         } max-h-[100vh]`}>
+//         <table className="w-full table-fixed border border-gray-200">
+//           <colgroup>
+//             {safeWidths.map((w, i) => (
+//               <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
+//             ))}
+//           </colgroup>
+//           <thead>
+//             <tr>
+//               <th className="sticky left-0 top-0 min-w-[130px] z-30 px-3 py-3 text-left text-sm font-medium bg-gray-100 border-r border-b border-gray-200">
+//                 <div className="flex items-center gap-2">
+//                   <span className="truncate">{primaryColumn}</span>
+//                   {filter && filter.length > 0 && <span className="text-xs px-2 py-1 rounded">Filtered</span>}
+//                 </div>
+
+//                 {/* Resize handle for primary column */}
+//                 <div
+//                   role="separator"
+//                   aria-orientation="vertical"
+//                   aria-label={`Resize ${primaryColumn} column`}
+//                   onPointerDown={(e) => startDrag(e, 0)}
+//                   className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${resizingIndex === 0
+//                     ? "bg-blue-500/15"
+//                     : "hover:bg-gray-200/30 active:bg-gray-200/50"
+//                     }`}
+//                 >
+//                   <div
+//                     className={`absolute right-0 top-0 h-full w-px ${resizingIndex === 0 ? "bg-blue-500" : "bg-gray-200"
+//                       }`}
+//                   />
+//                 </div>
+//               </th>
+//               {secondaryColumns?.map((column, columnIndex) => {
+//                 // Add 1 to account for the primary column
+//                 const absoluteIndex = columnIndex + 1
+//                 return renderColumnHeader(column, absoluteIndex)
+//               })}
+//               {months.map((month, monthIndex) => {
+//                 // Add 1 for primary column + secondary columns length
+//                 const columnIndex = 1 + (secondaryColumns?.length || 0) + monthIndex
+//                 const active = resizingIndex === columnIndex
+
+//                 return (
+//                   <th
+//                     key={month}
+//                     className={`sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200 ${active ? "border-blue-500" : ""
+//                       }`}
+//                   >
+//                     <div className="truncate">{month}</div>
+//                     <div className="text-xs mt-1 truncate">{primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}</div>
+
+//                     {/* Resize handle for monthly columns */}
+//                     <div
+//                       role="separator"
+//                       aria-orientation="vertical"
+//                       aria-label={`Resize ${month} column`}
+//                       onPointerDown={(e) => startDrag(e, columnIndex)}
+//                       className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
+//                         ? "bg-blue-500/15"
+//                         : "hover:bg-gray-200/30 active:bg-gray-200/50"
+//                         }`}
+//                     >
+//                       <div
+//                         className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
+//                           }`}
+//                       />
+//                     </div>
+//                   </th>
+//                 )
+//               })}
+//             </tr>
+//           </thead>
+//           <tbody>
+//             {displayData.length > 0 ? (
+//               displayData.map((row, index) => renderDataRow(row, index))
+//             ) : (
+//               <tr>
+//                 <td
+//                   colSpan={1 + (secondaryColumns?.length || 0) + months.length}
+//                   className="p-4 text-center border-b border-gray-200"
+//                 >
+//                   {filter !== undefined && filteredData.length === 0 ? (
+//                     <div className="flex flex-col items-center gap-2">
+//                       <span className="text-lg font-medium text-gray-700">Oops! No data available for this category</span>
+
+//                     </div>
+//                   ) : (
+//                     "No data to display"
+//                   )}
+//                 </td>
+//               </tr>
+//             )}
+//           </tbody>
+//         </table>
+//       </div>
+
+//       {!isFullScreen && (
+//         <div className="px-3 py-2.5 flex items-center justify-between">
+//           <div className="flex items-center gap-4">
+//             <div className="text-sm">
+//               {totalRows > 0 ? (
+//                 <>
+//                   Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
+//                   {totalRows} rows
+//                   {filter !== undefined ? (
+//                     <span className="ml-2 text-xs">(Filtered from {data.length} total rows)</span>
+//                   ) : null}
+//                 </>
+//               ) : (
+//                 <>
+//                   No rows to display
+//                   {filter !== undefined ? (
+//                     <span className="ml-2 text-xs">
+//                       (Filter: {filter?.join(", ") || "Unknown"}) | Total rows: {data.length}
+//                     </span>
+//                   ) : null}
+//                 </>
+//               )}
+//             </div>
+//             <div className="flex items-center gap-2">
+//               <span className="text-sm text-gray-600">Rows per page:</span>
+//               <Select value={rowsPerPage === filteredData.length ? "all" : rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
+//                 <SelectTrigger className="w-20 h-8">
+//                   <SelectValue />
+//                 </SelectTrigger>
+//                 <SelectContent>
+//                   <SelectItem value="50">50</SelectItem>
+//                   <SelectItem value="100">100</SelectItem>
+//                   <SelectItem value="200">200</SelectItem>
+//                   <SelectItem value="all">All</SelectItem>
+//                 </SelectContent>
+//               </Select>
+//             </div>
+//           </div>
+//           <div className="flex gap-2">
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronsLeft className="h-4 w-4" />
+//             </Button>
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage - 1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronLeft className="h-4 w-4" />
+//             </Button>
+//             <div className="flex items-center justify-center text-sm font-medium px-2">
+//               Page {currentPage} of {totalPages}
+//             </div>
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage + 1)}
+//               disabled={currentPage === totalPages}
+//             >
+//               <ChevronRight className="h-4 w-4" />
+//             </Button>
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(totalPages)}
+//               disabled={currentPage === totalPages}
+//             >
+//               <ChevronsRight className="h-4 w-4" />
+//             </Button>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   )
+// }
+
+
+
+
+
+// import React from "react";
+// import { Button } from "@/components/ui/button";
+// import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+// import { useMemo, useState, useEffect } from "react";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// export interface MonthlyData {
+//   Month: string;
+//   [key: string]: number | string;
+// }
+
+// export interface RowData {
+//   [key: string]: number | string | MonthlyData[];
+// }
+
+// interface SimpleConversionTableProps {
+//   data: RowData[];
+//   primaryColumn: string;
+//   secondaryColumns?: string[];
+//   monthlyDataKey: string;
+//   isFullScreen: boolean;
+//   locale: string;
+//   filter?: string[];
+// }
+
+// export default function NewConversionTable({
+//   data,
+//   primaryColumn,
+//   secondaryColumns,
+//   monthlyDataKey,
+//   isFullScreen,
+//   locale,
+//   filter,
+// }: SimpleConversionTableProps) {
+//   const [currentPage, setCurrentPage] = useState(1);
+//   const [rowsPerPage, setRowsPerPage] = useState(50);
+
+//   const getMonths = () => {
+//     if (!Array.isArray(data)) {
+//       return [];
+//     }
+
+//     const getMonthName = (monthNumber: string): string => {
+//       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+//       return months[Number.parseInt(monthNumber) - 1];
+//     };
+
+//     const allMonths = new Set<string>();
+
+//     data.forEach((row) => {
+//       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
+//       if (Array.isArray(monthlyData)) {
+//         monthlyData.forEach((month) => {
+//           if (month?.Month) {
+//             const year = month.Month.slice(0, 4);
+//             const monthNum = month.Month.slice(4);
+//             allMonths.add(`${getMonthName(monthNum)}-${year}`);
+//           }
+//         });
+//       }
+//     });
+
+//     return Array.from(allMonths).sort((a, b) => {
+//       const [monthA, yearA] = a.split("-");
+//       const [monthB, yearB] = b.split("-");
+
+//       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+//       const monthIndexA = months.indexOf(monthA);
+//       const monthIndexB = months.indexOf(monthB);
+
+//       if (yearA !== yearB) {
+//         return parseInt(yearB) - parseInt(yearA);
+//       }
+
+//       return monthIndexB - monthIndexA;
+//     });
+//   };
+
+//   const filteredData = useMemo(() => {
+//     if (filter === undefined) {
+//       return data;
+//     }
+
+//     if (filter.length === 0) {
+//       return [];
+//     }
+
+//     return data.filter((row) => {
+//       const primaryValue = String(row[primaryColumn]);
+//       return filter.includes(primaryValue);
+//     });
+//   }, [data, filter, primaryColumn]);
+
+//   const months = useMemo(() => {
+//     return getMonths();
+//   }, [data, monthlyDataKey]);
+
+//   const thresholds = useMemo(() => {
+//     let totalSessions = 0;
+//     let totalConvRate = 0;
+//     let totalMonths = 0;
+//     let totalCostG = 0;
+//     let totalConvValueCostG = 0;
+
+//     data.forEach((row) => {
+//       const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
+
+//       if (Array.isArray(monthlyData)) {
+//         monthlyData.forEach((month) => {
+//           if (typeof month["Sessions"] === "number" && typeof month["Conv. Rate"] === "number") {
+//             totalSessions += Number(month["Sessions"]);
+//             totalConvRate += Number(month["Conv. Rate"]);
+//             totalMonths++;
+//           }
+
+//           if (typeof month["Cost"] === "number" && typeof month["Conv. Value/ Cost"] === "number") {
+//             totalCostG += Number(month["Cost"]);
+//             totalConvValueCostG += Number(month["Conv. Value/ Cost"]);
+//           }
+//         });
+//       }
+//     });
+
+//     return {
+//       avgSessions: totalMonths > 0 ? totalSessions / totalMonths : 0,
+//       avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
+//       totalCostG: totalMonths > 0 ? totalCostG / totalMonths : 0,
+//       totalConvValueCostG: totalMonths > 0 ? totalConvValueCostG / totalMonths : 0,
+//     };
+//   }, [data, monthlyDataKey]);
+
+//   useEffect(() => {
+//     setCurrentPage(1);
+//   }, [filter, rowsPerPage]);
+
+//   const handleRowsPerPageChange = (value: string) => {
+//     const newRowsPerPage = value === "all" ? filteredData.length || 1 : parseInt(value);
+//     setRowsPerPage(newRowsPerPage);
+//   };
+
+//   const renderCell = (
+//     value: number | string,
+//     type?: "spend" | "percentage" | "default" | "sessions" | "bounceRate"
+//   ) => {
+//     if (typeof value === "number") {
+//       switch (type) {
+//         case "spend":
+//           return Math.round(value).toLocaleString(locale);
+//         case "percentage":
+//           return `${Number.parseFloat(value.toLocaleString(locale)).toFixed(2)}%`;
+//         case "sessions":
+//           return Math.round(value).toLocaleString(locale);
+//         default:
+//           return value.toLocaleString(locale, {
+//             minimumFractionDigits: 2,
+//             maximumFractionDigits: 2,
+//           });
+//       }
+//     }
+//     return value;
+//   };
+
+//   const renderMonthCell = (monthData: MonthlyData | undefined) => {
+//     if (!monthData) {
+//       return (
+//         <td className="text-right whitespace-nowrap min-w-[160px] p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+//           <div className="truncate">—</div>
+//           <div className="truncate">—</div>
+//         </td>
+//       );
+//     }
+
+//     const sessions = monthData["Sessions"];
+//     const convRate = monthData["Conv. Rate"];
+//     const cost = monthData["Cost"];
+//     const clicks = monthData["Clicks"];
+//     const convValueCost = monthData["Conv. Value/ Cost"];
+//     const bounceRate = monthData["Bounce Rate"];
+//     const engagementRate = monthData["Engagement Rate"];
+
+//     return (
+//       <td className="text-right whitespace-nowrap min-w-[160px] p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+//         <div className="space-y-1">
+//           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
+//           {cost !== undefined && <div className="text-xs truncate">{Math.round(+cost)}</div>}
+//           {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
+//           {convValueCost !== undefined && (
+//             <div className="text-xs truncate">Conv.rate: {convValueCost.toLocaleString(locale)}</div>
+//           )}
+//           <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
+//           <div className="text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
+//           {engagementRate !== undefined && (
+//             <div className="text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>
+//           )}
+//         </div>
+//       </td>
+//     );
+//   };
+
+//   const renderSummaryCell = (row: RowData, column: string) => {
+//     const value = row[column];
+
+//     if (typeof value !== "number") {
+//       return (
+//         <td className="p-3 text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
+//           {""}
+//         </td>
+//       );
+//     }
+
+//     const totalPurchases =
+//       typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null;
+//     const conversionValue =
+//       typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null;
+
+//     if (column.includes("Sessions")) {
+//       return (
+//         <td className="p-3 text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
+//           <div className="text-right">
+//             <div className="font-medium truncate">{renderCell(value, "sessions")}</div>
+//           </div>
+//         </td>
+//       );
+//     }
+
+//     if (column.includes("Rate") || column.includes("Value")) {
+//       return (
+//         <td className="p-3 text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
+//           <div className="text-right">
+//             <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
+//             {totalPurchases && <div className="text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
+//             {conversionValue && <div className="text-xs mt-1 truncate">Total Conv Value: {conversionValue}</div>}
+//           </div>
+//         </td>
+//       );
+//     }
+
+//     return (
+//       <td className="p-3 text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
+//         <div className="text-right font-medium truncate">{renderCell(value)}</div>
+//       </td>
+//     );
+//   };
+
+//   const renderDataRow = (row: RowData, index: number) => {
+//     return (
+//       <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150 group">
+//         <td className="sticky left-0 min-w-[160px] w-[160px] md:w-[18%] p-3 text-sm font-medium z-20 bg-white group-hover:bg-blue-50 border-r border-b border-gray-200 shadow-[4px_0_6px_rgba(0,0,0,0.06)]">
+//           <div className="truncate">
+//             {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
+//               ? renderCell(row[primaryColumn])
+//               : ""}
+//           </div>
+//         </td>
+
+//         {secondaryColumns?.map((column) => (
+//           <React.Fragment key={column}>{renderSummaryCell(row, column)}</React.Fragment>
+//         ))}
+
+//         {months.map((month) => {
+//           const getMonthNumber = (monthName: string): number => {
+//             const monthsMap = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+//             return monthsMap.indexOf(monthName) + 1;
+//           };
+
+//           const [monthName, year] = month.split("-");
+//           const monthNum = getMonthNumber(monthName);
+//           const monthFormat = `${year}${monthNum.toString().padStart(2, "0")}`;
+
+//           const monthData = (row[monthlyDataKey] as MonthlyData[]).find((m) => m.Month === monthFormat);
+//           return <React.Fragment key={month}>{renderMonthCell(monthData)}</React.Fragment>;
+//         })}
+//       </tr>
+//     );
+//   };
+
+//   const displayData = useMemo(() => {
+//     if (isFullScreen) {
+//       return filteredData;
+//     }
+//     return filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+//   }, [isFullScreen, filteredData, currentPage, rowsPerPage]);
+
+//   const totalRows = filteredData.length;
+//   const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+//   const goToPage = (page: number) => {
+//     const pageNumber = Math.max(1, Math.min(page, totalPages || 1));
+//     setCurrentPage(pageNumber);
+//   };
+
+//   const renderColumnHeader = (column: string) => {
+//     let thresholdValue = "";
+
+//     if (column === "Total Sessions") {
+//       thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`;
+//     } else if (column === "Avg Conv. Rate") {
+//       thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`;
+//     } else if (column === "Total Cost") {
+//       thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`;
+//     } else if (column === "Conv. Value / Cost") {
+//       thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`;
+//     }
+
+//     return (
+//       <th className="sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 min-w-[150px] whitespace-nowrap">
+//         <div className="flex flex-col">
+//           <span className="truncate">{column}</span>
+//           {thresholdValue && <span className="text-xs font-normal mt-0.5 truncate">{thresholdValue}</span>}
+//         </div>
+//       </th>
+//     );
+//   };
+
+//   return (
+//     <div className="w-full min-w-0 flex flex-col">
+//       <div
+//         className={`relative w-full overflow-x-auto overflow-y-auto ${isFullScreen ? "max-h-[calc(100vh-80px)]" : "max-h-[100vh]"
+//           }`}
+//       >
+//         <table className="w-max min-w-full table-auto border border-gray-200">
+//           <thead>
+//             <tr>
+//               <th className="sticky left-0 top-0 min-w-[160px] w-[160px] md:w-[18%] z-30 px-3 py-3 text-left text-sm font-medium bg-gray-100 border-r border-b border-gray-200 shadow-[4px_0_6px_rgba(0,0,0,0.06)]">
+//                 <div className="flex items-center gap-2">
+//                   <span className="truncate">{primaryColumn}</span>
+//                   {filter && filter.length > 0 && <span className="text-xs px-2 py-1 rounded">Filtered</span>}
+//                 </div>
+//               </th>
+
+//               {secondaryColumns?.map((column) => (
+//                 <React.Fragment key={column}>{renderColumnHeader(column)}</React.Fragment>
+//               ))}
+
+//               {months.map((month) => (
+//                 <th
+//                   key={month}
+//                   className="sticky top-0 min-w-[160px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200"
+//                 >
+//                   <div className="truncate">{month}</div>
+//                   <div className="text-xs mt-1 truncate">
+//                     {primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}
+//                   </div>
+//                 </th>
+//               ))}
+//             </tr>
+//           </thead>
+
+//           <tbody>
+//             {displayData.length > 0 ? (
+//               displayData.map((row, index) => renderDataRow(row, index))
+//             ) : (
+//               <tr>
+//                 <td
+//                   colSpan={1 + (secondaryColumns?.length || 0) + months.length}
+//                   className="p-4 text-center border-b border-gray-200"
+//                 >
+//                   {filter !== undefined && filteredData.length === 0 ? (
+//                     <div className="flex flex-col items-center gap-2">
+//                       <span className="text-lg font-medium text-gray-700">
+//                         Oops! No data available for this category
+//                       </span>
+//                     </div>
+//                   ) : (
+//                     "No data to display"
+//                   )}
+//                 </td>
+//               </tr>
+//             )}
+//           </tbody>
+//         </table>
+//       </div>
+
+//       {!isFullScreen && (
+//         <div className="px-3 py-2.5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+//           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4 min-w-0">
+//             <div className="text-sm min-w-0">
+//               {totalRows > 0 ? (
+//                 <>
+//                   Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
+//                   {totalRows} rows
+//                   {filter !== undefined ? (
+//                     <span className="ml-2 text-xs">(Filtered from {data.length} total rows)</span>
+//                   ) : null}
+//                 </>
+//               ) : (
+//                 <>
+//                   No rows to display
+//                   {filter !== undefined ? (
+//                     <span className="ml-2 text-xs">
+//                       (Filter: {filter?.join(", ") || "Unknown"}) | Total rows: {data.length}
+//                     </span>
+//                   ) : null}
+//                 </>
+//               )}
+//             </div>
+
+//             <div className="flex items-center gap-2">
+//               <span className="text-sm text-gray-600">Rows per page:</span>
+//               <Select
+//                 value={rowsPerPage === filteredData.length ? "all" : rowsPerPage.toString()}
+//                 onValueChange={handleRowsPerPageChange}
+//               >
+//                 <SelectTrigger className="w-20 h-8">
+//                   <SelectValue />
+//                 </SelectTrigger>
+//                 <SelectContent>
+//                   <SelectItem value="50">50</SelectItem>
+//                   <SelectItem value="100">100</SelectItem>
+//                   <SelectItem value="200">200</SelectItem>
+//                   <SelectItem value="all">All</SelectItem>
+//                 </SelectContent>
+//               </Select>
+//             </div>
+//           </div>
+
+//           {/* <div className="flex gap-2">
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronsLeft className="h-4 w-4" />
+//             </Button>
+
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage - 1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronLeft className="h-4 w-4" />
+//             </Button>
+
+//             <div className="flex items-center justify-center text-sm font-medium px-2">
+//               Page {currentPage} of {totalPages || 1}
+//             </div>
+
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage + 1)}
+//               disabled={currentPage === totalPages || totalPages === 0}
+//             >
+//               <ChevronRight className="h-4 w-4" />
+//             </Button>
+
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(totalPages)}
+//               disabled={currentPage === totalPages || totalPages === 0}
+//             >
+//               <ChevronsRight className="h-4 w-4" />
+//             </Button>
+//           </div> */}
+
+//           <div className="flex gap-2">
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronsLeft className="h-4 w-4" />
+//             </Button>
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage - 1)}
+//               disabled={currentPage === 1}
+//             >
+//               <ChevronLeft className="h-4 w-4" />
+//             </Button>
+//             <div className="flex items-center justify-center text-sm font-medium px-2">
+//               Page {currentPage} of {totalPages}
+//             </div>
+//             <Button
+//               variant="outline"
+//               className="h-8 w-8 p-0 bg-transparent"
+//               onClick={() => goToPage(currentPage + 1)}
+//               disabled={currentPage === totalPages}
+//             >
+//               <ChevronRight className="h-4 w-4" />
+//             </Button>
+//             <Button
+//               variant="outline"
+//               className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+//               onClick={() => goToPage(totalPages)}
+//               disabled={currentPage === totalPages}
+//             >
+//               <ChevronsRight className="h-4 w-4" />
+//             </Button>
+//           </div>
+
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
+
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface MonthlyData {
-  Month: string
-  [key: string]: number | string
+  Month: string;
+  [key: string]: number | string;
 }
 
 export interface RowData {
-  [key: string]: number | string | MonthlyData[]
+  [key: string]: number | string | MonthlyData[];
 }
 
 interface SimpleConversionTableProps {
-  data: RowData[]
-  primaryColumn: string
-  secondaryColumns?: string[]
-  monthlyDataKey: string
-  isFullScreen: boolean
-  locale: string
-  filter?: string[]
-}
-
-// Column definition interface for resizing
-interface ColumnDef {
-  key: string
-  header: string
-  width: number
-  minWidth?: number
-  maxWidth?: number
-  align?: "left" | "right" | "center"
-}
-
-// Drag state interface
-type DragState = {
-  index: number
-  startX: number
-  startWidth: number
-}
-
-// Utility function to clamp values
-function clamp(n: number, min: number, max?: number) {
-  if (max != null) return Math.min(Math.max(n, min), max)
-  return Math.max(n, min)
+  data: RowData[];
+  primaryColumn: string;
+  secondaryColumns?: string[];
+  monthlyDataKey: string;
+  isFullScreen: boolean;
+  locale: string;
+  filter?: string[];
 }
 
 export default function NewConversionTable({
@@ -56,516 +1213,338 @@ export default function NewConversionTable({
   locale,
   filter,
 }: SimpleConversionTableProps) {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [rowsPerPage, setRowsPerPage] = useState(50)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
-  // Column resizing state
-  const [widths, setWidths] = useState<number[]>([])
-  const dragRef = useRef<DragState | null>(null)
-  const [resizingIndex, setResizingIndex] = useState<number | null>(null)
-
-  // Get months helper function - moved before it's used
   const getMonths = () => {
     if (!Array.isArray(data)) {
-      return []
+      return [];
     }
 
     const getMonthName = (monthNumber: string): string => {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      return months[Number.parseInt(monthNumber) - 1]
-    }
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return months[Number.parseInt(monthNumber) - 1];
+    };
 
-    const allMonths = new Set<string>()
+    const allMonths = new Set<string>();
+
     data.forEach((row) => {
-      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
       if (Array.isArray(monthlyData)) {
         monthlyData.forEach((month) => {
           if (month?.Month) {
-            const year = month.Month.slice(0, 4)
-            const monthNum = month.Month.slice(4)
-            allMonths.add(`${getMonthName(monthNum)}-${year}`)
+            const year = month.Month.slice(0, 4);
+            const monthNum = month.Month.slice(4);
+            allMonths.add(`${getMonthName(monthNum)}-${year}`);
           }
-        })
+        });
       }
-    })
+    });
 
-    // Sort months in reverse chronological order (newest first)
     return Array.from(allMonths).sort((a, b) => {
-      const [monthA, yearA] = a.split('-')
-      const [monthB, yearB] = b.split('-')
+      const [monthA, yearA] = a.split("-");
+      const [monthB, yearB] = b.split("-");
 
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      const monthIndexA = months.indexOf(monthA)
-      const monthIndexB = months.indexOf(monthB)
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthIndexA = months.indexOf(monthA);
+      const monthIndexB = months.indexOf(monthB);
 
-      // First compare years
       if (yearA !== yearB) {
-        return parseInt(yearB) - parseInt(yearA) // Reverse order (newest year first)
+        return parseInt(yearB) - parseInt(yearA);
       }
 
-      return monthIndexB - monthIndexA // Reverse order (newest month first)
-    })
-  }
-
-  // Define columns with their widths and constraints
-  const columns = useMemo((): ColumnDef[] => {
-    const cols: ColumnDef[] = [
-      { key: primaryColumn, header: primaryColumn, width: 130, minWidth: 100, maxWidth: 300, align: "left" }
-    ]
-
-    if (secondaryColumns) {
-      secondaryColumns.forEach((col) => {
-        cols.push({
-          key: col,
-          header: col,
-          width: 130,
-          minWidth: 100,
-          maxWidth: 200,
-          align: "right"
-        })
-      })
-    }
-
-    // Add monthly columns
-    const months = getMonths()
-    months.forEach((month) => {
-      cols.push({
-        key: month,
-        header: month,
-        width: 120,
-        minWidth: 100,
-        maxWidth: 150,
-        align: "right"
-      })
-    })
-
-    return cols
-  }, [primaryColumn, secondaryColumns, monthlyDataKey, data])
-
-  // Update widths when columns change
-  useEffect(() => {
-    setWidths(columns.map((c) => c.width))
-  }, [columns])
-
-  // Ensure widths array matches columns array length
-  const safeWidths = useMemo(() => {
-    return columns.map((col, index) => widths[index] || col.width)
-  }, [columns, widths])
-
-  // Column resize event handlers
-  useEffect(() => {
-    const onMove = (e: PointerEvent) => {
-      const drag = dragRef.current
-      if (!drag) return
-      const delta = e.clientX - drag.startX
-      const def = columns[drag.index]
-      setWidths((prev) => {
-        const next = [...prev]
-        next[drag.index] = clamp(
-          drag.startWidth + delta,
-          def.minWidth ?? 80,
-          def.maxWidth
-        )
-        return next
-      })
-    }
-
-    const onUp = () => {
-      dragRef.current = null
-      setResizingIndex(null)
-      document.body.style.cursor = ""
-      document.body.classList.remove("select-none")
-    }
-
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", onUp)
-    return () => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", onUp)
-    }
-  }, [columns])
-
-  const startDrag = (e: React.PointerEvent, index: number) => {
-    dragRef.current = { index, startX: e.clientX, startWidth: widths[index] }
-    setResizingIndex(index)
-    document.body.style.cursor = "col-resize"
-    document.body.classList.add("select-none")
-      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  }
+      return monthIndexB - monthIndexA;
+    });
+  };
 
   const filteredData = useMemo(() => {
-    // If no filter is applied (undefined), show all data
     if (filter === undefined) {
-      return data
+      return data;
     }
 
-    // If filter is applied but empty array, show no results
     if (filter.length === 0) {
-      return []
+      return [];
     }
 
-    // If filter has items, apply the filter
     return data.filter((row) => {
-      const primaryValue = String(row[primaryColumn])
-      return filter.includes(primaryValue)
-    })
-  }, [data, filter, primaryColumn])
+      const primaryValue = String(row[primaryColumn]);
+      return filter.includes(primaryValue);
+    });
+  }, [data, filter, primaryColumn]);
 
   const months = useMemo(() => {
-    return getMonths()
-  }, [data, monthlyDataKey])
+    return getMonths();
+  }, [data, monthlyDataKey]);
 
   const thresholds = useMemo(() => {
-    let totalSessions = 0,
-      totalConvRate = 0,
-      totalMonths = 0,
-      totalCostG = 0,
-      totalConvValueCostG = 0
+    let totalSessions = 0;
+    let totalConvRate = 0;
+    let totalMonths = 0;
+    let totalCostG = 0;
+    let totalConvValueCostG = 0;
 
     data.forEach((row) => {
-      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined
+      const monthlyData = row[monthlyDataKey] as MonthlyData[] | undefined;
 
       if (Array.isArray(monthlyData)) {
         monthlyData.forEach((month) => {
           if (typeof month["Sessions"] === "number" && typeof month["Conv. Rate"] === "number") {
-            totalSessions += Number(month["Sessions"])
-            totalConvRate += Number(month["Conv. Rate"])
-            totalMonths++
+            totalSessions += Number(month["Sessions"]);
+            totalConvRate += Number(month["Conv. Rate"]);
+            totalMonths++;
           }
 
           if (typeof month["Cost"] === "number" && typeof month["Conv. Value/ Cost"] === "number") {
-            totalCostG += Number(month["Cost"])
-            totalConvValueCostG += Number(month["Conv. Value/ Cost"])
-            totalMonths++
+            totalCostG += Number(month["Cost"]);
+            totalConvValueCostG += Number(month["Conv. Value/ Cost"]);
           }
-        })
+        });
       }
-    })
+    });
 
     return {
       avgSessions: totalMonths > 0 ? totalSessions / totalMonths : 0,
       avgConvRate: totalMonths > 0 ? totalConvRate / totalMonths : 0,
       totalCostG: totalMonths > 0 ? totalCostG / totalMonths : 0,
       totalConvValueCostG: totalMonths > 0 ? totalConvValueCostG / totalMonths : 0,
-    }
-  }, [data, monthlyDataKey])
+    };
+  }, [data, monthlyDataKey]);
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [filter])
-
-  // Reset to page 1 when rows per page changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [rowsPerPage])
+    setCurrentPage(1);
+  }, [filter, rowsPerPage]);
 
   const handleRowsPerPageChange = (value: string) => {
-    const newRowsPerPage = value === "all" ? filteredData.length : parseInt(value)
-    setRowsPerPage(newRowsPerPage)
-  }
+    const newRowsPerPage = value === "all" ? Math.max(filteredData.length, 1) : parseInt(value);
+    setRowsPerPage(newRowsPerPage);
+  };
 
-  const renderCell = (value: number | string, type?: "spend" | "percentage" | "default" | "sessions" | "bounceRate") => {
+  const renderCell = (
+    value: number | string,
+    type?: "spend" | "percentage" | "default" | "sessions" | "bounceRate"
+  ) => {
     if (typeof value === "number") {
       switch (type) {
         case "spend":
-          return Math.round(value).toLocaleString(locale)
+          return Math.round(value).toLocaleString(locale);
         case "percentage":
-          return `${Number.parseFloat(value.toLocaleString(locale)).toFixed(2)}%`
+          return `${Number.parseFloat(value.toLocaleString(locale)).toFixed(2)}%`;
         case "sessions":
-          return Math.round(value).toLocaleString(locale)
+          return Math.round(value).toLocaleString(locale);
         default:
-          // return Number.parseFloat(value.toLocaleString(locale)).toFixed(2)
           return value.toLocaleString(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-          })
+          });
       }
     }
-    return value
-  }
+    return value;
+  };
 
   const renderMonthCell = (monthData: MonthlyData | undefined) => {
     if (!monthData) {
       return (
-        <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
+        <td className="text-right whitespace-nowrap min-w-[160px] p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent">
           <div className="truncate">—</div>
           <div className="truncate">—</div>
         </td>
-      )
+      );
     }
 
-    const sessions = monthData["Sessions"]
-    const convRate = monthData["Conv. Rate"]
-    // const purchases = monthData["Purchases"]
-    const cost = monthData["Cost"]
-    const clicks = monthData["Clicks"]
-    const ConvValueCost = monthData["Conv. Value/ Cost"]
-    const bounceRate = monthData["Bounce Rate"]
-    const engagementRate = monthData["Engagement Rate"]
+    const sessions = monthData["Sessions"];
+    const convRate = monthData["Conv. Rate"];
+    const cost = monthData["Cost"];
+    const clicks = monthData["Clicks"];
+    const convValueCost = monthData["Conv. Value/ Cost"];
+    const bounceRate = monthData["Bounce Rate"];
+    const engagementRate = monthData["Engagement Rate"];
 
     return (
-      <td className="text-right whitespace-nowrap p-3 text-sm border-r border-b border-gray-200 bg-transparent">
-        <div className="space-y-1">
-          {/* <div className="font-medium truncate">{renderCell(bounceRate, "bounceRate")}</div> */}
+      <td className="text-right whitespace-nowrap min-w-[160px] p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent">
+        <div className="space-y-0.5 sm:space-y-1">
           <div className="font-medium truncate">{renderCell(sessions, "sessions")}</div>
-          {cost !== undefined && <div className="text-xs truncate">{Math.round(+(cost))}</div>}
-          {clicks !== undefined && <div className="text-xs truncate">Clicks: {clicks}</div>}
-          {ConvValueCost !== undefined && <div className="text-xs truncate">Conv.rate: {ConvValueCost.toLocaleString(locale)}</div>}
-          {ConvValueCost !== undefined && <div className="text-xs truncate"> {renderCell(convRate, "percentage")}</div>}
-          <div className="text-xs truncate">{renderCell(convRate, "percentage")}</div>
-          <div className="text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
-          {engagementRate !== undefined && <div className="text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>}
+          {cost !== undefined && <div className="text-[11px] sm:text-xs truncate">{Math.round(+cost)}</div>}
+          {clicks !== undefined && <div className="text-[11px] sm:text-xs truncate">Clicks: {clicks}</div>}
+          {convValueCost !== undefined && (
+            <div className="text-[11px] sm:text-xs truncate">Conv.rate: {convValueCost.toLocaleString(locale)}</div>
+          )}
+          <div className="text-[11px] sm:text-xs truncate">{renderCell(convRate, "percentage")}</div>
+          <div className="text-[11px] sm:text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
+          {engagementRate !== undefined && (
+            <div className="text-[11px] sm:text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>
+          )}
         </div>
       </td>
-    )
-  }
+    );
+  };
 
-  const renderSummaryCell = (row: RowData, column: string, columnIndex: number) => {
-    console.log(
-      "column====> =", column,
-      row[column],
-    )
-    const value = row[column]
-    // Calculate dynamic left position based on actual column widths
-    const getLeftPosition = (index: number) => {
-      if (index === 0) return 0
-      if (index === 1) return safeWidths[0]
-      if (index === 2) return safeWidths[0] + safeWidths[1]
-      return 0
-    }
+  const renderSummaryCell = (row: RowData, column: string) => {
+    const value = row[column];
 
     if (typeof value !== "number") {
       return (
-        <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-            }`}
-          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
-        >
+        <td className="p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
           {""}
         </td>
-      )
+      );
     }
 
     const totalPurchases =
-      typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null
-    const conversionValue = typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null
+      typeof row["Total Purchases"] === "number" ? row["Total Purchases"].toLocaleString(locale) : null;
+    const conversionValue =
+      typeof row["Total Conv. Value"] === "number" ? row["Total Conv. Value"].toLocaleString(locale) : null;
 
     if (column.includes("Sessions")) {
       return (
-        <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-            } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
-          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
-        >
+        <td className="p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
           <div className="text-right">
             <div className="font-medium truncate">{renderCell(value, "sessions")}</div>
           </div>
         </td>
-      )
+      );
     }
 
     if (column.includes("Rate") || column.includes("Value")) {
       return (
-        <td
-          className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-            } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
-          style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
-        >
+        <td className="p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
           <div className="text-right">
             <div className="font-medium truncate">{renderCell(value, "percentage")}</div>
-            {totalPurchases && <div className="text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
-            {conversionValue && <div className="text-xs mt-1 truncate">Total Conv Value: {conversionValue}</div>}
+            {totalPurchases && <div className="text-[11px] sm:text-xs mt-1 truncate">Total Purchases: {totalPurchases}</div>}
+            {conversionValue && <div className="text-[11px] sm:text-xs mt-1 truncate">Total Conv Value: {conversionValue}</div>}
           </div>
         </td>
-      )
+      );
     }
 
     return (
-      <td
-        className={`p-3 text-sm border-r border-b border-gray-200 ${columnIndex < 3 ? "sticky z-10 bg-white group-hover:bg-blue-50" : "bg-transparent"
-          } ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}`}
-        style={columnIndex < 3 ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
-      >
+      <td className="p-2 sm:p-3 text-xs sm:text-sm border-r border-b border-gray-200 bg-transparent min-w-[150px] whitespace-nowrap">
         <div className="text-right font-medium truncate">{renderCell(value)}</div>
       </td>
-    )
-  }
+    );
+  };
 
   const renderDataRow = (row: RowData, index: number) => {
     return (
-      <tr key={`${row[primaryColumn]}-${index}`} className="hover:bg-blue-50 transition-colors duration-150 group">
-        <td className="sticky left-0 min-w-[130px] max-w-[200px] p-3 text-sm font-medium z-10 bg-white group-hover:bg-blue-50 border-r border-b border-gray-200">
+      <tr
+        key={`${row[primaryColumn]}-${index}`}
+        className="hover:bg-blue-50 transition-all duration-200 ease-in-out group"
+      >
+        <td className="sticky left-0 min-w-[160px] w-[160px] md:w-[18%] p-2 sm:p-3 text-xs sm:text-sm font-medium z-20 bg-white group-hover:bg-blue-50 border-r border-b border-gray-200 shadow-[6px_0_8px_rgba(0,0,0,0.05)]">
           <div className="truncate">
             {typeof row[primaryColumn] === "string" || typeof row[primaryColumn] === "number"
               ? renderCell(row[primaryColumn])
               : ""}
           </div>
         </td>
-        {secondaryColumns?.map((column, columnIndex) => {
-          // Add 1 to account for the primary column
-          const absoluteIndex = columnIndex + 1
-          return <React.Fragment key={column}>{renderSummaryCell(row, column, absoluteIndex)}</React.Fragment>
-        })}
+
+        {secondaryColumns?.map((column) => (
+          <React.Fragment key={column}>{renderSummaryCell(row, column)}</React.Fragment>
+        ))}
+
         {months.map((month) => {
           const getMonthNumber = (monthName: string): number => {
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            return months.indexOf(monthName) + 1
-          }
-          const [monthName, year] = month.split("-")
-          const monthNum = getMonthNumber(monthName)
-          const monthFormat = `${year}${monthNum.toString().padStart(2, "0")}`
+            const monthsMap = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return monthsMap.indexOf(monthName) + 1;
+          };
 
-          const monthData = (row[monthlyDataKey] as MonthlyData[]).find((m) => m.Month === monthFormat)
-          return <React.Fragment key={month}>{renderMonthCell(monthData)}</React.Fragment>
+          const [monthName, year] = month.split("-");
+          const monthNum = getMonthNumber(monthName);
+          const monthFormat = `${year}${monthNum.toString().padStart(2, "0")}`;
+
+          const monthData = (row[monthlyDataKey] as MonthlyData[]).find((m) => m.Month === monthFormat);
+          return <React.Fragment key={month}>{renderMonthCell(monthData)}</React.Fragment>;
         })}
       </tr>
-    )
-  }
+    );
+  };
 
   const displayData = useMemo(() => {
     if (isFullScreen) {
-      return filteredData
+      return filteredData;
     }
-    return filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
-  }, [isFullScreen, filteredData, currentPage, rowsPerPage])
+    return filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  }, [isFullScreen, filteredData, currentPage, rowsPerPage]);
 
-  const totalRows = filteredData.length
-  const totalPages = Math.ceil(totalRows / rowsPerPage)
+  const totalRows = filteredData.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage);
+
   const goToPage = (page: number) => {
-    const pageNumber = Math.max(1, Math.min(page, totalPages))
-    setCurrentPage(pageNumber)
-  }
+    const pageNumber = Math.max(1, Math.min(page, totalPages || 1));
+    setCurrentPage(pageNumber);
+  };
 
-  const renderColumnHeader = (column: string, columnIndex: number) => {
-    let thresholdValue = ""
+  const renderColumnHeader = (column: string) => {
+    let thresholdValue = "";
+
     if (column === "Total Sessions") {
-      thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`
+      thresholdValue = `(avg: ${Math.round(thresholds.avgSessions).toLocaleString()})`;
     } else if (column === "Avg Conv. Rate") {
-      thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`
+      thresholdValue = `(avg: ${thresholds.avgConvRate.toFixed(2)}%)`;
     } else if (column === "Total Cost") {
-      thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`
+      thresholdValue = `(avg: ${Math.round(thresholds.totalCostG).toLocaleString()})`;
     } else if (column === "Conv. Value / Cost") {
-      thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`
-    }
-
-    const isFirst = columnIndex < 3
-    const active = resizingIndex === columnIndex
-
-    // Calculate dynamic left position based on actual column widths
-    const getLeftPosition = (index: number) => {
-      if (index === 0) return 0
-      if (index === 1) return safeWidths[0]
-      if (index === 2) return safeWidths[0] + safeWidths[1]
-      return 0
+      thresholdValue = `(avg: ${thresholds.totalConvValueCostG.toFixed(2)})`;
     }
 
     return (
-      <th
-        key={column}
-        className={`sticky top-0 z-10 px-3 py-3 text-right text-sm font-medium bg-gray-100 border-r border-b border-gray-200 ${isFirst ? `z-20 ${columnIndex === 2 ? "shadow-[4px_0_5px_0_rgba(0,0,0,0.09)]" : ""}` : ""
-          } ${active ? "border-blue-500" : ""}`}
-        style={isFirst ? { left: `${getLeftPosition(columnIndex)}px` } : {}}
-      >
+      <th className="sticky top-0 z-10 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-right bg-gray-100 border-r border-b border-gray-200 min-w-[150px] whitespace-nowrap">
         <div className="flex flex-col">
           <span className="truncate">{column}</span>
-          {thresholdValue && <span className="text-xs font-normal mt-0.5 truncate">{thresholdValue}</span>}
-        </div>
-
-        {/* Resize handle */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label={`Resize ${column} column`}
-          onPointerDown={(e) => startDrag(e, columnIndex)}
-          className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
-            ? "bg-blue-500/15"
-            : "hover:bg-gray-200/30 active:bg-gray-200/50"
-            }`}
-        >
-          <div
-            className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
-              }`}
-          />
+          {thresholdValue && <span className="text-[11px] sm:text-xs font-normal mt-0.5 truncate">{thresholdValue}</span>}
         </div>
       </th>
-    )
-  }
+    );
+  };
 
   return (
-    <div className="w-full overflow-hidden flex flex-col">
-      <div className={`relative overflow-x-auto ${isFullScreen ? 'max-h-[calc(100vh-80px)]' : ''
-        } max-h-[100vh]`}>
-        <table className="w-full table-fixed border border-gray-200">
-          <colgroup>
-            {safeWidths.map((w, i) => (
-              <col key={String(columns[i]?.key || `col-${i}`)} style={{ width: w }} />
-            ))}
-          </colgroup>
+    // <div className="w-full min-w-0 flex flex-col font-inter">
+    <div className="border md:border-none rounded-lg shadow-sm overflow-hidden bg-white h-full flex flex-col font-karla">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border-b border-slate-200 sm:hidden">
+        <svg
+          className="w-3.5 h-3.5 text-slate-400 animate-pulse"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 12h8M8 17h4" />
+        </svg>
+        <span className="text-xs text-slate-400">
+          Scroll horizontally to see all columns
+        </span>
+      </div>
+
+      <div
+        className={`relative w-full overflow-x-auto overflow-y-auto ${isFullScreen ? "max-h-[calc(100vh-80px)]" : "max-h-[100vh]"
+          }`}
+      >
+        <table className="w-max min-w-full table-auto border border-gray-200">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 min-w-[130px] z-30 px-3 py-3 text-left text-sm font-medium bg-gray-100 border-r border-b border-gray-200">
+              <th className="sticky left-0 top-0 min-w-[160px] w-[160px] md:w-[18%] z-30 px-2 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold bg-gray-100 border-r border-b border-gray-200 shadow-[6px_0_8px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center gap-2">
                   <span className="truncate">{primaryColumn}</span>
-                  {filter && filter.length > 0 && <span className="text-xs px-2 py-1 rounded">Filtered</span>}
-                </div>
-
-                {/* Resize handle for primary column */}
-                <div
-                  role="separator"
-                  aria-orientation="vertical"
-                  aria-label={`Resize ${primaryColumn} column`}
-                  onPointerDown={(e) => startDrag(e, 0)}
-                  className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${resizingIndex === 0
-                    ? "bg-blue-500/15"
-                    : "hover:bg-gray-200/30 active:bg-gray-200/50"
-                    }`}
-                >
-                  <div
-                    className={`absolute right-0 top-0 h-full w-px ${resizingIndex === 0 ? "bg-blue-500" : "bg-gray-200"
-                      }`}
-                  />
+                  {filter && filter.length > 0 && <span className="text-[11px] sm:text-xs px-2 py-1 rounded">Filtered</span>}
                 </div>
               </th>
-              {secondaryColumns?.map((column, columnIndex) => {
-                // Add 1 to account for the primary column
-                const absoluteIndex = columnIndex + 1
-                return renderColumnHeader(column, absoluteIndex)
-              })}
-              {months.map((month, monthIndex) => {
-                // Add 1 for primary column + secondary columns length
-                const columnIndex = 1 + (secondaryColumns?.length || 0) + monthIndex
-                const active = resizingIndex === columnIndex
 
-                return (
-                  <th
-                    key={month}
-                    className={`sticky top-0 min-w-[120px] z-10 px-3 py-3 text-right text-sm font-medium whitespace-nowrap bg-gray-100 border-r border-b border-gray-200 ${active ? "border-blue-500" : ""
-                      }`}
-                  >
-                    <div className="truncate">{month}</div>
-                    <div className="text-xs mt-1 truncate">{primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}</div>
+              {secondaryColumns?.map((column) => (
+                <React.Fragment key={column}>{renderColumnHeader(column)}</React.Fragment>
+              ))}
 
-                    {/* Resize handle for monthly columns */}
-                    <div
-                      role="separator"
-                      aria-orientation="vertical"
-                      aria-label={`Resize ${month} column`}
-                      onPointerDown={(e) => startDrag(e, columnIndex)}
-                      className={`absolute inset-y-0 right-0 w-3 cursor-col-resize ${active
-                        ? "bg-blue-500/15"
-                        : "hover:bg-gray-200/30 active:bg-gray-200/50"
-                        }`}
-                    >
-                      <div
-                        className={`absolute right-0 top-0 h-full w-px ${active ? "bg-blue-500" : "bg-gray-200"
-                          }`}
-                      />
-                    </div>
-                  </th>
-                )
-              })}
+              {months.map((month) => (
+                <th
+                  key={month}
+                  className="sticky top-0 min-w-[160px] z-10 px-2 sm:px-3 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold whitespace-nowrap bg-gray-100 border-r border-b border-gray-200"
+                >
+                  <div className="truncate">{month}</div>
+                  <div className="text-[11px] sm:text-xs mt-1 truncate">
+                    {primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
+
           <tbody>
             {displayData.length > 0 ? (
               displayData.map((row, index) => renderDataRow(row, index))
@@ -573,12 +1552,13 @@ export default function NewConversionTable({
               <tr>
                 <td
                   colSpan={1 + (secondaryColumns?.length || 0) + months.length}
-                  className="p-4 text-center border-b border-gray-200"
+                  className="p-4 text-center border-b border-gray-200 text-sm"
                 >
                   {filter !== undefined && filteredData.length === 0 ? (
                     <div className="flex flex-col items-center gap-2">
-                      <span className="text-lg font-medium text-gray-700">Oops! No data available for this category</span>
-
+                      <span className="text-base sm:text-lg font-medium text-gray-700">
+                        Oops! No data available for this category
+                      </span>
                     </div>
                   ) : (
                     "No data to display"
@@ -591,32 +1571,36 @@ export default function NewConversionTable({
       </div>
 
       {!isFullScreen && (
-        <div className="px-3 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
+        <div className="px-3 py-3 flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between border-t bg-white">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4 min-w-0 w-full sm:w-auto">
+            <div className="text-xs sm:text-sm text-gray-600 min-w-0">
               {totalRows > 0 ? (
                 <>
                   Showing {(currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, totalRows)} of{" "}
                   {totalRows} rows
                   {filter !== undefined ? (
-                    <span className="ml-2 text-xs">(Filtered from {data.length} total rows)</span>
+                    <span className="ml-2 text-[11px] sm:text-xs">(Filtered from {data.length} total rows)</span>
                   ) : null}
                 </>
               ) : (
                 <>
                   No rows to display
                   {filter !== undefined ? (
-                    <span className="ml-2 text-xs">
+                    <span className="ml-2 text-[11px] sm:text-xs">
                       (Filter: {filter?.join(", ") || "Unknown"}) | Total rows: {data.length}
                     </span>
                   ) : null}
                 </>
               )}
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Rows per page:</span>
-              <Select value={rowsPerPage === filteredData.length ? "all" : rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
-                <SelectTrigger className="w-20 h-8">
+              <span className="text-xs sm:text-sm text-gray-600">Rows per page:</span>
+              <Select
+                value={rowsPerPage === filteredData.length ? "all" : rowsPerPage.toString()}
+                onValueChange={handleRowsPerPageChange}
+              >
+                <SelectTrigger className="w-20 h-7 sm:h-8 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -628,39 +1612,44 @@ export default function NewConversionTable({
               </Select>
             </div>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex gap-2 self-end sm:self-auto">
             <Button
               variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+              className="hidden h-7 w-7 sm:h-8 sm:w-8 p-0 lg:flex bg-transparent"
               onClick={() => goToPage(1)}
               disabled={currentPage === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
+
             <Button
               variant="outline"
-              className="h-8 w-8 p-0 bg-transparent"
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-transparent"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center justify-center text-sm font-medium px-2">
-              Page {currentPage} of {totalPages}
+
+            <div className="flex items-center justify-center text-xs sm:text-sm font-medium px-2">
+              Page {currentPage} of {totalPages || 1}
             </div>
+
             <Button
               variant="outline"
-              className="h-8 w-8 p-0 bg-transparent"
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-transparent"
               onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+
             <Button
               variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex bg-transparent"
+              className="hidden h-7 w-7 sm:h-8 sm:w-8 p-0 lg:flex bg-transparent"
               onClick={() => goToPage(totalPages)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -668,5 +1657,5 @@ export default function NewConversionTable({
         </div>
       )}
     </div>
-  )
+  );
 }

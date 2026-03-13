@@ -61,7 +61,7 @@ export function SideTab({
         {/* Mobile Toggle Button */}
         <button
           onClick={toggleMobile}
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-blue-600 text-white rounded-md shadow-lg hover:bg-blue-700 transition-colors"
+          className="lg:hidden fixed top-5 left-5 z-50 p-1.5 bg-blue-600 text-white rounded-md shadow-lg hover:bg-blue-700 transition-colors"
         >
           <BarChart3 className="w-5 h-5" />
         </button>

@@ -97,7 +97,8 @@ const AgeConversion: React.FC<ConversionComponentProps> = ({
   console.log(apiResponse?.data);
 
   return (
-    <div className="rounded-md overflow-hidden">
+    // <div className="rounded-md overflow-hidden">
+    <div className="w-full min-w-0 rounded-md">
       <NewConversionTable
         data={apiResponse?.data || []}
         primaryColumn={primaryColumn}
@@ -112,3 +113,118 @@ const AgeConversion: React.FC<ConversionComponentProps> = ({
 };
 
 export default AgeConversion;
+
+
+
+
+
+// import React, { useEffect, useState, useCallback, useMemo } from "react";
+// import { useSelector } from 'react-redux';
+// import { RootState } from '@/store';
+// import { format } from 'date-fns';
+// import { useParams } from 'react-router-dom';
+// import createAxiosInstance from "./axiosInstance";
+// import NewConversionTable from "./ConversionTable";
+// import Loader from "@/components/dashboard_component/loader";
+
+// interface ConversionComponentProps {
+//   isFullScreen: boolean;
+//   currentFilter: string[] | undefined;
+//   onDataUpdate: (data: any[], tabType: string) => void;
+//   refreshTrigger: number;
+// }
+
+// type ApiResponse = {
+//   reportType: string;
+//   data: Array<{
+//     [key: string]: any;
+//     MonthlyData?: Array<{ Month: string; [key: string]: any }>;
+//   }>;
+// };
+
+// const AgeConversion: React.FC<ConversionComponentProps> = ({
+//   isFullScreen,
+//   currentFilter,
+//   onDataUpdate,
+//   refreshTrigger
+// }) => {
+//   const dateFrom = useSelector((state: RootState) => state.date.from);
+//   const dateTo = useSelector((state: RootState) => state.date.to);
+//   const date = useMemo(() => ({
+//     from: dateFrom,
+//     to: dateTo
+//   }), [dateFrom, dateTo]);
+
+//   const locale = useSelector((state: RootState) => state.locale.locale);
+//   const { brandId } = useParams();
+
+//   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+//   const [loading, setLoading] = useState<boolean>(true);
+
+//   const axiosInstance = createAxiosInstance();
+
+//   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : "";
+//   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : "";
+
+//   useEffect(() => {
+//     setApiResponse(null);
+//   }, [brandId]);
+
+//   const fetchData = useCallback(async () => {
+//     setLoading(true);
+//     try {
+//       const response = await axiosInstance.post(
+//         `/api/analytics/ageConversionReport/${brandId}`,
+//         {
+//           startDate,
+//           endDate
+//         },
+//         { withCredentials: true }
+//       );
+
+//       const fetchedData = response.data || [];
+//       setApiResponse(fetchedData);
+//     } catch (error) {
+//       console.error("Error fetching data:", error);
+//       setApiResponse(null);
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, [brandId, startDate, endDate]);
+
+//   useEffect(() => {
+//     if (date.from && date.to) {
+//       fetchData();
+//     }
+//   }, [fetchData, refreshTrigger]);
+
+//   useEffect(() => {
+//     if (apiResponse?.data && onDataUpdate) {
+//       onDataUpdate(apiResponse.data, 'age');
+//     }
+//   }, [apiResponse?.data, onDataUpdate]);
+
+//   const primaryColumn = "Age";
+//   const secondaryColumns = ["Total Sessions", "Avg Conv. Rate"];
+//   const monthlyDataKey = "MonthlyData";
+
+//   if (loading) {
+//     return <Loader isLoading={loading} />;
+//   }
+
+//   return (
+//     <div className="w-full min-w-0 rounded-md">
+//       <NewConversionTable
+//         data={apiResponse?.data || []}
+//         primaryColumn={primaryColumn}
+//         secondaryColumns={secondaryColumns}
+//         monthlyDataKey={monthlyDataKey}
+//         isFullScreen={isFullScreen}
+//         locale={locale}
+//         filter={currentFilter}
+//       />
+//     </div>
+//   );
+// };
+
+// export default AgeConversion;

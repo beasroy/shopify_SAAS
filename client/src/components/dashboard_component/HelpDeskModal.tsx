@@ -9,7 +9,7 @@ const HelpDeskModal = () => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 z-30 flex items-center gap-2 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 group"
+        className="fixed bottom-20 right-8 z-30 flex items-center gap-2 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 group"
       >
         <FaHeadset className="w-5 h-5 group-hover:animate-pulse" />
       </button>

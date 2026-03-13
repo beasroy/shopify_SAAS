@@ -14,8 +14,6 @@ package-lock.json
 package.json
 *.local
 .env
-dist
-dist/**
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

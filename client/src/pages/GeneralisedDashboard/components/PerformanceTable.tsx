@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
+import { FacebookLogo, GoogleLogo, Ga4Logo, ShopifyLogo } from "@/data/logo";
 import { RefreshCw, Minimize2, Maximize2, ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period = "yesterday" | "last7Days" | "last14Days" | "last30Days" | "quarterly";
-export type Source = "meta" | "google" | "analytics";
-export type Platform = "Facebook" | "Google Ads" | "Google Analytics";
+export type Source = "meta" | "google" | "shopify" | "analytics";
+export type Platform = "Facebook" | "Google Ads" | "Google Analytics" | "Shopify";
 
 export interface MetricData {
     current: number;
@@ -38,11 +38,13 @@ export default function PerformanceTable({
     performanceData: {
       meta?: PerformanceSummary['periodData'];
       google?: PerformanceSummary['periodData'];
+      shopify?: PerformanceSummary['periodData'];
       analytics?: PerformanceSummary['periodData'];
     };
     apiStatus: {
       meta: boolean;
       google: boolean;
+      shopify: boolean;
       analytics: boolean;
     };
     onRefresh: () => void;
@@ -62,6 +64,9 @@ export default function PerformanceTable({
       metaroas: 'Meta ROAS',
       googlespend: 'Google Spend',
       googleroas: 'Google ROAS',
+      totalSales: 'Total Sales',
+      refundAmount: 'Refund Amount',
+      roas: 'ROAS',
       sessions: 'Sessions',
       addToCarts: 'Add to Carts',
       checkouts: 'Checkouts',
@@ -75,6 +80,7 @@ export default function PerformanceTable({
     const getPlatformLogo = (metricKey: string) => {
       if (metricKey.startsWith('meta')) return <FacebookLogo width={"1rem"} height={"1rem"} />;
       if (metricKey.startsWith('google')) return <GoogleLogo width={"1rem"} height={"1rem"} />;
+      if (metricKey === 'totalSales' || metricKey === 'refundAmount' || metricKey === 'roas') return <ShopifyLogo width={"1rem"} height={"1rem"} />;
       return <Ga4Logo width={"1rem"} height={"1rem"} />;
     };
   
@@ -88,6 +94,9 @@ export default function PerformanceTable({
         }
         if (performanceData.google?.[period as Period] && apiStatus.google) {
           Object.keys(performanceData.google[period as Period]).forEach(key => metricsSet.add(key));
+        }
+        if (performanceData.shopify?.[period as Period] && apiStatus.shopify) {
+          Object.keys(performanceData.shopify[period as Period]).forEach(key => metricsSet.add(key));
         }
         if (performanceData.analytics?.[period as Period] && apiStatus.analytics) {
           Object.keys(performanceData.analytics[period as Period]).forEach(key => metricsSet.add(key));
@@ -108,6 +117,10 @@ export default function PerformanceTable({
       // Check google
       if (performanceData.google?.[period]?.[metricKey] && apiStatus.google) {
         return performanceData.google[period][metricKey];
+      }
+      // Check shopify
+      if (performanceData.shopify?.[period]?.[metricKey] && apiStatus.shopify) {
+        return performanceData.shopify[period][metricKey];
       }
       // Check analytics
       if (performanceData.analytics?.[period]?.[metricKey] && apiStatus.analytics) {
@@ -134,7 +147,7 @@ export default function PerformanceTable({
       }
   
     const periods: Period[] = ['yesterday', 'last7Days', 'last14Days', 'last30Days', 'quarterly'];
-    const DEFAULT_VISIBLE_ROWS = 4;
+    const DEFAULT_VISIBLE_ROWS = 6;
     const visibleMetrics = isExpanded ? allMetrics : allMetrics.slice(0, DEFAULT_VISIBLE_ROWS);
     const hasMoreRows = allMetrics.length > DEFAULT_VISIBLE_ROWS;
   

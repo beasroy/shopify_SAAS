@@ -117,6 +117,7 @@ const SummaryDashboard: React.FC = () => {
   const [performanceData, setPerformanceData] = useState<{
     meta?: PerformanceSummary['periodData'];
     google?: PerformanceSummary['periodData'];
+    shopify?: PerformanceSummary['periodData'];
     analytics?: PerformanceSummary['periodData'];
   }>({});
 
@@ -126,6 +127,7 @@ const SummaryDashboard: React.FC = () => {
   const [apiStatus, setApiStatus] = useState({
     meta: true,
     google: true,
+    shopify: true,
     analytics: true
   });
 
@@ -184,6 +186,7 @@ const SummaryDashboard: React.FC = () => {
     setApiStatus({
       meta: true,
       google: true,
+      shopify: true,
       analytics: true
     });
 
@@ -206,6 +209,15 @@ const SummaryDashboard: React.FC = () => {
         return { data: { success: false } };
       });
 
+      const shopifyPromise = axiosInstance.get(
+        `api/summary/shopify/${brandId}`,
+        { withCredentials: true }
+      ).catch(error => {
+        console.error('Error fetching Shopify data:', error);
+        setApiStatus(prev => ({ ...prev, shopify: false }));
+        return { data: { success: false } };
+      });
+
       const analyticsPromise = axiosInstance.get(
         `api/summary/analytics/${brandId}`,
         { withCredentials: true }
@@ -215,15 +227,17 @@ const SummaryDashboard: React.FC = () => {
         return { data: { success: false } };
       });
       
-      const [metaResponse, googleResponse, analyticsResponse] = await Promise.all([
+      const [metaResponse, googleResponse, shopifyResponse, analyticsResponse] = await Promise.all([
         metaPromise,
         googlePromise,
+        shopifyPromise,
         analyticsPromise
       ]);
 
       setPerformanceData({
         meta: metaResponse.data.success ? metaResponse.data.periodData : undefined,
         google: googleResponse.data.success ? googleResponse.data.periodData : undefined,
+        shopify: shopifyResponse.data.success ? shopifyResponse.data.periodData : undefined,
         analytics: analyticsResponse.data.success ? analyticsResponse.data.periodData : undefined
       });
       
@@ -231,6 +245,7 @@ const SummaryDashboard: React.FC = () => {
       setApiStatus({
         meta: metaResponse.data.success,
         google: googleResponse.data.success,
+        shopify: shopifyResponse.data.success,
         analytics: analyticsResponse.data.success
       });
     } catch (error) {
@@ -239,6 +254,7 @@ const SummaryDashboard: React.FC = () => {
       setApiStatus({
         meta: false,
         google: false,
+        shopify: false,
         analytics: false
       });
     } finally {
@@ -265,7 +281,7 @@ const SummaryDashboard: React.FC = () => {
     return <Loader isLoading={loading} />;
   }
 
-  // Check if any platform is not connected
+  // Check if any platform is not connected (Shopify optional for comparison)
   const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics;
 
   return (

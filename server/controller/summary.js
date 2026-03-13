@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
+import AdMetrics from "../models/AdMetrics.js";
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 import { GoogleAdsApi } from "google-ads-api";
@@ -255,7 +256,31 @@ export async function getGoogleAccessToken(refreshToken) {
   }
 }
 
+// Aggregate Shopify metrics from AdMetrics table for a date range (for comparison)
+export async function fetchShopifyMetricsFromAdMetrics(brandId, startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
 
+  const docs = await AdMetrics.find({
+    brandId,
+    date: { $gte: start, $lte: end }
+  }).lean();
+
+  const totalSales = docs.reduce((sum, d) => sum + (Number(d.totalSales) || 0), 0);
+  const refundAmount = docs.reduce((sum, d) => sum + (Number(d.refundAmount) || 0), 0);
+  const metaSpend = docs.reduce((sum, d) => sum + (Number(d.metaSpend) || 0), 0);
+  const googleSpend = docs.reduce((sum, d) => sum + (Number(d.googleSpend) || 0), 0);
+  const totalSpend = metaSpend + googleSpend;
+  const roas = totalSpend > 0 ? Number((totalSales / totalSpend).toFixed(2)) : 0;
+
+  return {
+    totalSales: Number(totalSales.toFixed(2)),
+    refundAmount: Number(refundAmount.toFixed(2)),
+    roas
+  };
+}
 
 // Individual endpoint for Meta/Facebook Ads data
 export async function getMetaSummary(req, res) {
@@ -514,6 +539,120 @@ export async function getGoogleAdsSummary(req, res) {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch Google Ads summary.',
+      message: error.message
+    });
+  }
+}
+
+// Individual endpoint for Shopify metrics (totalSales, refundAmount, ROAS from AdMetrics)
+export async function getShopifySummary(req, res) {
+  try {
+    const { brandId } = req.params;
+
+    if (!brandId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Brand ID is required.'
+      });
+    }
+
+    const brand = await Brand.findById(brandId).lean();
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: 'Brand not found.'
+      });
+    }
+
+    // Date ranges (same structure as Meta/Google for comparison)
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dayBeforeYesterday = new Date(today);
+    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+    const last7DaysStart = new Date(today);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    const previous7DaysStart = new Date(last7DaysStart);
+    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+    const previous7DaysEnd = new Date(last7DaysStart);
+    previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+    const last14DaysStart = new Date(today);
+    last14DaysStart.setDate(last14DaysStart.getDate() - 14);
+    const previous14DaysStart = new Date(last14DaysStart);
+    previous14DaysStart.setDate(previous14DaysStart.getDate() - 14);
+    const previous14DaysEnd = new Date(last14DaysStart);
+    previous14DaysEnd.setDate(previous14DaysEnd.getDate() - 1);
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+    const previous30DaysStart = new Date(last30DaysStart);
+    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+    const previous30DaysEnd = new Date(last30DaysStart);
+    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+    const quarterStart = new Date(today);
+    quarterStart.setDate(quarterStart.getDate() - 90);
+    const previousQuarterStart = new Date(quarterStart);
+    previousQuarterStart.setDate(previousQuarterStart.getDate() - 90);
+    const previousQuarterEnd = new Date(quarterStart);
+    previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
+
+    const brandIdObj = brand._id;
+    const [
+      shopifyYesterday, shopifyDayBefore,
+      shopifyLast7, shopifyPrev7,
+      shopifyLast14, shopifyPrev14,
+      shopifyLast30, shopifyPrev30,
+      shopifyQuarter, shopifyPrevQuarter
+    ] = await Promise.all([
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, yesterday, yesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, dayBeforeYesterday, dayBeforeYesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, last7DaysStart, yesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous7DaysStart, previous7DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, last14DaysStart, yesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous14DaysStart, previous14DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, last30DaysStart, yesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous30DaysStart, previous30DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, quarterStart, yesterday),
+      fetchShopifyMetricsFromAdMetrics(brandIdObj, previousQuarterStart, previousQuarterEnd)
+    ]);
+
+    const periodData = {
+      yesterday: {
+        totalSales: calculateMetrics(shopifyYesterday.totalSales, shopifyDayBefore.totalSales),
+        refundAmount: calculateMetrics(shopifyYesterday.refundAmount, shopifyDayBefore.refundAmount),
+        roas: calculateMetrics(shopifyYesterday.roas, shopifyDayBefore.roas),
+      },
+      last7Days: {
+        totalSales: calculateMetrics(shopifyLast7.totalSales, shopifyPrev7.totalSales),
+        refundAmount: calculateMetrics(shopifyLast7.refundAmount, shopifyPrev7.refundAmount),
+        roas: calculateMetrics(shopifyLast7.roas, shopifyPrev7.roas),
+      },
+      last14Days: {
+        totalSales: calculateMetrics(shopifyLast14.totalSales, shopifyPrev14.totalSales),
+        refundAmount: calculateMetrics(shopifyLast14.refundAmount, shopifyPrev14.refundAmount),
+        roas: calculateMetrics(shopifyLast14.roas, shopifyPrev14.roas),
+      },
+      last30Days: {
+        totalSales: calculateMetrics(shopifyLast30.totalSales, shopifyPrev30.totalSales),
+        refundAmount: calculateMetrics(shopifyLast30.refundAmount, shopifyPrev30.refundAmount),
+        roas: calculateMetrics(shopifyLast30.roas, shopifyPrev30.roas),
+      },
+      quarterly: {
+        totalSales: calculateMetrics(shopifyQuarter.totalSales, shopifyPrevQuarter.totalSales),
+        refundAmount: calculateMetrics(shopifyQuarter.refundAmount, shopifyPrevQuarter.refundAmount),
+        roas: calculateMetrics(shopifyQuarter.roas, shopifyPrevQuarter.roas),
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      periodData,
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('[Shopify Summary API Error]', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch Shopify summary.',
       message: error.message
     });
   }

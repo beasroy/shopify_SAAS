@@ -1,131 +1,102 @@
-# Shopify Dashboard
+# Parallels — Shopify SAAS (Ecommerce Growth Intelligence)
+
+Full-stack platform that unifies **Shopify**, **Meta Ads**, **Google Ads**, and **Google Analytics (GA4)** for D2C brands. Single dashboard, conversion reports, location analytics, D2C calculator, festival calendar, creatives library, and more.
+
+---
+
+## Documentation
+
+**[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** — Full reference:
+
+- **Database schemas** — All 13 Mongoose models (User, Brand, Order, AdMetrics, Product, Customer, Subscription, FestivalDate, ScrapedBrand, ScrapedAdDetail, CityMetadata, D2CCalculator, BrandPerformance) with fields and indexes
+- **API reference** — All routes under `/api` (auth, brands, summary, Shopify, analytics, Meta, Google, segment, report, highlights, setup, performance, cache, creatives, D2C calculator, scraping, festival dates, pricing, master dashboard, etc.)
+- **Frontend routes & features** — Every app route and what it does
+- **Current features** — Auth, brands, summary dashboard, Shopify, webhooks, GA4, location analytics, Meta/Google reports, segment, D2C calculator, followed brands, festival calendar, and more
+- **Environment variables** — Server `.env` guidance
+- **Project guidance & examples** — Adding APIs, models, using summary APIs, location analytics, AdMetrics
+
+---
 
 ## Architecture
 
-This project is a full-stack application with a React frontend (built with Vite), a Node.js backend, and a MongoDB database. It provides a dashboard for Shopify store owners to view their store's performance metrics and recent orders.
+| Layer | Stack |
+|-------|--------|
+| **Frontend** | React, TypeScript, Vite, React Router, Tailwind CSS, shadcn/ui, Recharts, Redux (persist), Axios |
+| **Backend** | Node.js, Express, MongoDB (Mongoose), Redis (BullMQ), Socket.IO |
+| **Integrations** | Shopify API, Meta Graph API, Google Ads API, Google Analytics Data API, Zoho, Apify (scraping) |
 
-### Frontend
-- Built with React and TypeScript
-- Uses Vite as the build tool and development server
-- Uses React Router for navigation
-- Styled with Tailwind CSS
-- Utilizes shadcn/ui for UI components
-- Uses Axios for API calls
-- Charts created with Recharts
+---
 
-### Backend
-- Node.js server (Express.js assumed)
-- Connects to Shopify API to fetch store data
-- Uses JWT for authentication
-- Integrates with MongoDB for data persistence
-
-### Database
-- MongoDB for storing user information
-
-## Setup and Running the Project
+## Quick Start
 
 ### Prerequisites
-- Node.js (v14 or later recommended)
-- npm or yarn
-- MongoDB (v4.4 or later)
-- A Shopify store and API credentials
 
-### Database Setup
-1. Install MongoDB on your system if not already installed
-2. Start the MongoDB service
-3. Create a new database for the project (e.g., `shopify_dashboard`)
+- Node.js (v18+ recommended)
+- MongoDB
+- (Optional) Redis for background workers
 
-### Backend Setup
-1. Navigate to the server directory:
-   ```
-   cd server
-   ```
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file in the server directory with the following variables:
-   ```
-   PORT=8000
-   JWT_SECRET=your_jwt_secret
-   SHOPIFY_API_KEY=your_shopify_api_key
-   SHOPIFY_API_SECRET=your_shopify_api_secret
-   MONGODB_URI=mongodb://localhost:27017/shopify_dashboard
-   ```
-4. Start the server:
-   ```
-   npm run dev
-   ```
+### Backend
 
-### Frontend Setup
-1. Navigate to the client directory:
-   ```
-   cd client
-   ```
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Start the Vite development server:
-   ```
-   npm run dev
-   ```
+```bash
+cd server
+npm install
+```
 
-The application should now be running on `http://localhost:5173`.
+Create `server/.env` with at least:
 
-## Tailwind CSS and shadcn/ui Setup
+- `PORT=5000`
+- `MONGO_URI=mongodb://localhost:27017/your_db`
+- `JWT_SECRET=your_secret`
 
-This project uses Tailwind CSS for styling and shadcn/ui for UI components. They are already configured in the project, but if you need to set them up in a new project:
+See [PROJECT_DOCUMENTATION.md § Environment Variables](./PROJECT_DOCUMENTATION.md#7-environment-variables-server) for integration keys (Google, Shopify, Zoho, etc.).
 
-1. Install Tailwind CSS:
-   ```
-   npm install -D tailwindcss postcss autoprefixer
-   npx tailwindcss init -p
-   ```
+```bash
+npm run dev
+```
 
-2. Configure Tailwind CSS by updating the `tailwind.config.js` file.
+### Frontend
 
-3. Install and configure shadcn/ui components as needed:
-   ```
-   npx shadcn-ui@latest init
-   ```
+```bash
+cd client
+npm install
+npm run dev
+```
 
-4. Add desired components:
-   ```
-   npx shadcn-ui@latest add button
-   ```
+Open `http://localhost:5173`. API base: `http://localhost:5000` (or your `PORT`).
 
-Refer to the shadcn/ui documentation for more details on using and customizing components.
+### Optional: Redis & worker
+
+```bash
+# In server/
+npm run dev:redis        # Start Redis (Docker)
+npm run dev:worker       # Run metrics worker
+```
+
+---
+
+## Main features (summary)
+
+- **Auth:** Email/password, Google, Shopify OAuth; JWT; token refresh
+- **Brands:** Multi-brand; connect Meta, Google Ads, GA4, Shopify per brand
+- **Dashboard:** Performance overview (Meta, Google Ads, Shopify, GA4) with period comparison and accordion table
+- **Shopify:** Revenue, AOV, payment orders (COD/prepaid), refunds, customers sync/export
+- **Reports:** Ecommerce reports, monthly ad metrics, conversion reports (GA4 dimensions), Meta/Google segment reports
+- **Location analytics:** Sales by metro/tier/region using orders + city metadata
+- **D2C calculator:** Revenue, costs, COGS, EBITDA-style metrics
+- **Festival calendar:** Holiday/festival dates (CRUD, Calendarific)
+- **Followed brands:** Scraped competitor pages and ad creatives
+- **Creatives library:** Meta ad creatives
+- **Master dashboard:** Aggregated metrics across brands
+- **Pricing:** Shopify billing integration; Zoho tickets
+
+---
 
 ## Assumptions
 
-1. The backend is built with Express.js and uses JWT for authentication.
-2. MongoDB is used to store user information and.
-3. The Shopify API is used to fetch store data.
-4. The login/signup page is located at the root route ('/').
-5. The dashboard is protected and requires authentication to access.
-6. The project uses environment variables for sensitive information.
-7. The frontend and backend are in separate directories within the same repository.
-8. Vite is used as the build tool and development server for the frontend.
-9. Tailwind CSS is used for styling, and shadcn/ui is used for UI components.
-10. The chart data (sales by time of day) is preprocessed on the backend.
-11. Error handling includes redirecting to the login page for authentication errors.
-12. The dashboard auto-refreshes every 5 minutes.
-13. Mongoose is used as an ODM (Object Document Mapper) for MongoDB interactions.
+1. Backend is Express with JWT auth; MongoDB for persistence.
+2. Frontend uses Vite, React Router, and the existing axios/credential setup for API calls.
+3. Shopify, Meta, and Google credentials are configured per environment.
+4. Sensitive keys live in `.env`; do not commit them.
+5. In production, CORS and cookie domain are set for your frontend origin.
 
-## Database Schema
-
-The MongoDB database includes the following main collections:
-
-1. `users`: Stores user authentication information
-   - Fields: username, email, password (hashed), createdAt, updatedAt
-
-
-## Additional Notes
-
-- Ensure all required environment variables are set before running the application.
-- The project assumes a certain structure for the Shopify data. Adjust the data processing logic if your Shopify store data differs.
-- This README assumes a basic familiarity with React, Vite, Node.js, npm, and MongoDB. Additional setup steps may be necessary depending on your development environment.
-- Regularly backup your MongoDB database to prevent data loss.
-- Consider implementing data refresh mechanisms to keep the cached Shopify data up-to-date.
-- When adding new shadcn/ui components, make sure to follow their documentation for proper integration with Tailwind CSS.
+For full schemas, API list, and guidance, use **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)**.

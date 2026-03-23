@@ -84,16 +84,24 @@ export default function BrandSetup() {
   const [isCreatingBrand, setIsCreatingBrand] = useState(false)
   const { refreshBrands } = useBrandRefresh();
 
-  // Clear selectedBrandId when component mounts for new brand creation
-  // This ensures users with existing brands can create a new brand without the input being disabled
+  // Restore in-progress setup only for the same user's brand.
+  // If persisted state belongs to some other user/session, clear it.
   useEffect(() => {
-    // Keep in-progress setup on OAuth redirects; otherwise reset brand selection for fresh setup.
-    const hasInProgressSetup = !!formData.newlyCreatedBrandId || !!formData.brandName;
-    if (hasInProgressSetup && formData.newlyCreatedBrandId) {
-      dispatch(setSelectedBrandId(formData.newlyCreatedBrandId));
-      setNewlyCreatedBrandId(formData.newlyCreatedBrandId);
+    const persistedBrandId = formData.newlyCreatedBrandId;
+    const userBrandIds = user?.brands || [];
+    const persistedBrandBelongsToCurrentUser = !!persistedBrandId && userBrandIds.includes(persistedBrandId);
+
+    if (persistedBrandBelongsToCurrentUser && persistedBrandId) {
+      dispatch(setSelectedBrandId(persistedBrandId));
+      setNewlyCreatedBrandId(persistedBrandId);
       return;
     }
+
+    if (formData.brandName || formData.newlyCreatedBrandId || Object.keys(formData.connectedAccounts || {}).length > 0) {
+      dispatch(clearBrandFormData());
+    }
+
+    setNewlyCreatedBrandId(null);
     dispatch(setSelectedBrandId(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -89,7 +89,7 @@ export const fetchAdAccountInsights = async (adAccountIds, accessToken, startDat
   }));
 
   const response = await axios.post(
-    `https://graph.facebook.com/v22.0/`,
+    `https://graph.facebook.com/v24.0/`,
     { batch: batchRequests },
     {
       headers: { 'Content-Type': 'application/json' },

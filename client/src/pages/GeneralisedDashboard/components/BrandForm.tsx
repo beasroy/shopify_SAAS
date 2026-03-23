@@ -71,6 +71,7 @@ export default function BrandSetup() {
   
   const formData = useSelector((state: RootState) => state.brandForm)
   const [brandName, setBrandName] = useState(formData.brandName || "")
+  const [newlyCreatedBrandId, setNewlyCreatedBrandId] = useState<string | null>(formData.newlyCreatedBrandId || null)
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>(formData.connectedAccounts || {})
   const [googleAdsConnections, setGoogleAdsConnections] = useState<{
     clientId: string
@@ -81,13 +82,18 @@ export default function BrandSetup() {
   const [shop, setShop] = useState<string>(formData.shop || "")
   const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
   const [isCreatingBrand, setIsCreatingBrand] = useState(false)
-  const [newlyCreatedBrandId, setNewlyCreatedBrandId] = useState<string | null>(null)
   const { refreshBrands } = useBrandRefresh();
 
   // Clear selectedBrandId when component mounts for new brand creation
   // This ensures users with existing brands can create a new brand without the input being disabled
   useEffect(() => {
-    // Clear selectedBrandId when starting a new brand setup (this page is for creating new brands)
+    // Keep in-progress setup on OAuth redirects; otherwise reset brand selection for fresh setup.
+    const hasInProgressSetup = !!formData.newlyCreatedBrandId || !!formData.brandName;
+    if (hasInProgressSetup && formData.newlyCreatedBrandId) {
+      dispatch(setSelectedBrandId(formData.newlyCreatedBrandId));
+      setNewlyCreatedBrandId(formData.newlyCreatedBrandId);
+      return;
+    }
     dispatch(setSelectedBrandId(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,6 +102,7 @@ export default function BrandSetup() {
     const params = new URLSearchParams(window.location.search)
     const accessToken = params.get("access_token")
     const shopName = params.get("shop_name")
+    const shopDomain = params.get("shop")
 
     if (accessToken && shopName) {
       setShopifyAccessToken(accessToken)
@@ -104,6 +111,13 @@ export default function BrandSetup() {
         ...prev,
         Shopify: [shopName],
       }))
+
+      // Remove Shopify callback params so next platform OAuth is not polluted.
+      params.delete("access_token")
+      params.delete("shop_name")
+      if (shopDomain) params.delete("shop")
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`
+      window.history.replaceState({}, "", newUrl)
     }
   }, [])
 
@@ -111,6 +125,7 @@ export default function BrandSetup() {
   useEffect(() => {
     dispatch(setBrandFormData({
       brandName,
+      newlyCreatedBrandId,
       connectedAccounts,
       googleAdsConnections,
       ga4Id,
@@ -118,7 +133,7 @@ export default function BrandSetup() {
       shop,
       shopifyAccessToken
     }))
-  }, [brandName, connectedAccounts, googleAdsConnections, ga4Id, fbAdId, shop, shopifyAccessToken, dispatch])
+  }, [brandName, newlyCreatedBrandId, connectedAccounts, googleAdsConnections, ga4Id, fbAdId, shop, shopifyAccessToken, dispatch])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -29,8 +29,7 @@ const brandSchema = new mongoose.Schema({
       type: Number
     },
     currency: {
-      type: String,
-      default: 'INR'
+      type: String
     }
   },
   googleAdsRefreshToken: { type: String }, 

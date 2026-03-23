@@ -35,7 +35,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) =
   // Reset carousel index when creative changes
   useEffect(() => {
     setCarouselIndex(0);
-  }, [creative.ad_id]);
+  }, [creative.creative_id]);
 
   const handleVideoToggle = () => {
     if (videoRef.current) {

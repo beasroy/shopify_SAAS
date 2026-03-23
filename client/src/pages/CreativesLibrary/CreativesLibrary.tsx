@@ -46,6 +46,7 @@ export interface CarouselImage {
 }
 
 export interface Creative {
+  creative_id: string;
   ad_id: string;
   ad_name: string;
   ad_status: string;
@@ -197,22 +198,22 @@ const CreativesLibrary: React.FC = () => {
           });
           setCreatives(sorted);
         } else {
-          // Merge new creatives with existing ones, deduplicate by ad_id, and sort globally
+          // Merge new creatives with existing ones, deduplicate by creative_id, and sort globally
           setCreatives(prev => {
-            // Create a Map to deduplicate by ad_id (keep the first occurrence)
+            // Create a Map to deduplicate by creative_id (keep the first occurrence)
             const creativeMap = new Map<string, Creative>();
             
             // Add existing creatives first (they take priority)
             prev.forEach(creative => {
-              if (!creativeMap.has(creative.ad_id)) {
-                creativeMap.set(creative.ad_id, creative);
+              if (!creativeMap.has(creative.creative_id)) {
+                creativeMap.set(creative.creative_id, creative);
               }
             });
             
             // Add new creatives (only if not already present)
             response.data.creatives.forEach(creative => {
-              if (!creativeMap.has(creative.ad_id)) {
-                creativeMap.set(creative.ad_id, creative);
+              if (!creativeMap.has(creative.creative_id)) {
+                creativeMap.set(creative.creative_id, creative);
               }
             });
             
@@ -627,7 +628,7 @@ const CreativesLibrary: React.FC = () => {
               
               return (
                 <div
-                  key={creative.ad_id}
+                  key={creative.creative_id}
                   ref={shouldAttachRef ? lastCardRef : null}
                   className="h-full"
                 >

@@ -67,20 +67,24 @@ export default function BrandSetup() {
   const navigate = useNavigate();
   const { toast } = useToast()
   const user = useSelector((state: RootState) => state.user.user)
-  const selectedBrandId = useSelector((state: RootState) => state.brand.selectedBrandId)
-  
+
   const formData = useSelector((state: RootState) => state.brandForm)
   const [brandName, setBrandName] = useState(formData.brandName || "")
   const [newlyCreatedBrandId, setNewlyCreatedBrandId] = useState<string | null>(formData.newlyCreatedBrandId || null)
-  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>(formData.connectedAccounts || {})
+  // Do not hydrate platform connections without a brand id — avoids stale persisted Shopify before "Create Brand".
+  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string[]>>(
+    formData.newlyCreatedBrandId ? (formData.connectedAccounts || {}) : {}
+  )
   const [googleAdsConnections, setGoogleAdsConnections] = useState<{
     clientId: string
     managerId?: string
-  }[]>(formData.googleAdsConnections || [])
-  const [ga4Id, setGa4Id] = useState<string>(formData.ga4Id || "")
-  const [fbAdId, setFBAdId] = useState<string[]>(formData.fbAdId || [])
-  const [shop, setShop] = useState<string>(formData.shop || "")
-  const [shopifyAccessToken, setShopifyAccessToken] = useState(formData.shopifyAccessToken || "")
+  }[]>(formData.newlyCreatedBrandId ? (formData.googleAdsConnections || []) : [])
+  const [ga4Id, setGa4Id] = useState<string>(formData.newlyCreatedBrandId ? (formData.ga4Id || "") : "")
+  const [fbAdId, setFBAdId] = useState<string[]>(formData.newlyCreatedBrandId ? (formData.fbAdId || []) : [])
+  const [shop, setShop] = useState<string>(formData.newlyCreatedBrandId ? (formData.shop || "") : "")
+  const [shopifyAccessToken, setShopifyAccessToken] = useState(
+    formData.newlyCreatedBrandId ? (formData.shopifyAccessToken || "") : ""
+  )
   const [isCreatingBrand, setIsCreatingBrand] = useState(false)
   const { refreshBrands } = useBrandRefresh();
 
@@ -103,6 +107,13 @@ export default function BrandSetup() {
     if (shouldRestorePersistedSetup) {
       dispatch(setSelectedBrandId(persistedBrandId));
       setNewlyCreatedBrandId(persistedBrandId);
+      setBrandName(formData.brandName || "");
+      setConnectedAccounts(formData.connectedAccounts || {});
+      setGoogleAdsConnections(formData.googleAdsConnections || []);
+      setGa4Id(formData.ga4Id || "");
+      setFBAdId(formData.fbAdId || []);
+      setShop(formData.shop || "");
+      setShopifyAccessToken(formData.shopifyAccessToken || "");
       return;
     }
 
@@ -110,6 +121,13 @@ export default function BrandSetup() {
       dispatch(clearBrandFormData());
     }
 
+    setBrandName("");
+    setConnectedAccounts({});
+    setGoogleAdsConnections([]);
+    setGa4Id("");
+    setFBAdId([]);
+    setShop("");
+    setShopifyAccessToken("");
     setNewlyCreatedBrandId(null);
     dispatch(setSelectedBrandId(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,7 +138,8 @@ export default function BrandSetup() {
     const accessToken = params.get("access_token")
     const shopName = params.get("shop_name")
     const shopDomain = params.get("shop")
-    const brandIdToApply = newlyCreatedBrandId || selectedBrandId || formData.newlyCreatedBrandId
+    // Never use global selectedBrandId here — sidebar can point at another brand while this form is for a new brand.
+    const brandIdToApply = newlyCreatedBrandId || formData.newlyCreatedBrandId
 
     // Only bind Shopify callback to an in-progress created brand.
     if (accessToken && shopName && brandIdToApply) {
@@ -138,7 +157,7 @@ export default function BrandSetup() {
       const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`
       window.history.replaceState({}, "", newUrl)
     }
-  }, [newlyCreatedBrandId, selectedBrandId, formData.newlyCreatedBrandId])
+  }, [newlyCreatedBrandId, formData.newlyCreatedBrandId])
 
   
   useEffect(() => {
@@ -205,6 +224,7 @@ export default function BrandSetup() {
   }
 
   const isConnected = (platform: string) => {
+    if (!newlyCreatedBrandId) return false
     return (connectedAccounts[platform]?.length || 0) > 0
   }
 
@@ -288,7 +308,7 @@ export default function BrandSetup() {
   };
 
   const handleSubmit = async () => {
-    const brandIdToUpdate = newlyCreatedBrandId || selectedBrandId;
+    const brandIdToUpdate = newlyCreatedBrandId;
     
     if (!brandIdToUpdate) {
       toast({ description: 'Please create a brand first', variant: "destructive" });
@@ -423,7 +443,10 @@ export default function BrandSetup() {
                       </DialogDescription>
                     </DialogHeader>
                     {platform.name === "Shopify" ? (
-                      <ShopifyModalContent onConnect={handleConnect} />
+                      <ShopifyModalContent
+                        onConnect={handleConnect}
+                        allowOAuthCallback={!!newlyCreatedBrandId}
+                      />
                     ) : (
                       <OtherPlatformModalContent
                         platform={platform.name}
@@ -438,7 +461,7 @@ export default function BrandSetup() {
           </div>
 
           {/* Connected Accounts Summary */}
-          {Object.keys(connectedAccounts).length > 0 && (
+          {newlyCreatedBrandId && Object.keys(connectedAccounts).length > 0 && (
             <div className="rounded-lg bg-gray-50 p-4">
               <h3 className="font-medium text-gray-900 mb-3">Connected Platforms</h3>
               <div className="space-y-2">

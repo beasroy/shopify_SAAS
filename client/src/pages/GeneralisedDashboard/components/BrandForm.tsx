@@ -87,11 +87,20 @@ export default function BrandSetup() {
   // Restore in-progress setup only for the same user's brand.
   // If persisted state belongs to some other user/session, clear it.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasOAuthReturnParams =
+      (!!params.get("access_token") && !!params.get("shop_name")) || !!params.get("openModal");
+    const isFirstTimeSetupPage = window.location.pathname.includes("first-time-brand-setup");
+
     const persistedBrandId = formData.newlyCreatedBrandId;
     const userBrandIds = user?.brands || [];
     const persistedBrandBelongsToCurrentUser = !!persistedBrandId && userBrandIds.includes(persistedBrandId);
+    const shouldRestorePersistedSetup =
+      persistedBrandBelongsToCurrentUser &&
+      persistedBrandId &&
+      (!isFirstTimeSetupPage || hasOAuthReturnParams);
 
-    if (persistedBrandBelongsToCurrentUser && persistedBrandId) {
+    if (shouldRestorePersistedSetup) {
       dispatch(setSelectedBrandId(persistedBrandId));
       setNewlyCreatedBrandId(persistedBrandId);
       return;
@@ -111,8 +120,10 @@ export default function BrandSetup() {
     const accessToken = params.get("access_token")
     const shopName = params.get("shop_name")
     const shopDomain = params.get("shop")
+    const brandIdToApply = newlyCreatedBrandId || selectedBrandId || formData.newlyCreatedBrandId
 
-    if (accessToken && shopName) {
+    // Only bind Shopify callback to an in-progress created brand.
+    if (accessToken && shopName && brandIdToApply) {
       setShopifyAccessToken(accessToken)
       setShop(shopName)
       setConnectedAccounts((prev) => ({
@@ -127,7 +138,7 @@ export default function BrandSetup() {
       const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`
       window.history.replaceState({}, "", newUrl)
     }
-  }, [])
+  }, [newlyCreatedBrandId, selectedBrandId, formData.newlyCreatedBrandId])
 
   
   useEffect(() => {

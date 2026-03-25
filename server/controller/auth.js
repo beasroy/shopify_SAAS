@@ -564,19 +564,14 @@ export const getShopifyAuthUrl = (req, res) => {
 
     const SCOPES = "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory"
     let redirectUri;
-    // `flowType` controls which Shopify callback we use.
-    // - login: uses SHOPIFY_LOGIN_REDIRECT_URI (persists + logs user in)
-    // - brandSetup/dashboard: uses SHOPIFY_BRAND_SETUP_REDIRECT_URI (returns access_token to frontend)
-    const normalizedFlowType = typeof flowType === "string" ? flowType.trim().toLowerCase() : "brandsetup";
-    if (normalizedFlowType === "login") {
-        redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
-    } else {
+    if (flowType === 'brandSetup') {
         redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
+    } else {
+        redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
     }
 
     const safeSource = typeof source === "string" && source.startsWith("/") ? source : "/brand-setup";
-    // Shopify expects `state` to be URL-safe; base64url already is. Avoid percent-encoding which may be dropped.
-    const state = Buffer.from(JSON.stringify({ source: safeSource, flowType: normalizedFlowType })).toString("base64url");
+    const state = encodeURIComponent(Buffer.from(JSON.stringify({ source: safeSource })).toString("base64url"));
     const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}&state=${state}`;
 
     res.json({ success: true, authUrl });
@@ -794,21 +789,15 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
 
     
         let sourcePath = '/brand-setup';
-        if (typeof state === "string" && state.length > 0) {
+        if (typeof state === "string") {
             try {
-                const stateToDecode =
-                    /%[0-9A-Fa-f]{2}/.test(state) ? decodeURIComponent(state) : state;
-                const parsedState = JSON.parse(
-                    Buffer.from(stateToDecode, "base64url").toString("utf-8")
-                );
+                const parsedState = JSON.parse(Buffer.from(decodeURIComponent(state), "base64url").toString("utf-8"));
                 if (parsedState?.source && typeof parsedState.source === "string" && parsedState.source.startsWith("/")) {
                     sourcePath = parsedState.source;
                 }
             } catch (stateError) {
                 console.warn("Invalid Shopify OAuth state, using default brand setup path:", stateError?.message || stateError);
             }
-        } else {
-            console.warn("Shopify OAuth callback missing state param:", req.originalUrl);
         }
         const clientURL = process.env.NODE_ENV === 'production'
             ? `https://parallels.messold.com${sourcePath}`

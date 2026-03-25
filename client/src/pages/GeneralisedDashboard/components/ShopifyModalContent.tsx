@@ -8,14 +8,12 @@ interface ShopifyModalContentProps {
   /** When false, ignore URL callback params so Shopify is not applied before a brand exists on this flow. */
   allowOAuthCallback?: boolean;
   sourcePath?: string;
-  flowType?: "brandSetup" | "dashboard" | "login";
 }
 
 export default function ShopifyModalContent({
   onConnect,
   allowOAuthCallback = false,
-  sourcePath = globalThis.location.pathname,
-  flowType = "brandSetup"
+  sourcePath = globalThis.location.pathname
 }: ShopifyModalContentProps) {
   const [storeName, setStoreName] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
@@ -55,7 +53,7 @@ export default function ShopifyModalContent({
         `${baseURL}/api/auth/shopify`, 
         { 
           shop: storeName, 
-          flowType,
+          flowType: "brandSetup",
           source: sourcePath
         }, 
         { withCredentials: true }

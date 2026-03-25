@@ -85,7 +85,6 @@ export default function BrandSetup() {
   const [shopifyAccessToken, setShopifyAccessToken] = useState(
     formData.newlyCreatedBrandId ? (formData.shopifyAccessToken || "") : ""
   )
-  const [shopifyCallbackApplied, setShopifyCallbackApplied] = useState(false)
   const [isCreatingBrand, setIsCreatingBrand] = useState(false)
   const { refreshBrands } = useBrandRefresh();
 
@@ -143,45 +142,22 @@ export default function BrandSetup() {
     const brandIdToApply = newlyCreatedBrandId || formData.newlyCreatedBrandId
 
     // Only bind Shopify callback to an in-progress created brand.
-    if (!shopifyCallbackApplied && accessToken && brandIdToApply) {
-      const finalShopName = shopDomain || shopName || ""
-      if (!finalShopName) return;
-
-      // Apply to UI state
+    if (accessToken && shopName && brandIdToApply) {
       setShopifyAccessToken(accessToken)
-      setShop(finalShopName) // store domain/host in `shop` so backend can use it
+      setShop(shopName)
       setConnectedAccounts((prev) => ({
         ...prev,
-        Shopify: [shopName || finalShopName],
+        Shopify: [shopName],
       }))
 
-      // Persist immediately so DB is correct even before user clicks "Complete Setup"
-      axios
-        .patch(
-          `${baseURL}/api/brands/update/${brandIdToApply}`,
-          {
-            shopifyAccount: {
-              shopName: finalShopName,
-              shopifyAccessToken: accessToken,
-            },
-          },
-          { withCredentials: true }
-        )
-        .catch((error) => {
-          console.error("Error persisting Shopify callback:", error)
-        })
-        .finally(() => {
-          setShopifyCallbackApplied(true)
-
-          // Remove Shopify callback params so next platform OAuth is not polluted.
-          params.delete("access_token")
-          params.delete("shop_name")
-          params.delete("shop")
-          const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`
-          window.history.replaceState({}, "", newUrl)
-        })
+      // Remove Shopify callback params so next platform OAuth is not polluted.
+      params.delete("access_token")
+      params.delete("shop_name")
+      if (shopDomain) params.delete("shop")
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`
+      window.history.replaceState({}, "", newUrl)
     }
-  }, [newlyCreatedBrandId, formData.newlyCreatedBrandId, shopifyCallbackApplied])
+  }, [newlyCreatedBrandId, formData.newlyCreatedBrandId])
 
   
   useEffect(() => {

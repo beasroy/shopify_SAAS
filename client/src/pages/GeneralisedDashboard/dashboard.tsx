@@ -509,6 +509,7 @@ const SummaryDashboard: React.FC = () => {
               onConnect={handleShopifyConnectSuccess}
               allowOAuthCallback={Boolean(brandId)}
               sourcePath="/dashboard"
+              flowType="dashboard"
             />
           </DialogContent>
         </Dialog>

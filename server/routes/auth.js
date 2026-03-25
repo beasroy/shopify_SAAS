@@ -1,5 +1,5 @@
 import express from "express";
-import { userLogin, userLogout, userRegistration, getGoogleAuthURL, handleGoogleCallback, getFbAuthURL, handleFbCallback, updateTokensForGoogleAndFbAndZoho, getShopifyAuthUrl, handleShopifyCallback, handleShopifyBrandSetupCallback, getZohoAuthURL, handleZohoCallback, checkTokenValidity } from "../controller/auth.js";
+import { userLogin, userLogout, userRegistration, getGoogleAuthURL, handleGoogleCallback, getFbAuthURL, handleFbCallback, updateTokensForGoogleAndFbAndZoho, getShopifyAuthUrl, getShopifyConnectBrandAuthUrl, handleShopifyCallback, handleShopifyBrandSetupCallback, getZohoAuthURL, handleZohoCallback, checkTokenValidity } from "../controller/auth.js";
 import { verifyAuth } from "../middleware/verifyAuth.js";
 
 
@@ -13,6 +13,7 @@ router.get('/facebook', getFbAuthURL);
 router.get('/facebook/callback', handleFbCallback);
 router.put('/updateTokens/:type', verifyAuth, updateTokensForGoogleAndFbAndZoho);
 router.post('/shopify', getShopifyAuthUrl);
+router.post('/shopify/connect-brand', verifyAuth, getShopifyConnectBrandAuthUrl);
 router.get('/shopify/callback', handleShopifyCallback);
 router.get('/shopify/callback-brand-setup', handleShopifyBrandSetupCallback);
 router.get('/zoho', getZohoAuthURL);

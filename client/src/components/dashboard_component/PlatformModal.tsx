@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios, { AxiosError } from 'axios';
 import { Search, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,9 +52,18 @@ export default function PlatformModal({
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
+  // Shopify (single store) connection state
+  const [shopifyStoreName, setShopifyStoreName] = useState('');
+  const [isShopifyConnecting, setIsShopifyConnecting] = useState(false);
+  const [shopifyError, setShopifyError] = useState<string | null>(null);
+  const shopifyPopupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const baseURL = import.meta.env.PROD ? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
   const dispatch = useDispatch();
   const brands = useSelector((state: RootState) => state.brand.brands);
+  const currentBrand = brands.find((b: any) => b._id === brandId);
+  const isShopifyConnected = !!currentBrand?.shopifyAccount?.shopifyAccessToken;
+  const connectedShopDomain = currentBrand?.shopifyAccount?.shopName;
 
   // Check URL parameters for modal opening
   useEffect(() => {
@@ -111,9 +120,67 @@ export default function PlatformModal({
     }
   }, [brandId, open]);
 
+  // When Shopify OAuth completes in the popup, the backend posts a message to the parent window.
+  useEffect(() => {
+    if (!open) return;
+    if (platform.toLowerCase() !== 'shopify') return;
+    if (!brandId) return;
+
+    const handleMessage = async (event: MessageEvent) => {
+      const data = event.data as any;
+      if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'shopify_brand_setup_complete' && data.brandId === brandId) {
+        if (shopifyPopupTimeoutRef.current) {
+          clearTimeout(shopifyPopupTimeoutRef.current);
+          shopifyPopupTimeoutRef.current = null;
+        }
+
+        setIsShopifyConnecting(false);
+        setShopifyError(null);
+
+        // Refresh the updated brand in Redux
+        try {
+          const response = await axios.get(`${baseURL}/api/brands/${brandId}`, { withCredentials: true });
+          const updatedBrand = response.data;
+
+          const updatedBrands = brands.map((b: any) => (b._id === brandId ? updatedBrand : b));
+          dispatch(setBrands(updatedBrands));
+
+          // onSuccess is optional, but we follow the same signature as other platforms.
+          onSuccess?.('Shopify', data.shopDisplayName || updatedBrand?.shopifyAccount?.shopName || 'Shopify', String(data.shopId));
+        } catch (err) {
+          // If refresh fails, still close the modal since the brand was updated server-side.
+          console.error('Failed to refresh brand after Shopify OAuth:', err);
+          onSuccess?.('Shopify', data.shopDisplayName || 'Shopify', String(data.shopId));
+        } finally {
+          onOpenChange(false);
+        }
+      }
+
+      if (data.type === 'shopify_brand_setup_error' && data.brandId === brandId) {
+        if (shopifyPopupTimeoutRef.current) {
+          clearTimeout(shopifyPopupTimeoutRef.current);
+          shopifyPopupTimeoutRef.current = null;
+        }
+        setIsShopifyConnecting(false);
+        setShopifyError(data.message || 'Failed to connect Shopify.');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [open, platform, brandId, baseURL, brands, dispatch, onSuccess, onOpenChange]);
+
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!open) return;
+
+      // Shopify doesn't use the accounts-list flow.
+      if (platform.toLowerCase() === 'shopify') {
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
       try {
@@ -404,6 +471,49 @@ export default function PlatformModal({
     }
   };
 
+  const handleShopifyLogin = async () => {
+    const cleanInput = shopifyStoreName.trim();
+    if (!cleanInput) return;
+
+    setIsShopifyConnecting(true);
+    setShopifyError(null);
+
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/auth/shopify/connect-brand`,
+        {
+          shop: cleanInput,
+          brandId
+        },
+        { withCredentials: true }
+      );
+
+      const { authUrl } = response.data || {};
+      if (!authUrl) {
+        throw new Error('Failed to generate Shopify authorization URL');
+      }
+
+      const popup = window.open(authUrl, 'shopify_oauth', 'width=900,height=800');
+      if (!popup) {
+        // Fallback: if popups are blocked, use full navigation.
+        window.location.href = authUrl;
+        return;
+      }
+
+      // Fallback timeout if the popup can't postMessage for some reason.
+      if (shopifyPopupTimeoutRef.current) clearTimeout(shopifyPopupTimeoutRef.current);
+      shopifyPopupTimeoutRef.current = setTimeout(() => {
+        setIsShopifyConnecting(false);
+        setShopifyError('Timed out waiting for Shopify connection. Please try again.');
+        shopifyPopupTimeoutRef.current = null;
+      }, 120000);
+    } catch (error) {
+      console.error('Error getting Shopify Auth URL:', error);
+      setIsShopifyConnecting(false);
+      setShopifyError('Failed to connect Shopify. Please try again.');
+    }
+  };
+
   const filteredAccounts = () => {
     if (platform.toLowerCase() === 'google ads') {
       if (!googleAdsAccounts || googleAdsAccounts.length === 0) {
@@ -452,7 +562,37 @@ export default function PlatformModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {loading ? (
+          {platform.toLowerCase() === 'shopify' ? (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Enter your Shopify store name (e.g., mystore)"
+                  value={shopifyStoreName}
+                  onChange={(e) => setShopifyStoreName(e.target.value)}
+                />
+                {isShopifyConnected && connectedShopDomain && (
+                  <p className="text-sm text-gray-500">
+                    Current store: <span className="font-medium">{connectedShopDomain}</span>
+                  </p>
+                )}
+              </div>
+
+              {shopifyError && <p className="text-sm text-red-600">{shopifyError}</p>}
+
+              <Button
+                className="w-full bg-green-700 hover:bg-green-800"
+                onClick={handleShopifyLogin}
+                disabled={!shopifyStoreName.trim() || isShopifyConnecting}
+              >
+                {isShopifyConnecting ? 'Connecting...' : 'Login to Shopify'}
+              </Button>
+
+              <p className="text-sm text-gray-500 text-center">
+                Enter your store name without <span className="font-medium">.myshopify.com</span>
+              </p>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center py-4">Loading...</div>
           ) : showLoginButton ? (
             <div className="space-y-3">

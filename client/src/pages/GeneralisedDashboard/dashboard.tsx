@@ -21,6 +21,7 @@ import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
+import { useBrandRefresh } from "@/hooks/useBrandRefresh";
 
 
 
@@ -130,6 +131,7 @@ const SummaryDashboard: React.FC = () => {
   }>({});
 
   const navigate = useNavigate();
+  const { refreshBrands } = useBrandRefresh();
   
   // Track API call success/failure status
   const [apiStatus, setApiStatus] = useState({
@@ -180,8 +182,6 @@ const SummaryDashboard: React.FC = () => {
       }
     }
   }, [brandId]);
-
-  const axiosInstance = createAxiosInstance();
 
   const fetchPerformanceData = useCallback(async () => {
     if (!brandId) {
@@ -269,6 +269,41 @@ const SummaryDashboard: React.FC = () => {
       setLoading(false);
     }
   }, [brandId]);
+
+  // Shopify connect-brand callback uses query params to report success/failure.
+  // When present, close the modal, refresh brands, and clean up the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shopifyConnected = params.get("shopify_connected");
+    const callbackBrandId = params.get("brandId");
+
+    if (!shopifyConnected) return;
+    if (callbackBrandId && brandId && callbackBrandId !== brandId) {
+      // Still proceed to refresh brands, but don't assume currently selected brand.
+    }
+
+    (async () => {
+      try {
+        // Close any open PlatformModal (Shopify flow)
+        setPlatformModalOpen(false);
+        setSelectedPlatform(null);
+
+        await refreshBrands();
+        await fetchPerformanceData();
+      } finally {
+        params.delete("shopify_connected");
+        params.delete("brandId");
+        params.delete("shop");
+        params.delete("error");
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+        window.history.replaceState({}, "", newUrl);
+      }
+    })();
+  }, [brandId, refreshBrands, fetchPerformanceData]);
+
+  const axiosInstance = createAxiosInstance();
+
+
 
   const handleConnectPlatform = (platform: Platform) => {
     setSelectedPlatform(platform);

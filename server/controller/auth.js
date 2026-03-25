@@ -910,57 +910,30 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
                         userId: userId.toString()
                     });
 
-                    const payload = {
-                        type: 'shopify_brand_setup_complete',
-                        brandId: updatedBrand._id.toString(),
-                        shopName: shop,
-                        shopDisplayName: shopName,
-                        shopId: Number(shopId)
-                    };
+                    const dashboardUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://parallels.messold.com/dashboard'
+                        : 'http://localhost:5173/dashboard';
 
-                    return res.status(200).send(`<!doctype html>
-<html>
-  <head><meta charset="utf-8" /><title>Shopify Connected</title></head>
-  <body>
-    <script>
-      (function () {
-        var payload = ${JSON.stringify(payload)};
-        try {
-          if (window.opener && window.opener.postMessage) {
-            window.opener.postMessage(payload, '*');
-          }
-        } catch (e) {}
-        window.close();
-      })();
-    </script>
-    <noscript>Shopify connected. You can close this tab.</noscript>
-  </body>
-</html>`);
+                    const redirectUrl =
+                        `${dashboardUrl}` +
+                        `?shopify_connected=1` +
+                        `&brandId=${encodeURIComponent(updatedBrand._id.toString())}` +
+                        `&shop=${encodeURIComponent(String(shop))}`;
+
+                    return res.redirect(redirectUrl);
                 } catch (err) {
                     console.error('Shopify connect-brand callback error:', err);
-                    const payload = {
-                        type: 'shopify_brand_setup_error',
-                        brandId,
-                        message: err?.message || 'Failed to connect Shopify'
-                    };
-                    return res.status(500).send(`<!doctype html>
-<html>
-  <head><meta charset="utf-8" /><title>Shopify Error</title></head>
-  <body>
-    <script>
-      (function () {
-        var payload = ${JSON.stringify(payload)};
-        try {
-          if (window.opener && window.opener.postMessage) {
-            window.opener.postMessage(payload, '*');
-          }
-        } catch (e) {}
-        window.close();
-      })();
-    </script>
-    <noscript>Shopify connection failed.</noscript>
-  </body>
-</html>`);
+                    const dashboardUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://parallels.messold.com/dashboard'
+                        : 'http://localhost:5173/dashboard';
+
+                    const redirectUrl =
+                        `${dashboardUrl}` +
+                        `?shopify_connected=0` +
+                        `&brandId=${encodeURIComponent(String(brandId))}` +
+                        `&error=${encodeURIComponent(err?.message || 'Failed to connect Shopify')}`;
+
+                    return res.redirect(redirectUrl);
                 }
             }
         }

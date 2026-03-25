@@ -217,7 +217,8 @@ export default function BrandSetup() {
     } else if (platform.toLowerCase() === "shopify") {
       // For Shopify, accountId is the access token, account is the shop name
       setShopifyAccessToken(accountId)
-      setShop(account) // account here is the shop name
+      // managerId carries Shopify domain from callback ("shop" query param).
+      setShop(account)
     }
 
     toast({ description: `Successfully connected ${account} to ${platform}`, variant: "default" })

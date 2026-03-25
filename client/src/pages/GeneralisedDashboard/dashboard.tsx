@@ -510,6 +510,7 @@ const SummaryDashboard: React.FC = () => {
               allowOAuthCallback={Boolean(brandId)}
               sourcePath="/dashboard"
               flowType="dashboard"
+              brandId={brandId}
             />
           </DialogContent>
         </Dialog>

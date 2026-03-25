@@ -538,7 +538,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 };
   
 export const getShopifyAuthUrl = (req, res) => {
-    const { shop , flowType, source } = req.body;
+    const { shop, flowType, source, brandId } = req.body;
 
     if (!shop) {
         return res.status(400).json({ error: 'Shop name is required' });
@@ -563,20 +563,23 @@ export const getShopifyAuthUrl = (req, res) => {
     }
 
     const SCOPES = "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory"
-    let redirectUri;
+    const normalizedFlowType = typeof flowType === "string" ? flowType.trim().toLowerCase() : "brandsetup";
+
     // `flowType` controls which Shopify callback we use.
     // - login: uses SHOPIFY_LOGIN_REDIRECT_URI (persists + logs user in)
-    // - brandSetup/dashboard: uses SHOPIFY_BRAND_SETUP_REDIRECT_URI (returns access_token to frontend)
-    const normalizedFlowType = typeof flowType === "string" ? flowType.trim().toLowerCase() : "brandsetup";
-    if (normalizedFlowType === "login") {
-        redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
-    } else {
-        redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
-    }
+    // - brandSetup/dashboard: uses SHOPIFY_BRAND_SETUP_REDIRECT_URI (returns access_token to frontend OR persists brand for dashboard)
+    const redirectUri = normalizedFlowType === "login"
+        ? process.env.SHOPIFY_LOGIN_REDIRECT_URI
+        : process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
 
     const safeSource = typeof source === "string" && source.startsWith("/") ? source : "/brand-setup";
     // Shopify expects `state` to be URL-safe; base64url already is. Avoid percent-encoding which may be dropped.
-    const state = Buffer.from(JSON.stringify({ source: safeSource, flowType: normalizedFlowType })).toString("base64url");
+    const state = Buffer.from(JSON.stringify({
+        source: safeSource,
+        flowType: normalizedFlowType,
+        brandId: typeof brandId === "string" ? brandId : undefined,
+    })).toString("base64url");
+
     const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}&state=${state}`;
 
     res.json({ success: true, authUrl });
@@ -782,7 +785,7 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
             return res.status(500).json({ error: 'Failed to obtain access token' });
         }
 
-        // Step 2: Fetch shop details to get shop name
+        // Step 2: Fetch shop details to get shop name (and id/currency when persisting)
         const shopResponse = await axios.get(`https://${shop}/admin/api/2024-04/shop.json`, {
             headers: {
                 'X-Shopify-Access-Token': accessToken
@@ -791,9 +794,14 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
 
         const shopData = shopResponse.data.shop;
         const shopName = shopData.name;
+        const shopId = shopData.id;
+        const storeCurrency = shopData.currency || 'USD';
 
-    
+        // Decode state (sourcePath + flowType + optional brandId)
         let sourcePath = '/brand-setup';
+        let flowTypeFromState = 'brandsetup';
+        let brandIdFromState;
+
         if (typeof state === "string" && state.length > 0) {
             try {
                 const stateToDecode =
@@ -801,21 +809,54 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
                 const parsedState = JSON.parse(
                     Buffer.from(stateToDecode, "base64url").toString("utf-8")
                 );
+
                 if (parsedState?.source && typeof parsedState.source === "string" && parsedState.source.startsWith("/")) {
                     sourcePath = parsedState.source;
                 }
+                if (parsedState?.flowType && typeof parsedState.flowType === "string") {
+                    flowTypeFromState = parsedState.flowType.trim().toLowerCase();
+                }
+                if (parsedState?.brandId && typeof parsedState.brandId === "string") {
+                    brandIdFromState = parsedState.brandId;
+                }
             } catch (stateError) {
-                console.warn("Invalid Shopify OAuth state, using default brand setup path:", stateError?.message || stateError);
+                console.warn("Invalid Shopify OAuth state, using defaults:", stateError?.message || stateError);
             }
         } else {
             console.warn("Shopify OAuth callback missing state param:", req.originalUrl);
         }
+
         const clientURL = process.env.NODE_ENV === 'production'
             ? `https://parallels.messold.com${sourcePath}`
             : `http://localhost:5173${sourcePath}`;
 
-        const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
+        // Dashboard flow: persist server-side to the selected brand and redirect back without exposing token.
+        if (flowTypeFromState === 'dashboard' && brandIdFromState) {
+            try {
+                await Brand.findByIdAndUpdate(
+                    brandIdFromState,
+                    {
+                        $set: {
+                            shopifyAccount: {
+                                shopName: shop,
+                                shopifyAccessToken: accessToken,
+                                shopId,
+                                currency: storeCurrency
+                            }
+                        }
+                    },
+                    { new: false, runValidators: true }
+                );
+            } catch (persistError) {
+                console.error("Failed to persist Shopify credentials for dashboard flow:", persistError);
+                return res.redirect(`${clientURL}?shopifyConnected=0`);
+            }
 
+            return res.redirect(`${clientURL}?shopifyConnected=1`);
+        }
+
+        // Default brand-setup flow: redirect back with token in URL (legacy behavior)
+        const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
         return res.redirect(redirectUrl);
 
     } catch (error) {

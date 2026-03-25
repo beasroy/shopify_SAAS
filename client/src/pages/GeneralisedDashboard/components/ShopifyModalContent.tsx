@@ -9,15 +9,13 @@ interface ShopifyModalContentProps {
   allowOAuthCallback?: boolean;
   sourcePath?: string;
   flowType?: "brandSetup" | "dashboard" | "login";
-  brandId?: string;
 }
 
 export default function ShopifyModalContent({
   onConnect,
   allowOAuthCallback = false,
   sourcePath = globalThis.location.pathname,
-  flowType = "brandSetup",
-  brandId
+  flowType = "brandSetup"
 }: ShopifyModalContentProps) {
   const [storeName, setStoreName] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
@@ -30,8 +28,7 @@ export default function ShopifyModalContent({
     const shopName = params.get('shop_name');
     const shop = params.get('shop');
 
-    // For dashboard flow we persist server-side and redirect back without tokens.
-    if (accessToken && shopName && shop && allowOAuthCallback && flowType !== "dashboard") {
+    if (accessToken && shopName && shop && allowOAuthCallback) {
       // Call the onConnect function to pass data to parent
       if (onConnect) {
         onConnect('Shopify', shopName, accessToken, shop);
@@ -59,8 +56,7 @@ export default function ShopifyModalContent({
         { 
           shop: storeName, 
           flowType,
-          source: sourcePath,
-          brandId
+          source: sourcePath
         }, 
         { withCredentials: true }
       );

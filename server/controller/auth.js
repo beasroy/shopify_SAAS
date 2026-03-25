@@ -538,7 +538,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
 };
   
 export const getShopifyAuthUrl = (req, res) => {
-    const { shop , flowType, source } = req.body;
+    const { shop , flowType} = req.body;
 
     if (!shop) {
         return res.status(400).json({ error: 'Shop name is required' });
@@ -570,9 +570,7 @@ export const getShopifyAuthUrl = (req, res) => {
         redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
     }
 
-    const safeSource = typeof source === "string" && source.startsWith("/") ? source : "/brand-setup";
-    const state = encodeURIComponent(Buffer.from(JSON.stringify({ source: safeSource })).toString("base64url"));
-    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}&state=${state}`;
+    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
 
     res.json({ success: true, authUrl });
 }
@@ -756,7 +754,7 @@ export const handleShopifyCallback = async (req, res) => {
 };
 
 export const handleShopifyBrandSetupCallback = async (req, res) => {
-    const { code, shop, state } = req.query;
+    const { code, shop } = req.query;
     const clientId = process.env.SHOPIFY_CLIENT_ID;
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
@@ -788,20 +786,9 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
         const shopName = shopData.name;
 
     
-        let sourcePath = '/brand-setup';
-        if (typeof state === "string") {
-            try {
-                const parsedState = JSON.parse(Buffer.from(decodeURIComponent(state), "base64url").toString("utf-8"));
-                if (parsedState?.source && typeof parsedState.source === "string" && parsedState.source.startsWith("/")) {
-                    sourcePath = parsedState.source;
-                }
-            } catch (stateError) {
-                console.warn("Invalid Shopify OAuth state, using default brand setup path:", stateError?.message || stateError);
-            }
-        }
         const clientURL = process.env.NODE_ENV === 'production'
-            ? `https://parallels.messold.com${sourcePath}`
-            : `http://localhost:5173${sourcePath}`;
+            ? 'https://parallels.messold.com/brand-setup'
+            : 'http://localhost:5173/brand-setup';
 
         const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
 

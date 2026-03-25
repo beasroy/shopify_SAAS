@@ -12,17 +12,15 @@ import createAxiosInstance from "../ConversionReportPage/components/axiosInstanc
 import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import { FacebookLogo, GoogleLogo, Ga4Logo, ShopifyLogo } from "@/data/logo";
+import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
 import { useNavigate } from "react-router-dom";
 import PlatformModal from "@/components/dashboard_component/PlatformModal";
 import TicketForm from "@/components/dashboard_component/TicketForm";
 import ConversionFunnelCard from "./components/ConversionFunnelCard";
 import MarketingInsightsCard from "./components/MarketingInsightsCard";
-import PerformanceTable, { Platform, PerformanceSummary } from "./components/PerformanceTable";
+import PerformanceTable from "./components/PerformanceTable";
+import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
-import ShopifyModalContent from "./components/ShopifyModalContent";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 
 
 
@@ -42,8 +40,6 @@ export function ConnectPlatformCard({
         return <GoogleLogo width={"2rem"} height={"2rem"} />;
       case "Google Analytics":
         return <Ga4Logo width={"2rem"} height={"2rem"} />;
-      case "Shopify":
-        return <ShopifyLogo width={"2rem"} height={"2rem"} />;
       default:
         return null;
     }
@@ -126,7 +122,6 @@ const SummaryDashboard: React.FC = () => {
   }>({});
 
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   // Track API call success/failure status
   const [apiStatus, setApiStatus] = useState({
@@ -138,7 +133,6 @@ const SummaryDashboard: React.FC = () => {
 
   // State for platform modal
   const [platformModalOpen, setPlatformModalOpen] = useState(false);
-  const [shopifyModalOpen, setShopifyModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
 
   // State for banner visibility
@@ -149,7 +143,7 @@ const SummaryDashboard: React.FC = () => {
 
   // Check URL parameters for modal opening
   useEffect(() => {
-    const params = new URLSearchParams(globalThis.location.search);
+    const params = new URLSearchParams(window.location.search);
     const modalToOpen = params.get('openModal');
     
     if (modalToOpen && brandId) {
@@ -173,9 +167,8 @@ const SummaryDashboard: React.FC = () => {
         
         // Remove the modal parameter from URL
         params.delete('openModal');
-        const querySuffix = params.toString() ? `?${params.toString()}` : "";
-        const newUrl = `${globalThis.location.pathname}${querySuffix}`;
-        globalThis.history.replaceState({}, '', newUrl);
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+        window.history.replaceState({}, '', newUrl);
       }
     }
   }, [brandId]);
@@ -241,23 +234,10 @@ const SummaryDashboard: React.FC = () => {
         analyticsPromise
       ]);
 
-      const brandResponse = await axiosInstance.get(
-        `api/brands/${brandId}`,
-        { withCredentials: true }
-      ).catch(error => {
-        console.error('Error fetching brand connection state:', error);
-        return { data: null };
-      });
-
-      const shopifyAccount = brandResponse?.data?.shopifyAccount;
-      const isShopifyConnected = Boolean(
-        shopifyAccount?.shopName && shopifyAccount?.shopifyAccessToken
-      );
-
       setPerformanceData({
         meta: metaResponse.data.success ? metaResponse.data.periodData : undefined,
         google: googleResponse.data.success ? googleResponse.data.periodData : undefined,
-        shopify: isShopifyConnected && shopifyResponse.data.success ? shopifyResponse.data.periodData : undefined,
+        shopify: shopifyResponse.data.success ? shopifyResponse.data.periodData : undefined,
         analytics: analyticsResponse.data.success ? analyticsResponse.data.periodData : undefined
       });
       
@@ -265,7 +245,7 @@ const SummaryDashboard: React.FC = () => {
       setApiStatus({
         meta: metaResponse.data.success,
         google: googleResponse.data.success,
-        shopify: isShopifyConnected,
+        shopify: shopifyResponse.data.success,
         analytics: analyticsResponse.data.success
       });
     } catch (error) {
@@ -283,10 +263,6 @@ const SummaryDashboard: React.FC = () => {
   }, [brandId]);
 
   const handleConnectPlatform = (platform: Platform) => {
-    if (platform === "Shopify") {
-      setShopifyModalOpen(true);
-      return;
-    }
     setSelectedPlatform(platform);
     setPlatformModalOpen(true);
   };
@@ -297,44 +273,6 @@ const SummaryDashboard: React.FC = () => {
     fetchPerformanceData();
   };
 
-  const handleShopifyConnectSuccess = async (
-    _platform: string,
-    shopDisplayName: string,
-    accessToken: string,
-    shopDomain?: string
-  ) => {
-    if (!brandId) {
-      toast({
-        description: "Please select a brand before connecting Shopify.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await axiosInstance.patch(
-        `api/brands/update/${brandId}`,
-        {
-          shopifyAccount: {
-            shopName: shopDomain || shopDisplayName,
-            shopifyAccessToken: accessToken,
-          },
-        },
-        { withCredentials: true }
-      );
-
-      setShopifyModalOpen(false);
-      toast({ description: "Shopify connected successfully.", variant: "default" });
-      fetchPerformanceData();
-    } catch (error) {
-      console.error("Error saving Shopify connection:", error);
-      toast({
-        description: "Failed to save Shopify connection. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
@@ -343,8 +281,8 @@ const SummaryDashboard: React.FC = () => {
     return <Loader isLoading={loading} />;
   }
 
-  // Check if all required platforms are connected, including Shopify.
-  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.shopify && apiStatus.analytics;
+  // Check if any platform is not connected (Shopify optional for comparison)
+  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -409,13 +347,7 @@ const SummaryDashboard: React.FC = () => {
               <p className="text-slate-600">
                 Connect your advertising and analytics platforms to see all your performance data in one place.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {!apiStatus.shopify && (
-                  <ConnectPlatformCard
-                    platform="Shopify"
-                    onClick={() => handleConnectPlatform("Shopify")}
-                  />
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {!apiStatus.meta && (
                   <ConnectPlatformCard 
                     platform="Facebook" 
@@ -493,25 +425,6 @@ const SummaryDashboard: React.FC = () => {
           brandId={brandId}
           onSuccess={handlePlatformModalSuccess}
         />
-      )}
-
-      {/* Shopify Connection Modal */}
-      {brandId && (
-        <Dialog open={shopifyModalOpen} onOpenChange={setShopifyModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Connect to Shopify</DialogTitle>
-              <DialogDescription>
-                Enter your Shopify store name and login to connect.
-              </DialogDescription>
-            </DialogHeader>
-            <ShopifyModalContent
-              onConnect={handleShopifyConnectSuccess}
-              allowOAuthCallback={Boolean(brandId)}
-              sourcePath="/dashboard"
-            />
-          </DialogContent>
-        </Dialog>
       )}
 
       {/* Help Desk Modal */}

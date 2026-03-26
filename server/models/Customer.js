@@ -41,6 +41,10 @@ const customerSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  country: {
+    type: String,
+    default: ''
+  },
   state: {
     type: String,
     default: ''

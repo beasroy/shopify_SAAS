@@ -168,10 +168,15 @@ const GoogleCallback = () => {
                     if (getUser.data.success) {
                         const user = getUser.data.user;
                         const brands = getUser.data.brands;
+                        const sortedBrands = [...brands].sort((a, b) =>
+                            a.name.replace(/_/g, " ").localeCompare(b.name.replace(/_/g, " "), undefined, { sensitivity: "base" })
+                        );
 
                         dispatch(setUser(user));
-                        dispatch(setBrands(brands));
-                        dispatch(setSelectedBrandId(brands[0]._id));
+                        dispatch(setBrands(sortedBrands));
+                        if (sortedBrands.length > 0) {
+                            dispatch(setSelectedBrandId(sortedBrands[0]._id));
+                        }
                         await refreshBrands();  
                         
                         // For Shopify login users, check if they have brands

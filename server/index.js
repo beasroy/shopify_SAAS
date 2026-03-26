@@ -117,7 +117,7 @@ dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
 
-calculateMetricsForSingleBrand("690b24d5b5eeef0b8b4ed79f","690b24d5b5eeef0b8b4ed79c");
+calculateMetricsForSingleBrand("69bba9437d4cedfc3fd8d111","69bba90e7d4cedfc3fd8d10c");
 
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');

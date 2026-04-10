@@ -12,7 +12,7 @@ import createAxiosInstance from "../ConversionReportPage/components/axiosInstanc
 import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import { FacebookLogo, GoogleLogo, Ga4Logo } from "@/data/logo";
+import { FacebookLogo, GoogleLogo, Ga4Logo, ShopifyLogo } from "@/data/logo";
 import { useNavigate } from "react-router-dom";
 import PlatformModal from "@/components/dashboard_component/PlatformModal";
 import TicketForm from "@/components/dashboard_component/TicketForm";
@@ -21,6 +21,7 @@ import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
+import { useBrandRefresh } from "@/hooks/useBrandRefresh";
 
 
 
@@ -40,6 +41,8 @@ export function ConnectPlatformCard({
         return <GoogleLogo width={"2rem"} height={"2rem"} />;
       case "Google Analytics":
         return <Ga4Logo width={"2rem"} height={"2rem"} />;
+      case "Shopify":
+        return <ShopifyLogo width={"2rem"} height={"2rem"} />;
       default:
         return null;
     }
@@ -111,6 +114,12 @@ export function DashboardCard({ title, icon, children, onNavigate, className }: 
 const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const brandId = useSelector((state: RootState) => state.brand.selectedBrandId);
+  const brands = useSelector((state: RootState) => state.brand.brands);
+  const selectedBrand = brands.find((b: any) => b._id === brandId);
+  const isShopifyConnected =
+    !!selectedBrand?.shopifyAccount &&
+    (Boolean((selectedBrand as any).shopifyAccount.shopifyAccessToken) ||
+      Boolean((selectedBrand as any).shopifyAccount.shopName));
 
   const userName = user?.username;
   const [loading, setLoading] = useState(false);
@@ -122,6 +131,7 @@ const SummaryDashboard: React.FC = () => {
   }>({});
 
   const navigate = useNavigate();
+  const { refreshBrands } = useBrandRefresh();
   
   // Track API call success/failure status
   const [apiStatus, setApiStatus] = useState({
@@ -172,8 +182,6 @@ const SummaryDashboard: React.FC = () => {
       }
     }
   }, [brandId]);
-
-  const axiosInstance = createAxiosInstance();
 
   const fetchPerformanceData = useCallback(async () => {
     if (!brandId) {
@@ -262,6 +270,41 @@ const SummaryDashboard: React.FC = () => {
     }
   }, [brandId]);
 
+  // Shopify connect-brand callback uses query params to report success/failure.
+  // When present, close the modal, refresh brands, and clean up the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shopifyConnected = params.get("shopify_connected");
+    const callbackBrandId = params.get("brandId");
+
+    if (!shopifyConnected) return;
+    if (callbackBrandId && brandId && callbackBrandId !== brandId) {
+      // Still proceed to refresh brands, but don't assume currently selected brand.
+    }
+
+    (async () => {
+      try {
+        // Close any open PlatformModal (Shopify flow)
+        setPlatformModalOpen(false);
+        setSelectedPlatform(null);
+
+        await refreshBrands();
+        await fetchPerformanceData();
+      } finally {
+        params.delete("shopify_connected");
+        params.delete("brandId");
+        params.delete("shop");
+        params.delete("error");
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+        window.history.replaceState({}, "", newUrl);
+      }
+    })();
+  }, [brandId, refreshBrands, fetchPerformanceData]);
+
+  const axiosInstance = createAxiosInstance();
+
+
+
   const handleConnectPlatform = (platform: Platform) => {
     setSelectedPlatform(platform);
     setPlatformModalOpen(true);
@@ -282,7 +325,7 @@ const SummaryDashboard: React.FC = () => {
   }
 
   // Check if any platform is not connected (Shopify optional for comparison)
-  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics;
+  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics && isShopifyConnected;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -347,7 +390,7 @@ const SummaryDashboard: React.FC = () => {
               <p className="text-slate-600">
                 Connect your advertising and analytics platforms to see all your performance data in one place.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {!apiStatus.meta && (
                   <ConnectPlatformCard 
                     platform="Facebook" 
@@ -364,6 +407,12 @@ const SummaryDashboard: React.FC = () => {
                   <ConnectPlatformCard 
                     platform="Google Analytics" 
                     onClick={() => handleConnectPlatform("Google Analytics")} 
+                  />
+                )}
+                {!isShopifyConnected && (
+                  <ConnectPlatformCard
+                    platform="Shopify"
+                    onClick={() => handleConnectPlatform("Shopify")}
                   />
                 )}
               </div>

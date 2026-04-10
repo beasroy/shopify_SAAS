@@ -537,32 +537,53 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
     }
 };
   
-export const getShopifyAuthUrl = (req, res) => {
-    const { shop , flowType} = req.body;
-
-    if (!shop) {
-        return res.status(400).json({ error: 'Shop name is required' });
-    }
-
-    let cleanShop = shop.trim();
-    
+const buildCleanShop = (shop) => {
+    let cleanShop = (shop || '').trim();
 
     if (cleanShop.includes('admin.shopify.com/store/')) {
         const urlParts = cleanShop.split('/store/');
         if (urlParts.length > 1) {
             cleanShop = urlParts[urlParts.length - 1].split('/')[0].split('?')[0];
         }
-    }
-
-    else if (cleanShop.includes('.myshopify.com')) {
+    } else if (cleanShop.includes('.myshopify.com')) {
         cleanShop = cleanShop.replace('.myshopify.com', '').split('/')[0];
-    }
-    
-    else {
+    } else {
         cleanShop = cleanShop.split('/')[0].split('?')[0];
     }
 
-    const SCOPES = "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory"
+    return cleanShop;
+};
+
+const buildShopifyAuthUrl = ({ cleanShop, redirectUri, state }) => {
+    const SCOPES =
+        "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory";
+
+    const base =
+        `https://${cleanShop}.myshopify.com/admin/oauth/authorize` +
+        `?client_id=${process.env.SHOPIFY_CLIENT_ID}` +
+        `&scope=${encodeURIComponent(SCOPES)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    if (!state) return base;
+    return base + `&state=${encodeURIComponent(state)}`;
+};
+
+/**
+ * Existing endpoint used for:
+ * - Shopify login (flowType: "login") => no brandId
+ * - Brand setup flow that still redirects to frontend (flowType: "brandSetup") => optionally no brandId
+ *
+ * If a brandId is provided, we will embed a signed `state` so the callback can update the brand
+ * and respond without frontend redirect (popup-friendly).
+ */
+export const getShopifyAuthUrl = (req, res) => {
+    const { shop, flowType, brandId } = req.body;
+
+    if (!shop) {
+        return res.status(400).json({ error: 'Shop name is required' });
+    }
+
+    const cleanShop = buildCleanShop(shop);
     let redirectUri;
     if (flowType === 'brandSetup') {
         redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
@@ -570,10 +591,71 @@ export const getShopifyAuthUrl = (req, res) => {
         redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
     }
 
-    const authUrl = `https://${cleanShop}.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_CLIENT_ID}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
+    // Only include signed state when brandId is present (PlatformModal connect-brand flow).
+    let stateToken = '';
+    if (brandId) {
+        const userIdFromMiddleware = req.user?._id?.toString?.() || req.user?.id;
+        let userId = userIdFromMiddleware;
+
+        if (!userId) {
+            // Fallback: decode from cookie token when route is not protected by verifyAuth
+            const token = req.cookies?.token;
+            if (!token) {
+                return res.status(401).json({ error: 'Access denied. No token provided.' });
+            }
+            try {
+                const decoded = jwt.verify(token, SECRET_KEY);
+                userId = decoded?.id;
+            } catch (err) {
+                return res.status(401).json({ error: 'Invalid session. Please log in again.' });
+            }
+        }
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Invalid session. Missing user.' });
+        }
+
+        stateToken = jwt.sign({ brandId, userId }, SECRET_KEY, { expiresIn: '10m' });
+    }
+
+    const authUrl = buildShopifyAuthUrl({
+        cleanShop,
+        redirectUri,
+        state: stateToken || undefined
+    });
 
     res.json({ success: true, authUrl });
 }
+
+/**
+ * Clean endpoint for PlatformModal:
+ * POST /api/auth/shopify/connect-brand
+ * body: { shop, brandId }
+ * Requires verifyAuth middleware (req.user available).
+ */
+export const getShopifyConnectBrandAuthUrl = (req, res) => {
+    const { shop, brandId } = req.body;
+    if (!shop) return res.status(400).json({ error: 'Shop name is required' });
+    if (!brandId) return res.status(400).json({ error: 'Brand ID is required' });
+
+    // Ownership check: user must own the brand (or be admin)
+    const user = req.user;
+    if (!user) {
+        return res.status(401).json({ error: 'Access denied. Please log in again.' });
+    }
+
+    const ownsBrand =
+        user.isAdmin === true ||
+        (Array.isArray(user.brands) && user.brands.some((id) => id?.toString?.() === brandId));
+
+    if (!ownsBrand) {
+        return res.status(403).json({ error: 'You do not have permission to update this brand.' });
+    }
+
+    // Force brandSetup redirect URI for connect-brand flow
+    req.body.flowType = 'brandSetup';
+    return getShopifyAuthUrl(req, res);
+};
 export const handleShopifyCallback = async (req, res) => {
     const absoluteUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
     const url = new URL(absoluteUrl);
@@ -754,7 +836,7 @@ export const handleShopifyCallback = async (req, res) => {
 };
 
 export const handleShopifyBrandSetupCallback = async (req, res) => {
-    const { code, shop } = req.query;
+    const { code, shop, state } = req.query;
     const clientId = process.env.SHOPIFY_CLIENT_ID;
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
@@ -784,6 +866,77 @@ export const handleShopifyBrandSetupCallback = async (req, res) => {
 
         const shopData = shopResponse.data.shop;
         const shopName = shopData.name;
+        const shopId = shopData.id;
+        const storeCurrency = shopData.currency || 'USD';
+
+        // If state was provided (connect-brand flow), update the existing brand and do NOT redirect.
+        if (typeof state === 'string' && state) {
+            let decodedState;
+            try {
+                decodedState = jwt.verify(state, SECRET_KEY);
+            } catch (err) {
+                decodedState = null;
+            }
+
+            const brandId = decodedState?.brandId;
+            const userId = decodedState?.userId;
+
+            if (brandId && userId) {
+                try {
+                    const updatedBrand = await Brand.findByIdAndUpdate(
+                        brandId,
+                        {
+                            $set: {
+                                shopifyAccount: {
+                                    shopName: shop, // store domain, used by webhooks/reporting
+                                    shopifyAccessToken: accessToken,
+                                    shopId: Number(shopId),
+                                    currency: storeCurrency
+                                }
+                            }
+                        },
+                        { new: true, runValidators: true }
+                    );
+
+                    if (!updatedBrand) {
+                        return res.status(404).send('Brand not found');
+                    }
+
+                    await registerWebhooks(shop, accessToken);
+
+                    // Queue metrics calculation for this brand
+                    await metricsQueue.add('calculate-metrics', {
+                        brandId: updatedBrand._id.toString(),
+                        userId: userId.toString()
+                    });
+
+                    const dashboardUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://parallels.messold.com/dashboard'
+                        : 'http://localhost:5173/dashboard';
+
+                    const redirectUrl =
+                        `${dashboardUrl}` +
+                        `?shopify_connected=1` +
+                        `&brandId=${encodeURIComponent(updatedBrand._id.toString())}` +
+                        `&shop=${encodeURIComponent(String(shop))}`;
+
+                    return res.redirect(redirectUrl);
+                } catch (err) {
+                    console.error('Shopify connect-brand callback error:', err);
+                    const dashboardUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://parallels.messold.com/dashboard'
+                        : 'http://localhost:5173/dashboard';
+
+                    const redirectUrl =
+                        `${dashboardUrl}` +
+                        `?shopify_connected=0` +
+                        `&brandId=${encodeURIComponent(String(brandId))}` +
+                        `&error=${encodeURIComponent(err?.message || 'Failed to connect Shopify')}`;
+
+                    return res.redirect(redirectUrl);
+                }
+            }
+        }
 
     
         const clientURL = process.env.NODE_ENV === 'production'

@@ -5,9 +5,11 @@ import axios from 'axios'
 
 interface ShopifyModalContentProps {
   onConnect?: (platform: string, account: string, accountId: string) => void;
+  /** When false, ignore URL callback params so Shopify is not applied before a brand exists on this flow. */
+  allowOAuthCallback?: boolean;
 }
 
-export default function ShopifyModalContent({ onConnect }: ShopifyModalContentProps) {
+export default function ShopifyModalContent({ onConnect, allowOAuthCallback = false }: ShopifyModalContentProps) {
   const [storeName, setStoreName] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
   const baseURL = import.meta.env.PROD? import.meta.env.VITE_API_URL : import.meta.env.VITE_LOCAL_API_URL;
@@ -19,7 +21,7 @@ export default function ShopifyModalContent({ onConnect }: ShopifyModalContentPr
     const shopName = params.get('shop_name');
     const shop = params.get('shop');
 
-    if (accessToken && shopName && shop) {
+    if (accessToken && shopName && shop && allowOAuthCallback) {
       // Call the onConnect function to pass data to parent
       if (onConnect) {
         onConnect('Shopify', shopName, accessToken);
@@ -32,7 +34,7 @@ export default function ShopifyModalContent({ onConnect }: ShopifyModalContentPr
       const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
       window.history.replaceState({}, '', newUrl);
     }
-  }, [onConnect]);
+  }, [onConnect, allowOAuthCallback]);
 
   const handleShopifyLogin = async () => {
     if (!storeName.trim()) {

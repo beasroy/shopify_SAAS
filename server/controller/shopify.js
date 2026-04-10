@@ -974,6 +974,7 @@ const CUSTOMERS_QUERY = `
             address1
             address2
             city
+            country
             provinceCode
             zip
             countryCode
@@ -1080,6 +1081,7 @@ export const syncCustomers = async (req, res) => {
           addressLine1: defaultAddress?.address1 || '',
           addressLine2: defaultAddress?.address2 || '',
           city: defaultAddress?.city || '',
+          country: defaultAddress?.country || '',
           state: defaultAddress?.provinceCode || '',
           pin: defaultAddress?.zip || '',
           totalOrders: customerNode.numberOfOrders || 0,
@@ -1124,6 +1126,7 @@ export const syncCustomers = async (req, res) => {
                 addressLine1: customerData.addressLine1,
                 addressLine2: customerData.addressLine2,
                 city: customerData.city,
+                country: customerData.country,
                 state: customerData.state,
                 pin: customerData.pin,
                 totalOrders: customerData.totalOrders,
@@ -1196,6 +1199,7 @@ export const syncCustomers = async (req, res) => {
                       addressLine1: failedCustomer.addressLine1,
                       addressLine2: failedCustomer.addressLine2,
                       city: failedCustomer.city,
+                      country: failedCustomer.country,
                       state: failedCustomer.state,
                       pin: failedCustomer.pin,
                       totalOrders: failedCustomer.totalOrders,
@@ -1413,6 +1417,7 @@ export const exportCustomersToExcel = async (req, res) => {
         'Address Line 2': customer.addressLine2 || '',
         'City': customer.city || '',
         'State': customer.state || '',
+        'Country': customer.country || '',
         'PIN': customer.pin || '',
         'Total Orders': customer.totalOrders || 0,
         'Created At': customer.createdAt ? moment(customer.createdAt).format('YYYY-MM-DD HH:mm:ss') : '',
@@ -1435,6 +1440,7 @@ export const exportCustomersToExcel = async (req, res) => {
         'Address Line 2',
         'City',
         'State',
+        'Country',
         'PIN',
         'Total Orders',
         'Created At',
@@ -1454,6 +1460,7 @@ export const exportCustomersToExcel = async (req, res) => {
       { wch: 30 }, // Address Line 2
       { wch: 20 }, // City
       { wch: 15 }, // State
+      { wch: 15 }, // Country
       { wch: 10 }, // PIN
       { wch: 12 }, // Total Orders
       { wch: 20 }, // Created At

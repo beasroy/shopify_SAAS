@@ -482,7 +482,7 @@ export const getBrandCreativesBatch = async (req, res) => {
     const cacheKeySuffix = after 
       ? crypto.createHash('md5').update(after).digest('hex').substring(0, 16) // Use first 16 chars of MD5 hash
       : 'first';
-    const cacheKey = `creatives:${brandId}:${limit}:${cacheKeySuffix}`;
+    const cacheKey = `creatives:${brandId}:${limit}:${thumbnailWidth}x${thumbnailHeight}:${cacheKeySuffix}`;
     
     // Check cache for all pages (not just first page)
     try {
@@ -586,20 +586,21 @@ export const getBrandCreativesBatch = async (req, res) => {
     const fetchedAdIds = allAds.map(ad => ad.id);
     
     allAds.forEach(ad => {
-      const creativeData = ad.adcreatives?.data?.[0];
-      if (creativeData?.id) creativeIds.push(creativeData.id);
-      if (creativeData?.object_story_spec?.video_data?.video_id) {
-        videoIds.push(creativeData.object_story_spec.video_data.video_id);
-      }
-      // Extract image hashes from carousel child attachments
-      const childAttachments = creativeData?.object_story_spec?.link_data?.child_attachments;
-      if (childAttachments && Array.isArray(childAttachments)) {
-        childAttachments.forEach(attachment => {
-          if (attachment.image_hash) {
-            imageHashes.push(attachment.image_hash);
-          }
-        });
-      }
+      const adCreatives = ad.adcreatives?.data || [];
+      adCreatives.forEach(creativeData => {
+        if (creativeData?.id) creativeIds.push(creativeData.id);
+
+        const videoId = creativeData?.object_story_spec?.video_data?.video_id;
+        if (videoId) videoIds.push(videoId);
+
+        // Extract image hashes from carousel child attachments
+        const childAttachments = creativeData?.object_story_spec?.link_data?.child_attachments;
+        if (childAttachments && Array.isArray(childAttachments)) {
+          childAttachments.forEach(attachment => {
+            if (attachment.image_hash) imageHashes.push(attachment.image_hash);
+          });
+        }
+      });
     });
 
     // 🔹 Step 4: Fetch video details, custom thumbnails, carousel images, and insights in parallel
@@ -613,132 +614,127 @@ export const getBrandCreativesBatch = async (req, res) => {
 
 
     // 🔹 Step 5: Process all ads and build creatives array
-    const allCreatives = allAds
-      .map(ad => {
-        const creativeData = ad.adcreatives?.data?.[0];
+    const allCreatives = [];
+
+    allAds.forEach(ad => {
+      const insights = insightsMap.get(ad.id) || {};
+
+      const spend = parseFloat(insights.spend || 0);
+      const impressions = parseInt(insights.impressions || 0, 10);
+
+      // Helper to get action count
+      const getActionCount = (actionType) => {
+        const action = insights.actions?.find(a => a.action_type === actionType);
+        return action ? parseInt(action.value, 10) : 0;
+      };
+
+      // Calculate metrics (ad-level; repeated for every creative within this ad)
+      const videoViews = getActionCount('video_view');
+      const hookRate = impressions > 0 ? (videoViews / impressions) * 100 : 0;
+
+      const postEngagement = getActionCount('post_engagement');
+      const engagementRate = impressions > 0 ? (postEngagement / impressions) : 0;
+
+      const revenueObj = insights.action_values?.find((action) => action.action_type === 'purchase') || null;
+      const revenue = revenueObj ? parseFloat(revenueObj.value) : 0;
+
+      const roas = spend > 0 ? revenue / spend : 0;
+      const frequency = parseInt(insights.frequency || 0, 10);
+
+      // Extract video watch actions from arrays (they come as arrays of objects)
+      const getVideoWatchCount = (actionsArray) => {
+        if (!Array.isArray(actionsArray) || actionsArray.length === 0) return 0;
+        const videoAction = actionsArray.find(a => a.action_type === 'video_view');
+        return videoAction ? parseInt(videoAction.value || 0, 10) : 0;
+      };
+
+      const videoP25Watched = getVideoWatchCount(insights.video_p25_watched_actions);
+      const videoP50Watched = getVideoWatchCount(insights.video_p50_watched_actions);
+      const videoP100Watched = getVideoWatchCount(insights.video_p100_watched_actions);
+
+      const videoP25WatchedRate = impressions > 0 ? (videoP25Watched / impressions) * 100 : 0;
+      const videoP50WatchedRate = impressions > 0 ? (videoP50Watched / impressions) * 100 : 0;
+      const videoP100WatchedRate = impressions > 0 ? (videoP100Watched / impressions) * 100 : 0;
+
+      const orders = getActionCount('purchase');
+      const cpp = spend > 0 ? spend / orders : 0;
+
+      // Determine status: active only if both status and effective_status are ACTIVE
+      const status = (ad.status?.toUpperCase() === 'ACTIVE' && ad.effective_status?.toUpperCase() === 'ACTIVE')
+        ? 'ACTIVE'
+        : 'PAUSED';
+
+      const adCreatives = ad.adcreatives?.data || [];
+      adCreatives.forEach(creativeData => {
         const creative = creativeData?.object_story_spec;
         const creativeId = creativeData?.id;
-        const insights = insightsMap.get(ad.id) || {};
-        
-        const spend = parseFloat(insights.spend || 0);
-        const impressions = parseInt(insights.impressions || 0, 10);
-        
-        // Helper to get action count
-        const getActionCount = (actionType) => {
-          const action = insights.actions?.find(a => a.action_type === actionType);
-          return action ? parseInt(action.value, 10) : 0;
-        };
-        
+        if (!creativeId) return;
+
         // Determine type and URLs
         let creativeType = "unknown";
-        let creativeUrl = null;
-        let thumbnailUrl = null;
-        let carouselImages = null;
-        
-        // Check for carousel ads (has child_attachments)
+        let creativeUrl = "";
+        let thumbnailUrl = "";
+        let carouselImages = [];
+
         const childAttachments = creative?.link_data?.child_attachments;
         if (childAttachments && Array.isArray(childAttachments) && childAttachments.length > 0) {
           creativeType = "carousel";
-          // Extract carousel images from child attachments
+
           carouselImages = childAttachments
             .map(attachment => {
-              if (attachment.image_hash) {
-                const imageUrl = carouselImageMap.get(attachment.image_hash);
-                // If image hash fetch failed, try to construct URL from hash or use fallback
-                if (!imageUrl) {
-                  // Fallback: try to use the creative's thumbnail_url if available
-                  const creativeThumbnail = creativeData?.thumbnail_url;
-                  if (creativeThumbnail && carouselImages === null) {
-                    // Use thumbnail as fallback for first image only
-                    return null; // Will handle separately
-                  }
-                  return null;
-                }
-                return {
-                  url: imageUrl,
-                  link: attachment.link || null,
-                  name: attachment.name || null,
-                  description: attachment.description || null
-                };
-              }
-              return null;
+              if (!attachment.image_hash) return null;
+              const imageUrl = carouselImageMap.get(attachment.image_hash);
+              if (!imageUrl) return null;
+              return {
+                url: imageUrl,
+                link: attachment.link || null,
+                name: attachment.name || null,
+                description: attachment.description || null
+              };
             })
             .filter(img => img !== null);
-          
-          // If no images from hash, try using creative thumbnail_url as fallback
-          if (carouselImages.length === 0 && creativeData?.thumbnail_url) {
-            carouselImages = [{
-              url: creativeData.thumbnail_url,
-              link: null,
-              name: null,
-              description: null
-            }];
+
+          // Fallback if hash->URL fetch failed
+          if (carouselImages.length === 0) {
+            const fallbackUrl = creativeData?.thumbnail_url || creative?.link_data?.picture || "";
+            if (fallbackUrl) {
+              carouselImages = [{
+                url: fallbackUrl,
+                link: null,
+                name: null,
+                description: null
+              }];
+            }
           }
-          
-          // Use first carousel image as main thumbnail
-          if (carouselImages.length > 0) {
-            thumbnailUrl = carouselImages[0].url;
-            creativeUrl = carouselImages[0].url;
-          } else if (creative?.link_data?.picture) {
-            // Final fallback to main picture
-            thumbnailUrl = creative.link_data.picture;
-            creativeUrl = creative.link_data.picture;
-          }
+
+          thumbnailUrl = carouselImages[0]?.url || "";
+          creativeUrl = carouselImages[0]?.url || "";
         } else if (creative?.video_data) {
           creativeType = "video";
           const videoId = creative.video_data.video_id;
           const video = videoMap.get(videoId);
-          creativeUrl = video?.source || videoId;
-          thumbnailUrl = video?.thumbnail || null;
+          creativeUrl = video?.source || videoId || "";
+          thumbnailUrl = video?.thumbnail || "";
         } else {
           creativeType = "image";
+          creativeUrl = creativeData?.image_url || creative?.link_data?.picture || "";
+          // If image_url is missing, UI can fall back to thumbnail_url (but we set it below)
+          thumbnailUrl = creativeData?.thumbnail_url || "";
+          if (!thumbnailUrl) thumbnailUrl = "";
         }
-        
-        // Get custom thumbnail (only if not already set from carousel)
+
+        // Get custom thumbnail (only if not already set from carousel/video)
         if (!thumbnailUrl && creativeId && thumbnailMap.has(creativeId)) {
-          thumbnailUrl = thumbnailMap.get(creativeId);
+          thumbnailUrl = thumbnailMap.get(creativeId) || "";
         }
-        
-        // Calculate metrics
-        const videoViews = getActionCount('video_view');
-        const hookRate = impressions > 0 ? (videoViews / impressions) * 100 : 0;
 
-        const postEngagement = getActionCount('post_engagement');
-        const engagementRate = impressions > 0 ? (postEngagement / impressions) : 0;
-        
-        // Get revenue from purchase action value
-        const revenueObj = insights.action_values?.find((action) => action.action_type === 'purchase') || null;
-        const revenue = revenueObj ? parseFloat(revenueObj.value) : 0;
-        
-        // Calculate ROAS = revenue / spend
-        const roas = spend > 0 ? revenue / spend : 0;
-        const frequency = parseInt(insights.frequency || 0, 10);
-        
-        // Extract video watch actions from arrays (they come as arrays of objects)
-        const getVideoWatchCount = (actionsArray) => {
-          if (!Array.isArray(actionsArray) || actionsArray.length === 0) return 0;
-          const videoAction = actionsArray.find(a => a.action_type === 'video_view');
-          return videoAction ? parseInt(videoAction.value || 0, 10) : 0;
-        };
-        
-        const videoP25Watched = getVideoWatchCount(insights.video_p25_watched_actions);
-        const videoP50Watched = getVideoWatchCount(insights.video_p50_watched_actions);
-        const videoP100Watched = getVideoWatchCount(insights.video_p100_watched_actions);
+        // For pure image creatives, ensure at least one URL exists for the UI.
+        if (creativeType === "image" && !creativeUrl) {
+          creativeUrl = thumbnailUrl || "";
+        }
 
-        const videoP25WatchedRate = impressions > 0 ? (videoP25Watched / impressions) * 100 : 0;
-        const videoP50WatchedRate = impressions > 0 ? (videoP50Watched / impressions) * 100 : 0;
-        const videoP100WatchedRate = impressions > 0 ? (videoP100Watched / impressions) * 100 : 0;
-    
-
-        const orders = getActionCount('purchase');
-        const cpp = spend > 0 ? spend / orders : 0;
-        
-        // Determine status: active only if both status and effective_status are ACTIVE
-        const status = (ad.status?.toUpperCase() === 'ACTIVE' && ad.effective_status?.toUpperCase() === 'ACTIVE') 
-          ? 'ACTIVE' 
-          : 'PAUSED';
-
-        return {
+        allCreatives.push({
+          creative_id: creativeId,
           ad_id: ad.id,
           ad_name: ad.name,
           ad_account_id: ad.ad_account_id || null,
@@ -747,9 +743,9 @@ export const getBrandCreativesBatch = async (req, res) => {
           status,
           created_time: ad.created_time,
           creative_type: creativeType,
-          creative_url: creativeUrl,
-          thumbnail_url: thumbnailUrl,
-          carousel_images: carouselImages,
+          creative_url: creativeUrl || "",
+          thumbnail_url: thumbnailUrl || "",
+          carousel_images: carouselImages.length > 0 ? carouselImages : [],
           spend,
           ctr: parseFloat(insights.ctr || 0),
           cpc: parseFloat(insights.cpc || 0),
@@ -769,16 +765,14 @@ export const getBrandCreativesBatch = async (req, res) => {
           video_p25_watched_rate: videoP25WatchedRate,
           video_p50_watched_rate: videoP50WatchedRate,
           video_p100_watched_rate: videoP100WatchedRate
-        };
+        });
       });
+    });
     
     // Sort creatives by newest launched first (already sorted at ad level, but ensure consistency)
     const sortedCreatives = allCreatives.sort((a, b) => {
-      // Find corresponding ad to get created_time (launch time)
-      const adA = allAds.find(ad => ad.id === a.ad_id);
-      const adB = allAds.find(ad => ad.id === b.ad_id);
-      const timeA = adA?.created_time || adA?.updated_time || 0;
-      const timeB = adB?.created_time || adB?.updated_time || 0;
+      const timeA = a.created_time || 0;
+      const timeB = b.created_time || 0;
       return new Date(timeB) - new Date(timeA); // Descending order (newest launched first)
     });
     

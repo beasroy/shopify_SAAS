@@ -410,8 +410,6 @@ export const deletePlatformIntegration = async (req, res) => {
     }
 }
 
-
-
 export async function deleteProductsByBrand(req, res) {
     try {
         const { brandId } = req.params;

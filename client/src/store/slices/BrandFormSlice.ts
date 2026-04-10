@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface BrandFormState {
   brandName: string;
+  newlyCreatedBrandId: string | null;
   connectedAccounts: Record<string, string[]>;
   googleAdsConnections: {
     clientId: string;
@@ -15,6 +16,7 @@ interface BrandFormState {
 
 const initialState: BrandFormState = {
   brandName: '',
+  newlyCreatedBrandId: null,
   connectedAccounts: {},
   googleAdsConnections: [],
   ga4Id: '',

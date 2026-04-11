@@ -141,6 +141,7 @@ const SearchTerm: React.FC<SearchtermBasedReportsProps> = ({ dateRange: propDate
           isFullScreen={isFullScreen}
           locale={locale}
           filter={currentFilter}
+          monthlyHeaderLabel="Cost / Conv Rate"
         />
       </div>
     </>

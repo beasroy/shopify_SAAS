@@ -114,6 +114,7 @@ const Product: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, re
           isFullScreen={isFullScreen}
           locale={locale}
           filter={currentFilter}
+          monthlyHeaderLabel="Cost / Conv Rate"
         />
       </div>
     </>

@@ -198,6 +198,7 @@ const Gender: React.FC<CityBasedReportsProps> = ({ dateRange: propDateRange, isF
                       // monthlyMetrics={monthlyMetrics}
                       isFullScreen={isFullScreen}
                       locale={locale}
+                      monthlyHeaderLabel="Cost / Conv Rate"
                     />
                   </div>
                 )}

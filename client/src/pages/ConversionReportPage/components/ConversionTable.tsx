@@ -1202,6 +1202,7 @@ interface SimpleConversionTableProps {
   isFullScreen: boolean;
   locale: string;
   filter?: string[];
+  monthlyHeaderLabel?: string;
 }
 
 export default function NewConversionTable({
@@ -1212,6 +1213,7 @@ export default function NewConversionTable({
   isFullScreen,
   locale,
   filter,
+  monthlyHeaderLabel,
 }: SimpleConversionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -1369,7 +1371,7 @@ export default function NewConversionTable({
             <div className="text-[11px] sm:text-xs truncate">Conv.rate: {convValueCost.toLocaleString(locale)}</div>
           )}
           <div className="text-[11px] sm:text-xs truncate">{renderCell(convRate, "percentage")}</div>
-          <div className="text-[11px] sm:text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div>
+          {/* <div className="text-[11px] sm:text-xs truncate">Bounce Rate: {renderCell(bounceRate, "percentage")}</div> */}
           {engagementRate !== undefined && (
             <div className="text-[11px] sm:text-xs truncate">Engagement Rate: {engagementRate.toLocaleString(locale)}</div>
           )}
@@ -1538,7 +1540,7 @@ export default function NewConversionTable({
                 >
                   <div className="truncate">{month}</div>
                   <div className="text-[11px] sm:text-xs mt-1 truncate">
-                    {primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / (Conv, Bounce) Rate"}
+                    {monthlyHeaderLabel ?? (primaryColumn === "All Page" ? "Bounce Rate" : "Sessions / Conv Rate")}
                   </div>
                 </th>
               ))}

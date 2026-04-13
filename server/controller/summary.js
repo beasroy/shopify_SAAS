@@ -4,6 +4,7 @@ import AdMetrics from "../models/AdMetrics.js";
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library';
 import { GoogleAdsApi } from "google-ads-api";
+import { ApiError } from "../utils/ApiError.js";
 
 config();
 
@@ -131,6 +132,9 @@ export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) 
       return await fn();
     } catch (error) {
       lastError = error;
+      if (error?.retryable === false) {
+        throw error;
+      }
       if (attempt < maxRetries - 1) {
         const delay = initialDelay * Math.pow(2, attempt);
         console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
@@ -161,40 +165,153 @@ export function calculateMetrics(current, previous) {
   };
 }
 
+function parseMetaErrorPayload(payload) {
+  if (!payload) return null;
+
+  if (typeof payload === 'string') {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return { message: payload };
+    }
+  }
+
+  return payload;
+}
+
+function isMetaReconnectError(status, metaError = {}) {
+  const code = metaError.code;
+  const subcode = metaError.error_subcode;
+  const message = String(metaError.message || '').toLowerCase();
+
+  return (
+    status === 401 ||
+    status === 403 ||
+    code === 190 ||
+    subcode === 463 ||
+    subcode === 467 ||
+    message.includes('access token') ||
+    message.includes('session has expired') ||
+    message.includes('invalid oauth') ||
+    message.includes('not authorized') ||
+    message.includes('permission')
+  );
+}
+
+function normalizeMetaSummaryError(error) {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  const status = error?.response?.status || error?.status || 500;
+  const payload = parseMetaErrorPayload(error?.response?.data);
+  const metaError = payload?.error || payload || {};
+
+  if (isMetaReconnectError(status, metaError)) {
+    return new ApiError(
+      403,
+      'Meta access expired or permission was denied. Please reconnect Facebook account.',
+      {
+        code: 'META_RECONNECT_REQUIRED',
+        provider: 'meta',
+        reconnectRequired: true,
+        publicError: 'Meta authorization failed.',
+        retryable: false
+      }
+    );
+  }
+
+  if (status === 400) {
+    return new ApiError(
+      400,
+      metaError.message || 'Meta request was rejected.',
+      {
+        code: 'META_BAD_REQUEST',
+        provider: 'meta',
+        publicError: 'Failed to fetch Meta summary.',
+        retryable: false
+      }
+    );
+  }
+
+  return new ApiError(
+    500,
+    metaError.message || error?.message || 'Unexpected error while fetching Meta summary.',
+    {
+      code: 'META_REQUEST_FAILED',
+      provider: 'meta',
+      publicError: 'Failed to fetch Meta summary.'
+    }
+  );
+}
+
 // Function to fetch Facebook Ads data
 export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccountIds) {
   return retryWithBackoff(async () => {
-  const batchRequests = adAccountIds.flatMap((accountId) => [
-    {
+    const batchRequests = adAccountIds.map((accountId) => ({
       method: 'GET',
       relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
-    },
-  ]);
+    }));
 
-  const response = await axios.post(
-    `https://graph.facebook.com/v22.0/`,
-    { batch: batchRequests },
-    {
-      headers: { 'Content-Type': 'application/json' },
-      params: { access_token: accessToken },
-        timeout: 15000, // 15 second timeout per request
+    let response;
+
+    try {
+      response = await axios.post(
+        `https://graph.facebook.com/v22.0/`,
+        { batch: batchRequests },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          params: { access_token: accessToken },
+          timeout: 15000, // 15 second timeout per request
+        }
+      );
+    } catch (error) {
+      throw normalizeMetaSummaryError(error);
     }
-  );
 
-  // Initialize aggregated metrics
-  let aggregatedData = {
-    metaspend: 0,
-    metarevenue: 0,
-    metaroas: 0,
-  };
+    let aggregatedData = {
+      metaspend: 0,
+      metarevenue: 0,
+      metaroas: 0,
+    };
 
-  // Process and aggregate data from all ad accounts
-  for (let i = 0; i < adAccountIds.length; i++) {
-    const accountResponse = response.data[i];
+    for (let i = 0; i < adAccountIds.length; i++) {
+      const accountResponse = response.data[i];
 
-    if (accountResponse.code === 200) {
-      const accountBody = JSON.parse(accountResponse.body);
-      if (accountBody.data && accountBody.data.length > 0) {
+      if (!accountResponse) {
+        throw new ApiError(
+          500,
+          'Meta returned an incomplete batch response.',
+          {
+            code: 'META_EMPTY_BATCH_RESPONSE',
+            provider: 'meta',
+            publicError: 'Failed to fetch Meta summary.'
+          }
+        );
+      }
+
+      if (accountResponse.code !== 200) {
+        throw normalizeMetaSummaryError({
+          response: {
+            status: accountResponse.code,
+            data: parseMetaErrorPayload(accountResponse.body)
+          }
+        });
+      }
+
+      const accountBody = parseMetaErrorPayload(accountResponse.body);
+
+      if (accountBody?.error) {
+        const normalizedStatus = isMetaReconnectError(accountResponse.code, accountBody.error) ? 403 : 400;
+        throw normalizeMetaSummaryError({
+          response: {
+            status: normalizedStatus,
+            data: accountBody
+          }
+        });
+      }
+
+      if (accountBody?.data?.length > 0) {
         const insight = accountBody.data[0];
         const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || 0;
 
@@ -202,10 +319,12 @@ export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccoun
         aggregatedData.metarevenue += Number(revenue);
       }
     }
-  }
-  aggregatedData.metaroas = aggregatedData.metaspend > 0 ? (aggregatedData.metarevenue / aggregatedData.metaspend).toFixed(2) : 0;
 
-  return aggregatedData;
+    aggregatedData.metaroas = aggregatedData.metaspend > 0
+      ? Number((aggregatedData.metarevenue / aggregatedData.metaspend).toFixed(2))
+      : 0;
+
+    return aggregatedData;
   }, 2, 1500); // 2 retries with 1.5s initial delay
 }
 
@@ -283,7 +402,7 @@ export async function fetchShopifyMetricsFromAdMetrics(brandId, startDate, endDa
 }
 
 // Individual endpoint for Meta/Facebook Ads data
-export async function getMetaSummary(req, res) {
+export async function getMetaSummary(req, res, next) {
   try {
     const { brandId } = req.params;
 
@@ -384,19 +503,22 @@ export async function getMetaSummary(req, res) {
 
     console.log(`[Meta API] Successfully fetched in ${Date.now() - startTime}ms`);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       periodData,
       lastUpdated: new Date()
     });
 
   } catch (error) {
-    console.error(`[Meta API Error]`, error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch Meta summary.',
-      message: error.message
+    const normalizedError = normalizeMetaSummaryError(error);
+
+    console.error(`[Meta API Error]`, {
+      status: normalizedError.status,
+      code: normalizedError.code,
+      message: normalizedError.message
     });
+
+    return next(normalizedError);
   }
 }
 

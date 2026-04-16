@@ -250,7 +250,7 @@ export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccoun
   return retryWithBackoff(async () => {
     const batchRequests = adAccountIds.map((accountId) => ({
       method: 'GET',
-      relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+      relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values,clicks,impressions,actions&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
     }));
 
     let response;
@@ -272,7 +272,14 @@ export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccoun
     let aggregatedData = {
       metaspend: 0,
       metarevenue: 0,
+      metaclicks: 0,
+      metaimpressions: 0,
+      metapurchases: 0,
       metaroas: 0,
+      metacpc: 0,
+      metacpm: 0,
+      metactr: 0,
+      metacpp: 0,
     };
 
     for (let i = 0; i < adAccountIds.length; i++) {
@@ -314,14 +321,34 @@ export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccoun
       if (accountBody?.data?.length > 0) {
         const insight = accountBody.data[0];
         const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || 0;
+        const purchase = insight.actions?.find((action) => action.action_type === 'purchase')?.value || 0;
 
         aggregatedData.metaspend += Number(insight.spend || 0);
         aggregatedData.metarevenue += Number(revenue);
+        aggregatedData.metaclicks += Number(insight.clicks || 0);
+        aggregatedData.metaimpressions += Number(insight.impressions || 0);
+        aggregatedData.metapurchases += Number(purchase);
       }
     }
 
     aggregatedData.metaroas = aggregatedData.metaspend > 0
       ? Number((aggregatedData.metarevenue / aggregatedData.metaspend).toFixed(2))
+      : 0;
+    
+    aggregatedData.metacpc = aggregatedData.metaclicks > 0
+      ? Number((aggregatedData.metaspend / aggregatedData.metaclicks).toFixed(2))
+      : 0;
+
+    aggregatedData.metacpm = aggregatedData.metaimpressions > 0
+      ? Number(((aggregatedData.metaspend / aggregatedData.metaimpressions) * 1000).toFixed(2))
+      : 0;
+
+    aggregatedData.metactr = aggregatedData.metaimpressions > 0
+      ? Number(((aggregatedData.metaclicks / aggregatedData.metaimpressions) * 100).toFixed(2))
+      : 0;
+
+    aggregatedData.metacpp = aggregatedData.metapurchases > 0
+      ? Number((aggregatedData.metaspend / aggregatedData.metapurchases).toFixed(2))
       : 0;
 
     return aggregatedData;
@@ -339,6 +366,9 @@ export async function fetchGoogleAdsData(startDate, endDate, customer) {
     metrics: [
       "metrics.cost_micros",
       "metrics.conversions_value",
+      "metrics.clicks",
+      "metrics.impressions",
+      "metrics.conversions"
     ],
     from_date: formattedStartDate,
     to_date: formattedEndDate,
@@ -350,10 +380,18 @@ export async function fetchGoogleAdsData(startDate, endDate, customer) {
     const spend = costMicros / 1_000_000;
     acc.totalSpend += spend;
     acc.totalConversionsValue += row.metrics.conversions_value || 0;
+    acc.totalClicks += row.metrics.clicks || 0;
+    acc.totalImpressions += row.metrics.impressions || 0;
+    acc.totalConversions += row.metrics.conversions || 0;
     return acc;
-  }, { totalSpend: 0, totalConversionsValue: 0 });
+  }, { totalSpend: 0, totalConversionsValue: 0, totalClicks: 0, totalImpressions: 0, totalConversions: 0 });
 
   return {
+    rawSpend: totals.totalSpend,
+    rawConversionsValue: totals.totalConversionsValue,
+    rawClicks: totals.totalClicks,
+    rawImpressions: totals.totalImpressions,
+    rawConversions: totals.totalConversions,
     spend: Number(totals.totalSpend.toFixed(2)),
     roas: totals.totalSpend > 0 ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2)) : 0
   };
@@ -482,22 +520,42 @@ export async function getMetaSummary(req, res, next) {
       yesterday: {
         metaspend: calculateMetrics(metaYesterday.metaspend, metaDayBefore.metaspend),
         metaroas: calculateMetrics(metaYesterday.metaroas, metaDayBefore.metaroas),
+        metacpc: calculateMetrics(metaYesterday.metacpc, metaDayBefore.metacpc),
+        metacpm: calculateMetrics(metaYesterday.metacpm, metaDayBefore.metacpm),
+        metactr: calculateMetrics(metaYesterday.metactr, metaDayBefore.metactr),
+        metacpp: calculateMetrics(metaYesterday.metacpp, metaDayBefore.metacpp),
       },
       last7Days: {
         metaspend: calculateMetrics(metaLast7.metaspend, metaPrev7.metaspend),
         metaroas: calculateMetrics(metaLast7.metaroas, metaPrev7.metaroas),
+        metacpc: calculateMetrics(metaLast7.metacpc, metaPrev7.metacpc),
+        metacpm: calculateMetrics(metaLast7.metacpm, metaPrev7.metacpm),
+        metactr: calculateMetrics(metaLast7.metactr, metaPrev7.metactr),
+        metacpp: calculateMetrics(metaLast7.metacpp, metaPrev7.metacpp),
       },
       last14Days: {
         metaspend: calculateMetrics(metaLast14.metaspend, metaPrev14.metaspend),
         metaroas: calculateMetrics(metaLast14.metaroas, metaPrev14.metaroas),
+        metacpc: calculateMetrics(metaLast14.metacpc, metaPrev14.metacpc),
+        metacpm: calculateMetrics(metaLast14.metacpm, metaPrev14.metacpm),
+        metactr: calculateMetrics(metaLast14.metactr, metaPrev14.metactr),
+        metacpp: calculateMetrics(metaLast14.metacpp, metaPrev14.metacpp),
       },
       last30Days: {
         metaspend: calculateMetrics(metaLast30.metaspend, metaPrev30.metaspend),
         metaroas: calculateMetrics(metaLast30.metaroas, metaPrev30.metaroas),
+        metacpc: calculateMetrics(metaLast30.metacpc, metaPrev30.metacpc),
+        metacpm: calculateMetrics(metaLast30.metacpm, metaPrev30.metacpm),
+        metactr: calculateMetrics(metaLast30.metactr, metaPrev30.metactr),
+        metacpp: calculateMetrics(metaLast30.metacpp, metaPrev30.metacpp),
       },
       quarterly: {
         metaspend: calculateMetrics(metaQuarter.metaspend, metaPrevQuarter.metaspend),
         metaroas: calculateMetrics(metaQuarter.metaroas, metaPrevQuarter.metaroas),
+        metacpc: calculateMetrics(metaQuarter.metacpc, metaPrevQuarter.metacpc),
+        metacpm: calculateMetrics(metaQuarter.metacpm, metaPrevQuarter.metacpm),
+        metactr: calculateMetrics(metaQuarter.metactr, metaPrevQuarter.metactr),
+        metacpp: calculateMetrics(metaQuarter.metacpp, metaPrevQuarter.metacpp),
       }
     };
 
@@ -614,37 +672,74 @@ export async function getGoogleAdsSummary(req, res) {
     const googleAccountsData = await Promise.all(googleAdsPromises);
 
     // Aggregate data from all accounts
-    const aggregatedData = Array.from({ length: 10 }, () => ({ spend: 0, roas: 0 }));
+    const aggregatedData = Array.from({ length: 10 }, () => ({
+      rawSpend: 0, rawConversionsValue: 0, rawClicks: 0, rawImpressions: 0, rawConversions: 0
+    }));
 
     googleAccountsData.forEach(accountData => {
       if (accountData) {
         accountData.forEach((periodData, index) => {
-          aggregatedData[index].spend += periodData.spend;
-          aggregatedData[index].roas += periodData.roas;
+          aggregatedData[index].rawSpend += periodData.rawSpend || 0;
+          aggregatedData[index].rawConversionsValue += periodData.rawConversionsValue || 0;
+          aggregatedData[index].rawClicks += periodData.rawClicks || 0;
+          aggregatedData[index].rawImpressions += periodData.rawImpressions || 0;
+          aggregatedData[index].rawConversions += periodData.rawConversions || 0;
         });
       }
     });
 
+    const calculateRates = (data) => {
+      const spend = Number(data.rawSpend.toFixed(2));
+      const roas = data.rawSpend > 0 ? Number((data.rawConversionsValue / data.rawSpend).toFixed(2)) : 0;
+      const cpc = data.rawClicks > 0 ? Number((data.rawSpend / data.rawClicks).toFixed(2)) : 0;
+      const cpm = data.rawImpressions > 0 ? Number(((data.rawSpend / data.rawImpressions) * 1000).toFixed(2)) : 0;
+      const ctr = data.rawImpressions > 0 ? Number(((data.rawClicks / data.rawImpressions) * 100).toFixed(2)) : 0;
+      const cpp = data.rawConversions > 0 ? Number((data.rawSpend / data.rawConversions).toFixed(2)) : 0;
+      return { spend, roas, cpc, cpm, ctr, cpp };
+    };
+
+    const finalAggregated = aggregatedData.map(calculateRates);
+
     const periodData = {
       yesterday: {
-        googlespend: calculateMetrics(aggregatedData[0].spend, aggregatedData[1].spend),
-        googleroas: calculateMetrics(aggregatedData[0].roas, aggregatedData[1].roas),
+        googlespend: calculateMetrics(finalAggregated[0].spend, finalAggregated[1].spend),
+        googleroas: calculateMetrics(finalAggregated[0].roas, finalAggregated[1].roas),
+        googlecpc: calculateMetrics(finalAggregated[0].cpc, finalAggregated[1].cpc),
+        googlecpm: calculateMetrics(finalAggregated[0].cpm, finalAggregated[1].cpm),
+        googlectr: calculateMetrics(finalAggregated[0].ctr, finalAggregated[1].ctr),
+        googlecpp: calculateMetrics(finalAggregated[0].cpp, finalAggregated[1].cpp),
       },
       last7Days: {
-        googlespend: calculateMetrics(aggregatedData[2].spend, aggregatedData[3].spend),
-        googleroas: calculateMetrics(aggregatedData[2].roas, aggregatedData[3].roas),
+        googlespend: calculateMetrics(finalAggregated[2].spend, finalAggregated[3].spend),
+        googleroas: calculateMetrics(finalAggregated[2].roas, finalAggregated[3].roas),
+        googlecpc: calculateMetrics(finalAggregated[2].cpc, finalAggregated[3].cpc),
+        googlecpm: calculateMetrics(finalAggregated[2].cpm, finalAggregated[3].cpm),
+        googlectr: calculateMetrics(finalAggregated[2].ctr, finalAggregated[3].ctr),
+        googlecpp: calculateMetrics(finalAggregated[2].cpp, finalAggregated[3].cpp),
       },
       last14Days: {
-        googlespend: calculateMetrics(aggregatedData[4].spend, aggregatedData[5].spend),
-        googleroas: calculateMetrics(aggregatedData[4].roas, aggregatedData[5].roas),
+        googlespend: calculateMetrics(finalAggregated[4].spend, finalAggregated[5].spend),
+        googleroas: calculateMetrics(finalAggregated[4].roas, finalAggregated[5].roas),
+        googlecpc: calculateMetrics(finalAggregated[4].cpc, finalAggregated[5].cpc),
+        googlecpm: calculateMetrics(finalAggregated[4].cpm, finalAggregated[5].cpm),
+        googlectr: calculateMetrics(finalAggregated[4].ctr, finalAggregated[5].ctr),
+        googlecpp: calculateMetrics(finalAggregated[4].cpp, finalAggregated[5].cpp),
       },
       last30Days: {
-        googlespend: calculateMetrics(aggregatedData[6].spend, aggregatedData[7].spend),
-        googleroas: calculateMetrics(aggregatedData[6].roas, aggregatedData[7].roas),
+        googlespend: calculateMetrics(finalAggregated[6].spend, finalAggregated[7].spend),
+        googleroas: calculateMetrics(finalAggregated[6].roas, finalAggregated[7].roas),
+        googlecpc: calculateMetrics(finalAggregated[6].cpc, finalAggregated[7].cpc),
+        googlecpm: calculateMetrics(finalAggregated[6].cpm, finalAggregated[7].cpm),
+        googlectr: calculateMetrics(finalAggregated[6].ctr, finalAggregated[7].ctr),
+        googlecpp: calculateMetrics(finalAggregated[6].cpp, finalAggregated[7].cpp),
       },
       quarterly: {
-        googlespend: calculateMetrics(aggregatedData[8].spend, aggregatedData[9].spend),
-        googleroas: calculateMetrics(aggregatedData[8].roas, aggregatedData[9].roas),
+        googlespend: calculateMetrics(finalAggregated[8].spend, finalAggregated[9].spend),
+        googleroas: calculateMetrics(finalAggregated[8].roas, finalAggregated[9].roas),
+        googlecpc: calculateMetrics(finalAggregated[8].cpc, finalAggregated[9].cpc),
+        googlecpm: calculateMetrics(finalAggregated[8].cpm, finalAggregated[9].cpm),
+        googlectr: calculateMetrics(finalAggregated[8].ctr, finalAggregated[9].ctr),
+        googlecpp: calculateMetrics(finalAggregated[8].cpp, finalAggregated[9].cpp),
       }
     };
 

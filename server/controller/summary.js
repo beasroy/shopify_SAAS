@@ -1,8 +1,8 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import AdMetrics from "../models/AdMetrics.js";
-import axios from 'axios'
-import { OAuth2Client } from 'google-auth-library';
+import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 import { GoogleAdsApi } from "google-ads-api";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -17,56 +17,72 @@ export const client = new GoogleAdsApi({
 // Helper function for percentage change calculation
 function getPercentageChange(current, previous) {
   if (!previous) return 0;
-  return Number(((current - previous) / previous * 100).toFixed(2));
+  return Number((((current - previous) / previous) * 100).toFixed(2));
 }
 // Helper function for date formatting
-export const formatDate = date => date.toISOString().split('T')[0];
+export const formatDate = (date) => date.toISOString().split("T")[0];
 
-export function buildMetricObject(period, currentStart, currentEnd, prevStart, prevEnd, currentValue, prevValue) {
-  const isSpend = typeof currentValue === 'number' && currentValue % 1 !== 0;
+export function buildMetricObject(
+  period,
+  currentStart,
+  currentEnd,
+  prevStart,
+  prevEnd,
+  currentValue,
+  prevValue,
+) {
+  const isSpend = typeof currentValue === "number" && currentValue % 1 !== 0;
   const value = isSpend ? Math.round(currentValue) : Number(currentValue);
-  const prevValueFormatted = isSpend ? Math.round(prevValue) : Number(prevValue);
+  const prevValueFormatted = isSpend
+    ? Math.round(prevValue)
+    : Number(prevValue);
 
   return {
     period,
     dateRange: {
       current: {
         start: formatDate(currentStart),
-        end: formatDate(currentEnd)
+        end: formatDate(currentEnd),
       },
       previous: {
         start: formatDate(prevStart),
-        end: formatDate(prevEnd)
-      }
+        end: formatDate(prevEnd),
+      },
     },
     current: value,
     previous: prevValueFormatted,
     change: getPercentageChange(value, prevValueFormatted),
-    trend: currentValue >= prevValue ? 'up' : 'down'
+    trend: currentValue >= prevValue ? "up" : "down",
   };
 }
 // Create date ranges more efficiently
 
 // Function to fetch analytics data
-export async function fetchAnalyticsData(startDate, endDate, propertyId, accessToken) {
+export async function fetchAnalyticsData(
+  startDate,
+  endDate,
+  propertyId,
+  accessToken,
+) {
   try {
     console.log(`Fetching analytics data: 
       Start: ${startDate}, 
       End: ${endDate}, 
-      PropertyId: ${propertyId}`
-    );
+      PropertyId: ${propertyId}`);
 
     const requestBody = {
-      dateRanges: [{
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate)
-      }],
+      dateRanges: [
+        {
+          startDate: formatDate(startDate),
+          endDate: formatDate(endDate),
+        },
+      ],
       metrics: [
-        { name: 'sessions' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' },
-      ]
+        { name: "sessions" },
+        { name: "addToCarts" },
+        { name: "checkouts" },
+        { name: "ecommercePurchases" },
+      ],
     };
 
     const response = await axios.post(
@@ -75,57 +91,75 @@ export async function fetchAnalyticsData(startDate, endDate, propertyId, accessT
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
         timeout: 15000, // 15 second timeout per request
-      }
+      },
     );
     // Sum up all rows for the date range
     const rows = response?.data?.rows || [];
-    const aggregatedData = rows.reduce((acc, row) => {
-      // Ensure row and metricValues exist
-      if (!row || !row.metricValues) {
-        console.warn('Incomplete row data:', row);
-        return acc;
-      }
+    const aggregatedData = rows.reduce(
+      (acc, row) => {
+        // Ensure row and metricValues exist
+        if (!row || !row.metricValues) {
+          console.warn("Incomplete row data:", row);
+          return acc;
+        }
 
-      return {
-        sessions: acc.sessions + Number(row.metricValues[0]?.value || 0),
-        addToCarts: acc.addToCarts + Number(row.metricValues[1]?.value || 0),
-        checkouts: acc.checkouts + Number(row.metricValues[2]?.value || 0),
-        purchases: acc.purchases + Number(row.metricValues[3]?.value || 0),
-      };
-    }, { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 });
+        return {
+          sessions: acc.sessions + Number(row.metricValues[0]?.value || 0),
+          addToCarts: acc.addToCarts + Number(row.metricValues[1]?.value || 0),
+          checkouts: acc.checkouts + Number(row.metricValues[2]?.value || 0),
+          purchases: acc.purchases + Number(row.metricValues[3]?.value || 0),
+        };
+      },
+      { sessions: 0, addToCarts: 0, checkouts: 0, purchases: 0 },
+    );
 
     // Calculate rates
     const calculateRate = (numerator, denominator) =>
-      denominator > 0 ? Number(((numerator / denominator) * 100).toFixed(2)) : 0;
+      denominator > 0
+        ? Number(((numerator / denominator) * 100).toFixed(2))
+        : 0;
 
     const result = {
       sessions: aggregatedData.sessions,
       addToCarts: aggregatedData.addToCarts,
       checkouts: aggregatedData.checkouts,
       purchases: aggregatedData.purchases,
-      addToCartRate: calculateRate(aggregatedData.addToCarts, aggregatedData.sessions),
-      checkoutRate: calculateRate(aggregatedData.checkouts, aggregatedData.sessions),
-      purchaseRate: calculateRate(aggregatedData.purchases, aggregatedData.sessions)
+      addToCartRate: calculateRate(
+        aggregatedData.addToCarts,
+        aggregatedData.sessions,
+      ),
+      checkoutRate: calculateRate(
+        aggregatedData.checkouts,
+        aggregatedData.sessions,
+      ),
+      purchaseRate: calculateRate(
+        aggregatedData.purchases,
+        aggregatedData.sessions,
+      ),
     };
 
-    console.log('Processed Analytics Data:', result);
+    console.log("Processed Analytics Data:", result);
 
     return result;
   } catch (error) {
-    console.error('Error fetching analytics data:', {
+    console.error("Error fetching analytics data:", {
       message: error.message,
       response: error.response?.data,
-      status: error.response?.status
+      status: error.response?.status,
     });
     throw error;
   }
 }
 // Helper function for retrying API calls with exponential backoff
-export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
+export async function retryWithBackoff(
+  fn,
+  maxRetries = 3,
+  initialDelay = 1000,
+) {
   let lastError;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -137,8 +171,10 @@ export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) 
       }
       if (attempt < maxRetries - 1) {
         const delay = initialDelay * Math.pow(2, attempt);
-        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(
+          `Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -148,12 +184,12 @@ export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) 
 // Helper for custom date calculation from query
 export function getCustomDates(query) {
   if (!query.customStart || !query.customEnd) return null;
-  
+
   const customStart = new Date(query.customStart);
   const customEnd = new Date(query.customEnd);
-  
+
   let customCompareStart, customCompareEnd;
-  
+
   if (query.customCompareStart && query.customCompareEnd) {
     customCompareStart = new Date(query.customCompareStart);
     customCompareEnd = new Date(query.customCompareEnd);
@@ -163,10 +199,10 @@ export function getCustomDates(query) {
     // The previous period ends 1 day before customStart
     customCompareEnd = new Date(customStart);
     customCompareEnd.setDate(customCompareEnd.getDate() - 1);
-    
+
     customCompareStart = new Date(customCompareEnd.getTime() - duration);
   }
-  
+
   return { customStart, customEnd, customCompareStart, customCompareEnd };
 }
 
@@ -176,24 +212,30 @@ export function calculateMetrics(current, previous) {
   const numPrevious = Number(previous);
   const roundedCurrent = Number(numCurrent.toFixed(2));
   const roundedPrevious = Number(numPrevious.toFixed(2));
-  const change = roundedPrevious > 0
-    ? Number((((roundedCurrent - roundedPrevious) / roundedPrevious) * 100).toFixed(2))
-    : 0;
-  let trend = 'neutral';
-  if (roundedCurrent > roundedPrevious) trend = 'up';
-  if (roundedCurrent < roundedPrevious) trend = 'down';
+  const change =
+    roundedPrevious > 0
+      ? Number(
+          (
+            ((roundedCurrent - roundedPrevious) / roundedPrevious) *
+            100
+          ).toFixed(2),
+        )
+      : 0;
+  let trend = "neutral";
+  if (roundedCurrent > roundedPrevious) trend = "up";
+  if (roundedCurrent < roundedPrevious) trend = "down";
   return {
     current: roundedCurrent,
     previous: roundedPrevious,
     change,
-    trend
+    trend,
   };
 }
 
 function parseMetaErrorPayload(payload) {
   if (!payload) return null;
 
-  if (typeof payload === 'string') {
+  if (typeof payload === "string") {
     try {
       return JSON.parse(payload);
     } catch {
@@ -207,7 +249,7 @@ function parseMetaErrorPayload(payload) {
 function isMetaReconnectError(status, metaError = {}) {
   const code = metaError.code;
   const subcode = metaError.error_subcode;
-  const message = String(metaError.message || '').toLowerCase();
+  const message = String(metaError.message || "").toLowerCase();
 
   return (
     status === 401 ||
@@ -215,11 +257,11 @@ function isMetaReconnectError(status, metaError = {}) {
     code === 190 ||
     subcode === 463 ||
     subcode === 467 ||
-    message.includes('access token') ||
-    message.includes('session has expired') ||
-    message.includes('invalid oauth') ||
-    message.includes('not authorized') ||
-    message.includes('permission')
+    message.includes("access token") ||
+    message.includes("session has expired") ||
+    message.includes("invalid oauth") ||
+    message.includes("not authorized") ||
+    message.includes("permission")
   );
 }
 
@@ -235,155 +277,201 @@ function normalizeMetaSummaryError(error) {
   if (isMetaReconnectError(status, metaError)) {
     return new ApiError(
       403,
-      'Meta access expired or permission was denied. Please reconnect Facebook account.',
+      "Meta access expired or permission was denied. Please reconnect Facebook account.",
       {
-        code: 'META_RECONNECT_REQUIRED',
-        provider: 'meta',
+        code: "META_RECONNECT_REQUIRED",
+        provider: "meta",
         reconnectRequired: true,
-        publicError: 'Meta authorization failed.',
-        retryable: false
-      }
+        publicError: "Meta authorization failed.",
+        retryable: false,
+      },
     );
   }
 
   if (status === 400) {
     return new ApiError(
       400,
-      metaError.message || 'Meta request was rejected.',
+      metaError.message || "Meta request was rejected.",
       {
-        code: 'META_BAD_REQUEST',
-        provider: 'meta',
-        publicError: 'Failed to fetch Meta summary.',
-        retryable: false
-      }
+        code: "META_BAD_REQUEST",
+        provider: "meta",
+        publicError: "Failed to fetch Meta summary.",
+        retryable: false,
+      },
     );
   }
 
   return new ApiError(
     500,
-    metaError.message || error?.message || 'Unexpected error while fetching Meta summary.',
+    metaError.message ||
+      error?.message ||
+      "Unexpected error while fetching Meta summary.",
     {
-      code: 'META_REQUEST_FAILED',
-      provider: 'meta',
-      publicError: 'Failed to fetch Meta summary.'
-    }
+      code: "META_REQUEST_FAILED",
+      provider: "meta",
+      publicError: "Failed to fetch Meta summary.",
+    },
   );
 }
 
 // Function to fetch Facebook Ads data
-export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccountIds) {
-  return retryWithBackoff(async () => {
-    const batchRequests = adAccountIds.map((accountId) => ({
-      method: 'GET',
-      relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values,clicks,impressions,actions&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
-    }));
+export async function fetchMetaAdsData(
+  startDate,
+  endDate,
+  accessToken,
+  adAccountIds,
+) {
+  return retryWithBackoff(
+    async () => {
+      const batchRequests = adAccountIds.map((accountId) => ({
+        method: "GET",
+        relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values,clicks,impressions,actions&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+      }));
 
-    let response;
+      let response;
 
-    try {
-      response = await axios.post(
-        `https://graph.facebook.com/v22.0/`,
-        { batch: batchRequests },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          params: { access_token: accessToken },
-          timeout: 15000, // 15 second timeout per request
-        }
-      );
-    } catch (error) {
-      throw normalizeMetaSummaryError(error);
-    }
-
-    let aggregatedData = {
-      metaspend: 0,
-      metarevenue: 0,
-      metaclicks: 0,
-      metaimpressions: 0,
-      metapurchases: 0,
-      metaroas: 0,
-      metacpc: 0,
-      metacpm: 0,
-      metactr: 0,
-      metacpp: 0,
-    };
-
-    for (let i = 0; i < adAccountIds.length; i++) {
-      const accountResponse = response.data[i];
-
-      if (!accountResponse) {
-        throw new ApiError(
-          500,
-          'Meta returned an incomplete batch response.',
+      try {
+        response = await axios.post(
+          `https://graph.facebook.com/v22.0/`,
+          { batch: batchRequests },
           {
-            code: 'META_EMPTY_BATCH_RESPONSE',
-            provider: 'meta',
-            publicError: 'Failed to fetch Meta summary.'
-          }
+            headers: { "Content-Type": "application/json" },
+            params: { access_token: accessToken },
+            timeout: 15000, // 15 second timeout per request
+          },
         );
+      } catch (error) {
+        throw normalizeMetaSummaryError(error);
       }
 
-      if (accountResponse.code !== 200) {
-        throw normalizeMetaSummaryError({
-          response: {
-            status: accountResponse.code,
-            data: parseMetaErrorPayload(accountResponse.body)
-          }
-        });
+      let aggregatedData = {
+        metaspend: 0,
+        metarevenue: 0,
+        metaclicks: 0,
+        metaimpressions: 0,
+        metapurchases: 0,
+        metaroas: 0,
+        metacpc: 0,
+        metacpm: 0,
+        metactr: 0,
+        metacpp: 0,
+      };
+
+      for (let i = 0; i < adAccountIds.length; i++) {
+        const accountResponse = response.data[i];
+
+        if (!accountResponse) {
+          throw new ApiError(
+            500,
+            "Meta returned an incomplete batch response.",
+            {
+              code: "META_EMPTY_BATCH_RESPONSE",
+              provider: "meta",
+              publicError: "Failed to fetch Meta summary.",
+            },
+          );
+        }
+
+        if (accountResponse.code !== 200) {
+          throw normalizeMetaSummaryError({
+            response: {
+              status: accountResponse.code,
+              data: parseMetaErrorPayload(accountResponse.body),
+            },
+          });
+        }
+
+        const accountBody = parseMetaErrorPayload(accountResponse.body);
+
+        if (accountBody?.error) {
+          const normalizedStatus = isMetaReconnectError(
+            accountResponse.code,
+            accountBody.error,
+          )
+            ? 403
+            : 400;
+          throw normalizeMetaSummaryError({
+            response: {
+              status: normalizedStatus,
+              data: accountBody,
+            },
+          });
+        }
+
+        if (accountBody?.data?.length > 0) {
+          const insight = accountBody.data[0];
+          const revenue =
+            insight.action_values?.find(
+              (action) => action.action_type === "purchase",
+            )?.value || 0;
+          const purchase =
+            insight.actions?.find((action) => action.action_type === "purchase")
+              ?.value || 0;
+
+          aggregatedData.metaspend += Number(insight.spend || 0);
+          aggregatedData.metarevenue += Number(revenue);
+          aggregatedData.metaclicks += Number(insight.clicks || 0);
+          aggregatedData.metaimpressions += Number(insight.impressions || 0);
+          aggregatedData.metapurchases += Number(purchase);
+        }
       }
 
-      const accountBody = parseMetaErrorPayload(accountResponse.body);
+      aggregatedData.metaroas =
+        aggregatedData.metaspend > 0
+          ? Number(
+              (aggregatedData.metarevenue / aggregatedData.metaspend).toFixed(
+                2,
+              ),
+            )
+          : 0;
 
-      if (accountBody?.error) {
-        const normalizedStatus = isMetaReconnectError(accountResponse.code, accountBody.error) ? 403 : 400;
-        throw normalizeMetaSummaryError({
-          response: {
-            status: normalizedStatus,
-            data: accountBody
-          }
-        });
-      }
+      aggregatedData.metacpc =
+        aggregatedData.metaclicks > 0
+          ? Number(
+              (aggregatedData.metaspend / aggregatedData.metaclicks).toFixed(2),
+            )
+          : 0;
 
-      if (accountBody?.data?.length > 0) {
-        const insight = accountBody.data[0];
-        const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || 0;
-        const purchase = insight.actions?.find((action) => action.action_type === 'purchase')?.value || 0;
+      aggregatedData.metacpm =
+        aggregatedData.metaimpressions > 0
+          ? Number(
+              (
+                (aggregatedData.metaspend / aggregatedData.metaimpressions) *
+                1000
+              ).toFixed(2),
+            )
+          : 0;
 
-        aggregatedData.metaspend += Number(insight.spend || 0);
-        aggregatedData.metarevenue += Number(revenue);
-        aggregatedData.metaclicks += Number(insight.clicks || 0);
-        aggregatedData.metaimpressions += Number(insight.impressions || 0);
-        aggregatedData.metapurchases += Number(purchase);
-      }
-    }
+      aggregatedData.metactr =
+        aggregatedData.metaimpressions > 0
+          ? Number(
+              (
+                (aggregatedData.metaclicks / aggregatedData.metaimpressions) *
+                100
+              ).toFixed(2),
+            )
+          : 0;
 
-    aggregatedData.metaroas = aggregatedData.metaspend > 0
-      ? Number((aggregatedData.metarevenue / aggregatedData.metaspend).toFixed(2))
-      : 0;
-    
-    aggregatedData.metacpc = aggregatedData.metaclicks > 0
-      ? Number((aggregatedData.metaspend / aggregatedData.metaclicks).toFixed(2))
-      : 0;
+      aggregatedData.metacpp =
+        aggregatedData.metapurchases > 0
+          ? Number(
+              (aggregatedData.metaspend / aggregatedData.metapurchases).toFixed(
+                2,
+              ),
+            )
+          : 0;
 
-    aggregatedData.metacpm = aggregatedData.metaimpressions > 0
-      ? Number(((aggregatedData.metaspend / aggregatedData.metaimpressions) * 1000).toFixed(2))
-      : 0;
-
-    aggregatedData.metactr = aggregatedData.metaimpressions > 0
-      ? Number(((aggregatedData.metaclicks / aggregatedData.metaimpressions) * 100).toFixed(2))
-      : 0;
-
-    aggregatedData.metacpp = aggregatedData.metapurchases > 0
-      ? Number((aggregatedData.metaspend / aggregatedData.metapurchases).toFixed(2))
-      : 0;
-
-    return aggregatedData;
-  }, 2, 1500); // 2 retries with 1.5s initial delay
+      return aggregatedData;
+    },
+    2,
+    1500,
+  ); // 2 retries with 1.5s initial delay
 }
 
 export async function fetchGoogleAdsData(startDate, endDate, customer) {
   // Format dates once outside the function call
-  const formattedStartDate = startDate.toISOString().split('T')[0];
-  const formattedEndDate = endDate.toISOString().split('T')[0];
+  const formattedStartDate = startDate.toISOString().split("T")[0];
+  const formattedEndDate = endDate.toISOString().split("T")[0];
 
   const report = await customer.report({
     entity: "customer",
@@ -393,23 +481,32 @@ export async function fetchGoogleAdsData(startDate, endDate, customer) {
       "metrics.conversions_value",
       "metrics.clicks",
       "metrics.impressions",
-      "metrics.conversions"
+      "metrics.conversions",
     ],
     from_date: formattedStartDate,
     to_date: formattedEndDate,
   });
 
   // Use reduce for better performance when aggregating
-  const totals = report.reduce((acc, row) => {
-    const costMicros = row.metrics.cost_micros || 0;
-    const spend = costMicros / 1_000_000;
-    acc.totalSpend += spend;
-    acc.totalConversionsValue += row.metrics.conversions_value || 0;
-    acc.totalClicks += row.metrics.clicks || 0;
-    acc.totalImpressions += row.metrics.impressions || 0;
-    acc.totalConversions += row.metrics.conversions || 0;
-    return acc;
-  }, { totalSpend: 0, totalConversionsValue: 0, totalClicks: 0, totalImpressions: 0, totalConversions: 0 });
+  const totals = report.reduce(
+    (acc, row) => {
+      const costMicros = row.metrics.cost_micros || 0;
+      const spend = costMicros / 1_000_000;
+      acc.totalSpend += spend;
+      acc.totalConversionsValue += row.metrics.conversions_value || 0;
+      acc.totalClicks += row.metrics.clicks || 0;
+      acc.totalImpressions += row.metrics.impressions || 0;
+      acc.totalConversions += row.metrics.conversions || 0;
+      return acc;
+    },
+    {
+      totalSpend: 0,
+      totalConversionsValue: 0,
+      totalClicks: 0,
+      totalImpressions: 0,
+      totalConversions: 0,
+    },
+  );
 
   return {
     rawSpend: totals.totalSpend,
@@ -418,13 +515,16 @@ export async function fetchGoogleAdsData(startDate, endDate, customer) {
     rawImpressions: totals.totalImpressions,
     rawConversions: totals.totalConversions,
     spend: Number(totals.totalSpend.toFixed(2)),
-    roas: totals.totalSpend > 0 ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2)) : 0
+    roas:
+      totals.totalSpend > 0
+        ? Number((totals.totalConversionsValue / totals.totalSpend).toFixed(2))
+        : 0,
   };
 }
 export async function getGoogleAccessToken(refreshToken) {
   const oAuth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
+    process.env.GOOGLE_CLIENT_SECRET,
   );
 
   oAuth2Client.setCredentials({ refresh_token: refreshToken });
@@ -433,13 +533,17 @@ export async function getGoogleAccessToken(refreshToken) {
     const { token } = await oAuth2Client.getAccessToken();
     return token;
   } catch (error) {
-    console.error('Error fetching access token:', error);
-    throw new Error('Failed to generate access token.');
+    console.error("Error fetching access token:", error);
+    throw new Error("Failed to generate access token.");
   }
 }
 
 // Aggregate Shopify metrics from AdMetrics table for a date range (for comparison)
-export async function fetchShopifyMetricsFromAdMetrics(brandId, startDate, endDate) {
+export async function fetchShopifyMetricsFromAdMetrics(
+  brandId,
+  startDate,
+  endDate,
+) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   start.setHours(0, 0, 0, 0);
@@ -447,20 +551,33 @@ export async function fetchShopifyMetricsFromAdMetrics(brandId, startDate, endDa
 
   const docs = await AdMetrics.find({
     brandId,
-    date: { $gte: start, $lte: end }
+    date: { $gte: start, $lte: end },
   }).lean();
 
-  const totalSales = docs.reduce((sum, d) => sum + (Number(d.totalSales) || 0), 0);
-  const refundAmount = docs.reduce((sum, d) => sum + (Number(d.refundAmount) || 0), 0);
-  const metaSpend = docs.reduce((sum, d) => sum + (Number(d.metaSpend) || 0), 0);
-  const googleSpend = docs.reduce((sum, d) => sum + (Number(d.googleSpend) || 0), 0);
+  const totalSales = docs.reduce(
+    (sum, d) => sum + (Number(d.totalSales) || 0),
+    0,
+  );
+  const refundAmount = docs.reduce(
+    (sum, d) => sum + (Number(d.refundAmount) || 0),
+    0,
+  );
+  const metaSpend = docs.reduce(
+    (sum, d) => sum + (Number(d.metaSpend) || 0),
+    0,
+  );
+  const googleSpend = docs.reduce(
+    (sum, d) => sum + (Number(d.googleSpend) || 0),
+    0,
+  );
   const totalSpend = metaSpend + googleSpend;
-  const roas = totalSpend > 0 ? Number((totalSales / totalSpend).toFixed(2)) : 0;
+  const roas =
+    totalSpend > 0 ? Number((totalSales / totalSpend).toFixed(2)) : 0;
 
   return {
     totalSales: Number(totalSales.toFixed(2)),
     refundAmount: Number(refundAmount.toFixed(2)),
-    roas
+    roas,
   };
 }
 
@@ -472,7 +589,7 @@ export async function getMetaSummary(req, res, next) {
     if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID is required.'
+        message: "Brand ID is required.",
       });
     }
 
@@ -480,7 +597,7 @@ export async function getMetaSummary(req, res, next) {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.'
+        message: "Brand not found.",
       });
     }
 
@@ -488,8 +605,8 @@ export async function getMetaSummary(req, res, next) {
     if (!brand.fbAdAccounts?.length || !brand.fbAccessToken) {
       return res.status(200).json({
         success: false,
-        message: 'Meta Ads not configured for this brand.',
-        periodData: null
+        message: "Meta Ads not configured for this brand.",
+        periodData: null,
       });
     }
 
@@ -524,39 +641,120 @@ export async function getMetaSummary(req, res, next) {
     const previousQuarterEnd = new Date(quarterStart);
     previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
 
-    console.log(`[Meta API] Starting fetch for brand ${brandId} with ${brand.fbAdAccounts.length} accounts`);
+    console.log(
+      `[Meta API] Starting fetch for brand ${brandId} with ${brand.fbAdAccounts.length} accounts`,
+    );
     const startTime = Date.now();
 
     const customDates = getCustomDates(req.query);
 
     // Fetch all Meta data in parallel
     const promises = [
-      fetchMetaAdsData(yesterday, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(dayBeforeYesterday, dayBeforeYesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(last7DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(previous7DaysStart, previous7DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(last14DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(previous14DaysStart, previous14DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(last30DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(previous30DaysStart, previous30DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(quarterStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-      fetchMetaAdsData(previousQuarterStart, previousQuarterEnd, brand.fbAccessToken, brand.fbAdAccounts)
+      fetchMetaAdsData(
+        yesterday,
+        yesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        dayBeforeYesterday,
+        dayBeforeYesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        last7DaysStart,
+        yesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        previous7DaysStart,
+        previous7DaysEnd,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        last14DaysStart,
+        yesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        previous14DaysStart,
+        previous14DaysEnd,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        last30DaysStart,
+        yesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        previous30DaysStart,
+        previous30DaysEnd,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        quarterStart,
+        yesterday,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
+      fetchMetaAdsData(
+        previousQuarterStart,
+        previousQuarterEnd,
+        brand.fbAccessToken,
+        brand.fbAdAccounts,
+      ),
     ];
 
     if (customDates) {
       promises.push(
-        fetchMetaAdsData(customDates.customStart, customDates.customEnd, brand.fbAccessToken, brand.fbAdAccounts),
-        fetchMetaAdsData(customDates.customCompareStart, customDates.customCompareEnd, brand.fbAccessToken, brand.fbAdAccounts)
+        fetchMetaAdsData(
+          customDates.customStart,
+          customDates.customEnd,
+          brand.fbAccessToken,
+          brand.fbAdAccounts,
+        ),
+        fetchMetaAdsData(
+          customDates.customCompareStart,
+          customDates.customCompareEnd,
+          brand.fbAccessToken,
+          brand.fbAdAccounts,
+        ),
       );
     }
 
     const results = await Promise.all(promises);
-    const [metaYesterday, metaDayBefore, metaLast7, metaPrev7, metaLast14, metaPrev14, metaLast30, metaPrev30, metaQuarter, metaPrevQuarter, metaCustom, metaPrevCustom] = results;
+    const [
+      metaYesterday,
+      metaDayBefore,
+      metaLast7,
+      metaPrev7,
+      metaLast14,
+      metaPrev14,
+      metaLast30,
+      metaPrev30,
+      metaQuarter,
+      metaPrevQuarter,
+      metaCustom,
+      metaPrevCustom,
+    ] = results;
 
     const periodData = {
       yesterday: {
-        metaspend: calculateMetrics(metaYesterday.metaspend, metaDayBefore.metaspend),
-        metaroas: calculateMetrics(metaYesterday.metaroas, metaDayBefore.metaroas),
+        metaspend: calculateMetrics(
+          metaYesterday.metaspend,
+          metaDayBefore.metaspend,
+        ),
+        metaroas: calculateMetrics(
+          metaYesterday.metaroas,
+          metaDayBefore.metaroas,
+        ),
         metacpc: calculateMetrics(metaYesterday.metacpc, metaDayBefore.metacpc),
         metacpm: calculateMetrics(metaYesterday.metacpm, metaDayBefore.metacpm),
         metactr: calculateMetrics(metaYesterday.metactr, metaDayBefore.metactr),
@@ -587,19 +785,31 @@ export async function getMetaSummary(req, res, next) {
         metacpp: calculateMetrics(metaLast30.metacpp, metaPrev30.metacpp),
       },
       quarterly: {
-        metaspend: calculateMetrics(metaQuarter.metaspend, metaPrevQuarter.metaspend),
-        metaroas: calculateMetrics(metaQuarter.metaroas, metaPrevQuarter.metaroas),
+        metaspend: calculateMetrics(
+          metaQuarter.metaspend,
+          metaPrevQuarter.metaspend,
+        ),
+        metaroas: calculateMetrics(
+          metaQuarter.metaroas,
+          metaPrevQuarter.metaroas,
+        ),
         metacpc: calculateMetrics(metaQuarter.metacpc, metaPrevQuarter.metacpc),
         metacpm: calculateMetrics(metaQuarter.metacpm, metaPrevQuarter.metacpm),
         metactr: calculateMetrics(metaQuarter.metactr, metaPrevQuarter.metactr),
         metacpp: calculateMetrics(metaQuarter.metacpp, metaPrevQuarter.metacpp),
-      }
+      },
     };
 
     if (customDates) {
       periodData.custom = {
-        metaspend: calculateMetrics(metaCustom.metaspend, metaPrevCustom.metaspend),
-        metaroas: calculateMetrics(metaCustom.metaroas, metaPrevCustom.metaroas),
+        metaspend: calculateMetrics(
+          metaCustom.metaspend,
+          metaPrevCustom.metaspend,
+        ),
+        metaroas: calculateMetrics(
+          metaCustom.metaroas,
+          metaPrevCustom.metaroas,
+        ),
         metacpc: calculateMetrics(metaCustom.metacpc, metaPrevCustom.metacpc),
         metacpm: calculateMetrics(metaCustom.metacpm, metaPrevCustom.metacpm),
         metactr: calculateMetrics(metaCustom.metactr, metaPrevCustom.metactr),
@@ -607,21 +817,22 @@ export async function getMetaSummary(req, res, next) {
       };
     }
 
-    console.log(`[Meta API] Successfully fetched in ${Date.now() - startTime}ms`);
+    console.log(
+      `[Meta API] Successfully fetched in ${Date.now() - startTime}ms`,
+    );
 
     return res.status(200).json({
       success: true,
       periodData,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
-
   } catch (error) {
     const normalizedError = normalizeMetaSummaryError(error);
 
     console.error(`[Meta API Error]`, {
       status: normalizedError.status,
       code: normalizedError.code,
-      message: normalizedError.message
+      message: normalizedError.message,
     });
 
     return next(normalizedError);
@@ -636,7 +847,7 @@ export async function getGoogleAdsSummary(req, res) {
     if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID is required.'
+        message: "Brand ID is required.",
       });
     }
 
@@ -644,7 +855,7 @@ export async function getGoogleAdsSummary(req, res) {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.'
+        message: "Brand not found.",
       });
     }
 
@@ -652,8 +863,8 @@ export async function getGoogleAdsSummary(req, res) {
     if (!brand.googleAdAccount?.length || !brand.googleAdsRefreshToken) {
       return res.status(200).json({
         success: false,
-        message: 'Google Ads not configured for this brand.',
-        periodData: null
+        message: "Google Ads not configured for this brand.",
+        periodData: null,
       });
     }
 
@@ -688,7 +899,9 @@ export async function getGoogleAdsSummary(req, res) {
     const previousQuarterEnd = new Date(quarterStart);
     previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
 
-    console.log(`[Google Ads API] Starting fetch for brand ${brandId} with ${brand.googleAdAccount.length} accounts`);
+    console.log(
+      `[Google Ads API] Starting fetch for brand ${brandId} with ${brand.googleAdAccount.length} accounts`,
+    );
     const startTime = Date.now();
 
     const customDates = getCustomDates(req.query);
@@ -702,7 +915,7 @@ export async function getGoogleAdsSummary(req, res) {
       const customer = client.Customer({
         customer_id: adAccountId,
         refresh_token: brand.googleAdsRefreshToken,
-        login_customer_id: managerId
+        login_customer_id: managerId,
       });
 
       const promises = [
@@ -715,13 +928,21 @@ export async function getGoogleAdsSummary(req, res) {
         fetchGoogleAdsData(last30DaysStart, yesterday, customer),
         fetchGoogleAdsData(previous30DaysStart, previous30DaysEnd, customer),
         fetchGoogleAdsData(quarterStart, yesterday, customer),
-        fetchGoogleAdsData(previousQuarterStart, previousQuarterEnd, customer)
+        fetchGoogleAdsData(previousQuarterStart, previousQuarterEnd, customer),
       ];
 
       if (customDates) {
         promises.push(
-          fetchGoogleAdsData(customDates.customStart, customDates.customEnd, customer),
-          fetchGoogleAdsData(customDates.customCompareStart, customDates.customCompareEnd, customer)
+          fetchGoogleAdsData(
+            customDates.customStart,
+            customDates.customEnd,
+            customer,
+          ),
+          fetchGoogleAdsData(
+            customDates.customCompareStart,
+            customDates.customCompareEnd,
+            customer,
+          ),
         );
       }
 
@@ -731,29 +952,54 @@ export async function getGoogleAdsSummary(req, res) {
     const googleAccountsData = await Promise.all(googleAdsPromises);
 
     // Aggregate data from all accounts
-    const aggregatedData = Array.from({ length: customDates ? 12 : 10 }, () => ({
-      rawSpend: 0, rawConversionsValue: 0, rawClicks: 0, rawImpressions: 0, rawConversions: 0
-    }));
+    const aggregatedData = Array.from(
+      { length: customDates ? 12 : 10 },
+      () => ({
+        rawSpend: 0,
+        rawConversionsValue: 0,
+        rawClicks: 0,
+        rawImpressions: 0,
+        rawConversions: 0,
+      }),
+    );
 
-    googleAccountsData.forEach(accountData => {
+    googleAccountsData.forEach((accountData) => {
       if (accountData) {
         accountData.forEach((periodData, index) => {
           aggregatedData[index].rawSpend += periodData.rawSpend || 0;
-          aggregatedData[index].rawConversionsValue += periodData.rawConversionsValue || 0;
+          aggregatedData[index].rawConversionsValue +=
+            periodData.rawConversionsValue || 0;
           aggregatedData[index].rawClicks += periodData.rawClicks || 0;
-          aggregatedData[index].rawImpressions += periodData.rawImpressions || 0;
-          aggregatedData[index].rawConversions += periodData.rawConversions || 0;
+          aggregatedData[index].rawImpressions +=
+            periodData.rawImpressions || 0;
+          aggregatedData[index].rawConversions +=
+            periodData.rawConversions || 0;
         });
       }
     });
 
     const calculateRates = (data) => {
       const spend = Number(data.rawSpend.toFixed(2));
-      const roas = data.rawSpend > 0 ? Number((data.rawConversionsValue / data.rawSpend).toFixed(2)) : 0;
-      const cpc = data.rawClicks > 0 ? Number((data.rawSpend / data.rawClicks).toFixed(2)) : 0;
-      const cpm = data.rawImpressions > 0 ? Number(((data.rawSpend / data.rawImpressions) * 1000).toFixed(2)) : 0;
-      const ctr = data.rawImpressions > 0 ? Number(((data.rawClicks / data.rawImpressions) * 100).toFixed(2)) : 0;
-      const cpp = data.rawConversions > 0 ? Number((data.rawSpend / data.rawConversions).toFixed(2)) : 0;
+      const roas =
+        data.rawSpend > 0
+          ? Number((data.rawConversionsValue / data.rawSpend).toFixed(2))
+          : 0;
+      const cpc =
+        data.rawClicks > 0
+          ? Number((data.rawSpend / data.rawClicks).toFixed(2))
+          : 0;
+      const cpm =
+        data.rawImpressions > 0
+          ? Number(((data.rawSpend / data.rawImpressions) * 1000).toFixed(2))
+          : 0;
+      const ctr =
+        data.rawImpressions > 0
+          ? Number(((data.rawClicks / data.rawImpressions) * 100).toFixed(2))
+          : 0;
+      const cpp =
+        data.rawConversions > 0
+          ? Number((data.rawSpend / data.rawConversions).toFixed(2))
+          : 0;
       return { spend, roas, cpc, cpm, ctr, cpp };
     };
 
@@ -761,72 +1007,181 @@ export async function getGoogleAdsSummary(req, res) {
 
     const periodData = {
       yesterday: {
-        googlespend: calculateMetrics(finalAggregated[0].spend, finalAggregated[1].spend),
-        googleroas: calculateMetrics(finalAggregated[0].roas, finalAggregated[1].roas),
-        googlecpc: calculateMetrics(finalAggregated[0].cpc, finalAggregated[1].cpc),
-        googlecpm: calculateMetrics(finalAggregated[0].cpm, finalAggregated[1].cpm),
-        googlectr: calculateMetrics(finalAggregated[0].ctr, finalAggregated[1].ctr),
-        googlecpp: calculateMetrics(finalAggregated[0].cpp, finalAggregated[1].cpp),
+        googlespend: calculateMetrics(
+          finalAggregated[0].spend,
+          finalAggregated[1].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[0].roas,
+          finalAggregated[1].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[0].cpc,
+          finalAggregated[1].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[0].cpm,
+          finalAggregated[1].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[0].ctr,
+          finalAggregated[1].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[0].cpp,
+          finalAggregated[1].cpp,
+        ),
       },
       last7Days: {
-        googlespend: calculateMetrics(finalAggregated[2].spend, finalAggregated[3].spend),
-        googleroas: calculateMetrics(finalAggregated[2].roas, finalAggregated[3].roas),
-        googlecpc: calculateMetrics(finalAggregated[2].cpc, finalAggregated[3].cpc),
-        googlecpm: calculateMetrics(finalAggregated[2].cpm, finalAggregated[3].cpm),
-        googlectr: calculateMetrics(finalAggregated[2].ctr, finalAggregated[3].ctr),
-        googlecpp: calculateMetrics(finalAggregated[2].cpp, finalAggregated[3].cpp),
+        googlespend: calculateMetrics(
+          finalAggregated[2].spend,
+          finalAggregated[3].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[2].roas,
+          finalAggregated[3].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[2].cpc,
+          finalAggregated[3].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[2].cpm,
+          finalAggregated[3].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[2].ctr,
+          finalAggregated[3].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[2].cpp,
+          finalAggregated[3].cpp,
+        ),
       },
       last14Days: {
-        googlespend: calculateMetrics(finalAggregated[4].spend, finalAggregated[5].spend),
-        googleroas: calculateMetrics(finalAggregated[4].roas, finalAggregated[5].roas),
-        googlecpc: calculateMetrics(finalAggregated[4].cpc, finalAggregated[5].cpc),
-        googlecpm: calculateMetrics(finalAggregated[4].cpm, finalAggregated[5].cpm),
-        googlectr: calculateMetrics(finalAggregated[4].ctr, finalAggregated[5].ctr),
-        googlecpp: calculateMetrics(finalAggregated[4].cpp, finalAggregated[5].cpp),
+        googlespend: calculateMetrics(
+          finalAggregated[4].spend,
+          finalAggregated[5].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[4].roas,
+          finalAggregated[5].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[4].cpc,
+          finalAggregated[5].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[4].cpm,
+          finalAggregated[5].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[4].ctr,
+          finalAggregated[5].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[4].cpp,
+          finalAggregated[5].cpp,
+        ),
       },
       last30Days: {
-        googlespend: calculateMetrics(finalAggregated[6].spend, finalAggregated[7].spend),
-        googleroas: calculateMetrics(finalAggregated[6].roas, finalAggregated[7].roas),
-        googlecpc: calculateMetrics(finalAggregated[6].cpc, finalAggregated[7].cpc),
-        googlecpm: calculateMetrics(finalAggregated[6].cpm, finalAggregated[7].cpm),
-        googlectr: calculateMetrics(finalAggregated[6].ctr, finalAggregated[7].ctr),
-        googlecpp: calculateMetrics(finalAggregated[6].cpp, finalAggregated[7].cpp),
+        googlespend: calculateMetrics(
+          finalAggregated[6].spend,
+          finalAggregated[7].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[6].roas,
+          finalAggregated[7].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[6].cpc,
+          finalAggregated[7].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[6].cpm,
+          finalAggregated[7].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[6].ctr,
+          finalAggregated[7].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[6].cpp,
+          finalAggregated[7].cpp,
+        ),
       },
       quarterly: {
-        googlespend: calculateMetrics(finalAggregated[8].spend, finalAggregated[9].spend),
-        googleroas: calculateMetrics(finalAggregated[8].roas, finalAggregated[9].roas),
-        googlecpc: calculateMetrics(finalAggregated[8].cpc, finalAggregated[9].cpc),
-        googlecpm: calculateMetrics(finalAggregated[8].cpm, finalAggregated[9].cpm),
-        googlectr: calculateMetrics(finalAggregated[8].ctr, finalAggregated[9].ctr),
-        googlecpp: calculateMetrics(finalAggregated[8].cpp, finalAggregated[9].cpp),
-      }
+        googlespend: calculateMetrics(
+          finalAggregated[8].spend,
+          finalAggregated[9].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[8].roas,
+          finalAggregated[9].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[8].cpc,
+          finalAggregated[9].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[8].cpm,
+          finalAggregated[9].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[8].ctr,
+          finalAggregated[9].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[8].cpp,
+          finalAggregated[9].cpp,
+        ),
+      },
     };
 
     if (customDates) {
       periodData.custom = {
-        googlespend: calculateMetrics(finalAggregated[10].spend, finalAggregated[11].spend),
-        googleroas: calculateMetrics(finalAggregated[10].roas, finalAggregated[11].roas),
-        googlecpc: calculateMetrics(finalAggregated[10].cpc, finalAggregated[11].cpc),
-        googlecpm: calculateMetrics(finalAggregated[10].cpm, finalAggregated[11].cpm),
-        googlectr: calculateMetrics(finalAggregated[10].ctr, finalAggregated[11].ctr),
-        googlecpp: calculateMetrics(finalAggregated[10].cpp, finalAggregated[11].cpp),
+        googlespend: calculateMetrics(
+          finalAggregated[10].spend,
+          finalAggregated[11].spend,
+        ),
+        googleroas: calculateMetrics(
+          finalAggregated[10].roas,
+          finalAggregated[11].roas,
+        ),
+        googlecpc: calculateMetrics(
+          finalAggregated[10].cpc,
+          finalAggregated[11].cpc,
+        ),
+        googlecpm: calculateMetrics(
+          finalAggregated[10].cpm,
+          finalAggregated[11].cpm,
+        ),
+        googlectr: calculateMetrics(
+          finalAggregated[10].ctr,
+          finalAggregated[11].ctr,
+        ),
+        googlecpp: calculateMetrics(
+          finalAggregated[10].cpp,
+          finalAggregated[11].cpp,
+        ),
       };
     }
 
-    console.log(`[Google Ads API] Successfully fetched in ${Date.now() - startTime}ms`);
+    console.log(
+      `[Google Ads API] Successfully fetched in ${Date.now() - startTime}ms`,
+    );
 
     res.status(200).json({
       success: true,
       periodData,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
-
   } catch (error) {
     console.error(`[Google Ads API Error]`, error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch Google Ads summary.',
-      message: error.message
+      error: "Failed to fetch Google Ads summary.",
+      message: error.message,
     });
   }
 }
@@ -839,7 +1194,7 @@ export async function getShopifySummary(req, res) {
     if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID is required.'
+        message: "Brand ID is required.",
       });
     }
 
@@ -847,7 +1202,7 @@ export async function getShopifySummary(req, res) {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.'
+        message: "Brand not found.",
       });
     }
 
@@ -887,81 +1242,154 @@ export async function getShopifySummary(req, res) {
 
     const promises = [
       fetchShopifyMetricsFromAdMetrics(brandIdObj, yesterday, yesterday),
-      fetchShopifyMetricsFromAdMetrics(brandIdObj, dayBeforeYesterday, dayBeforeYesterday),
+      fetchShopifyMetricsFromAdMetrics(
+        brandIdObj,
+        dayBeforeYesterday,
+        dayBeforeYesterday,
+      ),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, last7DaysStart, yesterday),
-      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous7DaysStart, previous7DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(
+        brandIdObj,
+        previous7DaysStart,
+        previous7DaysEnd,
+      ),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, last14DaysStart, yesterday),
-      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous14DaysStart, previous14DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(
+        brandIdObj,
+        previous14DaysStart,
+        previous14DaysEnd,
+      ),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, last30DaysStart, yesterday),
-      fetchShopifyMetricsFromAdMetrics(brandIdObj, previous30DaysStart, previous30DaysEnd),
+      fetchShopifyMetricsFromAdMetrics(
+        brandIdObj,
+        previous30DaysStart,
+        previous30DaysEnd,
+      ),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, quarterStart, yesterday),
-      fetchShopifyMetricsFromAdMetrics(brandIdObj, previousQuarterStart, previousQuarterEnd)
+      fetchShopifyMetricsFromAdMetrics(
+        brandIdObj,
+        previousQuarterStart,
+        previousQuarterEnd,
+      ),
     ];
 
     if (customDates) {
       promises.push(
-        fetchShopifyMetricsFromAdMetrics(brandIdObj, customDates.customStart, customDates.customEnd),
-        fetchShopifyMetricsFromAdMetrics(brandIdObj, customDates.customCompareStart, customDates.customCompareEnd)
+        fetchShopifyMetricsFromAdMetrics(
+          brandIdObj,
+          customDates.customStart,
+          customDates.customEnd,
+        ),
+        fetchShopifyMetricsFromAdMetrics(
+          brandIdObj,
+          customDates.customCompareStart,
+          customDates.customCompareEnd,
+        ),
       );
     }
 
     const results = await Promise.all(promises);
     const [
-      shopifyYesterday, shopifyDayBefore,
-      shopifyLast7, shopifyPrev7,
-      shopifyLast14, shopifyPrev14,
-      shopifyLast30, shopifyPrev30,
-      shopifyQuarter, shopifyPrevQuarter,
-      shopifyCustom, shopifyPrevCustom
+      shopifyYesterday,
+      shopifyDayBefore,
+      shopifyLast7,
+      shopifyPrev7,
+      shopifyLast14,
+      shopifyPrev14,
+      shopifyLast30,
+      shopifyPrev30,
+      shopifyQuarter,
+      shopifyPrevQuarter,
+      shopifyCustom,
+      shopifyPrevCustom,
     ] = results;
 
     const periodData = {
       yesterday: {
-        totalSales: calculateMetrics(shopifyYesterday.totalSales, shopifyDayBefore.totalSales),
-        refundAmount: calculateMetrics(shopifyYesterday.refundAmount, shopifyDayBefore.refundAmount),
+        totalSales: calculateMetrics(
+          shopifyYesterday.totalSales,
+          shopifyDayBefore.totalSales,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyYesterday.refundAmount,
+          shopifyDayBefore.refundAmount,
+        ),
         roas: calculateMetrics(shopifyYesterday.roas, shopifyDayBefore.roas),
       },
       last7Days: {
-        totalSales: calculateMetrics(shopifyLast7.totalSales, shopifyPrev7.totalSales),
-        refundAmount: calculateMetrics(shopifyLast7.refundAmount, shopifyPrev7.refundAmount),
+        totalSales: calculateMetrics(
+          shopifyLast7.totalSales,
+          shopifyPrev7.totalSales,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyLast7.refundAmount,
+          shopifyPrev7.refundAmount,
+        ),
         roas: calculateMetrics(shopifyLast7.roas, shopifyPrev7.roas),
       },
       last14Days: {
-        totalSales: calculateMetrics(shopifyLast14.totalSales, shopifyPrev14.totalSales),
-        refundAmount: calculateMetrics(shopifyLast14.refundAmount, shopifyPrev14.refundAmount),
+        totalSales: calculateMetrics(
+          shopifyLast14.totalSales,
+          shopifyPrev14.totalSales,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyLast14.refundAmount,
+          shopifyPrev14.refundAmount,
+        ),
         roas: calculateMetrics(shopifyLast14.roas, shopifyPrev14.roas),
       },
       last30Days: {
-        totalSales: calculateMetrics(shopifyLast30.totalSales, shopifyPrev30.totalSales),
-        refundAmount: calculateMetrics(shopifyLast30.refundAmount, shopifyPrev30.refundAmount),
+        totalSales: calculateMetrics(
+          shopifyLast30.totalSales,
+          shopifyPrev30.totalSales,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyLast30.refundAmount,
+          shopifyPrev30.refundAmount,
+        ),
         roas: calculateMetrics(shopifyLast30.roas, shopifyPrev30.roas),
       },
       quarterly: {
-        totalSales: calculateMetrics(shopifyQuarter.totalSales, shopifyPrevQuarter.totalSales),
-        refundAmount: calculateMetrics(shopifyQuarter.refundAmount, shopifyPrevQuarter.refundAmount),
+        totalSales: calculateMetrics(
+          shopifyQuarter.totalSales,
+          shopifyPrevQuarter.totalSales,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyQuarter.refundAmount,
+          shopifyPrevQuarter.refundAmount,
+        ),
         roas: calculateMetrics(shopifyQuarter.roas, shopifyPrevQuarter.roas),
-      }
+      },
     };
 
     if (customDates) {
       periodData.custom = {
-        totalSales: calculateMetrics(shopifyCustom?.totalSales || 0, shopifyPrevCustom?.totalSales || 0),
-        refundAmount: calculateMetrics(shopifyCustom?.refundAmount || 0, shopifyPrevCustom?.refundAmount || 0),
-        roas: calculateMetrics(shopifyCustom?.roas || 0, shopifyPrevCustom?.roas || 0),
+        totalSales: calculateMetrics(
+          shopifyCustom?.totalSales || 0,
+          shopifyPrevCustom?.totalSales || 0,
+        ),
+        refundAmount: calculateMetrics(
+          shopifyCustom?.refundAmount || 0,
+          shopifyPrevCustom?.refundAmount || 0,
+        ),
+        roas: calculateMetrics(
+          shopifyCustom?.roas || 0,
+          shopifyPrevCustom?.roas || 0,
+        ),
       };
     }
 
     res.status(200).json({
       success: true,
       periodData,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
   } catch (error) {
-    console.error('[Shopify Summary API Error]', error);
+    console.error("[Shopify Summary API Error]", error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch Shopify summary.',
-      message: error.message
+      error: "Failed to fetch Shopify summary.",
+      message: error.message,
     });
   }
 }
@@ -974,7 +1402,7 @@ export async function getAnalyticsSummary(req, res) {
     if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID is required.'
+        message: "Brand ID is required.",
       });
     }
 
@@ -982,7 +1410,7 @@ export async function getAnalyticsSummary(req, res) {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.'
+        message: "Brand not found.",
       });
     }
 
@@ -990,8 +1418,8 @@ export async function getAnalyticsSummary(req, res) {
     if (!brand.ga4Account?.PropertyID || !brand.googleAnalyticsRefreshToken) {
       return res.status(200).json({
         success: false,
-        message: 'Google Analytics not configured for this brand.',
-        periodData: null
+        message: "Google Analytics not configured for this brand.",
+        periodData: null,
       });
     }
 
@@ -1031,40 +1459,121 @@ export async function getAnalyticsSummary(req, res) {
     const customDates = getCustomDates(req.query);
 
     // Get access token and fetch all analytics data
-    const accessToken = await getGoogleAccessToken(brand.googleAnalyticsRefreshToken);
+    const accessToken = await getGoogleAccessToken(
+      brand.googleAnalyticsRefreshToken,
+    );
     const promises = [
-      fetchAnalyticsData(yesterday, yesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(dayBeforeYesterday, dayBeforeYesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(last7DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(previous7DaysStart, previous7DaysEnd, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(last14DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(previous14DaysStart, previous14DaysEnd, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(last30DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(previous30DaysStart, previous30DaysEnd, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(quarterStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-      fetchAnalyticsData(previousQuarterStart, previousQuarterEnd, brand.ga4Account.PropertyID, accessToken)
+      fetchAnalyticsData(
+        yesterday,
+        yesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        dayBeforeYesterday,
+        dayBeforeYesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        last7DaysStart,
+        yesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        previous7DaysStart,
+        previous7DaysEnd,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        last14DaysStart,
+        yesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        previous14DaysStart,
+        previous14DaysEnd,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        last30DaysStart,
+        yesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        previous30DaysStart,
+        previous30DaysEnd,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        quarterStart,
+        yesterday,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
+      fetchAnalyticsData(
+        previousQuarterStart,
+        previousQuarterEnd,
+        brand.ga4Account.PropertyID,
+        accessToken,
+      ),
     ];
 
     if (customDates) {
       promises.push(
-        fetchAnalyticsData(customDates.customStart, customDates.customEnd, brand.ga4Account.PropertyID, accessToken),
-        fetchAnalyticsData(customDates.customCompareStart, customDates.customCompareEnd, brand.ga4Account.PropertyID, accessToken)
+        fetchAnalyticsData(
+          customDates.customStart,
+          customDates.customEnd,
+          brand.ga4Account.PropertyID,
+          accessToken,
+        ),
+        fetchAnalyticsData(
+          customDates.customCompareStart,
+          customDates.customCompareEnd,
+          brand.ga4Account.PropertyID,
+          accessToken,
+        ),
       );
     }
 
     const results = await Promise.all(promises);
     const [
-      analyticsYesterday, analyticsDayBefore,
-      analyticsLast7, analyticsPrev7,
-      analyticsLast14, analyticsPrev14,
-      analyticsLast30, analyticsPrev30,
-      analyticsQuarter, analyticsPrevQuarter,
-      analyticsCustom, analyticsPrevCustom
+      analyticsYesterday,
+      analyticsDayBefore,
+      analyticsLast7,
+      analyticsPrev7,
+      analyticsLast14,
+      analyticsPrev14,
+      analyticsLast30,
+      analyticsPrev30,
+      analyticsQuarter,
+      analyticsPrevQuarter,
+      analyticsCustom,
+      analyticsPrevCustom,
     ] = results;
 
-    const analyticsMetricKeys = ['sessions', 'addToCarts', 'checkouts', 'purchases', 'addToCartRate', 'purchaseRate', 'checkoutRate'];
+    const analyticsMetricKeys = [
+      "sessions",
+      "addToCarts",
+      "checkouts",
+      "purchases",
+      "addToCartRate",
+      "purchaseRate",
+      "checkoutRate",
+    ];
     const buildAnalyticsPeriod = (current, previous) =>
-      Object.fromEntries(analyticsMetricKeys.map(key => [key, calculateMetrics(current?.[key], previous?.[key])]));
+      Object.fromEntries(
+        analyticsMetricKeys.map((key) => [
+          key,
+          calculateMetrics(current?.[key], previous?.[key]),
+        ]),
+      );
 
     const periodData = {
       yesterday: buildAnalyticsPeriod(analyticsYesterday, analyticsDayBefore),
@@ -1075,23 +1584,27 @@ export async function getAnalyticsSummary(req, res) {
     };
 
     if (customDates) {
-      periodData.custom = buildAnalyticsPeriod(analyticsCustom, analyticsPrevCustom);
+      periodData.custom = buildAnalyticsPeriod(
+        analyticsCustom,
+        analyticsPrevCustom,
+      );
     }
 
-    console.log(`[Analytics API] Successfully fetched in ${Date.now() - startTime}ms`);
+    console.log(
+      `[Analytics API] Successfully fetched in ${Date.now() - startTime}ms`,
+    );
 
     res.status(200).json({
       success: true,
       periodData,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
-
   } catch (error) {
     console.error(`[Analytics API Error]`, error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch Analytics summary.',
-      message: error.message
+      error: "Failed to fetch Analytics summary.",
+      message: error.message,
     });
   }
 }
@@ -1105,7 +1618,7 @@ export async function getUnifiedSummary(req, res) {
     if (!brandId) {
       return res.status(400).json({
         success: false,
-        message: 'Brand ID is required.'
+        message: "Brand ID is required.",
       });
     }
 
@@ -1114,7 +1627,7 @@ export async function getUnifiedSummary(req, res) {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: 'Brand not found.'
+        message: "Brand not found.",
       });
     }
 
@@ -1155,33 +1668,39 @@ export async function getUnifiedSummary(req, res) {
       const numPrevious = Number(previous);
       const roundedCurrent = Number(numCurrent.toFixed(2));
       const roundedPrevious = Number(numPrevious.toFixed(2));
-      const change = roundedPrevious > 0
-        ? Number((((roundedCurrent - roundedPrevious) / roundedPrevious) * 100).toFixed(2))
-        : 0;
-      let trend = 'neutral';
-      if (roundedCurrent > roundedPrevious) trend = 'up';
-      if (roundedCurrent < roundedPrevious) trend = 'down';
+      const change =
+        roundedPrevious > 0
+          ? Number(
+              (
+                ((roundedCurrent - roundedPrevious) / roundedPrevious) *
+                100
+              ).toFixed(2),
+            )
+          : 0;
+      let trend = "neutral";
+      if (roundedCurrent > roundedPrevious) trend = "up";
+      if (roundedCurrent < roundedPrevious) trend = "down";
       return {
         current: roundedCurrent,
         previous: roundedPrevious,
         change,
-        trend
+        trend,
       };
     };
 
     // Initialize period data structure
     const createEmptyPeriodData = () => ({
-      metaspend: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      metaroas: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      googlespend: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      googleroas: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      sessions: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      addToCarts: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      checkouts: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      purchases: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      addToCartRate: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      purchaseRate: { current: 0, previous: 0, change: 0, trend: 'neutral' },
-      checkoutRate: { current: 0, previous: 0, change: 0, trend: 'neutral' }
+      metaspend: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      metaroas: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      googlespend: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      googleroas: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      sessions: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      addToCarts: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      checkouts: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      purchases: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      addToCartRate: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      purchaseRate: { current: 0, previous: 0, change: 0, trend: "neutral" },
+      checkoutRate: { current: 0, previous: 0, change: 0, trend: "neutral" },
     });
 
     const periodData = {
@@ -1189,7 +1708,7 @@ export async function getUnifiedSummary(req, res) {
       last7Days: createEmptyPeriodData(),
       last14Days: createEmptyPeriodData(),
       last30Days: createEmptyPeriodData(),
-      quarterly: createEmptyPeriodData()
+      quarterly: createEmptyPeriodData(),
     };
 
     // Prepare all API calls in parallel with optimized timeouts
@@ -1198,30 +1717,99 @@ export async function getUnifiedSummary(req, res) {
 
     // Meta Ads data
     if (brand.fbAdAccounts?.length > 0 && brand.fbAccessToken) {
-      console.log(`[Meta API] Starting data fetch for brand ${brandId} with ${brand.fbAdAccounts.length} accounts`);
+      console.log(
+        `[Meta API] Starting data fetch for brand ${brandId} with ${brand.fbAdAccounts.length} accounts`,
+      );
       const metaStartTime = Date.now();
       apiCalls.push(
         Promise.race([
           Promise.all([
-            fetchMetaAdsData(yesterday, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(dayBeforeYesterday, dayBeforeYesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(last7DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(previous7DaysStart, previous7DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(last14DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(previous14DaysStart, previous14DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(last30DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(previous30DaysStart, previous30DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(quarterStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
-            fetchMetaAdsData(previousQuarterStart, previousQuarterEnd, brand.fbAccessToken, brand.fbAdAccounts)
+            fetchMetaAdsData(
+              yesterday,
+              yesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              dayBeforeYesterday,
+              dayBeforeYesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              last7DaysStart,
+              yesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              previous7DaysStart,
+              previous7DaysEnd,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              last14DaysStart,
+              yesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              previous14DaysStart,
+              previous14DaysEnd,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              last30DaysStart,
+              yesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              previous30DaysStart,
+              previous30DaysEnd,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              quarterStart,
+              yesterday,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
+            fetchMetaAdsData(
+              previousQuarterStart,
+              previousQuarterEnd,
+              brand.fbAccessToken,
+              brand.fbAdAccounts,
+            ),
           ]),
-          new Promise((_, reject) => setTimeout(() => reject(new Error(`Meta API timeout - exceeded ${API_TIMEOUT/1000}s for ${brand.fbAdAccounts.length} accounts`)), API_TIMEOUT))
-        ]).then(metaData => {
-          console.log(`[Meta API] Successfully fetched data in ${Date.now() - metaStartTime}ms`);
-          return { type: 'meta', data: metaData };
-        }).catch(error => {
-          console.error(`[Meta API Error] Brand: ${brandId}, Accounts: ${brand.fbAdAccounts.length}, Duration: ${Date.now() - metaStartTime}ms, Error:`, error.message);
-          return { type: 'meta', data: null };
-        })
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `Meta API timeout - exceeded ${API_TIMEOUT / 1000}s for ${brand.fbAdAccounts.length} accounts`,
+                  ),
+                ),
+              API_TIMEOUT,
+            ),
+          ),
+        ])
+          .then((metaData) => {
+            console.log(
+              `[Meta API] Successfully fetched data in ${Date.now() - metaStartTime}ms`,
+            );
+            return { type: "meta", data: metaData };
+          })
+          .catch((error) => {
+            console.error(
+              `[Meta API Error] Brand: ${brandId}, Accounts: ${brand.fbAdAccounts.length}, Duration: ${Date.now() - metaStartTime}ms, Error:`,
+              error.message,
+            );
+            return { type: "meta", data: null };
+          }),
       );
     }
 
@@ -1235,44 +1823,78 @@ export async function getUnifiedSummary(req, res) {
         const customer = client.Customer({
           customer_id: adAccountId,
           refresh_token: brand.googleAdsRefreshToken,
-          login_customer_id: managerId
+          login_customer_id: managerId,
         });
 
         return Promise.race([
           Promise.all([
             fetchGoogleAdsData(yesterday, yesterday, customer),
-            fetchGoogleAdsData(dayBeforeYesterday, dayBeforeYesterday, customer),
+            fetchGoogleAdsData(
+              dayBeforeYesterday,
+              dayBeforeYesterday,
+              customer,
+            ),
             fetchGoogleAdsData(last7DaysStart, yesterday, customer),
             fetchGoogleAdsData(previous7DaysStart, previous7DaysEnd, customer),
             fetchGoogleAdsData(last14DaysStart, yesterday, customer),
-            fetchGoogleAdsData(previous14DaysStart, previous14DaysEnd, customer),
+            fetchGoogleAdsData(
+              previous14DaysStart,
+              previous14DaysEnd,
+              customer,
+            ),
             fetchGoogleAdsData(last30DaysStart, yesterday, customer),
-            fetchGoogleAdsData(previous30DaysStart, previous30DaysEnd, customer),
+            fetchGoogleAdsData(
+              previous30DaysStart,
+              previous30DaysEnd,
+              customer,
+            ),
             fetchGoogleAdsData(quarterStart, yesterday, customer),
-            fetchGoogleAdsData(previousQuarterStart, previousQuarterEnd, customer)
+            fetchGoogleAdsData(
+              previousQuarterStart,
+              previousQuarterEnd,
+              customer,
+            ),
           ]),
-          new Promise((_, reject) => setTimeout(() => reject(new Error(`Google Ads API timeout - exceeded ${API_TIMEOUT/1000}s`)), API_TIMEOUT))
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `Google Ads API timeout - exceeded ${API_TIMEOUT / 1000}s`,
+                  ),
+                ),
+              API_TIMEOUT,
+            ),
+          ),
         ]);
       });
 
       apiCalls.push(
-        Promise.all(googleAdsPromises).then(googleAccountsData => {
-          const aggregatedData = Array.from({ length: 10 }, () => ({ spend: 0, roas: 0 }));
+        Promise.all(googleAdsPromises)
+          .then((googleAccountsData) => {
+            const aggregatedData = Array.from({ length: 10 }, () => ({
+              spend: 0,
+              roas: 0,
+            }));
 
-          googleAccountsData.forEach(accountData => {
-            if (accountData) {
-              accountData.forEach((periodData, index) => {
-                aggregatedData[index].spend += periodData.spend;
-                aggregatedData[index].roas += periodData.roas;
-              });
-            }
-          });
+            googleAccountsData.forEach((accountData) => {
+              if (accountData) {
+                accountData.forEach((periodData, index) => {
+                  aggregatedData[index].spend += periodData.spend;
+                  aggregatedData[index].roas += periodData.roas;
+                });
+              }
+            });
 
-          return { type: 'google', data: aggregatedData };
-        }).catch(error => {
-          console.error(`[Google Ads API Error] Brand: ${brandId}, Accounts: ${brand.googleAdAccount.length}, Error:`, error.message);
-          return { type: 'google', data: null };
-        })
+            return { type: "google", data: aggregatedData };
+          })
+          .catch((error) => {
+            console.error(
+              `[Google Ads API Error] Brand: ${brandId}, Accounts: ${brand.googleAdAccount.length}, Error:`,
+              error.message,
+            );
+            return { type: "google", data: null };
+          }),
       );
     }
 
@@ -1280,25 +1902,91 @@ export async function getUnifiedSummary(req, res) {
     if (brand.ga4Account?.PropertyID && brand.googleAnalyticsRefreshToken) {
       apiCalls.push(
         Promise.race([
-          getGoogleAccessToken(brand.googleAnalyticsRefreshToken).then(accessToken => 
-            Promise.all([
-              fetchAnalyticsData(yesterday, yesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(dayBeforeYesterday, dayBeforeYesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(last7DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(previous7DaysStart, previous7DaysEnd, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(last14DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(previous14DaysStart, previous14DaysEnd, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(last30DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(previous30DaysStart, previous30DaysEnd, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(quarterStart, yesterday, brand.ga4Account.PropertyID, accessToken),
-              fetchAnalyticsData(previousQuarterStart, previousQuarterEnd, brand.ga4Account.PropertyID, accessToken)
-            ])
+          getGoogleAccessToken(brand.googleAnalyticsRefreshToken).then(
+            (accessToken) =>
+              Promise.all([
+                fetchAnalyticsData(
+                  yesterday,
+                  yesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  dayBeforeYesterday,
+                  dayBeforeYesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  last7DaysStart,
+                  yesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  previous7DaysStart,
+                  previous7DaysEnd,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  last14DaysStart,
+                  yesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  previous14DaysStart,
+                  previous14DaysEnd,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  last30DaysStart,
+                  yesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  previous30DaysStart,
+                  previous30DaysEnd,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  quarterStart,
+                  yesterday,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+                fetchAnalyticsData(
+                  previousQuarterStart,
+                  previousQuarterEnd,
+                  brand.ga4Account.PropertyID,
+                  accessToken,
+                ),
+              ]),
           ),
-          new Promise((_, reject) => setTimeout(() => reject(new Error(`Analytics API timeout - exceeded ${API_TIMEOUT/1000}s`)), API_TIMEOUT))
-        ]).then(analyticsData => ({ type: 'analytics', data: analyticsData })).catch(error => {
-          console.error(`[Analytics API Error] Brand: ${brandId}, PropertyID: ${brand.ga4Account.PropertyID}, Error:`, error.message);
-          return { type: 'analytics', data: null };
-        })
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `Analytics API timeout - exceeded ${API_TIMEOUT / 1000}s`,
+                  ),
+                ),
+              API_TIMEOUT,
+            ),
+          ),
+        ])
+          .then((analyticsData) => ({ type: "analytics", data: analyticsData }))
+          .catch((error) => {
+            console.error(
+              `[Analytics API Error] Brand: ${brandId}, PropertyID: ${brand.ga4Account.PropertyID}, Error:`,
+              error.message,
+            );
+            return { type: "analytics", data: null };
+          }),
       );
     }
 
@@ -1306,59 +1994,92 @@ export async function getUnifiedSummary(req, res) {
     const OVERALL_TIMEOUT = 50000; // 50 seconds total timeout
     const results = await Promise.race([
       Promise.all(apiCalls),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Overall API timeout - all API calls exceeded 50 seconds')), OVERALL_TIMEOUT))
+      new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "Overall API timeout - all API calls exceeded 50 seconds",
+              ),
+            ),
+          OVERALL_TIMEOUT,
+        ),
+      ),
     ]);
 
     // Process results
-    results.forEach(result => {
+    results.forEach((result) => {
       if (!result.data) return;
 
       switch (result.type) {
-        case 'meta': {
+        case "meta": {
           const metaData = result.data;
           const metaPeriods = [
-            ['yesterday', 0, 1],
-            ['last7Days', 2, 3],
-            ['last14Days', 4, 5],
-            ['last30Days', 6, 7],
-            ['quarterly', 8, 9]
+            ["yesterday", 0, 1],
+            ["last7Days", 2, 3],
+            ["last14Days", 4, 5],
+            ["last30Days", 6, 7],
+            ["quarterly", 8, 9],
           ];
           metaPeriods.forEach(([period, cur, prev]) => {
-            periodData[period].metaspend = calculateMetrics(metaData[cur].metaspend, metaData[prev].metaspend);
-            periodData[period].metaroas = calculateMetrics(metaData[cur].metaroas, metaData[prev].metaroas);
+            periodData[period].metaspend = calculateMetrics(
+              metaData[cur].metaspend,
+              metaData[prev].metaspend,
+            );
+            periodData[period].metaroas = calculateMetrics(
+              metaData[cur].metaroas,
+              metaData[prev].metaroas,
+            );
           });
           break;
         }
 
-        case 'google': {
+        case "google": {
           const googleData = result.data;
           const googlePeriods = [
-            ['yesterday', 0, 1],
-            ['last7Days', 2, 3],
-            ['last14Days', 4, 5],
-            ['last30Days', 6, 7],
-            ['quarterly', 8, 9]
+            ["yesterday", 0, 1],
+            ["last7Days", 2, 3],
+            ["last14Days", 4, 5],
+            ["last30Days", 6, 7],
+            ["quarterly", 8, 9],
           ];
           googlePeriods.forEach(([period, cur, prev]) => {
-            periodData[period].googlespend = calculateMetrics(googleData[cur].spend, googleData[prev].spend);
-            periodData[period].googleroas = calculateMetrics(googleData[cur].roas, googleData[prev].roas);
+            periodData[period].googlespend = calculateMetrics(
+              googleData[cur].spend,
+              googleData[prev].spend,
+            );
+            periodData[period].googleroas = calculateMetrics(
+              googleData[cur].roas,
+              googleData[prev].roas,
+            );
           });
           break;
         }
 
-        case 'analytics': {
+        case "analytics": {
           const analyticsData = result.data;
           const analyticsPeriods = [
-            ['yesterday', 0, 1],
-            ['last7Days', 2, 3],
-            ['last14Days', 4, 5],
-            ['last30Days', 6, 7],
-            ['quarterly', 8, 9]
+            ["yesterday", 0, 1],
+            ["last7Days", 2, 3],
+            ["last14Days", 4, 5],
+            ["last30Days", 6, 7],
+            ["quarterly", 8, 9],
           ];
-          const analyticsKeys = ['sessions', 'addToCarts', 'checkouts', 'purchases', 'addToCartRate', 'purchaseRate', 'checkoutRate'];
+          const analyticsKeys = [
+            "sessions",
+            "addToCarts",
+            "checkouts",
+            "purchases",
+            "addToCartRate",
+            "purchaseRate",
+            "checkoutRate",
+          ];
           analyticsPeriods.forEach(([period, cur, prev]) => {
-            analyticsKeys.forEach(key => {
-              periodData[period][key] = calculateMetrics(analyticsData[cur][key], analyticsData[prev][key]);
+            analyticsKeys.forEach((key) => {
+              periodData[period][key] = calculateMetrics(
+                analyticsData[cur][key],
+                analyticsData[prev][key],
+              );
             });
           });
           break;
@@ -1369,14 +2090,13 @@ export async function getUnifiedSummary(req, res) {
     res.status(200).json({
       success: true,
       periodData,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
-
   } catch (error) {
-    console.error('Error in getUnifiedSummary:', error);
+    console.error("Error in getUnifiedSummary:", error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch unified summary.'
+      error: "Failed to fetch unified summary.",
     });
   }
 }

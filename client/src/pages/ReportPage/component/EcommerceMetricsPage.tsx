@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams } from 'react-router-dom';
-import { format } from "date-fns";
+import { format, eachDayOfInterval } from "date-fns";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
@@ -63,23 +63,54 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
   
   const dispatch = useDispatch();
   const axiosInstance = createAxiosInstance();
-
-  // Transform data to match ReportTable's expected format
   const transformedData = useMemo(() => {
-    return data.map((item, index) => ({
-      id: `row-${index}`,
-      date: item.Date,
-      sessions: parseInt(item.Sessions) || 0,
-      addToCart: parseInt(item['Add To Cart']) || 0,
-      addToCartRate: item['Add To Cart Rate'] || '0%',
-      checkouts: parseInt(item['Checkouts']) || 0,
-      checkoutRate: item['Checkout Rate'] || '0%',
-      purchases: parseInt(item['Purchases']) || 0,
-      purchaseRate: item['Purchase Rate'] || '0%',
-      atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
-      checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
-    }));
-  }, [data]);
+    if (!startDate || !endDate) return [];
+    try {
+      const allDates = eachDayOfInterval({ 
+        start: new Date(startDate), 
+        end: new Date(endDate) 
+      });
+
+      const dataMap = new Map(data.map(item => [item.Date, item]));
+
+      return allDates.map((dateObj, index) => {
+        const formattedDate = format(dateObj, 'dd-MM-yyyy');
+        const item = dataMap.get(formattedDate);
+
+        if (!item) {
+          return {
+            id: `row-${index}`,
+            date: formattedDate,
+            sessions: undefined as any,
+            addToCart: undefined as any,
+            addToCartRate: '-',
+            checkouts: undefined as any,
+            checkoutRate: '-',
+            purchases: undefined as any,
+            purchaseRate: '-',
+            atcToCheckoutRate: '-',
+            checkoutToPurchaseRate: '-'
+          };
+        }
+
+        return {
+          id: `row-${index}`,
+          date: item.Date,
+          sessions: item.Sessions !== undefined ? parseInt(item.Sessions as string) : undefined as any,
+          addToCart: item['Add To Cart'] !== undefined ? parseInt(item['Add To Cart'] as string) : undefined as any,
+          addToCartRate: item['Add To Cart Rate'] || '-',
+          checkouts: item['Checkouts'] !== undefined ? parseInt(item['Checkouts'] as string) : undefined as any,
+          checkoutRate: item['Checkout Rate'] || '-',
+          purchases: item['Purchases'] !== undefined ? parseInt(item['Purchases'] as string) : undefined as any,
+          purchaseRate: item['Purchase Rate'] || '-',
+          atcToCheckoutRate: item['ATC To Checkout Rate'] || '-',
+          checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '-'
+        };
+      });
+    } catch(e) {
+      return [];
+    }
+  }, [data, startDate, endDate]);
 
 
 

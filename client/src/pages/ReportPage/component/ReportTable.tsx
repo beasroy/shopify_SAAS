@@ -408,7 +408,7 @@ export default function ReportTable({
 
     // Handle other columns normally
     const v = row[key]
-    if (v === undefined) return "-"
+    if (v === undefined || v === null || (typeof v === "number" && isNaN(v))) return "-"
     if (typeof v === "number") return v.toLocaleString()
     return v as string
   }

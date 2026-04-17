@@ -145,6 +145,31 @@ export async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) 
   throw lastError;
 }
 
+// Helper for custom date calculation from query
+export function getCustomDates(query) {
+  if (!query.customStart || !query.customEnd) return null;
+  
+  const customStart = new Date(query.customStart);
+  const customEnd = new Date(query.customEnd);
+  
+  let customCompareStart, customCompareEnd;
+  
+  if (query.customCompareStart && query.customCompareEnd) {
+    customCompareStart = new Date(query.customCompareStart);
+    customCompareEnd = new Date(query.customCompareEnd);
+  } else {
+    // calculate previous duration if no compare dates explicitly given
+    const duration = customEnd.getTime() - customStart.getTime(); // in ms
+    // The previous period ends 1 day before customStart
+    customCompareEnd = new Date(customStart);
+    customCompareEnd.setDate(customCompareEnd.getDate() - 1);
+    
+    customCompareStart = new Date(customCompareEnd.getTime() - duration);
+  }
+  
+  return { customStart, customEnd, customCompareStart, customCompareEnd };
+}
+
 // Helper function to calculate metrics comparison between current and previous periods
 export function calculateMetrics(current, previous) {
   const numCurrent = Number(current);
@@ -502,8 +527,10 @@ export async function getMetaSummary(req, res, next) {
     console.log(`[Meta API] Starting fetch for brand ${brandId} with ${brand.fbAdAccounts.length} accounts`);
     const startTime = Date.now();
 
+    const customDates = getCustomDates(req.query);
+
     // Fetch all Meta data in parallel
-    const [metaYesterday, metaDayBefore, metaLast7, metaPrev7, metaLast14, metaPrev14, metaLast30, metaPrev30, metaQuarter, metaPrevQuarter] = await Promise.all([
+    const promises = [
       fetchMetaAdsData(yesterday, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
       fetchMetaAdsData(dayBeforeYesterday, dayBeforeYesterday, brand.fbAccessToken, brand.fbAdAccounts),
       fetchMetaAdsData(last7DaysStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
@@ -514,7 +541,17 @@ export async function getMetaSummary(req, res, next) {
       fetchMetaAdsData(previous30DaysStart, previous30DaysEnd, brand.fbAccessToken, brand.fbAdAccounts),
       fetchMetaAdsData(quarterStart, yesterday, brand.fbAccessToken, brand.fbAdAccounts),
       fetchMetaAdsData(previousQuarterStart, previousQuarterEnd, brand.fbAccessToken, brand.fbAdAccounts)
-    ]);
+    ];
+
+    if (customDates) {
+      promises.push(
+        fetchMetaAdsData(customDates.customStart, customDates.customEnd, brand.fbAccessToken, brand.fbAdAccounts),
+        fetchMetaAdsData(customDates.customCompareStart, customDates.customCompareEnd, brand.fbAccessToken, brand.fbAdAccounts)
+      );
+    }
+
+    const results = await Promise.all(promises);
+    const [metaYesterday, metaDayBefore, metaLast7, metaPrev7, metaLast14, metaPrev14, metaLast30, metaPrev30, metaQuarter, metaPrevQuarter, metaCustom, metaPrevCustom] = results;
 
     const periodData = {
       yesterday: {
@@ -558,6 +595,17 @@ export async function getMetaSummary(req, res, next) {
         metacpp: calculateMetrics(metaQuarter.metacpp, metaPrevQuarter.metacpp),
       }
     };
+
+    if (customDates) {
+      periodData.custom = {
+        metaspend: calculateMetrics(metaCustom.metaspend, metaPrevCustom.metaspend),
+        metaroas: calculateMetrics(metaCustom.metaroas, metaPrevCustom.metaroas),
+        metacpc: calculateMetrics(metaCustom.metacpc, metaPrevCustom.metacpc),
+        metacpm: calculateMetrics(metaCustom.metacpm, metaPrevCustom.metacpm),
+        metactr: calculateMetrics(metaCustom.metactr, metaPrevCustom.metactr),
+        metacpp: calculateMetrics(metaCustom.metacpp, metaPrevCustom.metacpp),
+      };
+    }
 
     console.log(`[Meta API] Successfully fetched in ${Date.now() - startTime}ms`);
 
@@ -643,6 +691,8 @@ export async function getGoogleAdsSummary(req, res) {
     console.log(`[Google Ads API] Starting fetch for brand ${brandId} with ${brand.googleAdAccount.length} accounts`);
     const startTime = Date.now();
 
+    const customDates = getCustomDates(req.query);
+
     // Fetch Google Ads data for all accounts
     const googleAdsPromises = brand.googleAdAccount.map(async (adAccount) => {
       const adAccountId = adAccount.clientId;
@@ -655,7 +705,7 @@ export async function getGoogleAdsSummary(req, res) {
         login_customer_id: managerId
       });
 
-      return Promise.all([
+      const promises = [
         fetchGoogleAdsData(yesterday, yesterday, customer),
         fetchGoogleAdsData(dayBeforeYesterday, dayBeforeYesterday, customer),
         fetchGoogleAdsData(last7DaysStart, yesterday, customer),
@@ -666,13 +716,22 @@ export async function getGoogleAdsSummary(req, res) {
         fetchGoogleAdsData(previous30DaysStart, previous30DaysEnd, customer),
         fetchGoogleAdsData(quarterStart, yesterday, customer),
         fetchGoogleAdsData(previousQuarterStart, previousQuarterEnd, customer)
-      ]);
+      ];
+
+      if (customDates) {
+        promises.push(
+          fetchGoogleAdsData(customDates.customStart, customDates.customEnd, customer),
+          fetchGoogleAdsData(customDates.customCompareStart, customDates.customCompareEnd, customer)
+        );
+      }
+
+      return Promise.all(promises);
     });
 
     const googleAccountsData = await Promise.all(googleAdsPromises);
 
     // Aggregate data from all accounts
-    const aggregatedData = Array.from({ length: 10 }, () => ({
+    const aggregatedData = Array.from({ length: customDates ? 12 : 10 }, () => ({
       rawSpend: 0, rawConversionsValue: 0, rawClicks: 0, rawImpressions: 0, rawConversions: 0
     }));
 
@@ -742,6 +801,17 @@ export async function getGoogleAdsSummary(req, res) {
         googlecpp: calculateMetrics(finalAggregated[8].cpp, finalAggregated[9].cpp),
       }
     };
+
+    if (customDates) {
+      periodData.custom = {
+        googlespend: calculateMetrics(finalAggregated[10].spend, finalAggregated[11].spend),
+        googleroas: calculateMetrics(finalAggregated[10].roas, finalAggregated[11].roas),
+        googlecpc: calculateMetrics(finalAggregated[10].cpc, finalAggregated[11].cpc),
+        googlecpm: calculateMetrics(finalAggregated[10].cpm, finalAggregated[11].cpm),
+        googlectr: calculateMetrics(finalAggregated[10].ctr, finalAggregated[11].ctr),
+        googlecpp: calculateMetrics(finalAggregated[10].cpp, finalAggregated[11].cpp),
+      };
+    }
 
     console.log(`[Google Ads API] Successfully fetched in ${Date.now() - startTime}ms`);
 
@@ -813,13 +883,9 @@ export async function getShopifySummary(req, res) {
     previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
 
     const brandIdObj = brand._id;
-    const [
-      shopifyYesterday, shopifyDayBefore,
-      shopifyLast7, shopifyPrev7,
-      shopifyLast14, shopifyPrev14,
-      shopifyLast30, shopifyPrev30,
-      shopifyQuarter, shopifyPrevQuarter
-    ] = await Promise.all([
+    const customDates = getCustomDates(req.query);
+
+    const promises = [
       fetchShopifyMetricsFromAdMetrics(brandIdObj, yesterday, yesterday),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, dayBeforeYesterday, dayBeforeYesterday),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, last7DaysStart, yesterday),
@@ -830,7 +896,24 @@ export async function getShopifySummary(req, res) {
       fetchShopifyMetricsFromAdMetrics(brandIdObj, previous30DaysStart, previous30DaysEnd),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, quarterStart, yesterday),
       fetchShopifyMetricsFromAdMetrics(brandIdObj, previousQuarterStart, previousQuarterEnd)
-    ]);
+    ];
+
+    if (customDates) {
+      promises.push(
+        fetchShopifyMetricsFromAdMetrics(brandIdObj, customDates.customStart, customDates.customEnd),
+        fetchShopifyMetricsFromAdMetrics(brandIdObj, customDates.customCompareStart, customDates.customCompareEnd)
+      );
+    }
+
+    const results = await Promise.all(promises);
+    const [
+      shopifyYesterday, shopifyDayBefore,
+      shopifyLast7, shopifyPrev7,
+      shopifyLast14, shopifyPrev14,
+      shopifyLast30, shopifyPrev30,
+      shopifyQuarter, shopifyPrevQuarter,
+      shopifyCustom, shopifyPrevCustom
+    ] = results;
 
     const periodData = {
       yesterday: {
@@ -859,6 +942,14 @@ export async function getShopifySummary(req, res) {
         roas: calculateMetrics(shopifyQuarter.roas, shopifyPrevQuarter.roas),
       }
     };
+
+    if (customDates) {
+      periodData.custom = {
+        totalSales: calculateMetrics(shopifyCustom?.totalSales || 0, shopifyPrevCustom?.totalSales || 0),
+        refundAmount: calculateMetrics(shopifyCustom?.refundAmount || 0, shopifyPrevCustom?.refundAmount || 0),
+        roas: calculateMetrics(shopifyCustom?.roas || 0, shopifyPrevCustom?.roas || 0),
+      };
+    }
 
     res.status(200).json({
       success: true,
@@ -937,10 +1028,11 @@ export async function getAnalyticsSummary(req, res) {
 
     console.log(`[Analytics API] Starting fetch for brand ${brandId}`);
     const startTime = Date.now();
+    const customDates = getCustomDates(req.query);
 
     // Get access token and fetch all analytics data
     const accessToken = await getGoogleAccessToken(brand.googleAnalyticsRefreshToken);
-    const [analyticsYesterday, analyticsDayBefore, analyticsLast7, analyticsPrev7, analyticsLast14, analyticsPrev14, analyticsLast30, analyticsPrev30, analyticsQuarter, analyticsPrevQuarter] = await Promise.all([
+    const promises = [
       fetchAnalyticsData(yesterday, yesterday, brand.ga4Account.PropertyID, accessToken),
       fetchAnalyticsData(dayBeforeYesterday, dayBeforeYesterday, brand.ga4Account.PropertyID, accessToken),
       fetchAnalyticsData(last7DaysStart, yesterday, brand.ga4Account.PropertyID, accessToken),
@@ -951,11 +1043,28 @@ export async function getAnalyticsSummary(req, res) {
       fetchAnalyticsData(previous30DaysStart, previous30DaysEnd, brand.ga4Account.PropertyID, accessToken),
       fetchAnalyticsData(quarterStart, yesterday, brand.ga4Account.PropertyID, accessToken),
       fetchAnalyticsData(previousQuarterStart, previousQuarterEnd, brand.ga4Account.PropertyID, accessToken)
-    ]);
+    ];
+
+    if (customDates) {
+      promises.push(
+        fetchAnalyticsData(customDates.customStart, customDates.customEnd, brand.ga4Account.PropertyID, accessToken),
+        fetchAnalyticsData(customDates.customCompareStart, customDates.customCompareEnd, brand.ga4Account.PropertyID, accessToken)
+      );
+    }
+
+    const results = await Promise.all(promises);
+    const [
+      analyticsYesterday, analyticsDayBefore,
+      analyticsLast7, analyticsPrev7,
+      analyticsLast14, analyticsPrev14,
+      analyticsLast30, analyticsPrev30,
+      analyticsQuarter, analyticsPrevQuarter,
+      analyticsCustom, analyticsPrevCustom
+    ] = results;
 
     const analyticsMetricKeys = ['sessions', 'addToCarts', 'checkouts', 'purchases', 'addToCartRate', 'purchaseRate', 'checkoutRate'];
     const buildAnalyticsPeriod = (current, previous) =>
-      Object.fromEntries(analyticsMetricKeys.map(key => [key, calculateMetrics(current[key], previous[key])]));
+      Object.fromEntries(analyticsMetricKeys.map(key => [key, calculateMetrics(current?.[key], previous?.[key])]));
 
     const periodData = {
       yesterday: buildAnalyticsPeriod(analyticsYesterday, analyticsDayBefore),
@@ -964,6 +1073,10 @@ export async function getAnalyticsSummary(req, res) {
       last30Days: buildAnalyticsPeriod(analyticsLast30, analyticsPrev30),
       quarterly: buildAnalyticsPeriod(analyticsQuarter, analyticsPrevQuarter),
     };
+
+    if (customDates) {
+      periodData.custom = buildAnalyticsPeriod(analyticsCustom, analyticsPrevCustom);
+    }
 
     console.log(`[Analytics API] Successfully fetched in ${Date.now() - startTime}ms`);
 

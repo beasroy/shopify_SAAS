@@ -9,6 +9,9 @@ import {
   ArrowDownIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period =
@@ -16,7 +19,8 @@ export type Period =
   | "last7Days"
   | "last14Days"
   | "last30Days"
-  | "quarterly";
+  | "quarterly"
+  | "custom";
 export type Source = "meta" | "google" | "shopify" | "analytics";
 export type Platform =
   | "Facebook"
@@ -65,12 +69,15 @@ export default function PerformanceTable({
   loading: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+
   const periodLabels: Record<Period, string> = {
     yesterday: "Yesterday",
     last7Days: "Last 7 Days",
     last14Days: "Last 14 Days",
     last30Days: "Last 30 Days",
     quarterly: "Quarterly",
+    custom: "Date",
   };
 
   const metricLabels: Record<string, string> = {
@@ -117,33 +124,38 @@ export default function PerformanceTable({
   const getAllMetrics = () => {
     const metricsSet = new Set<string>();
 
-    ["yesterday", "last7Days", "last14Days", "last30Days", "quarterly"].forEach(
-      (period) => {
-        if (performanceData.meta?.[period as Period] && apiStatus.meta) {
-          Object.keys(performanceData.meta[period as Period]).forEach((key) =>
-            metricsSet.add(key),
-          );
-        }
-        if (performanceData.google?.[period as Period] && apiStatus.google) {
-          Object.keys(performanceData.google[period as Period]).forEach((key) =>
-            metricsSet.add(key),
-          );
-        }
-        if (performanceData.shopify?.[period as Period] && apiStatus.shopify) {
-          Object.keys(performanceData.shopify[period as Period]).forEach(
-            (key) => metricsSet.add(key),
-          );
-        }
-        if (
-          performanceData.analytics?.[period as Period] &&
-          apiStatus.analytics
-        ) {
-          Object.keys(performanceData.analytics[period as Period]).forEach(
-            (key) => metricsSet.add(key),
-          );
-        }
-      },
-    );
+    [
+      "yesterday",
+      "last7Days",
+      "last14Days",
+      "last30Days",
+      "quarterly",
+      "custom",
+    ].forEach((period) => {
+      if (performanceData.meta?.[period as Period] && apiStatus.meta) {
+        Object.keys(performanceData.meta[period as Period]).forEach((key) =>
+          metricsSet.add(key),
+        );
+      }
+      if (performanceData.google?.[period as Period] && apiStatus.google) {
+        Object.keys(performanceData.google[period as Period]).forEach((key) =>
+          metricsSet.add(key),
+        );
+      }
+      if (performanceData.shopify?.[period as Period] && apiStatus.shopify) {
+        Object.keys(performanceData.shopify[period as Period]).forEach((key) =>
+          metricsSet.add(key),
+        );
+      }
+      if (
+        performanceData.analytics?.[period as Period] &&
+        apiStatus.analytics
+      ) {
+        Object.keys(performanceData.analytics[period as Period]).forEach(
+          (key) => metricsSet.add(key),
+        );
+      }
+    });
 
     return Array.from(metricsSet);
   };
@@ -208,6 +220,7 @@ export default function PerformanceTable({
     "last14Days",
     "last30Days",
     "quarterly",
+    "custom",
   ];
   const DEFAULT_VISIBLE_ROWS = 6;
   const visibleMetrics = isExpanded
@@ -222,13 +235,23 @@ export default function PerformanceTable({
         <h2 className="text-xl font-bold text-slate-800">
           Performance Overview
         </h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <DatePickerWithRange
+            defaultDate={{
+              from: new Date(
+                new Date().getFullYear(),
+                new Date().getMonth(),
+                1,
+              ),
+              to: new Date(),
+            }}
+          />
           <Button
             onClick={onRefresh}
             disabled={loading}
             size="sm"
             variant="outline"
-            className="hover:bg-slate-100"
+            className="hover:bg-slate-100 h-[36px]"
             title="Refresh data"
           >
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />

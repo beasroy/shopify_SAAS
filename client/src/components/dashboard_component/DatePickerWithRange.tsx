@@ -130,14 +130,13 @@
 //     }
 //   }, [manualCompareFromDate, manualCompareToDate, parseManualDate])
 
-
 //   // Preset range setter
 //   const setPresetRange = useCallback((from: Date, to: Date) => {
 //     if (calendarMode === 'primary') {
 //       const newRange = { from, to }
 //       setTempDate(newRange)
 
-//       // Update manual date inputs 
+//       // Update manual date inputs
 //       setManualFromDate(format(from, "yyyy-MM-dd"))
 //       setManualToDate(format(to, "yyyy-MM-dd"))
 //     } else if (calendarMode === 'comparison') {
@@ -312,8 +311,8 @@
 //                     variant={selectedPreset === preset.label ? "default" : "ghost"}
 //                     className={cn(
 //                       "w-full justify-start text-xs font-normal h-8 rounded-md",
-//                       selectedPreset === preset.label 
-//                         ? "bg-primary text-primary-foreground" 
+//                       selectedPreset === preset.label
+//                         ? "bg-primary text-primary-foreground"
 //                         : "hover:bg-muted text-muted-foreground hover:text-foreground",
 //                     )}
 //                     onClick={() => {
@@ -331,7 +330,7 @@
 //           {/* Calendar and input section */}
 //           <div className="p-3 flex-grow">
 //             <div className="flex items-center space-x-2 mb-3">
-//               <Checkbox 
+//               <Checkbox
 //                 id="compare-toggle"
 //                 checked={isCompareEnabled}
 //                 onCheckedChange={() => setIsCompareEnabled(!isCompareEnabled)}
@@ -346,8 +345,8 @@
 //                 <h2 className="text-xs font-medium text-muted-foreground">Primary Range</h2>
 //                 <div className="flex space-x-2">
 //                   <div className="flex-1 relative">
-//                     <Input 
-//                       placeholder="YYYY-MM-DD" 
+//                     <Input
+//                       placeholder="YYYY-MM-DD"
 //                       value={manualFromDate}
 //                       onChange={(e) => setManualFromDate(e.target.value)}
 //                       onBlur={handleManualDateInput}
@@ -359,8 +358,8 @@
 //                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
 //                   </div>
 //                   <div className="flex-1 relative">
-//                     <Input 
-//                       placeholder="YYYY-MM-DD" 
+//                     <Input
+//                       placeholder="YYYY-MM-DD"
 //                       value={manualToDate}
 //                       onChange={(e) => setManualToDate(e.target.value)}
 //                       onBlur={handleManualDateInput}
@@ -380,8 +379,8 @@
 //                   <h2 className="text-xs font-medium text-muted-foreground">Comparison Range</h2>
 //                   <div className="flex space-x-2">
 //                     <div className="flex-1 relative">
-//                       <Input 
-//                         placeholder="YYYY-MM-DD" 
+//                       <Input
+//                         placeholder="YYYY-MM-DD"
 //                         value={manualCompareFromDate}
 //                         onChange={(e) => setManualCompareFromDate(e.target.value)}
 //                         onBlur={handleManualCompareDateInput}
@@ -393,8 +392,8 @@
 //                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
 //                     </div>
 //                     <div className="flex-1 relative">
-//                       <Input 
-//                         placeholder="YYYY-MM-DD" 
+//                       <Input
+//                         placeholder="YYYY-MM-DD"
 //                         value={manualCompareToDate}
 //                         onChange={(e) => setManualCompareToDate(e.target.value)}
 //                         onBlur={handleManualCompareDateInput}
@@ -410,14 +409,13 @@
 //               )}
 //             </div>
 
-
 //             {/* Calendar */}
 //             <div className="border rounded-lg p-2 bg-background/80 shadow-sm">
 //               <Calendar
 //                 initialFocus
 //                 mode="range"
 //                 defaultMonth={
-//                   calendarMode === 'primary' 
+//                   calendarMode === 'primary'
 //                     ? (tempDate?.from || defaultDate?.from || dates.today)
 //                     : (compareDate?.from || dates.today)
 //                 }
@@ -435,16 +433,16 @@
 
 //         {/* Action Buttons */}
 //         <div className="border-t p-2 flex justify-end gap-2 bg-muted/10">
-//           <Button 
-//             variant="outline" 
-//             size="sm" 
+//           <Button
+//             variant="outline"
+//             size="sm"
 //             onClick={clearDateRange}
 //             className="rounded-md h-8 text-xs"
 //           >
 //             Clear
 //           </Button>
-//           <Button 
-//             size="sm" 
+//           <Button
+//             size="sm"
 //             onClick={handleUpdate}
 //             className="rounded-md h-8 text-xs bg-primary hover:bg-primary/90"
 //           >
@@ -456,29 +454,40 @@
 //   )
 // }
 
-
-
-
-
-import { useState, useMemo, useCallback, useEffect } from "react"
-import { createSelector } from "@reduxjs/toolkit"
-import { CalendarIcon } from "lucide-react"
-import { addDays, startOfMonth, endOfMonth, endOfYear, format, startOfYear, subDays, subMonths, subYears, parse } from "date-fns"
-import type { DateRange } from "react-day-picker"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
-import { useDispatch, useSelector } from "react-redux"
-import { setDate, clearDate } from "@/store/slices/DateSlice"
-import type { RootState } from "@/store"
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { createSelector } from "@reduxjs/toolkit";
+import { CalendarIcon } from "lucide-react";
+import {
+  addDays,
+  startOfMonth,
+  endOfMonth,
+  endOfYear,
+  format,
+  startOfYear,
+  subDays,
+  subMonths,
+  subYears,
+  parse,
+} from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { useDispatch, useSelector } from "react-redux";
+import { setDate, clearDate } from "@/store/slices/DateSlice";
+import type { RootState } from "@/store";
 
 type DatePickerWithRangeProps = {
-  defaultDate?: DateRange
-  resetToFirstPage?: () => void
-}
+  defaultDate?: DateRange;
+  resetToFirstPage?: () => void;
+};
 
 const selectDateRange = createSelector(
   (state: RootState) => state.date?.from,
@@ -487,61 +496,81 @@ const selectDateRange = createSelector(
     from,
     to,
   }),
-)
+);
 
-export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePickerWithRangeProps) {
-  const dispatch = useDispatch()
-  const dateRange = useSelector(selectDateRange)
-  const [isMobile, setIsMobile] = useState(false)
+export function DatePickerWithRange({
+  defaultDate,
+  resetToFirstPage,
+}: DatePickerWithRangeProps) {
+  const dispatch = useDispatch();
+  const dateRange = useSelector(selectDateRange);
+  const [isMobile, setIsMobile] = useState(false);
 
   const initialDate = useMemo(() => {
-    if (dateRange) {
+    // if (dateRange){
+    if (dateRange?.from || dateRange?.to) {
       return {
         from: dateRange.from ? new Date(dateRange.from) : undefined,
         to: dateRange.to ? new Date(dateRange.to) : undefined,
-      }
+      };
     }
     return defaultDate
       ? {
-        from: defaultDate.from ? new Date(defaultDate.from) : undefined,
-        to: defaultDate.to ? new Date(defaultDate.to) : undefined,
-      }
-      : undefined
-  }, [dateRange, defaultDate])
+          from: defaultDate.from ? new Date(defaultDate.from) : undefined,
+          to: defaultDate.to ? new Date(defaultDate.to) : undefined,
+        }
+      : undefined;
+  }, [dateRange, defaultDate]);
 
-  const [tempDate, setTempDate] = useState<DateRange | undefined>(initialDate)
-  const [compareDate, setCompareDate] = useState<DateRange | undefined>()
-  const [open, setOpen] = useState(false)
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
-  const [isCompareEnabled, setIsCompareEnabled] = useState(false)
-  const [calendarMode, setCalendarMode] = useState<"primary" | "comparison">("primary")
+  const [tempDate, setTempDate] = useState<DateRange | undefined>(initialDate);
+  const [compareDate, setCompareDate] = useState<DateRange | undefined>();
+  const [open, setOpen] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [isCompareEnabled, setIsCompareEnabled] = useState(false);
+  const [calendarMode, setCalendarMode] = useState<"primary" | "comparison">(
+    "primary",
+  );
 
   const [manualFromDate, setManualFromDate] = useState(
-    tempDate?.from ? format(tempDate.from, "yyyy-MM-dd") : ""
-  )
+    tempDate?.from ? format(tempDate.from, "yyyy-MM-dd") : "",
+  );
   const [manualToDate, setManualToDate] = useState(
-    tempDate?.to ? format(tempDate.to, "yyyy-MM-dd") : ""
-  )
-  const [manualCompareFromDate, setManualCompareFromDate] = useState("")
-  const [manualCompareToDate, setManualCompareToDate] = useState("")
+    tempDate?.to ? format(tempDate.to, "yyyy-MM-dd") : "",
+  );
+  const [manualCompareFromDate, setManualCompareFromDate] = useState("");
+  const [manualCompareToDate, setManualCompareToDate] = useState("");
 
   const dates = useMemo(() => {
-    const today = new Date()
-    const daysSinceSunday = today.getDay()
-    const startOfThisWeek = subDays(today, daysSinceSunday)
-    const endOfThisWeek = addDays(startOfThisWeek, 6)
-    const startOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    const startOfLastWeek = subDays(startOfThisWeek, 7)
-    const endOfLastWeek = subDays(startOfThisWeek, 1)
-    const quarter = Math.floor(today.getMonth() / 3)
-    const startOfThisQuarter = new Date(today.getFullYear(), quarter * 3, 1)
-    const endOfThisQuarter = new Date(today.getFullYear(), (quarter + 1) * 3, 0)
+    const today = new Date();
+    const daysSinceSunday = today.getDay();
+    const startOfThisWeek = subDays(today, daysSinceSunday);
+    const endOfThisWeek = addDays(startOfThisWeek, 6);
+    const startOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfThisMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+    );
+    const startOfLastWeek = subDays(startOfThisWeek, 7);
+    const endOfLastWeek = subDays(startOfThisWeek, 1);
+    const quarter = Math.floor(today.getMonth() / 3);
+    const startOfThisQuarter = new Date(today.getFullYear(), quarter * 3, 1);
+    const endOfThisQuarter = new Date(
+      today.getFullYear(),
+      (quarter + 1) * 3,
+      0,
+    );
 
-    const lastQuarter = today.getMonth() < 3 ? 3 : Math.floor((today.getMonth() - 3) / 3)
-    const lastQuarterYear = today.getMonth() < 3 ? today.getFullYear() - 1 : today.getFullYear()
-    const startOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3, 1)
-    const endOfLastQuarter = new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0)
+    const lastQuarter =
+      today.getMonth() < 3 ? 3 : Math.floor((today.getMonth() - 3) / 3);
+    const lastQuarterYear =
+      today.getMonth() < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    const startOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3, 1);
+    const endOfLastQuarter = new Date(
+      lastQuarterYear,
+      (lastQuarter + 1) * 3,
+      0,
+    );
 
     return {
       today,
@@ -555,152 +584,227 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
       endOfThisQuarter,
       startOfLastQuarter,
       endOfLastQuarter,
-    }
-  }, [])
+    };
+  }, []);
 
-  const parseManualDate = useCallback((dateString: string): Date | undefined => {
-    try {
-      const parsedDate = parse(dateString, "yyyy-MM-dd", new Date())
-      return !isNaN(parsedDate.getTime()) ? parsedDate : undefined
-    } catch {
-      return undefined
-    }
-  }, [])
+  const parseManualDate = useCallback(
+    (dateString: string): Date | undefined => {
+      try {
+        const parsedDate = parse(dateString, "yyyy-MM-dd", new Date());
+        return !isNaN(parsedDate.getTime()) ? parsedDate : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    [],
+  );
 
   const handleManualDateInput = useCallback(() => {
-    const fromDate = parseManualDate(manualFromDate)
-    const toDate = parseManualDate(manualToDate)
+    const fromDate = parseManualDate(manualFromDate);
+    const toDate = parseManualDate(manualToDate);
 
     if (fromDate && toDate) {
-      setTempDate({ from: fromDate, to: toDate })
-      setSelectedPreset(null)
+      setTempDate({ from: fromDate, to: toDate });
+      setSelectedPreset(null);
     }
-  }, [manualFromDate, manualToDate, parseManualDate])
+  }, [manualFromDate, manualToDate, parseManualDate]);
 
   const handleManualCompareDateInput = useCallback(() => {
-    const fromDate = parseManualDate(manualCompareFromDate)
-    const toDate = parseManualDate(manualCompareToDate)
+    const fromDate = parseManualDate(manualCompareFromDate);
+    const toDate = parseManualDate(manualCompareToDate);
 
     if (fromDate && toDate) {
-      setCompareDate({ from: fromDate, to: toDate })
+      setCompareDate({ from: fromDate, to: toDate });
     }
-  }, [manualCompareFromDate, manualCompareToDate, parseManualDate])
+  }, [manualCompareFromDate, manualCompareToDate, parseManualDate]);
 
-  const setPresetRange = useCallback((from: Date, to: Date) => {
-    if (calendarMode === "primary") {
-      const newRange = { from, to }
-      setTempDate(newRange)
-      setManualFromDate(format(from, "yyyy-MM-dd"))
-      setManualToDate(format(to, "yyyy-MM-dd"))
-    } else if (calendarMode === "comparison") {
-      const newCompareRange = { from, to }
-      setCompareDate(newCompareRange)
-      setManualCompareFromDate(format(from, "yyyy-MM-dd"))
-      setManualCompareToDate(format(to, "yyyy-MM-dd"))
-    }
+  const setPresetRange = useCallback(
+    (from: Date, to: Date) => {
+      if (calendarMode === "primary") {
+        const newRange = { from, to };
+        setTempDate(newRange);
+        setManualFromDate(format(from, "yyyy-MM-dd"));
+        setManualToDate(format(to, "yyyy-MM-dd"));
+      } else if (calendarMode === "comparison") {
+        const newCompareRange = { from, to };
+        setCompareDate(newCompareRange);
+        setManualCompareFromDate(format(from, "yyyy-MM-dd"));
+        setManualCompareToDate(format(to, "yyyy-MM-dd"));
+      }
 
-    setSelectedPreset(null)
-  }, [calendarMode])
+      setSelectedPreset(null);
+    },
+    [calendarMode],
+  );
 
   const presets = useMemo(
     () => [
       { label: "Today", fn: () => setPresetRange(dates.today, dates.today) },
-      { label: "Yesterday", fn: () => setPresetRange(subDays(dates.today, 1), subDays(dates.today, 1)) },
-      { label: "This Week", fn: () => setPresetRange(dates.startOfThisWeek, dates.endOfThisWeek) },
-      { label: "Last week", fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek) },
-      { label: "Last 7 Days", fn: () => setPresetRange(subDays(dates.today, 6), subDays(dates.today, 1)) },
-      { label: "Last 30 Days", fn: () => setPresetRange(subDays(dates.today, 30), subDays(dates.today, 1)) },
-      { label: "Last 90 Days", fn: () => setPresetRange(subDays(dates.today, 90), subDays(dates.today, 1)) },
-      { label: "Last 365 Days", fn: () => setPresetRange(subDays(dates.today, 365), subDays(dates.today, 1)) },
-      { label: "This Month", fn: () => setPresetRange(dates.startOfThisMonth, dates.today) },
-      { label: "Last Month", fn: () => setPresetRange(startOfMonth(subMonths(dates.today, 1)), endOfMonth(subMonths(dates.today, 1))) },
-      { label: "Last 3 Months", fn: () => setPresetRange(startOfMonth(subMonths(dates.today, 3)), endOfMonth(subMonths(dates.today, 1))) },
-      { label: "Last 6 Months", fn: () => setPresetRange(startOfMonth(subMonths(dates.today, 6)), endOfMonth(subMonths(dates.today, 1))) },
-      { label: "This Quarter", fn: () => setPresetRange(dates.startOfThisQuarter, dates.endOfThisQuarter) },
-      { label: "Last Quarter", fn: () => setPresetRange(dates.startOfLastQuarter, dates.endOfLastQuarter) },
-      { label: "This Year", fn: () => setPresetRange(new Date(new Date().getFullYear(), 0, 1), dates.today) },
+      {
+        label: "Yesterday",
+        fn: () =>
+          setPresetRange(subDays(dates.today, 1), subDays(dates.today, 1)),
+      },
+      {
+        label: "This Week",
+        fn: () => setPresetRange(dates.startOfThisWeek, dates.endOfThisWeek),
+      },
+      {
+        label: "Last week",
+        fn: () => setPresetRange(dates.startOfLastWeek, dates.endOfLastWeek),
+      },
+      {
+        label: "Last 7 Days",
+        fn: () =>
+          setPresetRange(subDays(dates.today, 6), subDays(dates.today, 1)),
+      },
+      {
+        label: "Last 30 Days",
+        fn: () =>
+          setPresetRange(subDays(dates.today, 30), subDays(dates.today, 1)),
+      },
+      {
+        label: "Last 90 Days",
+        fn: () =>
+          setPresetRange(subDays(dates.today, 90), subDays(dates.today, 1)),
+      },
+      {
+        label: "Last 365 Days",
+        fn: () =>
+          setPresetRange(subDays(dates.today, 365), subDays(dates.today, 1)),
+      },
+      {
+        label: "This Month",
+        fn: () => setPresetRange(dates.startOfThisMonth, dates.today),
+      },
+      {
+        label: "Last Month",
+        fn: () =>
+          setPresetRange(
+            startOfMonth(subMonths(dates.today, 1)),
+            endOfMonth(subMonths(dates.today, 1)),
+          ),
+      },
+      {
+        label: "Last 3 Months",
+        fn: () =>
+          setPresetRange(
+            startOfMonth(subMonths(dates.today, 3)),
+            endOfMonth(subMonths(dates.today, 1)),
+          ),
+      },
+      {
+        label: "Last 6 Months",
+        fn: () =>
+          setPresetRange(
+            startOfMonth(subMonths(dates.today, 6)),
+            endOfMonth(subMonths(dates.today, 1)),
+          ),
+      },
+      {
+        label: "This Quarter",
+        fn: () =>
+          setPresetRange(dates.startOfThisQuarter, dates.endOfThisQuarter),
+      },
+      {
+        label: "Last Quarter",
+        fn: () =>
+          setPresetRange(dates.startOfLastQuarter, dates.endOfLastQuarter),
+      },
+      {
+        label: "This Year",
+        fn: () =>
+          setPresetRange(new Date(new Date().getFullYear(), 0, 1), dates.today),
+      },
       {
         label: "Last Year",
-        fn: () => setPresetRange(subYears(startOfYear(new Date()), 1), subYears(endOfYear(new Date()), 1)),
+        fn: () =>
+          setPresetRange(
+            subYears(startOfYear(new Date()), 1),
+            subYears(endOfYear(new Date()), 1),
+          ),
       },
     ],
     [dates, setPresetRange],
-  )
+  );
 
-  const handleCalendarSelect = useCallback((range: DateRange | undefined) => {
-    if (calendarMode === "primary") {
-      if (range?.from && !range.to) {
-        setTempDate({ from: range.from, to: range.from })
-        setManualFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualToDate(format(range.from, "yyyy-MM-dd"))
-      } else if (range?.from && range?.to && range.from > range.to) {
-        setTempDate({ from: range.from, to: range.from })
-        setManualFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualToDate(format(range.from, "yyyy-MM-dd"))
-      } else if (range?.from && range?.to) {
-        setTempDate(range)
-        setManualFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualToDate(format(range.to, "yyyy-MM-dd"))
+  const handleCalendarSelect = useCallback(
+    (range: DateRange | undefined) => {
+      if (calendarMode === "primary") {
+        if (range?.from && !range.to) {
+          setTempDate({ from: range.from, to: range.from });
+          setManualFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualToDate(format(range.from, "yyyy-MM-dd"));
+        } else if (range?.from && range?.to && range.from > range.to) {
+          setTempDate({ from: range.from, to: range.from });
+          setManualFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualToDate(format(range.from, "yyyy-MM-dd"));
+        } else if (range?.from && range?.to) {
+          setTempDate(range);
+          setManualFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualToDate(format(range.to, "yyyy-MM-dd"));
+        } else {
+          setTempDate(undefined);
+          setManualFromDate("");
+          setManualToDate("");
+        }
+        setSelectedPreset(null);
       } else {
-        setTempDate(undefined)
-        setManualFromDate("")
-        setManualToDate("")
+        if (range?.from && !range.to) {
+          setCompareDate({ from: range.from, to: range.from });
+          setManualCompareFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualCompareToDate(format(range.from, "yyyy-MM-dd"));
+        } else if (range?.from && range?.to && range.from > range.to) {
+          setCompareDate({ from: range.from, to: range.from });
+          setManualCompareFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualCompareToDate(format(range.from, "yyyy-MM-dd"));
+        } else if (range?.from && range?.to) {
+          setCompareDate(range);
+          setManualCompareFromDate(format(range.from, "yyyy-MM-dd"));
+          setManualCompareToDate(format(range.to, "yyyy-MM-dd"));
+        } else {
+          setCompareDate(undefined);
+          setManualCompareFromDate("");
+          setManualCompareToDate("");
+        }
       }
-      setSelectedPreset(null)
-    } else {
-      if (range?.from && !range.to) {
-        setCompareDate({ from: range.from, to: range.from })
-        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualCompareToDate(format(range.from, "yyyy-MM-dd"))
-      } else if (range?.from && range?.to && range.from > range.to) {
-        setCompareDate({ from: range.from, to: range.from })
-        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualCompareToDate(format(range.from, "yyyy-MM-dd"))
-      } else if (range?.from && range?.to) {
-        setCompareDate(range)
-        setManualCompareFromDate(format(range.from, "yyyy-MM-dd"))
-        setManualCompareToDate(format(range.to, "yyyy-MM-dd"))
-      } else {
-        setCompareDate(undefined)
-        setManualCompareFromDate("")
-        setManualCompareToDate("")
-      }
-    }
-  }, [calendarMode])
+    },
+    [calendarMode],
+  );
 
   const formatDateRange = useCallback(
     (range: DateRange | undefined) => {
       if (!range) {
         return defaultDate && defaultDate.from && defaultDate.to
           ? `${format(defaultDate.from, "LLL dd, y")} - ${format(defaultDate.to, "LLL dd, y")}`
-          : "Pick a date"
+          : "Pick a date";
       }
       if (range.from) {
         if (range.to) {
-          return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`
+          return `${format(range.from, "LLL dd, y")} - ${format(range.to, "LLL dd, y")}`;
         }
-        return format(range.from, "LLL dd, y")
+        return format(range.from, "LLL dd, y");
       }
-      return "Pick a date"
+      return "Pick a date";
     },
     [defaultDate],
-  )
+  );
 
   const clearDateRange = useCallback(() => {
-    setTempDate(undefined)
-    setCompareDate(undefined)
-    setSelectedPreset(null)
-    setIsCompareEnabled(false)
-    setManualFromDate("")
-    setManualToDate("")
-    setManualCompareFromDate("")
-    setManualCompareToDate("")
-    dispatch(clearDate())
+    setTempDate(undefined);
+    setCompareDate(undefined);
+    setSelectedPreset(null);
+    setIsCompareEnabled(false);
+    setManualFromDate("");
+    setManualToDate("");
+    setManualCompareFromDate("");
+    setManualCompareToDate("");
+    dispatch(clearDate());
     if (resetToFirstPage) {
-      resetToFirstPage()
+      resetToFirstPage();
     }
-    setOpen(false)
-  }, [dispatch, resetToFirstPage])
+    setOpen(false);
+  }, [dispatch, resetToFirstPage]);
 
   const handleUpdate = useCallback(() => {
     if (tempDate) {
@@ -708,28 +812,34 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
         setDate({
           from: tempDate.from ? tempDate.from.toISOString() : undefined,
           to: tempDate.to ? tempDate.to.toISOString() : undefined,
-          compareFrom: isCompareEnabled && compareDate?.from ? compareDate.from.toISOString() : undefined,
-          compareTo: isCompareEnabled && compareDate?.to ? compareDate.to.toISOString() : undefined,
+          compareFrom:
+            isCompareEnabled && compareDate?.from
+              ? compareDate.from.toISOString()
+              : undefined,
+          compareTo:
+            isCompareEnabled && compareDate?.to
+              ? compareDate.to.toISOString()
+              : undefined,
         }),
-      )
+      );
     }
     if (resetToFirstPage) {
-      resetToFirstPage()
+      resetToFirstPage();
     }
-    setOpen(false)
-  }, [dispatch, resetToFirstPage, tempDate, compareDate, isCompareEnabled])
+    setOpen(false);
+  }, [dispatch, resetToFirstPage, tempDate, compareDate, isCompareEnabled]);
 
   useEffect(() => {
     const checkScreen = () => {
-      setIsMobile(window.innerWidth < 640)
-    }
+      setIsMobile(window.innerWidth < 640);
+    };
 
-    checkScreen()
+    checkScreen();
 
-    window.addEventListener("resize", checkScreen)
+    window.addEventListener("resize", checkScreen);
 
-    return () => window.removeEventListener("resize", checkScreen)
-  }, [])
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -739,7 +849,7 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
           className={cn(
             "w-[250px] max-w-full justify-start text-left font-normal",
             !tempDate && !defaultDate && "text-muted-foreground",
-            "hover:bg-muted/50 transition-colors rounded-lg border-muted-foreground/20"
+            "hover:bg-muted/50 transition-colors rounded-lg border-muted-foreground/20",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-primary" />
@@ -758,13 +868,17 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
               style={{ maxHeight: "400px" }}
             >
               <div className="space-y-1.5">
-                <h1 className="text-sm pb-2 font-semibold border-b border-border/50 text-black">Quick Select</h1>
+                <h1 className="text-sm pb-2 font-semibold border-b border-border/50 text-black">
+                  Quick Select
+                </h1>
                 <div className="grid grid-cols-2 md:grid-cols-1 gap-1">
                   {presets.map((preset) => (
                     <Button
                       key={preset.label}
                       size="sm"
-                      variant={selectedPreset === preset.label ? "default" : "ghost"}
+                      variant={
+                        selectedPreset === preset.label ? "default" : "ghost"
+                      }
                       className={cn(
                         "w-full justify-start text-xs font-normal h-8 rounded-md",
                         selectedPreset === preset.label
@@ -772,8 +886,8 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                           : "hover:bg-muted text-muted-foreground hover:text-foreground",
                       )}
                       onClick={() => {
-                        preset.fn()
-                        setSelectedPreset(preset.label)
+                        preset.fn();
+                        setSelectedPreset(preset.label);
                       }}
                     >
                       {preset.label}
@@ -798,7 +912,9 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
 
               <div className="grid gap-3 mb-3">
                 <div className="space-y-2">
-                  <h2 className="text-xs font-medium text-muted-foreground">Primary Range</h2>
+                  <h2 className="text-xs font-medium text-muted-foreground">
+                    Primary Range
+                  </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="relative">
                       <Input
@@ -807,11 +923,13 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                         onChange={(e) => setManualFromDate(e.target.value)}
                         onBlur={handleManualDateInput}
                         onClick={() => {
-                          setCalendarMode("primary")
+                          setCalendarMode("primary");
                         }}
                         className="h-8 pl-10 text-xs rounded-md"
                       />
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        From
+                      </span>
                     </div>
                     <div className="relative">
                       <Input
@@ -820,44 +938,56 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                         onChange={(e) => setManualToDate(e.target.value)}
                         onBlur={handleManualDateInput}
                         onClick={() => {
-                          setCalendarMode("primary")
+                          setCalendarMode("primary");
                         }}
                         className="h-8 pl-10 text-xs rounded-md"
                       />
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        To
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {isCompareEnabled && (
                   <div className="space-y-2">
-                    <h2 className="text-xs font-medium text-muted-foreground">Comparison Range</h2>
+                    <h2 className="text-xs font-medium text-muted-foreground">
+                      Comparison Range
+                    </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="relative">
                         <Input
                           placeholder="YYYY-MM-DD"
                           value={manualCompareFromDate}
-                          onChange={(e) => setManualCompareFromDate(e.target.value)}
+                          onChange={(e) =>
+                            setManualCompareFromDate(e.target.value)
+                          }
                           onBlur={handleManualCompareDateInput}
                           onClick={() => {
-                            setCalendarMode("comparison")
+                            setCalendarMode("comparison");
                           }}
                           className="h-8 pl-10 text-xs rounded-md"
                         />
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">From</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          From
+                        </span>
                       </div>
                       <div className="relative">
                         <Input
                           placeholder="YYYY-MM-DD"
                           value={manualCompareToDate}
-                          onChange={(e) => setManualCompareToDate(e.target.value)}
+                          onChange={(e) =>
+                            setManualCompareToDate(e.target.value)
+                          }
                           onBlur={handleManualCompareDateInput}
                           onClick={() => {
-                            setCalendarMode("comparison")
+                            setCalendarMode("comparison");
                           }}
                           className="h-8 pl-10 text-xs rounded-md"
                         />
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">To</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          To
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -871,8 +1001,8 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
                   mode="range"
                   defaultMonth={
                     calendarMode === "primary"
-                      ? (tempDate?.from || defaultDate?.from || dates.today)
-                      : (compareDate?.from || dates.today)
+                      ? tempDate?.from || defaultDate?.from || dates.today
+                      : compareDate?.from || dates.today
                   }
                   selected={calendarMode === "primary" ? tempDate : compareDate}
                   onSelect={handleCalendarSelect}
@@ -907,5 +1037,5 @@ export function DatePickerWithRange({ defaultDate, resetToFirstPage }: DatePicke
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

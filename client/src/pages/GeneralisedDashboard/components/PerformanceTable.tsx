@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
+import { format } from "date-fns";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period =
@@ -69,6 +70,16 @@ export default function PerformanceTable({
   loading: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const dateRange = useSelector((state: RootState) => state.date);
+
+  const getCustomDateLabel = () => {
+    if (dateRange?.from && dateRange?.to) {
+      return `${format(new Date(dateRange.from), "LLL dd, y")} - ${format(new Date(dateRange.to), "LLL dd, y")}`;
+    } else if (dateRange?.from) {
+      return format(new Date(dateRange.from), "LLL dd, y");
+    }
+    return "Date";
+  };
 
 
   const periodLabels: Record<Period, string> = {
@@ -77,7 +88,7 @@ export default function PerformanceTable({
     last14Days: "Last 14 Days",
     last30Days: "Last 30 Days",
     quarterly: "Quarterly",
-    custom: "Date",
+    custom: getCustomDateLabel(),
   };
 
   const metricLabels: Record<string, string> = {

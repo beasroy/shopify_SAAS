@@ -1,9 +1,9 @@
-import { google } from 'googleapis';
+import { google } from "googleapis";
 import { GoogleAdsApi } from "google-ads-api";
-import { config } from 'dotenv';
-import NodeCache from 'node-cache';
-import axios from 'axios';
-import Brand from '../models/Brands.js';
+import { config } from "dotenv";
+import NodeCache from "node-cache";
+import axios from "axios";
+import Brand from "../models/Brands.js";
 
 const cache = new NodeCache({ stdTTL: 604800, checkperiod: 600 });
 config();
@@ -12,62 +12,72 @@ config();
 export { cache };
 
 const createGoogleAdsClient = (refreshToken) => {
-    return new GoogleAdsApi({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
-        refresh_token: refreshToken,
-    });
+  return new GoogleAdsApi({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    developer_token: process.env.GOOGLE_AD_DEVELOPER_TOKEN,
+    refresh_token: refreshToken,
+  });
 };
 
 export const getGoogleAdAccounts = async (req, res) => {
-    try {
-        const {brandId} = req.params;
-        if (!brandId) {
-            return res.status(400).json({ message: 'Brand ID is required.' });
-        }
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            return res.status(404).json({ message: 'Brand not found.' });
-        }
-        if (!brand.googleAdsRefreshToken) {
-            return res.status(403).json({ message: 'This brand does not have a Google Ads refresh token.' });
-        }
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
+    }
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found." });
+    }
+    if (!brand.googleAdsRefreshToken) {
+      return res
+        .status(403)
+        .json({
+          message: "This brand does not have a Google Ads refresh token.",
+        });
+    }
 
-        const cacheKey = `google_ads_accounts_${brandId}`;
+    const cacheKey = `google_ads_accounts_${brandId}`;
 
-        // Check cache
-        const cachedAdAccounts = cache.get(cacheKey);
-        if (cachedAdAccounts) {
-            console.log('Retrieved cached ad accounts data:', cachedAdAccounts);
-            return res.status(200).json({ clientAccounts: cachedAdAccounts, fromCache: true });
-        } else {
-            console.log('No cached data found for key:', cacheKey);
-        }
+    // Check cache
+    const cachedAdAccounts = cache.get(cacheKey);
+    if (cachedAdAccounts) {
+      console.log("Retrieved cached ad accounts data:", cachedAdAccounts);
+      return res
+        .status(200)
+        .json({ clientAccounts: cachedAdAccounts, fromCache: true });
+    } else {
+      console.log("No cached data found for key:", cacheKey);
+    }
 
-        const client = createGoogleAdsClient(brand.googleAdsRefreshToken);
+    const client = createGoogleAdsClient(brand.googleAdsRefreshToken);
 
-        // Get list of accessible customers
-        const customersResponse = await client.listAccessibleCustomers(brand.googleAdsRefreshToken);
-        console.log('Accessible customers:', customersResponse);
+    // Get list of accessible customers
+    const customersResponse = await client.listAccessibleCustomers(
+      brand.googleAdsRefreshToken,
+    );
+    console.log("Accessible customers:", customersResponse);
 
-        if (!customersResponse?.resource_names?.length) {
-            cache.set(cacheKey, [], 604800); // Cache empty result for 7 days
-            return res.status(200).json({ clientAccounts: [] });
-        }
+    if (!customersResponse?.resource_names?.length) {
+      cache.set(cacheKey, [], 604800); // Cache empty result for 7 days
+      return res.status(200).json({ clientAccounts: [] });
+    }
 
-        const customerIds = customersResponse.resource_names.map(resource => resource.split('/')[1]);
+    const customerIds = customersResponse.resource_names.map(
+      (resource) => resource.split("/")[1],
+    );
 
-        // Process each customer account
-        const clientAccounts = [];
+    // Process each customer account
+    const clientAccounts = [];
 
-        for (const customerId of customerIds) {
-            try {
-                const customer = client.Customer({
-                    customer_id: customerId,
-                    refresh_token: brand.googleAdsRefreshToken,
-                });
-                const query = `
+    for (const customerId of customerIds) {
+      try {
+        const customer = client.Customer({
+          customer_id: customerId,
+          refresh_token: brand.googleAdsRefreshToken,
+        });
+        const query = `
                     SELECT
                       customer_client.client_customer,
                       customer_client.level,
@@ -77,281 +87,321 @@ export const getGoogleAdAccounts = async (req, res) => {
                     WHERE customer_client.level IN (0,1)
                 `;
 
-                const response = await customer.query(query);
-                console.log(`Customer ${customerId} response:`, response);
+        const response = await customer.query(query);
+        console.log(`Customer ${customerId} response:`, response);
 
-                const accounts = response.map(row => ({
-                    name: row.customer_client.descriptive_name,
-                    clientId: row.customer_client.client_customer?.split('/')[1] || null,
-                    hidden: row.customer_client.hidden,
-                    managerId: customerId
-                })).filter(account => account.clientId);
+        const accounts = response
+          .map((row) => ({
+            name: row.customer_client.descriptive_name,
+            clientId:
+              row.customer_client.client_customer?.split("/")[1] || null,
+            hidden: row.customer_client.hidden,
+            managerId: customerId,
+          }))
+          .filter((account) => account.clientId);
 
-                clientAccounts.push(...accounts);
-            } catch (error) {
-                console.warn(`Error processing customer ${customerId}:`, error.message);
-            }
-        }
-
-        cache.set(cacheKey, clientAccounts, 604800);
-
-        res.status(200).json({ clientAccounts });
-
-    } catch (error) {
-        console.error('Error fetching Google accounts:', error);
-
-        // Check if refresh token is expired
-        if (error.message?.includes('invalid_grant')) {
-            console.log('Refresh token expired. Prompting brand to reauthenticate.');
-            return res.status(401).json({
-                message: 'Your Google session has expired. Please log in again.',
-                code: 'TOKEN_EXPIRED',
-            });
-        }
-
-        // Check for Google Ads API errors
-        if (error.errors?.some(err => err.message.includes('OAuth access token is not associated with any Ads accounts'))) {
-            return res.status(400).json({
-                message: 'The Google account is not associated with any Ads accounts.',
-                error: error.message,
-            });
-        }
-
-        res.status(500).json({
-            message: 'Error fetching Google accounts.',
-            error: error.message,
-        });
+        clientAccounts.push(...accounts);
+      } catch (error) {
+        console.warn(`Error processing customer ${customerId}:`, error.message);
+      }
     }
+
+    cache.set(cacheKey, clientAccounts, 604800);
+
+    res.status(200).json({ clientAccounts });
+  } catch (error) {
+    console.error("Error fetching Google accounts:", error);
+
+    // Check if refresh token is expired
+    if (error.message?.includes("invalid_grant")) {
+      console.log("Refresh token expired. Prompting brand to reauthenticate.");
+      return res.status(401).json({
+        message: "Your Google session has expired. Please log in again.",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    // Check for Google Ads API errors
+    if (
+      error.errors?.some((err) =>
+        err.message.includes(
+          "OAuth access token is not associated with any Ads accounts",
+        ),
+      )
+    ) {
+      return res.status(400).json({
+        message: "The Google account is not associated with any Ads accounts.",
+        error: error.message,
+      });
+    }
+
+    res.status(500).json({
+      message: "Error fetching Google accounts.",
+      error: error.message,
+    });
+  }
 };
 
-
 export const getGa4PropertyIds = async (req, res) => {
-    try {
-        const {brandId} = req.params;
-        if (!brandId) {
-            return res.status(400).json({ message: 'Brand ID is required.' });
-        }
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            return res.status(404).json({ message: 'Brand not found.' });
-        }
-
-        if (!brand.googleAnalyticsRefreshToken) {
-            return res.status(403).json({ message: 'This brand does not have a Google Analytics refresh token.' });
-        }
-
-        const cacheKey = `ga4_properties_${brandId}`;
-
-        const cachedProperties = cache.get(cacheKey);
-        if (cachedProperties) {
-            console.log('Returning cached data');
-            return res.status(200).json({ propertiesList: cachedProperties, fromCache: true });
-        }
-
-   
-
-        // Initialize OAuth client with the refresh token only
-        const oauth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URI
-        );
-
-        oauth2Client.setCredentials({ refresh_token: brand.googleAnalyticsRefreshToken });
-
-
-        const analyticsAdmin = google.analyticsadmin({ version: 'v1alpha', auth: oauth2Client });
-        const accountsResponse = await analyticsAdmin.accounts.list();
-        const accounts = accountsResponse.data.accounts || [];
-
-        if (accounts.length === 0) {
-            return res.status(404).json({ message: 'No accounts found.' });
-        }
-
-        const propertiesList = [];
-        for (const account of accounts) {
-            const propertiesResponse = await analyticsAdmin.properties.list({
-                filter: `parent:${account.name}`,
-            });
-
-            const properties = propertiesResponse.data.properties || [];
-            properties.forEach((property) => {
-                propertiesList.push({
-                    accountName: account.displayName,
-                    propertyId: property.name.split('/').pop(),
-                    propertyName: property.displayName,
-                });
-            });
-        }
-
-        // Cache the result
-        cache.set(cacheKey, propertiesList);
-
-        res.json({ propertiesList });
-    } catch (error) {
-        console.error('Error fetching properties:', error.message);
-        console.error('Stack trace:', error.stack);
-        if (error.message && error.message.includes('invalid_grant')) {
-            console.log('Refresh token expired. Prompting user to reauthenticate.');
-
-            // Invalidate the user's refresh token in the database
-            //await User.findByIdAndUpdate(req.body.userId, { googleAnalyticsRefreshToken: null });
-
-            return res.status(401).json({
-                message: 'Your Google session has expired. Please log in again to continue.',
-                code: 'TOKEN_EXPIRED',
-            });
-        }
-        res.status(500).json({ message: 'Error fetching properties.', error: error.message });
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
     }
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found." });
+    }
+
+    if (!brand.googleAnalyticsRefreshToken) {
+      return res
+        .status(403)
+        .json({
+          message: "This brand does not have a Google Analytics refresh token.",
+        });
+    }
+
+    const cacheKey = `ga4_properties_${brandId}`;
+
+    const cachedProperties = cache.get(cacheKey);
+    if (cachedProperties) {
+      console.log("Returning cached data");
+      return res
+        .status(200)
+        .json({ propertiesList: cachedProperties, fromCache: true });
+    }
+
+    // Initialize OAuth client with the refresh token only
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI,
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: brand.googleAnalyticsRefreshToken,
+    });
+
+    const analyticsAdmin = google.analyticsadmin({
+      version: "v1alpha",
+      auth: oauth2Client,
+    });
+    const accountsResponse = await analyticsAdmin.accounts.list();
+    const accounts = accountsResponse.data.accounts || [];
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ message: "No accounts found." });
+    }
+
+    const propertiesList = [];
+    for (const account of accounts) {
+      const propertiesResponse = await analyticsAdmin.properties.list({
+        filter: `parent:${account.name}`,
+      });
+
+      const properties = propertiesResponse.data.properties || [];
+      properties.forEach((property) => {
+        propertiesList.push({
+          accountName: account.displayName,
+          propertyId: property.name.split("/").pop(),
+          propertyName: property.displayName,
+        });
+      });
+    }
+
+    // Cache the result
+    cache.set(cacheKey, propertiesList);
+
+    res.json({ propertiesList });
+  } catch (error) {
+    console.error("Error fetching properties:", error.message);
+    console.error("Stack trace:", error.stack);
+    if (error.message && error.message.includes("invalid_grant")) {
+      console.log("Refresh token expired. Prompting user to reauthenticate.");
+
+      // Invalidate the user's refresh token in the database
+      //await User.findByIdAndUpdate(req.body.userId, { googleAnalyticsRefreshToken: null });
+
+      return res.status(401).json({
+        message:
+          "Your Google session has expired. Please log in again to continue.",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+    res
+      .status(500)
+      .json({ message: "Error fetching properties.", error: error.message });
+  }
 };
 
 export const getFbAdAccountIds = async (req, res) => {
-    try {
-        const {brandId} = req.params;
-        if (!brandId) {
-            return res.status(400).json({ message: 'Brand ID is required.' });
-        }
-
-        const cacheKey = `fb_ad_accounts_${brandId}`;
-
-        const cachedFbAdAccounts = cache.get(cacheKey);
-        if (cachedFbAdAccounts) {
-            return res.status(200).json({ adAccounts: cachedFbAdAccounts, fromCache: true });
-        }
-
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            return res.status(404).json({ message: 'Brand not found.' });
-        }
-
-        if (brand.fbAccessToken == null) {
-            return res.status(403).json({ message: 'This brand does not have a Facebook access token.' });
-        }
-
-        // Construct the Graph API request URL
-        const baseUrl = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
-
-      
-
-        // Array to collect all ad accounts from all pages
-        let allAdAccounts = [];
-        let nextUrl = baseUrl;
-        let pageCount = 0;
-
-        // Paginate through all pages
-        do {
-            pageCount++;
-            console.log(`Fetching page ${pageCount}, URL: ${nextUrl}`);
-            
-            const response = await axios.get(nextUrl);
-            let pageAccounts = [];
-            let paging = null;
-
-            // Handle two different response structures:
-            // 1. Initial request: response.data.adaccounts.data (nested structure)
-            // 2. Paginated requests: response.data (direct array) with response.paging
-            if (response.data && response.data.adaccounts) {
-                // Initial request structure
-                if (response.data.adaccounts.data && Array.isArray(response.data.adaccounts.data)) {
-                    pageAccounts = response.data.adaccounts.data.map(account => ({
-                        id: account.id,
-                        adname: account.name,
-                    }));
-                }
-                paging = response.data.adaccounts.paging;
-            } else if (response.data && Array.isArray(response.data)) {
-                // Paginated request structure (direct array)
-                pageAccounts = response.data.map(account => ({
-                    id: account.id,
-                    adname: account.name,
-                }));
-                paging = response.paging;
-            } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                // Alternative paginated structure
-                pageAccounts = response.data.data.map(account => ({
-                    id: account.id,
-                    adname: account.name,
-                }));
-                paging = response.data.paging || response.paging;
-            }
-
-            // Add accounts from current page
-            if (pageAccounts.length > 0) {
-                allAdAccounts = allAdAccounts.concat(pageAccounts);
-                console.log(`Page ${pageCount}: Found ${pageAccounts.length} accounts. Total so far: ${allAdAccounts.length}`);
-            }
-
-            // Check if there's a next page using cursor-based pagination
-            if (paging && paging.next) {
-                nextUrl = paging.next;
-                console.log(`Page ${pageCount}: Next page URL found: ${nextUrl}`);
-            } else {
-                console.log(`Page ${pageCount}: No more pages. Pagination complete.`);
-                nextUrl = null;
-            }
-        } while (nextUrl);
-
-        console.log(`Pagination complete. Total accounts fetched: ${allAdAccounts.length} across ${pageCount} page(s)`);
-
-        if (allAdAccounts.length > 0) {
-            cache.set(cacheKey, allAdAccounts, 604800); // 7 days TTL
-            return res.status(200).json({ adAccounts: allAdAccounts, fromCache: false });
-        } else {
-            return res.status(404).json({ message: 'No ad accounts found for the user.' });
-        }
-    } catch (error) {
-        console.error('Error fetching Facebook Ad Accounts:', error.response?.status, error.response?.data);
-        
-        // Check for OAuth authorization error (code 190, error_subcode 458)
-        if (error.response?.data?.error) {
-            const fbError = error.response.data.error;
-            if (fbError.code === 190 && fbError.error_subcode === 458) {
-                return res.status(401).json({
-                    message: 'Your Facebook authorization has expired. Please reconnect your account.',
-                    code: 'OAUTH_NOT_AUTHORIZED',
-                    error: fbError
-                });
-            }
-        }
-        
-        res.status(500).json({ message: 'Error fetching Facebook Ad accounts.', error: error.response?.data });
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
     }
+
+    const cacheKey = `fb_ad_accounts_${brandId}`;
+
+    const cachedFbAdAccounts = cache.get(cacheKey);
+    if (cachedFbAdAccounts) {
+      return res
+        .status(200)
+        .json({ adAccounts: cachedFbAdAccounts, fromCache: true });
+    }
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found." });
+    }
+
+    if (brand.fbAccessToken == null) {
+      return res
+        .status(403)
+        .json({ message: "This brand does not have a Facebook access token." });
+    }
+
+    // Construct the Graph API request URL
+    const baseUrl = `https://graph.facebook.com/v22.0/me?fields=adaccounts{account_id,name}&access_token=${brand.fbAccessToken}`;
+
+    // Array to collect all ad accounts from all pages
+    let allAdAccounts = [];
+    let nextUrl = baseUrl;
+    let pageCount = 0;
+
+    // Paginate through all pages
+    do {
+      pageCount++;
+      console.log(`Fetching page ${pageCount}, URL: ${nextUrl}`);
+
+      const response = await axios.get(nextUrl);
+      let pageAccounts = [];
+      let paging = null;
+
+      // Handle two different response structures:
+      // 1. Initial request: response.data.adaccounts.data (nested structure)
+      // 2. Paginated requests: response.data (direct array) with response.paging
+      if (response.data && response.data.adaccounts) {
+        // Initial request structure
+        if (
+          response.data.adaccounts.data &&
+          Array.isArray(response.data.adaccounts.data)
+        ) {
+          pageAccounts = response.data.adaccounts.data.map((account) => ({
+            id: account.id,
+            adname: account.name,
+          }));
+        }
+        paging = response.data.adaccounts.paging;
+      } else if (response.data && Array.isArray(response.data)) {
+        // Paginated request structure (direct array)
+        pageAccounts = response.data.map((account) => ({
+          id: account.id,
+          adname: account.name,
+        }));
+        paging = response.paging;
+      } else if (
+        response.data &&
+        response.data.data &&
+        Array.isArray(response.data.data)
+      ) {
+        // Alternative paginated structure
+        pageAccounts = response.data.data.map((account) => ({
+          id: account.id,
+          adname: account.name,
+        }));
+        paging = response.data.paging || response.paging;
+      }
+
+      // Add accounts from current page
+      if (pageAccounts.length > 0) {
+        allAdAccounts = allAdAccounts.concat(pageAccounts);
+        console.log(
+          `Page ${pageCount}: Found ${pageAccounts.length} accounts. Total so far: ${allAdAccounts.length}`,
+        );
+      }
+
+      // Check if there's a next page using cursor-based pagination
+      if (paging && paging.next) {
+        nextUrl = paging.next;
+        console.log(`Page ${pageCount}: Next page URL found: ${nextUrl}`);
+      } else {
+        console.log(`Page ${pageCount}: No more pages. Pagination complete.`);
+        nextUrl = null;
+      }
+    } while (nextUrl);
+
+    console.log(
+      `Pagination complete. Total accounts fetched: ${allAdAccounts.length} across ${pageCount} page(s)`,
+    );
+
+    if (allAdAccounts.length > 0) {
+      cache.set(cacheKey, allAdAccounts, 604800); // 7 days TTL
+      return res
+        .status(200)
+        .json({ adAccounts: allAdAccounts, fromCache: false });
+    } else {
+      return res
+        .status(404)
+        .json({ message: "No ad accounts found for the user." });
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching Facebook Ad Accounts:",
+      error.response?.status,
+      error.response?.data,
+    );
+
+    if (error.response?.data?.error) {
+      const fbError = error.response.data.error;
+      if (fbError.code === 190) {
+        return res.status(401).json({
+          message:
+            "Your Facebook authorization has expired. Please reconnect your account.",
+          code: "OAUTH_NOT_AUTHORIZED",
+          error: fbError,
+        });
+      }
+    }
+
+    res
+      .status(500)
+      .json({
+        message: "Error fetching Facebook Ad accounts.",
+        error: error.response?.data,
+      });
+  }
 };
 
 // Function to clear Facebook ad accounts cache for a specific brand
 export const clearFbAdAccountCache = async (req, res) => {
-    try {
-        const { brandId } = req.params;
-        if (!brandId) {
-            return res.status(400).json({ message: 'Brand ID is required.' });
-        }
-
-        const cacheKey = `fb_ad_accounts_${brandId}`;
-        const deleted = cache.del(cacheKey);
-        
-        if (deleted) {
-            return res.status(200).json({ 
-                message: 'Cache cleared successfully.', 
-                brandId,
-                cacheKey 
-            });
-        } else {
-            return res.status(404).json({ 
-                message: 'Cache entry not found.', 
-                brandId,
-                cacheKey 
-            });
-        }
-    } catch (error) {
-        console.error('Error clearing Facebook Ad Accounts cache:', error.message);
-        res.status(500).json({ 
-            message: 'Error clearing cache.', 
-            error: error.message 
-        });
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
     }
+
+    const cacheKey = `fb_ad_accounts_${brandId}`;
+    const deleted = cache.del(cacheKey);
+
+    if (deleted) {
+      return res.status(200).json({
+        message: "Cache cleared successfully.",
+        brandId,
+        cacheKey,
+      });
+    } else {
+      return res.status(404).json({
+        message: "Cache entry not found.",
+        brandId,
+        cacheKey,
+      });
+    }
+  } catch (error) {
+    console.error("Error clearing Facebook Ad Accounts cache:", error.message);
+    res.status(500).json({
+      message: "Error clearing cache.",
+      error: error.message,
+    });
+  }
 };
-
-
-
-

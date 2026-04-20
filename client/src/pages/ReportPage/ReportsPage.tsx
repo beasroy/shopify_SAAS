@@ -1,24 +1,24 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import EcommerceMetricsPage from '@/pages/ReportPage/component/EcommerceMetricsPage';
-import CollapsibleSidebar from '../../components/dashboard_component/CollapsibleSidebar';
-import { TableSkeleton } from '@/components/dashboard_component/TableSkeleton';
-import { useParams } from 'react-router-dom';
-import { ChartBar, Maximize, Minimize, RefreshCw } from 'lucide-react';
-import { selectGoogleAnalyticsTokenError } from '@/store/slices/TokenSllice';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import ConnectPlatform from './ConnectPlatformPage';
-import DaywiseMetricsPage from './component/DaywiseMetricsPage';
-import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
-import MissingDateWarning from '@/components/dashboard_component/Missing-Date-Waning';
-import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
-import { resetAllTokenErrors } from '@/store/slices/TokenSllice';
-import { useDispatch } from 'react-redux';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { DatePickerWithRange } from '@/components/dashboard_component/DatePickerWithRange';
-import ColumnManagementSheet from '@/pages/AnalyticsDashboard/Components/ColumnManagementSheet';
-import MonthlyMetricsPage from './component/MonthlyMetricsPage';
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import EcommerceMetricsPage from "@/pages/ReportPage/component/EcommerceMetricsPage";
+import CollapsibleSidebar from "../../components/dashboard_component/CollapsibleSidebar";
+import { TableSkeleton } from "@/components/dashboard_component/TableSkeleton";
+import { useParams } from "react-router-dom";
+import { ChartBar, Maximize, Minimize, RefreshCw } from "lucide-react";
+import { selectGoogleAnalyticsTokenError } from "@/store/slices/TokenSllice";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+import ConnectPlatform from "./ConnectPlatformPage";
+import DaywiseMetricsPage from "./component/DaywiseMetricsPage";
+import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
+import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
+import NoAccessPage from "@/components/dashboard_component/NoAccessPage.";
+import { resetAllTokenErrors } from "@/store/slices/TokenSllice";
+import { useDispatch } from "react-redux";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
+import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet";
+import MonthlyMetricsPage from "./component/MonthlyMetricsPage";
 
 const ReportsPage: React.FC = () => {
   const isLoading = false;
@@ -28,98 +28,147 @@ const ReportsPage: React.FC = () => {
   const hasGA4Account = selectedBrand?.ga4Account ?? false;
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
-  
-  const googleAnalyticsTokenError = useSelector(selectGoogleAnalyticsTokenError);
-  
-  const date = useMemo(() => ({
-    from: dateFrom,
-    to: dateTo
-  }), [dateFrom, dateTo]);
 
-  const dateRange = useMemo(() => ({
-    from: date.from ? new Date(date.from) : undefined,
-    to: date.to ? new Date(date.to) : undefined
-  }), [date.from, date.to]);
+  const googleAnalyticsTokenError = useSelector(
+    selectGoogleAnalyticsTokenError,
+  );
 
-  const [activeTab, setActiveTab] = useState('month wise');
+  const date = useMemo(
+    () => ({
+      from: dateFrom,
+      to: dateTo,
+    }),
+    [dateFrom, dateTo],
+  );
+
+  const dateRange = useMemo(
+    () => ({
+      from: date.from ? new Date(date.from) : undefined,
+      to: date.to ? new Date(date.to) : undefined,
+    }),
+    [date.from, date.to],
+  );
+
+  const [activeTab, setActiveTab] = useState("month wise");
   const [isFullScreen, setIsFullScreen] = useState(false);
-  
+
   // Memoize the dateRange to prevent unnecessary re-renders
-  const memoizedDateRange = useMemo(() => dateRange, [dateRange.from, dateRange.to]);
-  
+  const memoizedDateRange = useMemo(
+    () => dateRange,
+    [dateRange.from, dateRange.to],
+  );
 
   const baseColumns = [
-    'Sessions', 'Add To Cart', 'Add To Cart Rate', 
-    'Checkouts', 'Checkout Rate', 'Purchases', 'Purchase Rate', 'ATC To Checkout Rate', 'Checkout To Purchase Rate'
+    "Sessions",
+    "Add To Cart",
+    "Add To Cart Rate",
+    "Checkouts",
+    "Checkout Rate",
+    "Purchases",
+    "Purchase Rate",
+    "ATC To Checkout Rate",
+    "Checkout To Purchase Rate",
   ];
 
   // Get columns based on active tab - AOV, Avg Items/Order, COD Orders, and Prepaid Orders are only available for monthly metrics
   const getColumnsForTab = useCallback((tab: string) => {
-    if (tab === 'month wise') {
-      return [...baseColumns, 'AOV', 'Avg Items/Order', 'COD Orders', 'Prepaid Orders', 'Products Launched', 'Returned Customers'];
+    if (tab === "month wise") {
+      return [
+        ...baseColumns,
+        "AOV",
+        "Avg Items/Order",
+        "COD Orders",
+        "Prepaid Orders",
+        "Products Launched",
+        "Returned Customers",
+      ];
     }
     return baseColumns;
   }, []);
 
   const availableColumns = useMemo(() => {
     const columns = getColumnsForTab(activeTab);
-    return ['Date', 'Month','Day', ...columns];
+    return ["Date", "Month", "Day", ...columns];
   }, [activeTab, getColumnsForTab]);
 
   // Single column state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
-    'Date', ...baseColumns
+    "Date",
+    ...baseColumns,
   ]);
   const [columnOrder, setColumnOrder] = useState<string[]>([
-    'Date', ...baseColumns
+    "Date",
+    ...baseColumns,
   ]);
-
 
   const [activeViewPreset, setActiveViewPreset] = useState<string | null>(null);
 
   // Define view presets for Reports page - make them dynamic based on active tab
   const getViewPresets = (activeTab: string) => {
-    const timeColumn = activeTab === 'month wise' ? 'Month' : activeTab === 'day wise' ? 'Day' : 'Date';
-    
+    const timeColumn =
+      activeTab === "month wise"
+        ? "Month"
+        : activeTab === "day wise"
+          ? "Day"
+          : "Date";
+
     return [
       {
         label: "Counts View",
-        columns: [timeColumn, 'Sessions', 'Add To Cart', 'Checkouts', 'Purchases']
+        columns: [
+          timeColumn,
+          "Sessions",
+          "Add To Cart",
+          "Checkouts",
+          "Purchases",
+        ],
       },
       {
-        label: "Rates View", 
-        columns: [timeColumn, 'Sessions', 'Add To Cart Rate', 'Checkout Rate', 'Purchase Rate', 'ATC To Checkout Rate', 'Checkout To Purchase Rate']
-      }
+        label: "Rates View",
+        columns: [
+          timeColumn,
+          "Sessions",
+          "Add To Cart Rate",
+          "Checkout Rate",
+          "Purchase Rate",
+          "ATC To Checkout Rate",
+          "Checkout To Purchase Rate",
+        ],
+      },
     ];
   };
 
   // Update the useEffect to handle view presets and AOV column visibility
   useEffect(() => {
-    const timeColumn = activeTab === 'month wise' ? 'Month' : activeTab === 'day wise' ? 'Day' : 'Date';
+    const timeColumn =
+      activeTab === "month wise"
+        ? "Month"
+        : activeTab === "day wise"
+          ? "Day"
+          : "Date";
     const columnsForTab = getColumnsForTab(activeTab);
-    
+
     // Build new columns with time column and appropriate columns for the tab
     const newColumns = [timeColumn, ...columnsForTab];
     const newOrder = [timeColumn, ...columnsForTab];
-    
+
     // Only update if columns have changed
     const currentColumnsString = JSON.stringify(visibleColumns);
     const newColumnsString = JSON.stringify(newColumns);
-    
+
     if (currentColumnsString !== newColumnsString) {
       setVisibleColumns(newColumns);
       setColumnOrder(newOrder);
     }
   }, [activeTab, getColumnsForTab]);
-  
+
   // Refresh trigger state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const tabs = [
-    { label: 'Monthly Metrics', value: 'month wise' },
-    { label: 'Daily Metrics', value: 'daily' },
-    { label: 'Day wise Metrics', value: 'day wise' },
-   
+    { label: "Monthly Metrics", value: "month wise" },
+    { label: "Daily Metrics", value: "daily" },
+    { label: "Day wise Metrics", value: "day wise" },
   ];
 
   const handleTabChange = (value: string) => {
@@ -131,22 +180,22 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleManualRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   // Update the handleVisibilityChange to track which preset is active
   const handleVisibilityChange = (columns: string[]) => {
     setVisibleColumns(columns);
-    
+
     // Check if the new columns match any preset
     const viewPresets = getViewPresets(activeTab);
-    const matchingPreset = viewPresets.find(preset => 
-      JSON.stringify(preset.columns) === JSON.stringify(columns)
+    const matchingPreset = viewPresets.find(
+      (preset) => JSON.stringify(preset.columns) === JSON.stringify(columns),
     );
-    
+
     setActiveViewPreset(matchingPreset ? matchingPreset.label : null);
   };
-  
+
   const handleOrderChange = (newOrder: string[]) => {
     setColumnOrder(newOrder);
   };
@@ -172,31 +221,33 @@ const ReportsPage: React.FC = () => {
               {
                 label: "Connect Google Analytics",
                 context: "googleAnalyticsSetup",
-                provider: "google"
-              }
+                provider: "google",
+              },
             ]}
           />
         ) : !hasGA4Account ? (
           <>
             <ConnectPlatform
               platform="google analytics"
-              brandId={brandId ?? ''}
+              brandId={brandId ?? ""}
               onSuccess={(platform, accountName, accountId) => {
-                console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`);
-              }} 
-            /> 
+                console.log(
+                  `Successfully connected ${platform} account: ${accountName} (${accountId})`,
+                );
+              }}
+            />
           </>
-        ) : (!dateRange.from || !dateRange.to) ? (
+        ) : !dateRange.from || !dateRange.to ? (
           <MissingDateWarning />
         ) : (
           <div className="p-3">
-            <Card className={`${isFullScreen ? 'fixed inset-0 z-50 m-0' : ''}`}>
+            <Card className={`${isFullScreen ? "fixed inset-0 z-50 m-0" : ""}`}>
               <CardContent>
                 <div className="space-y-4">
                   {/* Header Section - Fixed within card */}
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex items-start gap-6">
-                                            {/* Custom Vertical Tabs */}
+                      {/* Custom Vertical Tabs */}
                       <div className="flex flex-row bg-gray-100 p-1.5 rounded-2xl">
                         {tabs.map((tab) => (
                           <button
@@ -204,8 +255,8 @@ const ReportsPage: React.FC = () => {
                             onClick={() => handleTabChange(tab.value)}
                             className={`px-6 py-1 rounded-2xl text-sm font-medium transition-all duration-200 last:mb-0 ${
                               activeTab === tab.value
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                ? "bg-white text-blue-600 shadow-sm"
+                                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                             }`}
                           >
                             {tab.label}
@@ -215,8 +266,15 @@ const ReportsPage: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <DatePickerWithRange />
-                      <Button onClick={handleManualRefresh} disabled={isLoading} size="icon" variant="outline">
-                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                      <Button
+                        onClick={handleManualRefresh}
+                        disabled={isLoading}
+                        size="icon"
+                        variant="outline"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                        />
                       </Button>
                       <ColumnManagementSheet
                         visibleColumns={visibleColumns}
@@ -228,8 +286,16 @@ const ReportsPage: React.FC = () => {
                         showViewPresets={true}
                         activeViewPreset={activeViewPreset}
                       />
-                      <Button onClick={toggleFullScreen} size="icon" variant="outline">
-                        {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                      <Button
+                        onClick={toggleFullScreen}
+                        size="icon"
+                        variant="outline"
+                      >
+                        {isFullScreen ? (
+                          <Minimize className="h-4 w-4" />
+                        ) : (
+                          <Maximize className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -239,28 +305,28 @@ const ReportsPage: React.FC = () => {
                     <TableSkeleton />
                   ) : (
                     <section className="w-full">
-                      {activeTab === 'daily' && (
-                        <EcommerceMetricsPage 
+                      {activeTab === "daily" && (
+                        <EcommerceMetricsPage
                           key="daily-metrics"
-                          dateRange={memoizedDateRange} 
+                          dateRange={memoizedDateRange}
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
                         />
                       )}
-                      {activeTab === 'day wise' && (
-                        <DaywiseMetricsPage 
+                      {activeTab === "day wise" && (
+                        <DaywiseMetricsPage
                           key="daywise-metrics"
-                          dateRange={memoizedDateRange} 
+                          dateRange={memoizedDateRange}
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
                         />
                       )}
-                      {activeTab === 'month wise' && (
-                        <MonthlyMetricsPage 
+                      {activeTab === "month wise" && (
+                        <MonthlyMetricsPage
                           key="monthly-metrics"
-                          dateRange={memoizedDateRange} 
+                          dateRange={memoizedDateRange}
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
@@ -273,7 +339,6 @@ const ReportsPage: React.FC = () => {
             </Card>
           </div>
         )}
-
       </div>
       <HelpDeskModal />
     </div>

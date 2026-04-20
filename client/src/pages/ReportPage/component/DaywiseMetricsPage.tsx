@@ -55,23 +55,42 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
 
   // Transform data to match ReportTable's expected format
   const transformedData = useMemo(() => {
-    const transformed = data.map((item, index) => {
-      const transformedItem = {
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dataMap = new Map(data.map(item => [item.Day, item]));
+
+    return daysOfWeek.map((day, index) => {
+      const item = dataMap.get(day);
+
+      if (!item) {
+        return {
+          id: `row-${index}`,
+          day: day,
+          sessions: undefined as any,
+          addToCart: undefined as any,
+          addToCartRate: '-',
+          checkouts: undefined as any,
+          checkoutRate: '-',
+          purchases: undefined as any,
+          purchaseRate: '-',
+          atcToCheckoutRate: '-',
+          checkoutToPurchaseRate: '-'
+        };
+      }
+
+      return {
         id: `row-${index}`,
         day: item.Day,
-        sessions: parseInt(item.Sessions) || 0,
-        addToCart: parseInt(item['Add To Cart']) || 0,
-        addToCartRate: item['Add To Cart Rate'] || '0%',
-        checkouts: parseInt(item['Checkouts']) || 0,
-        checkoutRate: item['Checkout Rate'] || '0%',
-        purchases: parseInt(item['Purchases']) || 0,
-        purchaseRate: item['Purchase Rate'] || '0%',
-        atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
-        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
+        sessions: item.Sessions !== undefined ? parseInt(item.Sessions as string) : undefined as any,
+        addToCart: item['Add To Cart'] !== undefined ? parseInt(item['Add To Cart'] as string) : undefined as any,
+        addToCartRate: item['Add To Cart Rate'] || '-',
+        checkouts: item['Checkouts'] !== undefined ? parseInt(item['Checkouts'] as string) : undefined as any,
+        checkoutRate: item['Checkout Rate'] || '-',
+        purchases: item['Purchases'] !== undefined ? parseInt(item['Purchases'] as string) : undefined as any,
+        purchaseRate: item['Purchase Rate'] || '-',
+        atcToCheckoutRate: item['ATC To Checkout Rate'] || '-',
+        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '-'
       };
-      return transformedItem;
     });
-    return transformed;
   }, [data]);
 
   // Consolidate date handling into a single useEffect

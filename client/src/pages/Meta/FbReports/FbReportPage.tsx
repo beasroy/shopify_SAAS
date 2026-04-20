@@ -6,6 +6,9 @@ import CountryFbReport from './component/CountryFbReport';
 import DeviceFbReport from './component/DeviceFbReport';
 import GenderFbReport from './component/GenderFbReport';
 import AgeFbReport from './component/AgeFbReport';
+import AgeGenderFbReport from './component/AgeGenderFbReport';
+import PlacementDeviceFbReport from './component/PlacementDeviceFbReport';
+import PlatformDeviceFbReport from './component/PlatformDeviceFbReport';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import HelpDeskModal from '@/components/dashboard_component/HelpDeskModal';
@@ -15,7 +18,7 @@ import NoAccessPage from '@/components/dashboard_component/NoAccessPage.';
 import ConnectPlatform from '@/pages/ReportPage/ConnectPlatformPage';
 import { selectFbTokenError, setFbTokenError } from '@/store/slices/TokenSllice';
 import { useParams } from 'react-router-dom';
-import { Computer, MapPin, Monitor, Smartphone, SquareUser, Target, User, Users } from 'lucide-react';
+import { Computer, MapPin, Monitor, Smartphone, SquareUser, Target, User, Users, MonitorSmartphone, HandCoins, Orbit   } from 'lucide-react';
 import { SideTab } from '@/components/ui/side-tab';
 
 const FbReportPage: React.FC = () => {
@@ -49,7 +52,10 @@ const FbReportPage: React.FC = () => {
         { label: 'Platform', value: 'platform' , icon: <Computer className="w-4 h-4" /> },
         { label: 'Placement', value: 'placement', icon: <Smartphone className="w-4 h-4" /> },
         { label: 'Impression Device', value: 'impressionDevice' , icon: <Monitor className="w-4 h-4" /> },
-        { label: 'Audience Segments', value: 'audienceSegments', icon: <Users className="w-4 h-4" /> }
+        { label: 'Audience Segments', value: 'audienceSegments', icon: <Users className="w-4 h-4" /> },
+        { label: 'Age & Gender', value: 'ageGender', icon: <HandCoins className="w-4 h-4" /> },
+        { label: 'Placement & Device', value: 'placementDevice', icon: <Orbit className="w-4 h-4" /> },
+        { label: 'Platform & Device', value: 'platformDevice', icon: <MonitorSmartphone className="w-4 h-4" /> }
     ];
 
     const handleTabChange = (value: string) => {
@@ -131,6 +137,21 @@ const FbReportPage: React.FC = () => {
                                 {activeTab === 'age' && (
                                     <div id="age">
                                         <AgeFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'ageGender' && (
+                                    <div id="ageGender">
+                                        <AgeGenderFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'placementDevice' && (
+                                    <div id="placementDevice">
+                                        <PlacementDeviceFbReport dateRange={dateRange} />
+                                    </div>
+                                )}
+                                {activeTab === 'platformDevice' && (
+                                    <div id="platformDevice">
+                                        <PlatformDeviceFbReport dateRange={dateRange} />
                                     </div>
                                 )}
                             </div>

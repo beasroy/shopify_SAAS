@@ -115,6 +115,10 @@ const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const brandId = useSelector((state: RootState) => state.brand.selectedBrandId);
   const brands = useSelector((state: RootState) => state.brand.brands);
+  const dateFrom = useSelector((state: RootState) => state.date.from);
+  const dateTo = useSelector((state: RootState) => state.date.to);
+  const compareFrom = useSelector((state: RootState) => state.date.compareFrom);
+  const compareTo = useSelector((state: RootState) => state.date.compareTo);
   const selectedBrand = brands.find((b: any) => b._id === brandId);
   const isShopifyConnected =
     !!selectedBrand?.shopifyAccount &&
@@ -199,9 +203,18 @@ const SummaryDashboard: React.FC = () => {
     });
 
     try {
+      const dateParams = dateFrom && dateTo ? {
+        customStart: dateFrom,
+        customEnd: dateTo,
+        ...(compareFrom && compareTo ? {
+          customCompareStart: compareFrom,
+          customCompareEnd: compareTo
+        } : {})
+      } : {};
+
       const metaPromise = axiosInstance.get(
         `api/summary/facebook-ads/${brandId}`,
-        { withCredentials: true }
+        { params: dateParams, withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Meta data:', error);
         setApiStatus(prev => ({ ...prev, meta: false }));
@@ -210,7 +223,7 @@ const SummaryDashboard: React.FC = () => {
 
       const googlePromise = axiosInstance.get(
         `api/summary/google-ads/${brandId}`,
-        { withCredentials: true }
+        { params: dateParams, withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Google data:', error);
         setApiStatus(prev => ({ ...prev, google: false }));
@@ -219,7 +232,7 @@ const SummaryDashboard: React.FC = () => {
 
       const shopifyPromise = axiosInstance.get(
         `api/summary/shopify/${brandId}`,
-        { withCredentials: true }
+        { params: dateParams, withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Shopify data:', error);
         setApiStatus(prev => ({ ...prev, shopify: false }));
@@ -228,7 +241,7 @@ const SummaryDashboard: React.FC = () => {
 
       const analyticsPromise = axiosInstance.get(
         `api/summary/analytics/${brandId}`,
-        { withCredentials: true }
+        { params: dateParams, withCredentials: true }
       ).catch(error => {
         console.error('Error fetching Analytics data:', error);
         setApiStatus(prev => ({ ...prev, analytics: false }));
@@ -268,7 +281,7 @@ const SummaryDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [brandId]);
+  }, [brandId, dateFrom, dateTo, compareFrom, compareTo]);
 
   // Shopify connect-brand callback uses query params to report success/failure.
   // When present, close the modal, refresh brands, and clean up the URL.

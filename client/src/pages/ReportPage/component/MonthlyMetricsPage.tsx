@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams } from 'react-router-dom';
-import { format } from "date-fns";
+import { format, eachMonthOfInterval } from "date-fns";
 import { DateRange } from "react-day-picker";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
@@ -182,16 +182,34 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
     console.log('AOV Map keys:', Array.from(aovMap.keys()));
     console.log('Payment Orders Map keys:', Array.from(codOrderMap.keys()));
 
-    return data.map((item, index) => {
+    let allMonths: string[] = [];
+    try {
+      if (startDate && endDate) {
+        allMonths = eachMonthOfInterval({ 
+          start: new Date(startDate), 
+          end: new Date(endDate) 
+        }).map(dateObj => format(dateObj, 'MMM-yyyy'));
+      } else {
+        allMonths = data.map(item => item.Month);
+      }
+    } catch(e) {
+      allMonths = data.map(item => item.Month);
+    }
+
+    const ga4DataMap = new Map(data.map(item => [item.Month, item]));
+
+    return allMonths.map((monthName, index) => {
+      const item = ga4DataMap.get(monthName);
+
       // Try to match AOV and Avg Items by month name
-      const monthName = item.Month;
       // Show undefined if API failed (will display as "-" in table), otherwise use mapped value or 0
-      const aov = apiErrors.aov ? undefined : (aovMap.get(monthName) ?? 0);
-      const averageItemsPerOrder = apiErrors.aov ? undefined : (avgItemsMap.get(monthName) ?? 0);
-      const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.get(monthName) ?? 0);
-      const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.get(monthName) ?? 0);
-      const productsLaunched = apiErrors.productsLaunched ? undefined : (productsLaunchedMap.get(monthName) ?? 0);
-      const returningCustomerPercentage = apiErrors.returningCustomerPercentage ? undefined : (returnedCustomersMap.get(monthName) ?? 0);
+      const aov = apiErrors.aov ? undefined : (aovMap.has(monthName) ? aovMap.get(monthName) : undefined);
+      const averageItemsPerOrder = apiErrors.aov ? undefined : (avgItemsMap.has(monthName) ? avgItemsMap.get(monthName) : undefined);
+      const codOrderCount = apiErrors.paymentOrders ? undefined : (codOrderMap.has(monthName) ? codOrderMap.get(monthName) : undefined);
+      const prepaidOrderCount = apiErrors.paymentOrders ? undefined : (prepaidOrderMap.has(monthName) ? prepaidOrderMap.get(monthName) : undefined);
+      const productsLaunched = apiErrors.productsLaunched ? undefined : (productsLaunchedMap.has(monthName) ? productsLaunchedMap.get(monthName) : undefined);
+      const returningCustomerPercentage = apiErrors.returningCustomerPercentage ? undefined : (returnedCustomersMap.has(monthName) ? returnedCustomersMap.get(monthName) : undefined);
+      
       if (typeof aov === 'number' && aov > 0) {
         console.log(`Matched AOV for ${monthName}: ${aov}, Avg Items: ${averageItemsPerOrder}`);
       }
@@ -205,27 +223,49 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
         console.log(`Matched Returned Customers for ${monthName}: ${returningCustomerPercentage}`);
       }
 
+      if (!item) {
+        return {
+          id: `row-${index}`,
+          month: monthName,
+          sessions: undefined as any,
+          addToCart: undefined as any,
+          addToCartRate: '-',
+          checkouts: undefined as any,
+          checkoutRate: '-',
+          purchases: undefined as any,
+          purchaseRate: '-',
+          aov: aov,
+          averageItemsPerOrder: averageItemsPerOrder,
+          codOrderCount: codOrderCount,
+          prepaidOrderCount: prepaidOrderCount,
+          productsLaunched: productsLaunched,
+          returningCustomerPercentage: returningCustomerPercentage,
+          atcToCheckoutRate: '-',
+          checkoutToPurchaseRate: '-'
+        };
+      }
+
       return {
         id: `row-${index}`,
         month: item.Month,
-        sessions: parseInt(item.Sessions) || 0,
-        addToCart: parseInt(item['Add To Cart']) || 0,
-        addToCartRate: item['Add To Cart Rate'] || '0%',
-        checkouts: parseInt(item['Checkouts']) || 0,
-        checkoutRate: item['Checkout Rate'] || '0%',
-        purchases: parseInt(item['Purchases']) || 0,
-        purchaseRate: item['Purchase Rate'] || '0%',
+        sessions: item.Sessions !== undefined ? parseInt(item.Sessions as string) : undefined as any,
+        addToCart: item['Add To Cart'] !== undefined ? parseInt(item['Add To Cart'] as string) : undefined as any,
+        addToCartRate: item['Add To Cart Rate'] || '-',
+        checkouts: item['Checkouts'] !== undefined ? parseInt(item['Checkouts'] as string) : undefined as any,
+        checkoutRate: item['Checkout Rate'] || '-',
+        purchases: item['Purchases'] !== undefined ? parseInt(item['Purchases'] as string) : undefined as any,
+        purchaseRate: item['Purchase Rate'] || '-',
         aov: aov,
         averageItemsPerOrder: averageItemsPerOrder,
         codOrderCount: codOrderCount,
         prepaidOrderCount: prepaidOrderCount,
         productsLaunched: productsLaunched,
         returningCustomerPercentage: returningCustomerPercentage,
-        atcToCheckoutRate: item['ATC To Checkout Rate'] || '0%',
-        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '0%'
+        atcToCheckoutRate: item['ATC To Checkout Rate'] || '-',
+        checkoutToPurchaseRate: item['Checkout To Purchase Rate'] || '-'
       };
     });
-  }, [data, aovData, paymentOrdersData, apiErrors]);
+  }, [data, aovData, paymentOrdersData, productsLaunchedData, returningCustomerPercentage, apiErrors, startDate, endDate]);
 
 
 

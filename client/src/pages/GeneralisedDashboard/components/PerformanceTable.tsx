@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/store";
+
 
 export type Trend = "up" | "down" | "neutral";
 export type Period =

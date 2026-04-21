@@ -20,6 +20,9 @@ const admetricsSchema = new mongoose.Schema({
     grossROI: { type: Number, default: 0 },
 }, { timestamps: true }); 
 
+// Prevent duplicate rows per brand per day
+admetricsSchema.index({ brandId: 1, date: 1 }, { unique: true });
+
 const AdMetrics = mongoose.model('AdMetrics', admetricsSchema);
 
 export default AdMetrics;

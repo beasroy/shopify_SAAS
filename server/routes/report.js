@@ -465,38 +465,27 @@ router.post('/monthly', async (req, res) => {
 // Queue a weekly-style update/backfill (last 2 years) without blocking the request.
 // - Admin: can queue for all brands
 // - Non-admin: queues for brands assigned to the user
-router.post('/monthly/update', verifyAuth, async (req, res) => {
+router.post('/weekly/update', verifyAuth, async (req, res) => {
     try {
-        const userId = req.user?._id?.toString();
-        if (!userId) {
+        if (!req.user?._id) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { brandId, startDate, endDate } = req.body || {};
-
-        // Determine which brands to update
-        let brandIds = [];
-        if (brandId) {
-            brandIds = [brandId];
-        } else if (req.user?.isAdmin) {
-            const brands = await Brand.find({}, { _id: 1 }).lean();
-            brandIds = brands.map(b => b._id.toString());
-        } else {
-            brandIds = (req.user?.brands || []).map(b => b.toString());
-        }
+        const userId = '691ead9a6345dba0c9db041b';
+        const brands = await Brand.find({}, { _id: 1 }).lean();
+        const brandIds = brands.map(b => b._id.toString());
 
         if (!brandIds.length) {
             return res.status(400).json({ success: false, message: 'No brands found to update.' });
         }
 
-        // Enqueue one job per brand (so the worker can process sequentially / with limiter)
+        // Enqueue one job per brand.
+        // Date range is intentionally omitted so the worker uses default: last 2 years → yesterday.
         const jobs = await Promise.all(
             brandIds.map(id =>
                 metricsQueue.add('update-metrics', {
                     brandId: id,
-                    userId,
-                    startDate,
-                    endDate
+                    userId
                 })
             )
         );

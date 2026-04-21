@@ -1358,7 +1358,6 @@ export default function NewConversionTable({
     const cost = monthData["Cost"];
     const clicks = monthData["Clicks"];
     const convValueCost = monthData["Conv. Value/ Cost"];
-    const bounceRate = monthData["Bounce Rate"];
     const engagementRate = monthData["Engagement Rate"];
 
     return (

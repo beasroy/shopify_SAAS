@@ -477,38 +477,73 @@ export const getGoogleAdData = async (brandId) => {
           login_customer_id: managerId,
         });
 
-        // Fetch the report for this account
-        const adsReport = await customer.report({
+        // 1) Fetch total spend for yesterday
+        const spendReport = await customer.report({
           entity: "customer",
           attributes: ["customer.descriptive_name"],
-          metrics: [
-            "metrics.cost_micros",
-            "metrics.conversions_value",
-          ],
+          metrics: ["metrics.cost_micros"],
           from_date: startDate,
           to_date: endDate,
         });
 
         let accountSpend = 0;
-        let accountConversionsValue = 0;
         let accountName = "";
-
-        // Process each row of the report
-        for (const row of adsReport) {
+        for (const row of spendReport) {
           accountName = row.customer?.descriptive_name || `Account ${adAccountId}`;
           const costMicros = row.metrics.cost_micros || 0;
           const spend = costMicros / 1_000_000;
           accountSpend += spend;
-          accountConversionsValue += row.metrics.conversions_value || 0;
         }
 
-        // Calculate metrics for this account
-        const accountRoas = accountSpend > 0 ? (accountConversionsValue / accountSpend).toFixed(2) : "0";
-        const accountSales = parseFloat(accountRoas) * accountSpend || 0;
+        // 2) Fetch all conversion rows for yesterday and filter purchase in JS
+        let accountPurchaseValue = 0;
+        try {
+          const conversionReport = await customer.report({
+            entity: "customer",
+            attributes: [
+              "customer.descriptive_name",
+              "segments.date",
+              "segments.conversion_action",
+              "segments.conversion_action_category",
+              "segments.conversion_action_name",
+            ],
+            metrics: [
+              "metrics.conversions_value",
+              "metrics.conversions",
+            ],
+            from_date: startDate,
+            to_date: endDate,
+          });
+
+          for (const row of conversionReport) {
+            const category = row.segments?.conversion_action_category;
+            const name = (row.segments?.conversion_action_name || "").toLowerCase();
+            const value = row.metrics?.conversions_value || 0;
+
+            // category 4 = PURCHASE in Google Ads enum
+            // also check name includes 'purchase' as a safety net
+            const isPurchase =
+              category === 4 ||
+              category === "PURCHASE" ||
+              name.includes("purchase");
+
+            if (isPurchase) {
+              accountPurchaseValue += value;
+            }
+          }
+        } catch (convErr) {
+          console.warn(
+            `Failed to fetch conversion report for ${adAccountId} (${startDate} → ${endDate}). Purchase conversions value will be 0.`,
+            convErr?.message || convErr
+          );
+        }
+
+        const accountRoas = accountSpend > 0 ? (accountPurchaseValue / accountSpend).toFixed(2) : "0";
+        const accountSales = accountPurchaseValue || 0;
 
         // Add this account's data to the total
         totalSpendAll += accountSpend;
-        totalConversionsValueAll += accountConversionsValue;
+        totalConversionsValueAll += accountPurchaseValue;
 
 
         // Store individual account data
@@ -530,7 +565,7 @@ export const getGoogleAdData = async (brandId) => {
 
     // Calculate aggregated metrics across all accounts
     const consolidatedRoas = totalSpendAll > 0 ? (totalConversionsValueAll / totalSpendAll).toFixed(2) : "0";
-    const consolidatedSales = parseFloat(consolidatedRoas) * totalSpendAll || 0;
+    const consolidatedSales = totalConversionsValueAll || 0;
 
     const result = {
       // Consolidated results
@@ -617,6 +652,7 @@ export const addReportData = async (brandId) => {
       metaRevenue,
       googleSpend,
       googleROAS,
+      googleSales,
       totalSales,
       refundAmount,
       codOrderCount: Number.parseInt(codOrderCount, 10) || 0,

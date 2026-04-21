@@ -6,6 +6,7 @@ import moment from "moment";
 import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
+import { metricsQueue } from '../config/redis.js';
 
 const router = express.Router();
 
@@ -459,6 +460,57 @@ router.post('/monthly', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Queue a weekly-style update/backfill (last 2 years) without blocking the request.
+// - Admin: can queue for all brands
+// - Non-admin: queues for brands assigned to the user
+router.post('/monthly/update', verifyAuth, async (req, res) => {
+    try {
+        const userId = req.user?._id?.toString();
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { brandId, startDate, endDate } = req.body || {};
+
+        // Determine which brands to update
+        let brandIds = [];
+        if (brandId) {
+            brandIds = [brandId];
+        } else if (req.user?.isAdmin) {
+            const brands = await Brand.find({}, { _id: 1 }).lean();
+            brandIds = brands.map(b => b._id.toString());
+        } else {
+            brandIds = (req.user?.brands || []).map(b => b.toString());
+        }
+
+        if (!brandIds.length) {
+            return res.status(400).json({ success: false, message: 'No brands found to update.' });
+        }
+
+        // Enqueue one job per brand (so the worker can process sequentially / with limiter)
+        const jobs = await Promise.all(
+            brandIds.map(id =>
+                metricsQueue.add('update-metrics', {
+                    brandId: id,
+                    userId,
+                    startDate,
+                    endDate
+                })
+            )
+        );
+
+        return res.status(202).json({
+            success: true,
+            message: `Queued metrics update for ${brandIds.length} brand(s).`,
+            queued: brandIds.length,
+            jobIds: jobs.map(j => j.id)
+        });
+    } catch (error) {
+        console.error('Error queueing monthly update jobs:', error);
+        return res.status(500).json({ success: false, message: 'Failed to queue update jobs', error: error.message });
+    }
 });
 
 

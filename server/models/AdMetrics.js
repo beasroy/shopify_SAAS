@@ -15,6 +15,7 @@ const admetricsSchema = new mongoose.Schema({
     metaRevenue: { type: Number, default: 0 },
     googleSpend: { type: Number, default: 0 },
     googleROAS: { type: Number, default: 0 },
+    googleSales: { type: Number, default: 0 }, // Purchase conversion value (sales)
     totalSpend: { type: Number, default: 0 },
     grossROI: { type: Number, default: 0 },
 }, { timestamps: true }); 

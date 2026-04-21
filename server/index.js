@@ -116,8 +116,8 @@ dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
+calculateMetricsForSingleBrand("69e11ca7f484a52aec5d2b2d","69e11c75f484a52aec5d2b28");
 
-calculateMetricsForSingleBrand("69bba9437d4cedfc3fd8d111","69bba90e7d4cedfc3fd8d10c");
 
 if (isDevelopment) {
   console.log('Running in development mode - cron jobs not initialized');

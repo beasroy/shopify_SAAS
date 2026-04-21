@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { calculateMetricsForSingleBrand, calculateMetricsForNewAdditions } from '../Report/MonthlyReport.js';
+import { calculateMetricsForSingleBrand, calculateMetricsForNewAdditions, updateMetricsForSingleBrand } from '../Report/MonthlyReport.js';
 import { createRedisConnection } from '../config/redis.js';
 import { connectDB, getConnectionStatus } from '../config/db.js';
 import mongoose from 'mongoose';
@@ -20,13 +20,17 @@ const ensureMongoConnection = async () => {
 
 // Create worker for metrics calculation (handles both regular and new additions)
 const metricsWorker = new Worker('metrics-calculation', async (job) => {
-    const { brandId, userId, newAdditions } = job.data;
+    const { brandId, userId, newAdditions, startDate, endDate } = job.data;
 
     try {
         // Ensure MongoDB connection before processing
         await ensureMongoConnection();
 
-        if (newAdditions) {
+        if (job.name === 'update-metrics') {
+            console.log(`Processing metrics UPDATE for brand ${brandId} (${startDate || 'auto'} → ${endDate || 'auto'})`);
+            await updateMetricsForSingleBrand(brandId, userId, startDate, endDate);
+            console.log(`Successfully updated metrics for brand ${brandId}`);
+        } else if (newAdditions) {
             // Handle new additions processing
             console.log(`Processing metrics calculation for new additions for brand ${brandId}`);
             await calculateMetricsForNewAdditions(brandId, userId, newAdditions);
@@ -39,7 +43,7 @@ const metricsWorker = new Worker('metrics-calculation', async (job) => {
         }
 
     } catch (error) {
-        console.error(`Error calculating metrics for brand ${brandId}:`, error);
+        console.error(`Error processing metrics job (${job.name}) for brand ${brandId}:`, error);
         throw error;
     }
 },

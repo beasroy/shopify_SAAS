@@ -6,7 +6,7 @@ import {
   fetchFbAgeReports, fetchFbAudienceReports, fetchFbCountryReports, 
   fetchFbDeviceReports, fetchFbGenderReports, fetchFbPlacementReports, 
   fetchFbPlatformReports, fetchFbAgeGenderReports, fetchFbPlacementDeviceReports, 
-  fetchFbPlatformDeviceReports 
+  fetchFbPlatformDeviceReports, fetchMetaBreakdownSummary
 } from "../controller/fbReports.js";
 
 const router = express.Router();
@@ -20,6 +20,7 @@ router.post("/report/country/:brandId", verifyAuth, fetchFbCountryReports);
 router.post("/report/audience/:brandId", verifyAuth, fetchFbAudienceReports);
 router.post("/report/platform/:brandId", verifyAuth, fetchFbPlatformReports);
 router.post("/report/placement/:brandId", verifyAuth, fetchFbPlacementReports);
+router.get("/report/breakdown/:brandId", verifyAuth, fetchMetaBreakdownSummary);
 router.post("/report/age-gender/:brandId", verifyAuth, fetchFbAgeGenderReports);
 router.post("/report/placement-device/:brandId", verifyAuth, fetchFbPlacementDeviceReports);
 router.post("/report/platform-device/:brandId", verifyAuth, fetchFbPlatformDeviceReports);

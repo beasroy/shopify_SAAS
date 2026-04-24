@@ -1,14 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-
-  PlusCircle,
-  
-  ChevronRight,
-  X
-} from "lucide-react";
+import { PlusCircle, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import createAxiosInstance from "../ConversionReportPage/components/axiosInstance";
+import { useAxiosInstance } from "../ConversionReportPage/components/axiosInstance";
 import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
@@ -22,15 +16,17 @@ import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
 import { useBrandRefresh } from "@/hooks/useBrandRefresh";
-
-
+import ReportTable, {
+  BreakdownCatagory,
+  BreakdownResponse,
+} from "./components/ReportTable";
 
 // Component to display a card for connecting platforms
-export function ConnectPlatformCard({ 
-  platform, 
-  onClick 
-}: { 
-  platform: Platform; 
+export function ConnectPlatformCard({
+  platform,
+  onClick,
+}: {
+  platform: Platform;
   onClick: () => void;
 }) {
   const getPlatformLogo = () => {
@@ -49,11 +45,14 @@ export function ConnectPlatformCard({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer" onClick={onClick}>
-      <div className="mb-3">
-        {getPlatformLogo()}
-      </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-2">Connect {platform}</h3>
+    <div
+      className="flex flex-col items-center justify-center p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="mb-3">{getPlatformLogo()}</div>
+      <h3 className="text-lg font-semibold text-slate-800 mb-2">
+        Connect {platform}
+      </h3>
       <p className="text-sm text-slate-500 text-center mb-4">
         Get better insights by connecting your {platform} account
       </p>
@@ -65,8 +64,6 @@ export function ConnectPlatformCard({
   );
 }
 
-
-
 // Generic Dashboard Card Component
 interface DashboardCardProps {
   title: string;
@@ -76,12 +73,18 @@ interface DashboardCardProps {
   className?: string;
 }
 
-export function DashboardCard({ title, icon, children, onNavigate, className }: DashboardCardProps) {
+export function DashboardCard({
+  title,
+  icon,
+  children,
+  onNavigate,
+  className,
+}: DashboardCardProps) {
   return (
-    <div 
+    <div
       className={cn(
         "bg-white border rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer group flex flex-col h-[380px]",
-        className
+        className,
       )}
       onClick={onNavigate}
     >
@@ -96,58 +99,57 @@ export function DashboardCard({ title, icon, children, onNavigate, className }: 
           <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
         </div>
       </div>
-      <div className="p-4 flex-1 overflow-y-auto">
-        {children}
-      </div>
+      <div className="p-4 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
 
-
-
-
-
-
-
-
 // Main dashboard component
 const SummaryDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
-  const brandId = useSelector((state: RootState) => state.brand.selectedBrandId);
+  const brandId = useSelector(
+    (state: RootState) => state.brand.selectedBrandId,
+  );
   const brands = useSelector((state: RootState) => state.brand.brands);
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
   const compareFrom = useSelector((state: RootState) => state.date.compareFrom);
   const compareTo = useSelector((state: RootState) => state.date.compareTo);
-  const selectedBrand = brands.find((b: any) => b._id === brandId);
+  const selectedBrand = brands.find((brand) => brand._id === brandId);
   const isShopifyConnected =
     !!selectedBrand?.shopifyAccount &&
-    (Boolean((selectedBrand as any).shopifyAccount.shopifyAccessToken) ||
-      Boolean((selectedBrand as any).shopifyAccount.shopName));
+    (Boolean(selectedBrand.shopifyAccount.shopifyAccessToken) ||
+      Boolean(selectedBrand.shopifyAccount.shopName));
 
   const userName = user?.username;
   const [loading, setLoading] = useState(false);
   const [performanceData, setPerformanceData] = useState<{
-    meta?: PerformanceSummary['periodData'];
-    google?: PerformanceSummary['periodData'];
-    shopify?: PerformanceSummary['periodData'];
-    analytics?: PerformanceSummary['periodData'];
+    meta?: PerformanceSummary["periodData"];
+    google?: PerformanceSummary["periodData"];
+    shopify?: PerformanceSummary["periodData"];
+    analytics?: PerformanceSummary["periodData"];
   }>({});
+  const [breakdownDim, setBreakdownDim] = useState<BreakdownCatagory>("age");
+  const [breakdown, setBreakdown] = useState<BreakdownResponse>();
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
+  const axiosInstance = useAxiosInstance();
 
   const navigate = useNavigate();
   const { refreshBrands } = useBrandRefresh();
-  
+
   // Track API call success/failure status
   const [apiStatus, setApiStatus] = useState({
     meta: true,
     google: true,
     shopify: true,
-    analytics: true
+    analytics: true,
   });
 
   // State for platform modal
   const [platformModalOpen, setPlatformModalOpen] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(
+    null,
+  );
 
   // State for banner visibility
   const [bannerVisible, setBannerVisible] = useState(true);
@@ -158,130 +160,203 @@ const SummaryDashboard: React.FC = () => {
   // Check URL parameters for modal opening
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const modalToOpen = params.get('openModal');
-    
+    const modalToOpen = params.get("openModal");
+
     if (modalToOpen && brandId) {
       let platformToOpen: Platform | null = null;
-      
+
       switch (modalToOpen.toLowerCase()) {
-        case 'googleads':
-          platformToOpen = 'Google Ads';
+        case "googleads":
+          platformToOpen = "Google Ads";
           break;
-        case 'googleanalytics':
-          platformToOpen = 'Google Analytics';
+        case "googleanalytics":
+          platformToOpen = "Google Analytics";
           break;
-        case 'facebook':
-          platformToOpen = 'Facebook';
+        case "facebook":
+          platformToOpen = "Facebook";
           break;
       }
-      
+
       if (platformToOpen) {
         setSelectedPlatform(platformToOpen);
         setPlatformModalOpen(true);
-        
+
         // Remove the modal parameter from URL
-        params.delete('openModal');
-        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
-        window.history.replaceState({}, '', newUrl);
+        params.delete("openModal");
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+        window.history.replaceState({}, "", newUrl);
       }
     }
   }, [brandId]);
 
   const fetchPerformanceData = useCallback(async () => {
     if (!brandId) {
-      console.log('No brand ID available, skipping API calls');
+      console.log("No brand ID available, skipping API calls");
       return;
     }
-    
+
     setLoading(true);
     setPerformanceData({});
     setApiStatus({
       meta: true,
       google: true,
       shopify: true,
-      analytics: true
+      analytics: true,
     });
 
     try {
-      const dateParams = dateFrom && dateTo ? {
-        customStart: dateFrom,
-        customEnd: dateTo,
-        ...(compareFrom && compareTo ? {
-          customCompareStart: compareFrom,
-          customCompareEnd: compareTo
-        } : {})
-      } : {};
+      const dateParams =
+        dateFrom && dateTo
+          ? {
+              customStart: dateFrom,
+              customEnd: dateTo,
+              ...(compareFrom && compareTo
+                ? {
+                    customCompareStart: compareFrom,
+                    customCompareEnd: compareTo,
+                  }
+                : {}),
+            }
+          : {};
 
-      const metaPromise = axiosInstance.get(
-        `api/summary/facebook-ads/${brandId}`,
-        { params: dateParams, withCredentials: true }
-      ).catch(error => {
-        console.error('Error fetching Meta data:', error);
-        setApiStatus(prev => ({ ...prev, meta: false }));
-        return { data: { success: false } };
-      });
+      const metaPromise = axiosInstance
+        .get(`api/summary/facebook-ads/${brandId}`, {
+          params: dateParams,
+          withCredentials: true,
+        })
+        .catch((error) => {
+          console.error("Error fetching Meta data:", error);
+          setApiStatus((prev) => ({ ...prev, meta: false }));
+          return { data: { success: false } };
+        });
 
-      const googlePromise = axiosInstance.get(
-        `api/summary/google-ads/${brandId}`,
-        { params: dateParams, withCredentials: true }
-      ).catch(error => {
-        console.error('Error fetching Google data:', error);
-        setApiStatus(prev => ({ ...prev, google: false }));
-        return { data: { success: false } };
-      });
+      const googlePromise = axiosInstance
+        .get(`api/summary/google-ads/${brandId}`, {
+          params: dateParams,
+          withCredentials: true,
+        })
+        .catch((error) => {
+          console.error("Error fetching Google data:", error);
+          setApiStatus((prev) => ({ ...prev, google: false }));
+          return { data: { success: false } };
+        });
 
-      const shopifyPromise = axiosInstance.get(
-        `api/summary/shopify/${brandId}`,
-        { params: dateParams, withCredentials: true }
-      ).catch(error => {
-        console.error('Error fetching Shopify data:', error);
-        setApiStatus(prev => ({ ...prev, shopify: false }));
-        return { data: { success: false } };
-      });
+      const shopifyPromise = axiosInstance
+        .get(`api/summary/shopify/${brandId}`, {
+          params: dateParams,
+          withCredentials: true,
+        })
+        .catch((error) => {
+          console.error("Error fetching Shopify data:", error);
+          setApiStatus((prev) => ({ ...prev, shopify: false }));
+          return { data: { success: false } };
+        });
 
-      const analyticsPromise = axiosInstance.get(
-        `api/summary/analytics/${brandId}`,
-        { params: dateParams, withCredentials: true }
-      ).catch(error => {
-        console.error('Error fetching Analytics data:', error);
-        setApiStatus(prev => ({ ...prev, analytics: false }));
-        return { data: { success: false } };
-      });
-      
-      const [metaResponse, googleResponse, shopifyResponse, analyticsResponse] = await Promise.all([
-        metaPromise,
-        googlePromise,
-        shopifyPromise,
-        analyticsPromise
-      ]);
+      const analyticsPromise = axiosInstance
+        .get(`api/summary/analytics/${brandId}`, {
+          params: dateParams,
+          withCredentials: true,
+        })
+        .catch((error) => {
+          console.error("Error fetching Analytics data:", error);
+          setApiStatus((prev) => ({ ...prev, analytics: false }));
+          return { data: { success: false } };
+        });
+
+      const [metaResponse, googleResponse, shopifyResponse, analyticsResponse] =
+        await Promise.all([
+          metaPromise,
+          googlePromise,
+          shopifyPromise,
+          analyticsPromise,
+        ]);
 
       setPerformanceData({
-        meta: metaResponse.data.success ? metaResponse.data.periodData : undefined,
-        google: googleResponse.data.success ? googleResponse.data.periodData : undefined,
-        shopify: shopifyResponse.data.success ? shopifyResponse.data.periodData : undefined,
-        analytics: analyticsResponse.data.success ? analyticsResponse.data.periodData : undefined
+        meta: metaResponse.data.success
+          ? metaResponse.data.periodData
+          : undefined,
+        google: googleResponse.data.success
+          ? googleResponse.data.periodData
+          : undefined,
+        shopify: shopifyResponse.data.success
+          ? shopifyResponse.data.periodData
+          : undefined,
+        analytics: analyticsResponse.data.success
+          ? analyticsResponse.data.periodData
+          : undefined,
       });
-      
+
       // Update API status based on response success property
       setApiStatus({
         meta: metaResponse.data.success,
         google: googleResponse.data.success,
         shopify: shopifyResponse.data.success,
-        analytics: analyticsResponse.data.success
+        analytics: analyticsResponse.data.success,
       });
     } catch (error) {
-      console.error('Error in fetchPerformanceData:', error);
+      console.error("Error in fetchPerformanceData:", error);
       // If we had an overall error, mark all APIs as failed
       setApiStatus({
         meta: false,
         google: false,
         shopify: false,
-        analytics: false
+        analytics: false,
       });
     } finally {
       setLoading(false);
     }
-  }, [brandId, dateFrom, dateTo, compareFrom, compareTo]);
+  }, [brandId, dateFrom, dateTo, compareFrom, compareTo, axiosInstance]);
+
+  const fetchBreakdownData = useCallback(async () => {
+    if (!brandId) {
+      setBreakdown(undefined);
+      return;
+    }
+
+    setBreakdownLoading(true);
+
+    try {
+      const dateParams =
+        dateFrom && dateTo
+          ? {
+              customStart: dateFrom,
+              customEnd: dateTo,
+              ...(compareFrom && compareTo
+                ? {
+                    customCompareStart: compareFrom,
+                    customCompareEnd: compareTo,
+                  }
+                : {}),
+            }
+          : {};
+
+      const response = await axiosInstance.get(
+        `api/meta/report/breakdown/${brandId}`,
+        {
+          params: {
+            breakdownCatagory: breakdownDim,
+            ...dateParams,
+          },
+          withCredentials: true,
+        },
+      );
+
+      setBreakdown(response.data.success ? response.data : undefined);
+    } catch (error) {
+      console.error("Error fetching Meta breakdown data:", error);
+      setBreakdown(undefined);
+    } finally {
+      setBreakdownLoading(false);
+    }
+  }, [
+    brandId,
+    breakdownDim,
+    dateFrom,
+    dateTo,
+    compareFrom,
+    compareTo,
+    axiosInstance,
+  ]);
 
   // Shopify connect-brand callback uses query params to report success/failure.
   // When present, close the modal, refresh brands, and clean up the URL.
@@ -303,6 +378,7 @@ const SummaryDashboard: React.FC = () => {
 
         await refreshBrands();
         await fetchPerformanceData();
+        await fetchBreakdownData();
       } finally {
         params.delete("shopify_connected");
         params.delete("brandId");
@@ -312,33 +388,41 @@ const SummaryDashboard: React.FC = () => {
         window.history.replaceState({}, "", newUrl);
       }
     })();
-  }, [brandId, refreshBrands, fetchPerformanceData]);
-
-  const axiosInstance = createAxiosInstance();
-
-
+  }, [brandId, refreshBrands, fetchPerformanceData, fetchBreakdownData]);
 
   const handleConnectPlatform = (platform: Platform) => {
     setSelectedPlatform(platform);
     setPlatformModalOpen(true);
   };
 
-  const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
-    console.log(`Successfully connected ${platform} - ${accountName} (${accountId})`);
+  const handlePlatformModalSuccess = (
+    platform: string,
+    accountName: string,
+    accountId: string,
+  ) => {
+    console.log(
+      `Successfully connected ${platform} - ${accountName} (${accountId})`,
+    );
     // Refresh data to show the newly connected platform
     fetchPerformanceData();
+    fetchBreakdownData();
   };
 
   useEffect(() => {
     fetchPerformanceData();
-  }, [fetchPerformanceData]);
+    fetchBreakdownData();
+  }, [fetchPerformanceData, fetchBreakdownData]);
 
   if (loading) {
     return <Loader isLoading={loading} />;
   }
 
   // Check if any platform is not connected (Shopify optional for comparison)
-  const allConnected = apiStatus.meta && apiStatus.google && apiStatus.analytics && isShopifyConnected;
+  const allConnected =
+    apiStatus.meta &&
+    apiStatus.google &&
+    apiStatus.analytics &&
+    isShopifyConnected;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -348,13 +432,16 @@ const SummaryDashboard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="h-12 w-1 bg-blue-500 rounded-full" />
               <div>
-                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Welcome Back, {userName}</h1>
-                <p className="text-slate-500 mt-1">Here's your performance overview</p>
+                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
+                  Welcome Back, {userName}
+                </h1>
+                <p className="text-slate-500 mt-1">
+                  Here's your performance overview
+                </p>
               </div>
             </div>
             <div className="flex flex-row items-center gap-3">
               {/* <HeaderTutorialButton /> */}
-           
             </div>
           </div>
         </div>
@@ -376,7 +463,8 @@ const SummaryDashboard: React.FC = () => {
                     Have Custom Requirements?
                   </h3>
                   <p className="text-blue-50">
-                    If you have any requirements, fill the form and we will try to integrate in 15 days.
+                    If you have any requirements, fill the form and we will try
+                    to integrate in 15 days.
                   </p>
                 </div>
                 <Button
@@ -401,25 +489,26 @@ const SummaryDashboard: React.FC = () => {
                 </h2>
               </div>
               <p className="text-slate-600">
-                Connect your advertising and analytics platforms to see all your performance data in one place.
+                Connect your advertising and analytics platforms to see all your
+                performance data in one place.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {!apiStatus.meta && (
-                  <ConnectPlatformCard 
-                    platform="Facebook" 
-                    onClick={() => handleConnectPlatform("Facebook")} 
+                  <ConnectPlatformCard
+                    platform="Facebook"
+                    onClick={() => handleConnectPlatform("Facebook")}
                   />
                 )}
                 {!apiStatus.google && (
-                  <ConnectPlatformCard 
-                    platform="Google Ads" 
-                    onClick={() => handleConnectPlatform("Google Ads")} 
+                  <ConnectPlatformCard
+                    platform="Google Ads"
+                    onClick={() => handleConnectPlatform("Google Ads")}
                   />
                 )}
                 {!apiStatus.analytics && (
-                  <ConnectPlatformCard 
-                    platform="Google Analytics" 
-                    onClick={() => handleConnectPlatform("Google Analytics")} 
+                  <ConnectPlatformCard
+                    platform="Google Analytics"
+                    onClick={() => handleConnectPlatform("Google Analytics")}
                   />
                 )}
                 {!isShopifyConnected && (
@@ -434,26 +523,35 @@ const SummaryDashboard: React.FC = () => {
         )}
 
         {/* Performance Table */}
-        <PerformanceTable 
+        <PerformanceTable
           performanceData={performanceData}
           apiStatus={apiStatus}
           onRefresh={fetchPerformanceData}
           loading={loading}
         />
-
+        <ReportTable
+          breakdownDim={breakdownDim}
+          onBreakdownDimChange={setBreakdownDim}
+          breakdown={breakdown}
+          breakdownLoading={breakdownLoading}
+          apiStatus={apiStatus}
+          onRefresh={fetchBreakdownData}
+          loading={breakdownLoading}
+        />
 
         {/* Dashboard Quick Links Section */}
         <div className="mt-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-slate-800">Quick Insights</h2>
-            <p className="text-sm text-slate-500 mt-1">Click any card to explore detailed reports</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Click any card to explore detailed reports
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
             {/* Conversion Funnel Card */}
             {brandId && (
-              <ConversionFunnelCard 
+              <ConversionFunnelCard
                 onNavigate={() => navigate(`/ecommerce-reports/${brandId}`)}
                 brandId={brandId}
               />
@@ -461,7 +559,7 @@ const SummaryDashboard: React.FC = () => {
 
             {/* Marketing Insights Card - Monthly Metrics */}
             {brandId && (
-              <MarketingInsightsCard 
+              <MarketingInsightsCard
                 onNavigate={() => navigate(`/marketing-insights/${brandId}`)}
                 brandId={brandId}
               />
@@ -469,7 +567,7 @@ const SummaryDashboard: React.FC = () => {
 
             {/* Payment Orders Card - COD vs Prepaid */}
             {brandId && (
-              <PaymentOrdersCard 
+              <PaymentOrdersCard
                 onNavigate={() => navigate(`/reports/${brandId}`)}
                 brandId={brandId}
               />

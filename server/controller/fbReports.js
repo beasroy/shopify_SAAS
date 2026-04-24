@@ -28,6 +28,23 @@ const BREAKDOWN_CONFIG = {
   },
 };
 
+const BREAKDOWN_CACHE_TTL_SECONDS = 10 * 60;
+
+function buildBreakdownCacheKey(brandId, breakdownCatagory, query) {
+  const today = moment().format("YYYY-MM-DD");
+  const parts = [
+    "meta-breakdown",
+    brandId,
+    breakdownCatagory,
+    today,
+    query.customStart || "",
+    query.customEnd || "",
+    query.customCompareStart || "",
+    query.customCompareEnd || "",
+  ];
+  return parts.join(":");
+}
+
 function formatBreakdownLabel(value, breakdownCatagory) {
   if (!value) return "Unknown";
 
@@ -353,6 +370,20 @@ export const fetchMetaBreakdownSummary = async (req, res) => {
       });
     }
 
+    const cacheKey = buildBreakdownCacheKey(
+      brandId,
+      breakdownCatagory,
+      req.query,
+    );
+    const bypassCache = req.query.refresh === "true";
+
+    if (!bypassCache) {
+      const cached = dataCache.get(cacheKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+    }
+
     const ranges = buildMetaBreakdownRanges(req.query);
     const periodMaps = {};
     const accountPeriodMaps = new Map();
@@ -436,14 +467,18 @@ export const fetchMetaBreakdownSummary = async (req, res) => {
       })
       .sort((a, b) => a.accountName.localeCompare(b.accountName));
 
-    return res.status(200).json({
+    const payload = {
       success: true,
       breakdownCatagory,
       rows,
       accounts,
       totalRows: rows.length,
       lastUpdated: new Date(),
-    });
+    };
+
+    dataCache.set(cacheKey, payload, BREAKDOWN_CACHE_TTL_SECONDS);
+
+    return res.status(200).json(payload);
   } catch (error) {
     console.error("Error fetching Meta breakdown summary:", error);
     return res.status(500).json({

@@ -307,56 +307,60 @@ const SummaryDashboard: React.FC = () => {
     }
   }, [brandId, dateFrom, dateTo, compareFrom, compareTo, axiosInstance]);
 
-  const fetchBreakdownData = useCallback(async () => {
-    if (!brandId) {
-      setBreakdown(undefined);
-      return;
-    }
+  const fetchBreakdownData = useCallback(
+    async (forceRefresh = false) => {
+      if (!brandId) {
+        setBreakdown(undefined);
+        return;
+      }
 
-    setBreakdownLoading(true);
+      setBreakdownLoading(true);
 
-    try {
-      const dateParams =
-        dateFrom && dateTo
-          ? {
-              customStart: dateFrom,
-              customEnd: dateTo,
-              ...(compareFrom && compareTo
-                ? {
-                    customCompareStart: compareFrom,
-                    customCompareEnd: compareTo,
-                  }
-                : {}),
-            }
-          : {};
+      try {
+        const dateParams =
+          dateFrom && dateTo
+            ? {
+                customStart: dateFrom,
+                customEnd: dateTo,
+                ...(compareFrom && compareTo
+                  ? {
+                      customCompareStart: compareFrom,
+                      customCompareEnd: compareTo,
+                    }
+                  : {}),
+              }
+            : {};
 
-      const response = await axiosInstance.get(
-        `api/meta/report/breakdown/${brandId}`,
-        {
-          params: {
-            breakdownCatagory: breakdownDim,
-            ...dateParams,
+        const response = await axiosInstance.get(
+          `api/meta/report/breakdown/${brandId}`,
+          {
+            params: {
+              breakdownCatagory: breakdownDim,
+              ...dateParams,
+              ...(forceRefresh ? { refresh: "true" } : {}),
+            },
+            withCredentials: true,
           },
-          withCredentials: true,
-        },
-      );
+        );
 
-      setBreakdown(response.data.success ? response.data : undefined);
-    } catch (error) {
-      console.error("Error fetching Meta breakdown data:", error);
-      setBreakdown(undefined);
-    } finally {
-      setBreakdownLoading(false);
-    }
-  }, [
-    brandId,
-    breakdownDim,
-    dateFrom,
-    dateTo,
-    compareFrom,
-    compareTo,
-    axiosInstance,
-  ]);
+        setBreakdown(response.data.success ? response.data : undefined);
+      } catch (error) {
+        console.error("Error fetching Meta breakdown data:", error);
+        setBreakdown(undefined);
+      } finally {
+        setBreakdownLoading(false);
+      }
+    },
+    [
+      brandId,
+      breakdownDim,
+      dateFrom,
+      dateTo,
+      compareFrom,
+      compareTo,
+      axiosInstance,
+    ],
+  );
 
   // Shopify connect-brand callback uses query params to report success/failure.
   // When present, close the modal, refresh brands, and clean up the URL.
@@ -535,7 +539,7 @@ const SummaryDashboard: React.FC = () => {
           breakdown={breakdown}
           breakdownLoading={breakdownLoading}
           apiStatus={apiStatus}
-          onRefresh={fetchBreakdownData}
+          onRefresh={() => fetchBreakdownData(true)}
           loading={breakdownLoading}
         />
 

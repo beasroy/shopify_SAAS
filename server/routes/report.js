@@ -473,10 +473,6 @@ router.post('/weekly/update', verifyAuth, async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        if (!req.user?.isAdmin) {
-            return res.status(403).json({ success: false, message: 'Forbidden' });
-        }
-
         const userId = '691ead9a6345dba0c9db041b';
         const brands = await Brand.find({}, { _id: 1 }).lean();
         const brandIds = brands.map(b => b._id.toString());

@@ -1,8 +1,8 @@
 import Brand from "../models/Brands.js";
-import User from "../models/User.js";
 import axios from "axios";
 import moment from "moment";
 import NodeCache from "node-cache";
+import { calculateMetrics, formatDate, getCustomDates } from "./summary.js";
 
 const dataCache = new NodeCache({ stdTTL: 86400 });
 
@@ -16,6 +16,478 @@ function getDateRange(startDate, endDate) {
     adjustedEndDate: endDate || moment().format("YYYY-MM-DD"),
   };
 }
+
+const BREAKDOWN_CONFIG = {
+  age: { breakdowns: "age", field: "age" },
+  gender: { breakdowns: "gender", field: "gender" },
+  country: { breakdowns: "country", field: "country" },
+  platform: { breakdowns: "publisher_platform", field: "publisher_platform" },
+  placement: {
+    breakdowns: "publisher_platform,platform_position",
+    field: "platform_position",
+  },
+};
+
+const BREAKDOWN_CACHE_TTL_SECONDS = 10 * 60;
+
+function buildBreakdownCacheKey(brandId, breakdownCatagory, query) {
+  const today = moment().format("YYYY-MM-DD");
+  const parts = [
+    "meta-breakdown",
+    brandId,
+    breakdownCatagory,
+    today,
+    query.customStart || "",
+    query.customEnd || "",
+    query.customCompareStart || "",
+    query.customCompareEnd || "",
+  ];
+  return parts.join(":");
+}
+
+function formatBreakdownLabel(value, breakdownCatagory) {
+  if (!value) return "Unknown";
+
+  if (breakdownCatagory === "country" && /^[A-Za-z]{2}$/.test(value)) {
+    return value.toUpperCase();
+  }
+
+  if (/\d/.test(value) && !value.includes("_")) {
+    return value;
+  }
+
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getBreakdownKeyData(breakdownCatagory, insight) {
+  const config = BREAKDOWN_CONFIG[breakdownCatagory];
+  const rawValue = String(insight?.[config.field] || "unknown").trim();
+
+  return {
+    key: `${breakdownCatagory}-${rawValue.toLowerCase()}`,
+    label: formatBreakdownLabel(rawValue, breakdownCatagory),
+  };
+}
+
+function accumulateBreakdownMetric(
+  targetMap,
+  key,
+  label,
+  spend,
+  conversionValue,
+) {
+  if (!targetMap.has(key)) {
+    targetMap.set(key, {
+      key,
+      label,
+      rawSpend: 0,
+      rawConversionValue: 0,
+    });
+  }
+
+  const current = targetMap.get(key);
+  current.rawSpend += spend;
+  current.rawConversionValue += conversionValue;
+}
+
+function finalizeBreakdownMap(rawMap) {
+  return new Map(
+    Array.from(rawMap.values())
+      .map((row) => {
+        const metaspend = Number(row.rawSpend.toFixed(2));
+        const metaroas =
+          metaspend > 0
+            ? Number((row.rawConversionValue / metaspend).toFixed(2))
+            : 0;
+
+        return [
+          row.key,
+          {
+            key: row.key,
+            label: row.label,
+            metaspend,
+            metaroas,
+          },
+        ];
+      })
+      .sort(([, a], [, b]) => b.metaspend - a.metaspend),
+  );
+}
+
+function buildMetaBreakdownRanges(query) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const dayBeforeYesterday = new Date(today);
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+
+  const last7DaysStart = new Date(today);
+  last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+  const previous7DaysStart = new Date(last7DaysStart);
+  previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+  const previous7DaysEnd = new Date(last7DaysStart);
+  previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+
+  const last14DaysStart = new Date(today);
+  last14DaysStart.setDate(last14DaysStart.getDate() - 14);
+  const previous14DaysStart = new Date(last14DaysStart);
+  previous14DaysStart.setDate(previous14DaysStart.getDate() - 14);
+  const previous14DaysEnd = new Date(last14DaysStart);
+  previous14DaysEnd.setDate(previous14DaysEnd.getDate() - 1);
+
+  const last30DaysStart = new Date(today);
+  last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+  const previous30DaysStart = new Date(last30DaysStart);
+  previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+  const previous30DaysEnd = new Date(last30DaysStart);
+  previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+
+  const quarterStart = new Date(today);
+  quarterStart.setDate(quarterStart.getDate() - 90);
+  const previousQuarterStart = new Date(quarterStart);
+  previousQuarterStart.setDate(previousQuarterStart.getDate() - 90);
+  const previousQuarterEnd = new Date(quarterStart);
+  previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
+
+  const ranges = {
+    yesterday: {
+      current: { start: yesterday, end: yesterday },
+      previous: { start: dayBeforeYesterday, end: dayBeforeYesterday },
+    },
+    last7Days: {
+      current: { start: last7DaysStart, end: yesterday },
+      previous: { start: previous7DaysStart, end: previous7DaysEnd },
+    },
+    last14Days: {
+      current: { start: last14DaysStart, end: yesterday },
+      previous: { start: previous14DaysStart, end: previous14DaysEnd },
+    },
+    last30Days: {
+      current: { start: last30DaysStart, end: yesterday },
+      previous: { start: previous30DaysStart, end: previous30DaysEnd },
+    },
+    quarterly: {
+      current: { start: quarterStart, end: yesterday },
+      previous: { start: previousQuarterStart, end: previousQuarterEnd },
+    },
+  };
+
+  const customDates = getCustomDates(query);
+
+  if (customDates) {
+    ranges.custom = {
+      current: {
+        start: customDates.customStart,
+        end: customDates.customEnd,
+      },
+      previous: {
+        start: customDates.customCompareStart,
+        end: customDates.customCompareEnd,
+      },
+    };
+  }
+
+  return ranges;
+}
+
+async function fetchMetaBreakdownPeriod(
+  startDate,
+  endDate,
+  accessToken,
+  adAccountIds,
+  breakdownCatagory,
+) {
+  const config = BREAKDOWN_CONFIG[breakdownCatagory];
+  const blendedData = new Map();
+  const accountData = new Map();
+  const BATCH_SIZE = 10;
+
+  async function fetchBreakdownForAccount(accountId) {
+    const cleanedAccountId = accountId.replace(/^act_/, "");
+    const accountEntry = {
+      accountId: cleanedAccountId,
+      accountName: cleanedAccountId,
+      rows: new Map(),
+    };
+    let after;
+
+    do {
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        fields: "spend,action_values,account_name",
+        time_range: JSON.stringify({
+          since: formatDate(startDate),
+          until: formatDate(endDate),
+        }),
+        breakdowns: config.breakdowns,
+        limit: 2000,
+      });
+
+      if (after) {
+        params.set("after", after);
+      }
+
+      const response = await axios.get(
+        `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${params}`,
+      );
+
+      const insights = response.data?.data || [];
+
+      for (const insight of insights) {
+        const { key, label } = getBreakdownKeyData(breakdownCatagory, insight);
+        const spend = Number(insight.spend || 0);
+        const conversionValue = Number(
+          insight.action_values?.find(
+            (action) => action.action_type === "purchase",
+          )?.value || 0,
+        );
+        accountEntry.accountName =
+          insight.account_name || accountEntry.accountName;
+
+        accumulateBreakdownMetric(
+          blendedData,
+          key,
+          label,
+          spend,
+          conversionValue,
+        );
+        accumulateBreakdownMetric(
+          accountEntry.rows,
+          key,
+          label,
+          spend,
+          conversionValue,
+        );
+      }
+
+      after = response.data?.paging?.cursors?.after;
+    } while (after);
+
+    accountData.set(accountEntry.accountId, accountEntry);
+  }
+
+  for (let i = 0; i < adAccountIds.length; i += BATCH_SIZE) {
+    const batch = adAccountIds.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map((accountId) => fetchBreakdownForAccount(accountId)),
+    );
+  }
+
+  return {
+    blended: finalizeBreakdownMap(blendedData),
+    accounts: new Map(
+      Array.from(accountData.entries()).map(([accountId, account]) => [
+        accountId,
+        {
+          accountId,
+          accountName: account.accountName,
+          rows: finalizeBreakdownMap(account.rows),
+        },
+      ]),
+    ),
+  };
+}
+
+function buildBreakdownRows(periodMaps) {
+  const rowRegistry = new Map();
+
+  Object.values(periodMaps).forEach(({ current, previous }) => {
+    current.forEach((value, key) => {
+      rowRegistry.set(key, value.label);
+    });
+    previous.forEach((value, key) => {
+      rowRegistry.set(key, value.label);
+    });
+  });
+
+  return Array.from(rowRegistry.entries())
+    .map(([key, label]) => {
+      const row = { key, label };
+
+      Object.entries(periodMaps).forEach(([period, periodMap]) => {
+        const current = periodMap.current.get(key) || {
+          metaspend: 0,
+          metaroas: 0,
+        };
+        const previous = periodMap.previous.get(key) || {
+          metaspend: 0,
+          metaroas: 0,
+        };
+
+        row[period] = {
+          metaspend: calculateMetrics(current.metaspend, previous.metaspend),
+          metaroas: calculateMetrics(current.metaroas, previous.metaroas),
+        };
+      });
+
+      return row;
+    })
+    .sort(
+      (a, b) =>
+        (b.last30Days?.metaspend?.current || 0) -
+        (a.last30Days?.metaspend?.current || 0),
+    );
+}
+
+export const fetchMetaBreakdownSummary = async (req, res) => {
+  const { brandId } = req.params;
+  const breakdownCatagory = req.query.breakdownCatagory;
+
+  try {
+    if (!brandId) {
+      return res.status(400).json({
+        success: false,
+        message: "Brand ID is required.",
+      });
+    }
+
+    if (!BREAKDOWN_CONFIG[breakdownCatagory]) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid breakdown category is required.",
+      });
+    }
+
+    const brand = await Brand.findById(brandId).lean();
+
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found.",
+      });
+    }
+
+    if (!brand.fbAdAccounts?.length || !brand.fbAccessToken) {
+      return res.status(200).json({
+        success: false,
+        message: "Meta Ads not configured for this brand.",
+        rows: [],
+      });
+    }
+
+    const cacheKey = buildBreakdownCacheKey(
+      brandId,
+      breakdownCatagory,
+      req.query,
+    );
+    const bypassCache = req.query.refresh === "true";
+
+    if (!bypassCache) {
+      const cached = dataCache.get(cacheKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+    }
+
+    const ranges = buildMetaBreakdownRanges(req.query);
+    const periodMaps = {};
+    const accountPeriodMaps = new Map();
+
+    const periodResults = await Promise.all(
+      Object.entries(ranges).map(async ([period, range]) => {
+        const [current, previous] = await Promise.all([
+          fetchMetaBreakdownPeriod(
+            range.current.start,
+            range.current.end,
+            brand.fbAccessToken,
+            brand.fbAdAccounts,
+            breakdownCatagory,
+          ),
+          fetchMetaBreakdownPeriod(
+            range.previous.start,
+            range.previous.end,
+            brand.fbAccessToken,
+            brand.fbAdAccounts,
+            breakdownCatagory,
+          ),
+        ]);
+
+        return { period, current, previous };
+      }),
+    );
+
+    for (const { period, current, previous } of periodResults) {
+
+      periodMaps[period] = {
+        current: current.blended,
+        previous: previous.blended,
+      };
+
+      const accountIds = new Set([
+        ...current.accounts.keys(),
+        ...previous.accounts.keys(),
+      ]);
+
+      accountIds.forEach((accountId) => {
+        const currentAccount = current.accounts.get(accountId);
+        const previousAccount = previous.accounts.get(accountId);
+        const accountPeriodData = accountPeriodMaps.get(accountId) || {
+          accountId,
+          accountName:
+            currentAccount?.accountName ||
+            previousAccount?.accountName ||
+            accountId,
+          periods: {},
+        };
+
+        accountPeriodData.periods[period] = {
+          current: currentAccount?.rows || new Map(),
+          previous: previousAccount?.rows || new Map(),
+        };
+
+        accountPeriodMaps.set(accountId, accountPeriodData);
+      });
+    }
+
+    const rows = buildBreakdownRows(periodMaps);
+    const accounts = Array.from(accountPeriodMaps.values())
+      .map((account) => {
+        Object.keys(ranges).forEach((period) => {
+          if (!account.periods[period]) {
+            account.periods[period] = {
+              current: new Map(),
+              previous: new Map(),
+            };
+          }
+        });
+
+        const accountRows = buildBreakdownRows(account.periods);
+
+        return {
+          accountId: account.accountId,
+          accountName: account.accountName,
+          rows: accountRows,
+          totalRows: accountRows.length,
+        };
+      })
+      .sort((a, b) => a.accountName.localeCompare(b.accountName));
+
+    const payload = {
+      success: true,
+      breakdownCatagory,
+      rows,
+      accounts,
+      totalRows: rows.length,
+      lastUpdated: new Date(),
+    };
+
+    dataCache.set(cacheKey, payload, BREAKDOWN_CACHE_TTL_SECONDS);
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error("Error fetching Meta breakdown summary:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching Meta breakdown summary",
+      error: error.message,
+    });
+  }
+};
 
 const calculateBlendedAgeSummary = (accountsData) => {
   // Initialize data structure for blended metrics
@@ -1981,9 +2453,6 @@ export const fetchFbPlacementReports = async (req, res) => {
   }
 };
 
-
-
-
 const calculateBlendedAgeGenderSummary = (accountsData) => {
   const blendedData = new Map();
   accountsData.forEach((account) => {
@@ -2013,7 +2482,8 @@ const calculateBlendedAgeGenderSummary = (accountsData) => {
         }
         const currentMonthData = currentData.MonthlyData.get(monthKey);
         currentMonthData["Spend"] += month["Spend"];
-        currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+        currentMonthData["Purchase Conversion Value"] +=
+          month["Purchase Conversion Value"];
       });
     });
   });
@@ -2021,11 +2491,17 @@ const calculateBlendedAgeGenderSummary = (accountsData) => {
   const blendedSummary = Array.from(blendedData.values())
     .map((combo) => ({
       ...combo,
-      "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
+      "Total Purchase ROAS":
+        combo["Total Spend"] > 0
+          ? combo["Total PCV"] / combo["Total Spend"]
+          : 0,
       MonthlyData: Array.from(combo.MonthlyData.values())
         .map((month) => ({
           ...month,
-          "Purchase ROAS": month["Spend"] > 0 ? month["Purchase Conversion Value"] / month["Spend"] : 0,
+          "Purchase ROAS":
+            month["Spend"] > 0
+              ? month["Purchase Conversion Value"] / month["Spend"]
+              : 0,
         }))
         .sort((a, b) => a.Month.localeCompare(b.Month)),
     }))
@@ -2039,15 +2515,27 @@ export const fetchFbAgeGenderReports = async (req, res) => {
   const { brandId } = req.params;
 
   try {
-    const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
+    const { adjustedStartDate, adjustedEndDate } = getDateRange(
+      startDate,
+      endDate,
+    );
 
-    if (!brandId) return res.status(400).json({ success: false, message: "Brand ID is required." });
-    
+    if (!brandId)
+      return res
+        .status(400)
+        .json({ success: false, message: "Brand ID is required." });
+
     const brand = await Brand.findById(brandId).lean();
-    if (!brand) return res.status(404).json({ success: false, message: "Brand not found." });
+    if (!brand)
+      return res
+        .status(404)
+        .json({ success: false, message: "Brand not found." });
 
     const adAccountIds = brand.fbAdAccounts;
-    if (!adAccountIds || adAccountIds.length === 0) return res.status(404).json({ success: false, message: "No Facebook Ads accounts found." });
+    if (!adAccountIds || adAccountIds.length === 0)
+      return res
+        .status(404)
+        .json({ success: false, message: "No Facebook Ads accounts found." });
 
     async function fetchTopAgeGender(accountId) {
       const cleanedAccountId = accountId.replace(/^act_/, "");
@@ -2058,14 +2546,19 @@ export const fetchFbAgeGenderReports = async (req, res) => {
         const aggregateParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "age,gender",
           limit: 2000,
           sort: "spend_descending",
         });
 
-        const aggregateResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`);
-        
+        const aggregateResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`,
+        );
+
         const topCombos = aggregateResponse.data.data
           .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
           .slice(0, MAX_COMBOS)
@@ -2076,17 +2569,22 @@ export const fetchFbAgeGenderReports = async (req, res) => {
         const monthlyParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,purchase_roas,action_values,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "age,gender",
           time_increment: "monthly",
           limit: 2000,
         });
 
-        const monthlyResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`);
+        const monthlyResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`,
+        );
 
         for (const insight of monthlyResponse.data.data) {
           const comboKey = `${insight.age} - ${insight.gender}`;
-          
+
           if (!topCombos.includes(comboKey)) continue;
 
           if (!allData.has(comboKey)) {
@@ -2103,8 +2601,15 @@ export const fetchFbAgeGenderReports = async (req, res) => {
           const comboData = allData.get(comboKey);
           const monthKey = moment(insight.date_start).format("YYYYMM");
           const spend = parseFloat(insight.spend || 0);
-          const purchaseRoas = parseFloat(insight.purchase_roas?.find((a) => a.action_type === "omni_purchase")?.value || 0);
-          const conversionValue = parseFloat(insight.action_values?.find((a) => a.action_type === "purchase")?.value || 0);
+          const purchaseRoas = parseFloat(
+            insight.purchase_roas?.find(
+              (a) => a.action_type === "omni_purchase",
+            )?.value || 0,
+          );
+          const conversionValue = parseFloat(
+            insight.action_values?.find((a) => a.action_type === "purchase")
+              ?.value || 0,
+          );
 
           const monthData = {
             Month: monthKey,
@@ -2121,17 +2626,28 @@ export const fetchFbAgeGenderReports = async (req, res) => {
         const formattedCombos = Array.from(allData.values())
           .map((combo) => ({
             ...combo,
-            "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
-            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) => a.Month.localeCompare(b.Month)),
+            "Total Purchase ROAS":
+              combo["Total Spend"] > 0
+                ? combo["Total PCV"] / combo["Total Spend"]
+                : 0,
+            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) =>
+              a.Month.localeCompare(b.Month),
+            ),
           }))
           .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
 
         return {
           accountId,
-          data: { account_name: formattedCombos[0]?.account_name, ageGenderData: formattedCombos },
+          data: {
+            account_name: formattedCombos[0]?.account_name,
+            ageGenderData: formattedCombos,
+          },
         };
       } catch (error) {
-        console.error(`Error fetching data for account ${cleanedAccountId}:`, error.message);
+        console.error(
+          `Error fetching data for account ${cleanedAccountId}:`,
+          error.message,
+        );
         return { accountId, data: null };
       }
     }
@@ -2140,22 +2656,35 @@ export const fetchFbAgeGenderReports = async (req, res) => {
     const results = [];
     for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
       const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map((accountId) => fetchTopAgeGender(accountId)));
+      const batchResults = await Promise.all(
+        batch.map((accountId) => fetchTopAgeGender(accountId)),
+      );
       results.push(...batchResults);
     }
 
-    const formattedResults = results.filter((r) => r.data !== null).map((r) => r.data);
+    const formattedResults = results
+      .filter((r) => r.data !== null)
+      .map((r) => r.data);
     let blendedSummary = null;
-    if (brand.fbAdAccounts.length > 1) blendedSummary = calculateBlendedAgeGenderSummary(formattedResults);
+    if (brand.fbAdAccounts.length > 1)
+      blendedSummary = calculateBlendedAgeGenderSummary(formattedResults);
 
     return res.status(200).json({
       success: true,
       data: formattedResults,
-      blendedAgeGenderData: blendedSummary ? blendedSummary.blendedAgeGenderData : [],
+      blendedAgeGenderData: blendedSummary
+        ? blendedSummary.blendedAgeGenderData
+        : [],
     });
   } catch (error) {
     console.error("Error fetching Age & Gender data:", error);
-    return res.status(500).json({ success: false, message: "Error fetching data", error: error.message });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error fetching data",
+        error: error.message,
+      });
   }
 };
 
@@ -2188,7 +2717,8 @@ const calculateBlendedPlacementDeviceSummary = (accountsData) => {
         }
         const currentMonthData = currentData.MonthlyData.get(monthKey);
         currentMonthData["Spend"] += month["Spend"];
-        currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+        currentMonthData["Purchase Conversion Value"] +=
+          month["Purchase Conversion Value"];
       });
     });
   });
@@ -2196,11 +2726,17 @@ const calculateBlendedPlacementDeviceSummary = (accountsData) => {
   const blendedSummary = Array.from(blendedData.values())
     .map((combo) => ({
       ...combo,
-      "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
+      "Total Purchase ROAS":
+        combo["Total Spend"] > 0
+          ? combo["Total PCV"] / combo["Total Spend"]
+          : 0,
       MonthlyData: Array.from(combo.MonthlyData.values())
         .map((month) => ({
           ...month,
-          "Purchase ROAS": month["Spend"] > 0 ? month["Purchase Conversion Value"] / month["Spend"] : 0,
+          "Purchase ROAS":
+            month["Spend"] > 0
+              ? month["Purchase Conversion Value"] / month["Spend"]
+              : 0,
         }))
         .sort((a, b) => a.Month.localeCompare(b.Month)),
     }))
@@ -2214,14 +2750,26 @@ export const fetchFbPlacementDeviceReports = async (req, res) => {
   const { brandId } = req.params;
 
   try {
-    const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
-    if (!brandId) return res.status(400).json({ success: false, message: "Brand ID is required." });
-    
+    const { adjustedStartDate, adjustedEndDate } = getDateRange(
+      startDate,
+      endDate,
+    );
+    if (!brandId)
+      return res
+        .status(400)
+        .json({ success: false, message: "Brand ID is required." });
+
     const brand = await Brand.findById(brandId).lean();
-    if (!brand) return res.status(404).json({ success: false, message: "Brand not found." });
+    if (!brand)
+      return res
+        .status(404)
+        .json({ success: false, message: "Brand not found." });
 
     const adAccountIds = brand.fbAdAccounts;
-    if (!adAccountIds || adAccountIds.length === 0) return res.status(404).json({ success: false, message: "No Facebook Ads accounts found." });
+    if (!adAccountIds || adAccountIds.length === 0)
+      return res
+        .status(404)
+        .json({ success: false, message: "No Facebook Ads accounts found." });
 
     async function fetchTopPlacementDevice(accountId) {
       const cleanedAccountId = accountId.replace(/^act_/, "");
@@ -2232,35 +2780,48 @@ export const fetchFbPlacementDeviceReports = async (req, res) => {
         const aggregateParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "publisher_platform,platform_position,impression_device",
           limit: 2000,
           sort: "spend_descending",
         });
 
-        const aggregateResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`);
-        
+        const aggregateResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`,
+        );
+
         const topCombos = aggregateResponse.data.data
           .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
           .slice(0, MAX_COMBOS)
-          .map((item) => `${item.publisher_platform || 'none'} - ${item.platform_position || 'none'} - ${item.impression_device || 'none'}`);
+          .map(
+            (item) =>
+              `${item.publisher_platform || "none"} - ${item.platform_position || "none"} - ${item.impression_device || "none"}`,
+          );
 
         if (topCombos.length === 0) return { accountId, data: null };
 
         const monthlyParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,purchase_roas,action_values,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "publisher_platform,platform_position,impression_device",
           time_increment: "monthly",
           limit: 2000,
         });
 
-        const monthlyResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`);
+        const monthlyResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`,
+        );
 
         for (const insight of monthlyResponse.data.data) {
-          const comboKey = `${insight.publisher_platform || 'none'} - ${insight.platform_position || 'none'} - ${insight.impression_device || 'none'}`;
-          
+          const comboKey = `${insight.publisher_platform || "none"} - ${insight.platform_position || "none"} - ${insight.impression_device || "none"}`;
+
           if (!topCombos.includes(comboKey)) continue;
 
           if (!allData.has(comboKey)) {
@@ -2277,8 +2838,15 @@ export const fetchFbPlacementDeviceReports = async (req, res) => {
           const comboData = allData.get(comboKey);
           const monthKey = moment(insight.date_start).format("YYYYMM");
           const spend = parseFloat(insight.spend || 0);
-          const purchaseRoas = parseFloat(insight.purchase_roas?.find((a) => a.action_type === "omni_purchase")?.value || 0);
-          const conversionValue = parseFloat(insight.action_values?.find((a) => a.action_type === "purchase")?.value || 0);
+          const purchaseRoas = parseFloat(
+            insight.purchase_roas?.find(
+              (a) => a.action_type === "omni_purchase",
+            )?.value || 0,
+          );
+          const conversionValue = parseFloat(
+            insight.action_values?.find((a) => a.action_type === "purchase")
+              ?.value || 0,
+          );
 
           const monthData = {
             Month: monthKey,
@@ -2295,17 +2863,28 @@ export const fetchFbPlacementDeviceReports = async (req, res) => {
         const formattedCombos = Array.from(allData.values())
           .map((combo) => ({
             ...combo,
-            "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
-            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) => a.Month.localeCompare(b.Month)),
+            "Total Purchase ROAS":
+              combo["Total Spend"] > 0
+                ? combo["Total PCV"] / combo["Total Spend"]
+                : 0,
+            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) =>
+              a.Month.localeCompare(b.Month),
+            ),
           }))
           .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
 
         return {
           accountId,
-          data: { account_name: formattedCombos[0]?.account_name, placementDeviceData: formattedCombos },
+          data: {
+            account_name: formattedCombos[0]?.account_name,
+            placementDeviceData: formattedCombos,
+          },
         };
       } catch (error) {
-        console.error(`Error fetching data for account ${cleanedAccountId}:`, error.message);
+        console.error(
+          `Error fetching data for account ${cleanedAccountId}:`,
+          error.message,
+        );
         return { accountId, data: null };
       }
     }
@@ -2314,22 +2893,35 @@ export const fetchFbPlacementDeviceReports = async (req, res) => {
     const results = [];
     for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
       const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map((accountId) => fetchTopPlacementDevice(accountId)));
+      const batchResults = await Promise.all(
+        batch.map((accountId) => fetchTopPlacementDevice(accountId)),
+      );
       results.push(...batchResults);
     }
 
-    const formattedResults = results.filter((r) => r.data !== null).map((r) => r.data);
+    const formattedResults = results
+      .filter((r) => r.data !== null)
+      .map((r) => r.data);
     let blendedSummary = null;
-    if (brand.fbAdAccounts.length > 1) blendedSummary = calculateBlendedPlacementDeviceSummary(formattedResults);
+    if (brand.fbAdAccounts.length > 1)
+      blendedSummary = calculateBlendedPlacementDeviceSummary(formattedResults);
 
     return res.status(200).json({
       success: true,
       data: formattedResults,
-      blendedPlacementDeviceData: blendedSummary ? blendedSummary.blendedPlacementDeviceData : [],
+      blendedPlacementDeviceData: blendedSummary
+        ? blendedSummary.blendedPlacementDeviceData
+        : [],
     });
   } catch (error) {
     console.error("Error fetching Placement & Device data:", error);
-    return res.status(500).json({ success: false, message: "Error fetching data", error: error.message });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error fetching data",
+        error: error.message,
+      });
   }
 };
 
@@ -2362,7 +2954,8 @@ const calculateBlendedPlatformDeviceSummary = (accountsData) => {
         }
         const currentMonthData = currentData.MonthlyData.get(monthKey);
         currentMonthData["Spend"] += month["Spend"];
-        currentMonthData["Purchase Conversion Value"] += month["Purchase Conversion Value"];
+        currentMonthData["Purchase Conversion Value"] +=
+          month["Purchase Conversion Value"];
       });
     });
   });
@@ -2370,11 +2963,17 @@ const calculateBlendedPlatformDeviceSummary = (accountsData) => {
   const blendedSummary = Array.from(blendedData.values())
     .map((combo) => ({
       ...combo,
-      "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
+      "Total Purchase ROAS":
+        combo["Total Spend"] > 0
+          ? combo["Total PCV"] / combo["Total Spend"]
+          : 0,
       MonthlyData: Array.from(combo.MonthlyData.values())
         .map((month) => ({
           ...month,
-          "Purchase ROAS": month["Spend"] > 0 ? month["Purchase Conversion Value"] / month["Spend"] : 0,
+          "Purchase ROAS":
+            month["Spend"] > 0
+              ? month["Purchase Conversion Value"] / month["Spend"]
+              : 0,
         }))
         .sort((a, b) => a.Month.localeCompare(b.Month)),
     }))
@@ -2388,14 +2987,26 @@ export const fetchFbPlatformDeviceReports = async (req, res) => {
   const { brandId } = req.params;
 
   try {
-    const { adjustedStartDate, adjustedEndDate } = getDateRange(startDate, endDate);
-    if (!brandId) return res.status(400).json({ success: false, message: "Brand ID is required." });
-    
+    const { adjustedStartDate, adjustedEndDate } = getDateRange(
+      startDate,
+      endDate,
+    );
+    if (!brandId)
+      return res
+        .status(400)
+        .json({ success: false, message: "Brand ID is required." });
+
     const brand = await Brand.findById(brandId).lean();
-    if (!brand) return res.status(404).json({ success: false, message: "Brand not found." });
+    if (!brand)
+      return res
+        .status(404)
+        .json({ success: false, message: "Brand not found." });
 
     const adAccountIds = brand.fbAdAccounts;
-    if (!adAccountIds || adAccountIds.length === 0) return res.status(404).json({ success: false, message: "No Facebook Ads accounts found." });
+    if (!adAccountIds || adAccountIds.length === 0)
+      return res
+        .status(404)
+        .json({ success: false, message: "No Facebook Ads accounts found." });
 
     async function fetchTopPlatformDevice(accountId) {
       const cleanedAccountId = accountId.replace(/^act_/, "");
@@ -2406,35 +3017,48 @@ export const fetchFbPlatformDeviceReports = async (req, res) => {
         const aggregateParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "publisher_platform,impression_device",
           limit: 2000,
           sort: "spend_descending",
         });
 
-        const aggregateResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`);
-        
+        const aggregateResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${aggregateParams}`,
+        );
+
         const topCombos = aggregateResponse.data.data
           .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
           .slice(0, MAX_COMBOS)
-          .map((item) => `${item.publisher_platform || 'none'} - ${item.impression_device || 'none'}`);
+          .map(
+            (item) =>
+              `${item.publisher_platform || "none"} - ${item.impression_device || "none"}`,
+          );
 
         if (topCombos.length === 0) return { accountId, data: null };
 
         const monthlyParams = new URLSearchParams({
           access_token: brand.fbAccessToken,
           fields: "spend,purchase_roas,action_values,account_name",
-          time_range: JSON.stringify({ since: adjustedStartDate, until: adjustedEndDate }),
+          time_range: JSON.stringify({
+            since: adjustedStartDate,
+            until: adjustedEndDate,
+          }),
           breakdowns: "publisher_platform,impression_device",
           time_increment: "monthly",
           limit: 2000,
         });
 
-        const monthlyResponse = await axios.get(`https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`);
+        const monthlyResponse = await axios.get(
+          `https://graph.facebook.com/v22.0/act_${cleanedAccountId}/insights?${monthlyParams}`,
+        );
 
         for (const insight of monthlyResponse.data.data) {
-          const comboKey = `${insight.publisher_platform || 'none'} - ${insight.impression_device || 'none'}`;
-          
+          const comboKey = `${insight.publisher_platform || "none"} - ${insight.impression_device || "none"}`;
+
           if (!topCombos.includes(comboKey)) continue;
 
           if (!allData.has(comboKey)) {
@@ -2451,8 +3075,15 @@ export const fetchFbPlatformDeviceReports = async (req, res) => {
           const comboData = allData.get(comboKey);
           const monthKey = moment(insight.date_start).format("YYYYMM");
           const spend = parseFloat(insight.spend || 0);
-          const purchaseRoas = parseFloat(insight.purchase_roas?.find((a) => a.action_type === "omni_purchase")?.value || 0);
-          const conversionValue = parseFloat(insight.action_values?.find((a) => a.action_type === "purchase")?.value || 0);
+          const purchaseRoas = parseFloat(
+            insight.purchase_roas?.find(
+              (a) => a.action_type === "omni_purchase",
+            )?.value || 0,
+          );
+          const conversionValue = parseFloat(
+            insight.action_values?.find((a) => a.action_type === "purchase")
+              ?.value || 0,
+          );
 
           const monthData = {
             Month: monthKey,
@@ -2469,17 +3100,28 @@ export const fetchFbPlatformDeviceReports = async (req, res) => {
         const formattedCombos = Array.from(allData.values())
           .map((combo) => ({
             ...combo,
-            "Total Purchase ROAS": combo["Total Spend"] > 0 ? combo["Total PCV"] / combo["Total Spend"] : 0,
-            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) => a.Month.localeCompare(b.Month)),
+            "Total Purchase ROAS":
+              combo["Total Spend"] > 0
+                ? combo["Total PCV"] / combo["Total Spend"]
+                : 0,
+            MonthlyData: Array.from(combo.MonthlyData.values()).sort((a, b) =>
+              a.Month.localeCompare(b.Month),
+            ),
           }))
           .sort((a, b) => b["Total Spend"] - a["Total Spend"]);
 
         return {
           accountId,
-          data: { account_name: formattedCombos[0]?.account_name, platformDeviceData: formattedCombos },
+          data: {
+            account_name: formattedCombos[0]?.account_name,
+            platformDeviceData: formattedCombos,
+          },
         };
       } catch (error) {
-        console.error(`Error fetching data for account ${cleanedAccountId}:`, error.message);
+        console.error(
+          `Error fetching data for account ${cleanedAccountId}:`,
+          error.message,
+        );
         return { accountId, data: null };
       }
     }
@@ -2488,21 +3130,34 @@ export const fetchFbPlatformDeviceReports = async (req, res) => {
     const results = [];
     for (let i = 0; i < brand.fbAdAccounts.length; i += BATCH_SIZE) {
       const batch = brand.fbAdAccounts.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map((accountId) => fetchTopPlatformDevice(accountId)));
+      const batchResults = await Promise.all(
+        batch.map((accountId) => fetchTopPlatformDevice(accountId)),
+      );
       results.push(...batchResults);
     }
 
-    const formattedResults = results.filter((r) => r.data !== null).map((r) => r.data);
+    const formattedResults = results
+      .filter((r) => r.data !== null)
+      .map((r) => r.data);
     let blendedSummary = null;
-    if (brand.fbAdAccounts.length > 1) blendedSummary = calculateBlendedPlatformDeviceSummary(formattedResults);
+    if (brand.fbAdAccounts.length > 1)
+      blendedSummary = calculateBlendedPlatformDeviceSummary(formattedResults);
 
     return res.status(200).json({
       success: true,
       data: formattedResults,
-      blendedPlatformDeviceData: blendedSummary ? blendedSummary.blendedPlatformDeviceData : [],
+      blendedPlatformDeviceData: blendedSummary
+        ? blendedSummary.blendedPlatformDeviceData
+        : [],
     });
   } catch (error) {
     console.error("Error fetching Platform & Device data:", error);
-    return res.status(500).json({ success: false, message: "Error fetching data", error: error.message });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error fetching data",
+        error: error.message,
+      });
   }
 };

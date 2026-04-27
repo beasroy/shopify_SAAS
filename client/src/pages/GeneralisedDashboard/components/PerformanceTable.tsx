@@ -9,7 +9,6 @@ import {
   ArrowDownIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import { format } from "date-fns";
@@ -79,6 +78,24 @@ export default function PerformanceTable({
       return format(new Date(dateRange.from), "LLL dd, y");
     }
     return "Date";
+  };
+
+  const getCustomCompareDateLabel = () => {
+    if (dateRange?.compareFrom && dateRange?.compareTo) {
+      return `${format(new Date(dateRange.compareFrom), "LLL dd, y")} - ${format(new Date(dateRange.compareTo), "LLL dd, y")}`;
+    }
+
+    if (dateRange?.from && dateRange?.to) {
+      const start = new Date(dateRange.from);
+      const end = new Date(dateRange.to);
+      const duration = end.getTime() - start.getTime();
+      const compareEnd = new Date(start);
+      compareEnd.setDate(compareEnd.getDate() - 1);
+      const compareStart = new Date(compareEnd.getTime() - duration);
+      return `${format(compareStart, "LLL dd, y")} - ${format(compareEnd, "LLL dd, y")}`;
+    }
+
+    return null;
   };
 
 
@@ -247,16 +264,6 @@ export default function PerformanceTable({
           Performance Overview
         </h2>
         <div className="flex gap-2 items-center">
-          <DatePickerWithRange
-            defaultDate={{
-              from: new Date(
-                new Date().getFullYear(),
-                new Date().getMonth(),
-                1,
-              ),
-              to: new Date(),
-            }}
-          />
           <Button
             onClick={onRefresh}
             disabled={loading}
@@ -292,19 +299,37 @@ export default function PerformanceTable({
               <th className="text-left p-3 font-semibold text-slate-700 bg-slate-50 sticky left-0 z-10 min-w-[180px]">
                 Metric
               </th>
-              {periods.map((period) => (
-                <th
-                  key={period}
-                  className="text-center p-3 font-semibold text-slate-700 bg-slate-50 min-w-[220px]"
-                >
-                  <div className="mb-2">{periodLabels[period]}</div>
-                  <div className="flex justify-around text-xs font-normal text-slate-500">
-                    <span className="w-16">Current</span>
-                    <span className="w-16">Previous</span>
-                    <span className="w-16">Change</span>
-                  </div>
-                </th>
-              ))}
+              {periods.map((period) => {
+                const customCompareLabel =
+                  period === "custom" ? getCustomCompareDateLabel() : null;
+                return (
+                  <th
+                    key={period}
+                    className="text-center p-3 font-semibold text-slate-700 bg-slate-50 min-w-[220px]"
+                  >
+                    <div className="mb-2">
+                      {period === "custom" ? (
+                        <div className="text-sm">
+                          <div>{getCustomDateLabel()}</div>
+                          {customCompareLabel && (
+                            <>
+                              <div>vs</div>
+                              <div>{customCompareLabel}</div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        periodLabels[period]
+                      )}
+                    </div>
+                    <div className="flex justify-around text-xs font-normal text-slate-500">
+                      <span className="w-16">Current</span>
+                      <span className="w-16">Previous</span>
+                      <span className="w-16">Change</span>
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="transition-all duration-300">

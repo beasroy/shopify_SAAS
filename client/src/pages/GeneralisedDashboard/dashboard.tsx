@@ -3,6 +3,7 @@ import { PlusCircle, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAxiosInstance } from "../ConversionReportPage/components/axiosInstance";
+import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import Loader from "@/components/dashboard_component/loader";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
@@ -445,6 +446,16 @@ const SummaryDashboard: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-row items-center gap-3">
+              <DatePickerWithRange
+                defaultDate={{
+                  from: new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth(),
+                    1,
+                  ),
+                  to: new Date(),
+                }}
+              />
               {/* <HeaderTutorialButton /> */}
             </div>
           </div>
@@ -558,6 +569,8 @@ const SummaryDashboard: React.FC = () => {
               <ConversionFunnelCard
                 onNavigate={() => navigate(`/ecommerce-reports/${brandId}`)}
                 brandId={brandId}
+                startDate={dateFrom ? dateFrom.slice(0, 10) : undefined}
+                endDate={dateTo ? dateTo.slice(0, 10) : undefined}
               />
             )}
 
@@ -566,6 +579,8 @@ const SummaryDashboard: React.FC = () => {
               <MarketingInsightsCard
                 onNavigate={() => navigate(`/marketing-insights/${brandId}`)}
                 brandId={brandId}
+                startDate={dateFrom ? dateFrom.slice(0, 10) : undefined}
+                endDate={dateTo ? dateTo.slice(0, 10) : undefined}
               />
             )}
 
@@ -574,6 +589,8 @@ const SummaryDashboard: React.FC = () => {
               <PaymentOrdersCard
                 onNavigate={() => navigate(`/reports/${brandId}`)}
                 brandId={brandId}
+                startDate={dateFrom ? dateFrom.slice(0, 10) : undefined}
+                endDate={dateTo ? dateTo.slice(0, 10) : undefined}
               />
             )}
           </div>

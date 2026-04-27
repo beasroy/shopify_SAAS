@@ -1,14 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import { format } from "date-fns";
 import {
-  Info,
   ChevronDown,
   ChevronUp,
-  X,
   UserSquare,
   User,
   MapPin,
@@ -190,7 +187,6 @@ export default function ReportTable({
   const [isDimExpanded, setIsDimExpanded] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(ALL_ACCOUNTS_ID);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dateRange = useSelector((state: RootState) => state.date);
 
@@ -214,6 +210,24 @@ export default function ReportTable({
       return format(new Date(dateRange.from), "LLL dd, y");
     }
     return "Date";
+  };
+
+  const getCustomCompareDateLabel = () => {
+    if (dateRange?.compareFrom && dateRange?.compareTo) {
+      return `${format(new Date(dateRange.compareFrom), "LLL dd, y")} - ${format(new Date(dateRange.compareTo), "LLL dd, y")}`;
+    }
+
+    if (dateRange?.from && dateRange?.to) {
+      const start = new Date(dateRange.from);
+      const end = new Date(dateRange.to);
+      const duration = end.getTime() - start.getTime();
+      const compareEnd = new Date(start);
+      compareEnd.setDate(compareEnd.getDate() - 1);
+      const compareStart = new Date(compareEnd.getTime() - duration);
+      return `${format(compareStart, "LLL dd, y")} - ${format(compareEnd, "LLL dd, y")}`;
+    }
+
+    return null;
   };
 
   const selectedDim =
@@ -250,86 +264,15 @@ export default function ReportTable({
     setSelectedAccountId(ALL_ACCOUNTS_ID);
   }, [accountOptions, breakdownDim]);
 
-  useEffect(() => {
-    setActiveFilter(null);
-  }, [selectedAccountId, breakdownDim, breakdown]);
-
   const liveRows = selectedAccount?.rows ?? breakdown?.rows ?? [];
   const rows = liveRows;
   const metaConnected = apiStatus?.meta !== false;
   const showEmpty =
     metaConnected && rows.length === 0;
   const totalRows = selectedAccount?.totalRows ?? breakdown?.totalRows;
-  const filterPeriod: PeriodKey =
-    rows.some((row) => row.custom) && dateRange?.from && dateRange?.to
-      ? "custom"
-      : "last30Days";
-  const categories = React.useMemo(() => {
-    if (rows.length === 0) {
-      return [];
-    }
-
-    const totals = rows.reduce(
-      (acc, row) => {
-        const periodData = row[filterPeriod];
-        acc.spend += periodData?.metaspend.current ?? 0;
-        acc.roas += periodData?.metaroas.current ?? 0;
-        return acc;
-      },
-      { spend: 0, roas: 0 },
-    );
-
-    const avgSpend = totals.spend / rows.length;
-    const avgRoas = totals.roas / rows.length;
-    const grouped: Record<string, string[]> = {
-      "Top Performers": [],
-      "High Spend": [],
-      "High Purchase ROAS": [],
-      "Under Performers": [],
-    };
-
-    rows.forEach((row) => {
-      const periodData = row[filterPeriod];
-      const spend = periodData?.metaspend.current ?? 0;
-      const roas = periodData?.metaroas.current ?? 0;
-      const isHighSpend = spend >= avgSpend;
-      const isHighRoas = roas >= avgRoas;
-
-      if (isHighSpend && isHighRoas) {
-        grouped["Top Performers"].push(row.key);
-      } else if (isHighSpend) {
-        grouped["High Spend"].push(row.key);
-      } else if (isHighRoas) {
-        grouped["High Purchase ROAS"].push(row.key);
-      } else {
-        grouped["Under Performers"].push(row.key);
-      }
-    });
-
-    return [
-      { name: "Top Performers", items: grouped["Top Performers"] },
-      { name: "High Spend", items: grouped["High Spend"] },
-      { name: "High Purchase ROAS", items: grouped["High Purchase ROAS"] },
-      { name: "Under Performers", items: grouped["Under Performers"] },
-    ];
-  }, [rows, filterPeriod]);
-  const filteredRows = React.useMemo(() => {
-    if (!activeFilter) {
-      return rows;
-    }
-
-    const category = categories.find((item) => item.name === activeFilter);
-    if (!category) {
-      return rows;
-    }
-
-    return rows.filter((row) => category.items.includes(row.key));
-  }, [activeFilter, categories, rows]);
   const DEFAULT_VISIBLE_ROWS = 6;
-  const visibleRows = isExpanded
-    ? filteredRows
-    : filteredRows.slice(0, DEFAULT_VISIBLE_ROWS);
-  const hasMoreRows = filteredRows.length > DEFAULT_VISIBLE_ROWS;
+  const visibleRows = isExpanded ? rows : rows.slice(0, DEFAULT_VISIBLE_ROWS);
+  const hasMoreRows = rows.length > DEFAULT_VISIBLE_ROWS;
 
   if (rows.length === 0) {
     return (
@@ -352,7 +295,6 @@ export default function ReportTable({
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
           Report Overview
-          <Info size={16} className="text-slate-500" />
         </h2>
         <div className="flex gap-2 items-center">
           {accountOptions.length > 0 && (
@@ -399,16 +341,6 @@ export default function ReportTable({
               Showing top {rows.length} of {totalRows}
             </span>
           )}
-          <DatePickerWithRange
-            defaultDate={{
-              from: new Date(
-                new Date().getFullYear(),
-                new Date().getMonth(),
-                1,
-              ),
-              to: new Date(),
-            }}
-          />
           <Button
             onClick={onRefresh}
             disabled={loading}
@@ -436,36 +368,6 @@ export default function ReportTable({
           )}
         </div>
       </div>
-
-      {metaConnected && rows.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {categories.map((category) => {
-            const isActive = activeFilter === category.name;
-            return (
-              <button
-                key={category.name}
-                type="button"
-                onClick={() =>
-                  setActiveFilter((current) =>
-                    current === category.name ? null : category.name,
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-                )}
-              >
-                <span>
-                  {category.name} ({category.items.length})
-                </span>
-                {isActive && <X className="inline ml-2 h-3 w-3" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -534,21 +436,37 @@ export default function ReportTable({
               <th className="text-left p-3 font-semibold text-slate-700 bg-slate-50 min-w-[150px] border-r border-slate-200">
                 Metric
               </th>
-              {PERIOD_KEYS.map((p) => (
-                <th
-                  key={p}
-                  className="text-center p-3 font-semibold text-slate-700 bg-slate-50 min-w-[220px]"
-                >
-                  <div className="mb-2">
-                    {p === "custom" ? getCustomDateLabel() : PERIOD_LABELS[p]}
-                  </div>
-                  <div className="flex justify-around text-xs font-normal text-slate-500">
-                    <span className="w-16">Current</span>
-                    <span className="w-16">Previous</span>
-                    <span className="w-16">Change</span>
-                  </div>
-                </th>
-              ))}
+              {PERIOD_KEYS.map((p) => {
+                const customCompareLabel =
+                  p === "custom" ? getCustomCompareDateLabel() : null;
+                return (
+                  <th
+                    key={p}
+                    className="text-center p-3 font-semibold text-slate-700 bg-slate-50 min-w-[220px]"
+                  >
+                    <div className="mb-2">
+                      {p === "custom" ? (
+                        <div className="text-sm">
+                          <div>{getCustomDateLabel()}</div>
+                          {customCompareLabel && (
+                            <>
+                              <div>vs</div>
+                              <div>{customCompareLabel}</div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        PERIOD_LABELS[p]
+                      )}
+                    </div>
+                    <div className="flex justify-around text-xs font-normal text-slate-500">
+                      <span className="w-16">Current</span>
+                      <span className="w-16">Previous</span>
+                      <span className="w-16">Change</span>
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="transition-all duration-300">
@@ -636,7 +554,7 @@ export default function ReportTable({
             className="text-slate-600 hover:text-slate-900"
           >
             <Maximize2 className="h-4 w-4 mr-2" />
-            Show {filteredRows.length - DEFAULT_VISIBLE_ROWS} more rows
+            Show {rows.length - DEFAULT_VISIBLE_ROWS} more rows
           </Button>
         </div>
       )}

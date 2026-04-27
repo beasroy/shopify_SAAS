@@ -7,6 +7,8 @@ import Shopify from 'shopify-api-node'
 import Brand from '../models/Brands.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 import { metricsQueue } from '../config/redis.js';
+import { connection as redisConnection } from '../config/redis.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -471,6 +473,10 @@ router.post('/weekly/update', verifyAuth, async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
+        if (!req.user?.isAdmin) {
+            return res.status(403).json({ success: false, message: 'Forbidden' });
+        }
+
         const userId = '691ead9a6345dba0c9db041b';
         const brands = await Brand.find({}, { _id: 1 }).lean();
         const brandIds = brands.map(b => b._id.toString());
@@ -479,13 +485,34 @@ router.post('/weekly/update', verifyAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'No brands found to update.' });
         }
 
+        const batchId = crypto.randomUUID();
+        const batchKey = `metrics:updateBatch:${batchId}`;
+
+        // Initialize batch counters in Redis
+        await redisConnection.hset(batchKey, {
+            total: String(brandIds.length),
+            completed: '0',
+            failed: '0',
+            userId
+        });
+        await redisConnection.expire(batchKey, 60 * 60 * 24 * 7); // keep 7 days for debugging
+
+        // Emit "batch started" notification
+        await redisConnection.publish('metrics-batch', JSON.stringify({
+            event: 'started',
+            batchId,
+            userId,
+            total: brandIds.length
+        }));
+
         // Enqueue one job per brand.
         // Date range is intentionally omitted so the worker uses default: last 2 years → yesterday.
         const jobs = await Promise.all(
             brandIds.map(id =>
                 metricsQueue.add('update-metrics', {
                     brandId: id,
-                    userId
+                    userId,
+                    batchId
                 })
             )
         );
@@ -494,6 +521,7 @@ router.post('/weekly/update', verifyAuth, async (req, res) => {
             success: true,
             message: `Queued metrics update for ${brandIds.length} brand(s).`,
             queued: brandIds.length,
+            batchId,
             jobIds: jobs.map(j => j.id)
         });
     } catch (error) {

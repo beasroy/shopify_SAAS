@@ -38,6 +38,7 @@ import productRoutes from "./routes/product.js";
 import masterDashboardRoutes from "./routes/masterDashboard.js";
 
 import { calculateMetricsForSingleBrand } from "./Report/MonthlyReport.js";
+import { initializeNotificationSubscriber } from "./config/redis.js";
 
 
 
@@ -47,6 +48,9 @@ const server = createServer(app);
 
 // Initialize Socket.IO
 initializeSocket(server);
+
+// Start Redis pub/sub notifications → Socket.IO
+initializeNotificationSubscriber();
 
 
 
@@ -116,7 +120,7 @@ dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
-calculateMetricsForSingleBrand("68dd21f5e78884ea57ff762f","691ead9a6345dba0c9db041b");
+calculateMetricsForSingleBrand("68ca95ad548d518de4fca1af","691ead9a6345dba0c9db041b");
 
 
 if (isDevelopment) {

@@ -869,11 +869,7 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
     }
 };
 
-/**
- * Update/backfill metrics for a brand for a given date range.
- * Unlike `calculateMetricsForSingleBrand`, this does NOT skip when metrics already exist.
- * Intended to be run periodically to fix discrepancies (e.g. attribution, refunds, conversion setup changes).
- */
+
 export const updateMetricsForSingleBrand = async (brandId, userId, startDateInput, endDateInput) => {
     try {
         console.log(`Starting metrics UPDATE for brand: ${brandId}`);
@@ -910,6 +906,13 @@ export const updateMetricsForSingleBrand = async (brandId, userId, startDateInpu
         startDate.setHours(0, 0, 0, 0);
 
         console.log(`UPDATE date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+        // Reset existing metrics for this brand + range, then recompute.
+        // This avoids stale/duplicate values when sources or logic changes.
+        await AdMetrics.deleteMany({
+            brandId,
+            date: { $gte: startDate, $lte: endDate }
+        });
 
         const result = await monthlyAddReportData(brandId, startDate, endDate);
         if (result.success) {

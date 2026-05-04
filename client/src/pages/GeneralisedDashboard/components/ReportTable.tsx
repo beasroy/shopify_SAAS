@@ -297,6 +297,64 @@ export default function ReportTable({
           Report Overview
         </h2>
         <div className="flex gap-2 items-center">
+          <div
+            className="relative inline-block text-left"
+            ref={dropdownRef}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              aria-expanded={isDimExpanded}
+              onClick={() => setIsDimExpanded(!isDimExpanded)}
+              className="gap-2 h-[36px] min-w-[150px] justify-between"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <SelectedIcon size={16} />
+                {selectedDim.label}
+              </span>
+              {isDimExpanded ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+            </Button>
+            <div
+              className={cn(
+                "absolute right-0 top-full mt-2 w-52 bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden z-[100] py-1 transition-all duration-200 origin-top transform",
+                isDimExpanded
+                  ? "scale-100 opacity-100"
+                  : "scale-95 opacity-0 pointer-events-none",
+              )}
+            >
+              {DIMENSION_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const selected = opt.id === breakdownDim;
+                return (
+                  <div
+                    key={opt.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      onBreakdownDimChange(opt.id);
+                      setIsDimExpanded(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-2.5 cursor-pointer",
+                      selected
+                        ? "bg-slate-50 text-blue-600"
+                        : "text-slate-700 hover:bg-slate-100",
+                    )}
+                  >
+                    <Icon size={18} />
+                    <span className={cn("text-sm", selected && "font-medium")}>
+                      {opt.label}
+                    </span>
+                    {selected && <Check size={16} className="ml-auto" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           {accountOptions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -374,63 +432,9 @@ export default function ReportTable({
           <thead>
             <tr className="border-b-2 border-slate-200">
               <th className="text-left p-3 font-semibold text-slate-700 bg-slate-50 sticky left-0 z-20 min-w-[180px] border-r border-slate-200">
-                <div
-                  className="relative inline-block text-left w-full"
-                  ref={dropdownRef}
-                >
-                  <button
-                    aria-expanded={isDimExpanded}
-                    onClick={() => setIsDimExpanded(!isDimExpanded)}
-                    className="flex items-center gap-1 w-full hover:bg-slate-200/50 px-2 py-1.5 rounded-md transition-colors"
-                  >
-                    <SelectedIcon size={16} />
-                    <span className="flex-1 text-left">
-                      {selectedDim.label}
-                    </span>
-                    {isDimExpanded ? (
-                      <ChevronUp size={16} />
-                    ) : (
-                      <ChevronDown size={16} />
-                    )}
-                  </button>
-                  <div
-                    className={cn(
-                      "absolute left-0 top-full mt-2 w-52 bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden z-[100] py-1 transition-all duration-200 origin-top transform",
-                      isDimExpanded
-                        ? "scale-100 opacity-100"
-                        : "scale-95 opacity-0 pointer-events-none",
-                    )}
-                  >
-                    {DIMENSION_OPTIONS.map((opt) => {
-                      const Icon = opt.icon;
-                      const selected = opt.id === breakdownDim;
-                      return (
-                        <div
-                          key={opt.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            onBreakdownDimChange(opt.id);
-                            setIsDimExpanded(false);
-                          }}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 cursor-pointer",
-                            selected
-                              ? "bg-slate-50 text-blue-600"
-                              : "text-slate-700 hover:bg-slate-100",
-                          )}
-                        >
-                          <Icon size={18} />
-                          <span
-                            className={cn("text-sm", selected && "font-medium")}
-                          >
-                            {opt.label}
-                          </span>
-                          {selected && <Check size={16} className="ml-auto" />}
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <SelectedIcon size={16} />
+                  <span>{selectedDim.label}</span>
                 </div>
               </th>
               <th className="text-left p-3 font-semibold text-slate-700 bg-slate-50 min-w-[150px] border-r border-slate-200">

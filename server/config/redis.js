@@ -1,14 +1,14 @@
 import { config } from 'dotenv';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
-import { sendToBrand } from './socket.js';
+import { sendToBrand, sendToUser } from './socket.js';
 
 config();
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 const host = process.env.REDIS_HOST || '127.0.0.1';
-const port = parseInt(process.env.REDIS_PORT || '6379');
+const port = Number.parseInt(process.env.REDIS_PORT || '6379', 10);
 const password = process.env.REDIS_PASSWORD || null;
 
 console.log(host, port, password, isDevelopment);
@@ -79,6 +79,15 @@ export const initializeNotificationSubscriber = () => {
             console.log('✅ Subscribed to metrics-error channel');
         }
     });
+
+    // Subscribe to batch lifecycle notifications (weekly update start/done)
+    redisSubscriber.subscribe('metrics-batch', (err) => {
+        if (err) {
+            console.error('❌ Error subscribing to metrics-batch channel:', err);
+        } else {
+            console.log('✅ Subscribed to metrics-batch channel');
+        }
+    });
     
     // Handle incoming messages
     redisSubscriber.on('message', (channel, message) => {
@@ -121,6 +130,24 @@ export const initializeNotificationSubscriber = () => {
                 // Send to brand room if brandId is provided
                 if (data.brandId) {
                     sendToBrand(data.brandId, 'brand-notification', notificationData);
+                }
+            } else if (channel === 'metrics-batch') {
+                const payload = {
+                    type: 'metrics-batch',
+                    data: {
+                        ...data,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+
+                // Prefer brand-scoped delivery when brandId exists (so any viewer of that brand sees it)
+                if (data.brandId) {
+                    sendToBrand(data.brandId, 'brand-notification', payload);
+                }
+
+                // Also send to user room when userId exists (admin who triggered batch)
+                if (data.userId) {
+                    sendToUser(data.userId, 'user-notification', payload);
                 }
             }
         } catch (error) {

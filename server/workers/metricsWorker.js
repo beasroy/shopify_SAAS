@@ -5,6 +5,7 @@ import { connectDB, getConnectionStatus } from '../config/db.js';
 import mongoose from 'mongoose';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const batchRedis = createRedisConnection();
 
 // Ensure MongoDB connection before processing jobs
 const ensureMongoConnection = async () => {
@@ -20,7 +21,7 @@ const ensureMongoConnection = async () => {
 
 // Create worker for metrics calculation (handles both regular and new additions)
 const metricsWorker = new Worker('metrics-calculation', async (job) => {
-    const { brandId, userId, newAdditions, startDate, endDate } = job.data;
+    const { brandId, userId, newAdditions, startDate, endDate, batchId } = job.data;
 
     try {
         // Ensure MongoDB connection before processing
@@ -28,8 +29,50 @@ const metricsWorker = new Worker('metrics-calculation', async (job) => {
 
         if (job.name === 'update-metrics') {
             console.log(`Processing metrics UPDATE for brand ${brandId} (${startDate || 'auto'} → ${endDate || 'auto'})`);
+
+            // Brand-scoped "started" notification (any user in brand room can see banner)
+            if (batchId) {
+                await batchRedis.publish('metrics-batch', JSON.stringify({
+                    event: 'started',
+                    scope: 'brand',
+                    batchId,
+                    brandId,
+                    userId
+                }));
+            }
+
             await updateMetricsForSingleBrand(brandId, userId, startDate, endDate);
             console.log(`Successfully updated metrics for brand ${brandId}`);
+
+            if (batchId) {
+                const batchKey = `metrics:updateBatch:${batchId}`;
+                const completed = await batchRedis.hincrby(batchKey, 'completed', 1);
+                const [total, failed] = await batchRedis.hmget(batchKey, 'total', 'failed');
+                const totalNum = Number(total || 0);
+                const failedNum = Number(failed || 0);
+                const doneNum = Number(completed || 0) + failedNum;
+
+                // Brand-scoped "completed" notification
+                await batchRedis.publish('metrics-batch', JSON.stringify({
+                    event: 'completed',
+                    scope: 'brand',
+                    batchId,
+                    brandId,
+                    userId
+                }));
+
+                if (totalNum > 0 && doneNum >= totalNum) {
+                    const batchUserId = (await batchRedis.hget(batchKey, 'userId')) || userId;
+                    await batchRedis.publish('metrics-batch', JSON.stringify({
+                        event: 'completed',
+                        batchId,
+                        userId: batchUserId,
+                        total: totalNum,
+                        completed: Number(completed || 0),
+                        failed: failedNum
+                    }));
+                }
+            }
         } else if (newAdditions) {
             // Handle new additions processing
             console.log(`Processing metrics calculation for new additions for brand ${brandId}`);
@@ -43,6 +86,42 @@ const metricsWorker = new Worker('metrics-calculation', async (job) => {
         }
 
     } catch (error) {
+        // Track batch failure
+        if (job.name === 'update-metrics' && batchId) {
+            try {
+                const batchKey = `metrics:updateBatch:${batchId}`;
+                const failed = await batchRedis.hincrby(batchKey, 'failed', 1);
+                const [total, completed] = await batchRedis.hmget(batchKey, 'total', 'completed');
+                const totalNum = Number(total || 0);
+                const completedNum = Number(completed || 0);
+                const doneNum = completedNum + Number(failed || 0);
+
+                // Brand-scoped "completed" notification (failed still means this brand's run ended)
+                await batchRedis.publish('metrics-batch', JSON.stringify({
+                    event: 'completed',
+                    scope: 'brand',
+                    batchId,
+                    brandId,
+                    userId,
+                    success: false,
+                    message: error?.message
+                }));
+
+                if (totalNum > 0 && doneNum >= totalNum) {
+                    const batchUserId = (await batchRedis.hget(batchKey, 'userId')) || userId;
+                    await batchRedis.publish('metrics-batch', JSON.stringify({
+                        event: 'completed',
+                        batchId,
+                        userId: batchUserId,
+                        total: totalNum,
+                        completed: completedNum,
+                        failed: Number(failed || 0)
+                    }));
+                }
+            } catch (e) {
+                console.error('Failed updating batch counters:', e);
+            }
+        }
         console.error(`Error processing metrics job (${job.name}) for brand ${brandId}:`, error);
         throw error;
     }

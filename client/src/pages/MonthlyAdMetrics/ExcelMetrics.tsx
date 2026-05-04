@@ -673,6 +673,8 @@ import { baseURL } from "@/data/constant"
 import DataBuilding from "./components/DataBuilding"
 import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
 import HeaderNotificationDropdown from "@/components/dashboard_component/HeaderNotificationDropdown"
+import { getSocket } from "@/services/socketService"
+import { useSocketConnection } from "@/hooks/useSocketConnection"
 
 
 export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
@@ -773,6 +775,7 @@ export const ExcelMetricsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false)
+  const [isWeeklyUpdateRunning, setIsWeeklyUpdateRunning] = useState<boolean>(false)
   const [currency, setCurrency] = useState<string>('USD')
   const dateFrom = useSelector((state: RootState) => state.date.from)
   const dateTo = useSelector((state: RootState) => state.date.to)
@@ -793,6 +796,29 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
+
+  // Ensure socket connection exists (for notifications)
+  useSocketConnection();
+
+  // Listen for weekly update batch notifications
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleBatchPayload = (payload: any) => {
+      if (payload?.type !== 'metrics-batch') return;
+      const event = payload?.data?.event;
+      if (event === 'started') setIsWeeklyUpdateRunning(true);
+      if (event === 'completed') setIsWeeklyUpdateRunning(false);
+    };
+
+    socket.on('user-notification', handleBatchPayload);
+    socket.on('brand-notification', handleBatchPayload);
+    return () => {
+      socket.off('user-notification', handleBatchPayload);
+      socket.off('brand-notification', handleBatchPayload);
+    };
+  }, []);
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen)
@@ -1221,6 +1247,16 @@ export const ExcelMetricsPage: React.FC = () => {
     if (error === "No metrics data available yet. Please try again later.") return <DataBuilding />
     return (
       <div className="flex-1 min-h-0 overflow-hidden bg-slate-100 flex flex-col">
+        {isWeeklyUpdateRunning && (
+          <div className="px-2 sm:px-3 pt-2">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+              <div className="text-sm font-medium">Weekly update is running</div>
+              <div className="text-xs">
+                We’re rebuilding metrics for all brands. This page will be available shortly.
+              </div>
+            </div>
+          </div>
+        )}
         <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
           <Card
             id="metrics-table"

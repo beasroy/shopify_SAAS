@@ -215,6 +215,12 @@ const setupEventListeners = () => {
     handleNotification(data);
   });
 
+  // Listen for user-specific notifications (new channel)
+  socket.on('user-notification', (data) => {
+    console.log('📬 User notification received (user-notification):', data);
+    handleNotification(data);
+  });
+
   // Ping-pong for connection health
   socket.on('pong', (data) => {
     console.log('🏓 Pong received:', data);

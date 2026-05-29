@@ -1,101 +1,103 @@
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { FadeIn } from './AnimationHelpers'
 import {
-  Store, Target, TrendingUp, Users, ChevronRight,
-  BarChart2, Bell, Zap, CheckCircle2,
+  Store, Target, TrendingUp, Users,
+  TrendingDown, CheckCircle2, BarChart2, Zap, Bell,
 } from 'lucide-react'
 
+/* ─── Role definitions ───────────────────────────────────────────── */
 const ROLES = [
   {
+    value: 'dtc',
+    tab: 'DTC Founders',
     icon: Store,
-    label: 'DTC Founders',
     tagline: 'Revenue Intelligence',
-    headline: 'Know exactly where every dollar of revenue comes from.',
-    desc: 'Stop guessing which channel is actually working. See blended ROAS, true CAC, and revenue by channel in one live view — not five disconnected dashboards.',
-    metric: { value: '4.8x', label: 'avg. blended ROAS seen by DTC founders' },
+    headline: 'Know exactly where every dollar comes from.',
+    desc: 'Stop guessing which channel actually works. See blended ROAS, true CAC, and revenue by channel in one live view — not five disconnected dashboards.',
+    metric: { value: '4.8x', label: 'avg. blended ROAS' },
     bullets: [
       'Blended ROAS across Meta, Google & Email',
       'True CAC — not inflated platform numbers',
       'Revenue contribution per channel, live',
     ],
-    color: '#6366f1',
-    bg: 'from-indigo-950/70 to-slate-900/70',
-    border: 'border-indigo-500/20',
-    glow: 'bg-indigo-600/10',
-    tagColor: 'text-indigo-300 bg-indigo-950/60 border-indigo-800/50',
-    accentBar: 'bg-indigo-500',
+    accent: '#6366f1',
+    tabActive: 'bg-indigo-600 text-white border-indigo-600',
+    tagStyle: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    metricStyle: 'bg-indigo-50 border-indigo-100 text-indigo-600',
+    barColor: 'bg-indigo-600',
     mini: [
-      { label: 'Meta ROAS', value: '4.2x', color: '#6366f1', pct: 80 },
+      { label: 'Meta Ads', value: '4.2x', color: '#6366f1', pct: 80 },
       { label: 'Google', value: '3.8x', color: '#06b6d4', pct: 65 },
       { label: 'Email', value: '9.1x', color: '#10b981', pct: 95 },
     ],
   },
   {
+    value: 'marketers',
+    tab: 'Performance Marketers',
     icon: Target,
-    label: 'Performance Marketers',
     tagline: 'Campaign Intelligence',
-    headline: "Find your winners. Kill your losers. Instantly.",
-    desc: "Platform-reported conversions don't match Shopify revenue. Parallels computes real attribution so you know which campaigns to scale and which to cut — before they drain budget.",
-    metric: { value: '6 hrs', label: 'saved per week on cross-platform reporting' },
+    headline: 'Find winners. Kill losers. Before it costs you.',
+    desc: "Platform conversions never match Shopify revenue. Parallels computes real attribution so you know which campaigns to scale and which to cut — immediately.",
+    metric: { value: '6 hrs', label: 'saved per week' },
     bullets: [
       'Cross-channel attribution beyond last-click',
-      'Real-time alerts when ROAS drops below target',
-      'Funnel drop-off: ad click → cart → purchase',
+      'Real-time ROAS alerts for underperformers',
+      'Funnel drop-off from ad click to purchase',
     ],
-    color: '#06b6d4',
-    bg: 'from-cyan-950/70 to-slate-900/70',
-    border: 'border-cyan-500/20',
-    glow: 'bg-cyan-600/10',
-    tagColor: 'text-cyan-300 bg-cyan-950/60 border-cyan-800/50',
-    accentBar: 'bg-cyan-500',
+    accent: '#06b6d4',
+    tabActive: 'bg-cyan-600 text-white border-cyan-600',
+    tagStyle: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+    metricStyle: 'bg-cyan-50 border-cyan-100 text-cyan-600',
+    barColor: 'bg-cyan-500',
     mini: [
-      { label: 'Retarget', value: '6.1x ↑', color: '#10b981', pct: 90 },
+      { label: 'Retarget', value: '6.1x ↑', color: '#10b981', pct: 92 },
       { label: 'Prospect', value: '2.9x ↓', color: '#f59e0b', pct: 42 },
       { label: 'Brand KW', value: '8.3x ↑', color: '#06b6d4', pct: 98 },
     ],
   },
   {
+    value: 'growth',
+    tab: 'Growth Leaders',
     icon: TrendingUp,
-    label: 'Growth Leaders',
     tagline: 'Executive Analytics',
-    headline: 'Board-ready metrics. Zero analyst required.',
-    desc: "Get MER, blended ROAS, and CAC trends without asking anyone to pull a spreadsheet. Parallels keeps your executive view always fresh, with 12-week trends built in.",
-    metric: { value: '31%', label: 'average revenue growth reported after 60 days' },
+    headline: 'Board-ready metrics. Zero analyst needed.',
+    desc: 'Get MER, blended ROAS, and CAC trends without asking anyone to pull a spreadsheet. Executive clarity, always up to date.',
+    metric: { value: '+31%', label: 'avg. revenue growth' },
     bullets: [
       'MER, blended ROAS, and CAC at a glance',
       '12-week revenue trend with channel breakdown',
       'One-click reports for board presentations',
     ],
-    color: '#8b5cf6',
-    bg: 'from-violet-950/70 to-slate-900/70',
-    border: 'border-violet-500/20',
-    glow: 'bg-violet-600/10',
-    tagColor: 'text-violet-300 bg-violet-950/60 border-violet-800/50',
-    accentBar: 'bg-violet-500',
+    accent: '#8b5cf6',
+    tabActive: 'bg-violet-600 text-white border-violet-600',
+    tagStyle: 'bg-violet-50 text-violet-700 border-violet-100',
+    metricStyle: 'bg-violet-50 border-violet-100 text-violet-600',
+    barColor: 'bg-violet-600',
     mini: [
       { label: 'MER',     value: '5.1x', color: '#8b5cf6', pct: 88 },
-      { label: 'Revenue', value: '$312k', color: '#10b981', pct: 75 },
-      { label: 'CAC',     value: '$22',  color: '#06b6d4', pct: 40 },
+      { label: 'Revenue', value: '+31%', color: '#10b981', pct: 75 },
+      { label: 'CAC',     value: '$22',  color: '#06b6d4', pct: 38 },
     ],
   },
   {
+    value: 'agencies',
+    tab: 'Agencies',
     icon: Users,
-    label: 'Agencies',
     tagline: 'Portfolio Management',
     headline: 'All your clients. One command center.',
-    desc: "Manage every brand under one roof. See instantly which clients need attention, auto-deliver white-label reports, and stop wasting 11 hours a week pulling data manually.",
-    metric: { value: '4×', label: 'more clients managed per analyst with Parallels' },
+    desc: "Manage every brand under one roof. Instantly see which clients need attention, auto-deliver white-label reports, and reclaim the 11 hours a week you waste on manual data pulls.",
+    metric: { value: '4×', label: 'more clients managed' },
     bullets: [
       'Multi-brand portfolio with health indicators',
       'Automated white-label client reports',
       'Instant view: which clients need attention',
     ],
-    color: '#10b981',
-    bg: 'from-emerald-950/70 to-slate-900/70',
-    border: 'border-emerald-500/20',
-    glow: 'bg-emerald-600/10',
-    tagColor: 'text-emerald-300 bg-emerald-950/60 border-emerald-800/50',
-    accentBar: 'bg-emerald-500',
+    accent: '#10b981',
+    tabActive: 'bg-emerald-600 text-white border-emerald-600',
+    tagStyle: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    metricStyle: 'bg-emerald-50 border-emerald-100 text-emerald-600',
+    barColor: 'bg-emerald-500',
     mini: [
       { label: 'Luminary', value: '5.2x ↑', color: '#10b981', pct: 85 },
       { label: 'Peak',     value: '3.1x →', color: '#f59e0b', pct: 52 },
@@ -105,138 +107,208 @@ const ROLES = [
 ]
 
 export default function UseCasesSection() {
-  return (
-    <section className="relative bg-[#07071a] py-28 overflow-hidden" id="use-cases">
-      <div className="absolute inset-0 dot-grid-dark opacity-30 pointer-events-none" />
-      <div className="absolute top-0 inset-x-0 glow-line" />
+  const [active, setActive] = useState('dtc')
+  const role = ROLES.find(r => r.value === active)!
+  const Icon = role.icon
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6">
-        <FadeIn className="text-center mb-16">
-          <span className="inline-block text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-4 border border-indigo-900/60 bg-indigo-950/40 px-3 py-1 rounded-full">
-            Who it's for
-          </span>
-          <h2 className="text-4xl lg:text-5xl font-black text-white tracking-tight mb-5">
-            Built for every role on your{' '}
-            <span className="gradient-text-hero">growth team</span>
+  return (
+    <section className="section-pad bg-white" id="use-cases">
+      <div className="max-w-6xl mx-auto px-6">
+
+        <FadeIn className="text-center mb-10">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-3 block">Who it's for</span>
+          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+            Built for every role on your growth team
           </h2>
-          <p className="text-lg text-white/45 max-w-xl mx-auto">
-            Whether you run the brand or run the ads — Parallels surfaces exactly what you need to make the next right move.
+          <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            Whether you run the brand or run the ads — Parallels surfaces what you need to act.
           </p>
         </FadeIn>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {ROLES.map((role, i) => {
-            const Icon = role.icon
+        {/* ── Tab bar ── */}
+        <div className="flex flex-wrap gap-2 justify-center mb-8">
+          {ROLES.map(r => {
+            const RIcon = r.icon
+            const isActive = active === r.value
             return (
-              <motion.div
-                key={role.label}
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: i * 0.1 }}
-                className="group relative"
+              <button
+                key={r.value}
+                onClick={() => setActive(r.value)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200
+                  ${isActive ? r.tabActive + ' shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-800'}`}
               >
-                {/* Glow bg */}
-                <div className={`absolute -inset-2 ${role.glow} rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
-                <div className={`relative bg-gradient-to-br ${role.bg} border ${role.border} rounded-3xl p-7 overflow-hidden h-full flex flex-col`}>
-                  {/* Top row */}
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${role.color}22`, border: `1px solid ${role.color}40` }}>
-                        <Icon size={20} style={{ color: role.color }} />
-                      </div>
-                      <div>
-                        <p className="text-base font-extrabold text-white">{role.label}</p>
-                        <span className={`text-[10px] font-semibold border px-2 py-0.5 rounded-full ${role.tagColor}`}>
-                          {role.tagline}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-white/20 group-hover:text-white/50 transition-colors mt-1" />
-                  </div>
-
-                  {/* Headline */}
-                  <h3 className="text-xl font-extrabold text-white leading-snug mb-3">
-                    {role.headline}
-                  </h3>
-                  <p className="text-sm text-white/45 leading-relaxed mb-6 flex-1">
-                    {role.desc}
-                  </p>
-
-                  {/* Mini metric bar */}
-                  <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-4 mb-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <BarChart2 size={12} style={{ color: role.color }} />
-                      <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Live snapshot</p>
-                    </div>
-                    <div className="space-y-2.5">
-                      {role.mini.map((m) => (
-                        <div key={m.label} className="flex items-center gap-2">
-                          <span className="text-[10px] text-white/40 w-14 shrink-0">{m.label}</span>
-                          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <motion.div
-                              className="h-full rounded-full"
-                              style={{ backgroundColor: m.color }}
-                              initial={{ width: 0 }}
-                              whileInView={{ width: `${m.pct}%` }}
-                              viewport={{ once: true }}
-                              transition={{ duration: 0.9, delay: 0.2 }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-bold text-white/70 shrink-0 w-10 text-right">{m.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bullets */}
-                  <ul className="space-y-2 mb-5">
-                    {role.bullets.map((b) => (
-                      <li key={b} className="flex items-center gap-2.5 text-sm text-white/60">
-                        <CheckCircle2 size={14} style={{ color: role.color }} className="shrink-0" />
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Bottom metric */}
-                  <div className={`flex items-center gap-3 pt-4 border-t border-white/8`}>
-                    <div>
-                      <p className="text-2xl font-black text-white">{role.metric.value}</p>
-                      <p className="text-[11px] text-white/35 leading-snug">{role.metric.label}</p>
-                    </div>
-                    <div className="ml-auto">
-                      <div className="flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 rounded-full"
-                        style={{ backgroundColor: `${role.color}18`, color: role.color, border: `1px solid ${role.color}30` }}>
-                        <Zap size={10} />
-                        See how
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+                <RIcon size={15} />
+                {r.tab}
+              </button>
             )
           })}
         </div>
 
-        {/* Bottom CTA row */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="mt-14 text-center"
-        >
-          <div className="inline-flex items-center gap-3 glass-dark border border-white/10 rounded-2xl px-6 py-3.5">
-            <Bell size={15} className="text-indigo-400 shrink-0" />
-            <p className="text-sm text-white/60">
-              All plans include real-time alerts, automated reports, and zero-code setup.
-            </p>
-            <span className="text-indigo-400 text-sm font-semibold whitespace-nowrap">14-day free →</span>
-          </div>
-        </motion.div>
+        {/* ── Content card ── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl shadow-slate-100/60"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2">
+
+              {/* ── Copy side ── */}
+              <div className="p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100">
+                <div>
+                  {/* Tag */}
+                  <div className={`inline-flex items-center gap-1.5 text-xs font-semibold border px-3 py-1.5 rounded-full mb-5 ${role.tagStyle}`}>
+                    <Icon size={11}/>
+                    {role.tagline}
+                  </div>
+
+                  <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 leading-tight mb-4">
+                    {role.headline}
+                  </h3>
+                  <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                    {role.desc}
+                  </p>
+
+                  <ul className="space-y-3 mb-7">
+                    {role.bullets.map(b => (
+                      <li key={b} className="flex items-center gap-2.5 text-sm text-slate-700">
+                        <CheckCircle2 size={15} style={{color:role.accent}} className="shrink-0"/>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Bottom stats strip */}
+                <div className="grid grid-cols-3 gap-3 pt-5 border-t border-slate-100">
+                  {[
+                    { n: '< 10 min', l: 'to connect' },
+                    { n: 'Real-time', l: 'data sync' },
+                    { n: 'Zero code', l: 'required' },
+                  ].map(s => (
+                    <div key={s.l} className="text-center">
+                      <p className="text-sm font-extrabold text-slate-900">{s.n}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Visual side ── */}
+              <div className="p-7 lg:p-8 bg-slate-50/50 flex flex-col gap-4">
+
+                {/* Metric highlight */}
+                <div className={`flex items-center gap-3 border rounded-2xl px-5 py-4 ${role.metricStyle}`}>
+                  <div>
+                    <p className="text-3xl font-black" style={{color:role.accent}}>{role.metric.value}</p>
+                    <p className="text-xs font-medium text-slate-500 mt-0.5">{role.metric.label}</p>
+                  </div>
+                  <div className="ml-auto">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{backgroundColor:`${role.accent}15`}}>
+                      <Zap size={18} style={{color:role.accent}}/>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini dashboard panel */}
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex-1 shadow-sm">
+                  {/* Chrome bar */}
+                  <div className="bg-slate-50 border-b border-slate-100 px-4 py-2 flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-400"/>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/>
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <span className="bg-white border border-slate-200 rounded px-3 text-[10px] text-slate-400 py-0.5">
+                        app.getparallels.io
+                      </span>
+                    </div>
+                    <BarChart2 size={12} className="text-slate-300"/>
+                  </div>
+
+                  <div className="p-4">
+                    {/* Nav row */}
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
+                          <span className="text-white text-[8px] font-black">P</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-800">Parallels</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/>
+                        Syncing
+                      </div>
+                    </div>
+
+                    {/* Alert banner */}
+                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-4">
+                      <Bell size={11} className="text-amber-500 shrink-0"/>
+                      <p className="text-[10px] font-semibold text-amber-700">
+                        {active==='marketers'
+                          ? 'Prospecting ROAS fell below 3x threshold'
+                          : active==='agencies'
+                          ? 'UrbanEdge Co. needs attention (-21%)'
+                          : active==='growth'
+                          ? 'Revenue trend: 12-week all-time high'
+                          : 'Meta CPC increased 18% — review bids'}
+                      </p>
+                    </div>
+
+                    {/* Channel bars */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <BarChart2 size={11} className="text-slate-400"/>
+                        <p className="text-[10px] font-semibold text-slate-500">
+                          {active==='agencies' ? 'Client ROAS' : 'Channel Performance'}
+                        </p>
+                      </div>
+                      <div className="space-y-2.5">
+                        {role.mini.map((m,i)=>(
+                          <div key={m.label} className="flex items-center gap-2">
+                            <span className="text-[9px] text-slate-400 w-14 shrink-0">{m.label}</span>
+                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full rounded-full"
+                                style={{backgroundColor:m.color}}
+                                initial={{width:0}}
+                                animate={{width:`${m.pct}%`}}
+                                transition={{duration:0.8,delay:0.1+i*0.1,ease:'easeOut'}}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold shrink-0" style={{color:m.color}}>{m.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bottom KPIs */}
+                    <div className="grid grid-cols-3 gap-2 mt-4">
+                      {[
+                        { l:'ROAS',    v: active==='agencies'?'4.8x':active==='growth'?'5.1x':active==='marketers'?'6.1x':'4.8x', up:true  },
+                        { l:'Revenue', v: active==='agencies'?'$94k':active==='growth'?'$312k':active==='marketers'?'$58k':'$148k', up:true  },
+                        { l:'CAC',     v: active==='growth'?'$22':active==='dtc'?'$19':'$24', up:false },
+                      ].map(k=>(
+                        <div key={k.l} className="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center">
+                          <p className="text-[9px] text-slate-400 mb-0.5">{k.l}</p>
+                          <p className="text-xs font-extrabold text-slate-900">{k.v}</p>
+                          <p className={`text-[8px] font-semibold flex items-center justify-center gap-0.5 mt-0.5 ${k.up?'text-emerald-600':'text-rose-500'}`}>
+                            {k.up?<TrendingUp size={7}/>:<TrendingDown size={7}/>}
+                            {k.up?'+':''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   )

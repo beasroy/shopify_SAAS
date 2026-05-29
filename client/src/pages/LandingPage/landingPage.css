@@ -1,78 +1,112 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+/* ─── Root scoping ───────────────────────────────────────────────── */
 .landing-page {
   font-family: 'Inter', sans-serif;
   background-color: #ffffff;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
 }
 
+/* ─── Dot-grid background ────────────────────────────────────────── */
 .dot-grid-bg {
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-color: #f8f9ff;
+  background-image: radial-gradient(circle, #c7d2fe 1.2px, transparent 1.2px);
+  background-size: 30px 30px;
 }
 
+/* ─── Gradient orbs ──────────────────────────────────────────────── */
 .orb-indigo {
   position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  width: 640px;
+  height: 640px;
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 65%);
   border-radius: 50%;
   pointer-events: none;
 }
-
 .orb-cyan {
   position: absolute;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.10) 0%, transparent 70%);
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 65%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.orb-violet {
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(139,92,246,0.09) 0%, transparent 65%);
   border-radius: 50%;
   pointer-events: none;
 }
 
+/* ─── Glass card ─────────────────────────────────────────────────── */
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 4px rgba(15, 23, 42, 0.04);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226,232,240,0.8);
+  box-shadow: 0 8px 32px rgba(15,23,42,0.07);
 }
 
-.section-pad {
-  padding-top: 96px;
-  padding-bottom: 96px;
-}
+/* ─── Section spacing ────────────────────────────────────────────── */
+.section-pad { padding-top: 96px; padding-bottom: 96px; }
 
+/* ─── Gradient text ──────────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #06b6d4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.bento-card:hover {
-  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.12), 0 0 0 1px rgba(99, 102, 241, 0.15);
+/* ─── Primary button ─────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 4px 14px rgba(99,102,241,0.38), 0 1px 3px rgba(99,102,241,0.25);
+  transition: box-shadow .2s ease, transform .2s ease, filter .2s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 22px rgba(99,102,241,0.52);
+  transform: translateY(-1px);
 }
 
+/* ─── Bento card ─────────────────────────────────────────────────── */
+.bento-card { transition: box-shadow .25s ease, transform .25s ease; }
+.bento-card:hover {
+  box-shadow: 0 20px 48px rgba(99,102,241,0.13), 0 0 0 1.5px rgba(99,102,241,0.18);
+}
+
+/* ─── Marquee ────────────────────────────────────────────────────── */
 @keyframes marquee {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+.marquee-track { animation: marquee 28s linear infinite; }
 
-.marquee-track {
-  animation: marquee 22s linear infinite;
+/* ─── Ping pulse ─────────────────────────────────────────────────── */
+@keyframes ping-slow {
+  0%, 100% { opacity: .65; transform: scale(1); }
+  50%       { opacity: 0;  transform: scale(2.2); }
 }
+.ping-slow { animation: ping-slow 2.2s ease-in-out infinite; }
 
+/* ─── Float animation ────────────────────────────────────────────── */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+.float-anim      { animation: float-y 4s ease-in-out infinite; }
+.float-anim-slow { animation: float-y 5.5s ease-in-out infinite; }
+.float-anim-fast { animation: float-y 3s ease-in-out infinite; }
+
+/* ─── Connector SVG ──────────────────────────────────────────────── */
 @keyframes drawLine {
   from { stroke-dashoffset: 400; }
   to   { stroke-dashoffset: 0; }
 }
-
-.connector-line {
-  stroke-dasharray: 400;
-  stroke-dashoffset: 400;
-}
-
-.connector-line.animate {
-  animation: drawLine 1.4s ease-out forwards;
-}
+.connector-line { stroke-dasharray: 400; stroke-dashoffset: 400; }
+.connector-line.animate { animation: drawLine 1.4s ease-out forwards; }

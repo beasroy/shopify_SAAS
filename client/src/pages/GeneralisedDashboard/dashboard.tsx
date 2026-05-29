@@ -123,6 +123,7 @@ const SummaryDashboard: React.FC = () => {
       Boolean(selectedBrand.shopifyAccount.shopName));
 
   const userName = user?.username;
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [performanceData, setPerformanceData] = useState<{
     meta?: PerformanceSummary["periodData"];
@@ -193,17 +194,11 @@ const SummaryDashboard: React.FC = () => {
   const fetchPerformanceData = useCallback(async () => {
     if (!brandId) {
       console.log("No brand ID available, skipping API calls");
+      setInitialLoading(false);
       return;
     }
 
     setLoading(true);
-    setPerformanceData({});
-    setApiStatus({
-      meta: true,
-      google: true,
-      shopify: true,
-      analytics: true,
-    });
 
     try {
       const dateParams =
@@ -305,6 +300,7 @@ const SummaryDashboard: React.FC = () => {
       });
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   }, [brandId, dateFrom, dateTo, compareFrom, compareTo, axiosInstance]);
 
@@ -408,18 +404,20 @@ const SummaryDashboard: React.FC = () => {
     console.log(
       `Successfully connected ${platform} - ${accountName} (${accountId})`,
     );
-    // Refresh data to show the newly connected platform
     fetchPerformanceData();
     fetchBreakdownData();
   };
 
   useEffect(() => {
     fetchPerformanceData();
-    fetchBreakdownData();
-  }, [fetchPerformanceData, fetchBreakdownData]);
+  }, [fetchPerformanceData]);
 
-  if (loading) {
-    return <Loader isLoading={loading} />;
+  useEffect(() => {
+    fetchBreakdownData();
+  }, [fetchBreakdownData]);
+
+  if (initialLoading) {
+    return <Loader isLoading />;
   }
 
   // Check if any platform is not connected (Shopify optional for comparison)

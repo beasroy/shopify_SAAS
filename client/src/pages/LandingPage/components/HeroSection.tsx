@@ -1,3 +1,4 @@
+
 import { motion, type Variants } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
@@ -182,3 +183,5 @@ export default function HeroSection() {
     </section>
   )
 }
+
+

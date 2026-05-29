@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type Trend = "up" | "down" | "neutral";
 export type Period =
@@ -70,6 +71,15 @@ export default function PerformanceTable({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const dateRange = useSelector((state: RootState) => state.date);
+  const periods: Period[] = [
+    "yesterday",
+    "last7Days",
+    "last14Days",
+    "last30Days",
+    "quarterly",
+    "custom",
+  ];
+  const DEFAULT_VISIBLE_ROWS = 6;
 
   const getCustomDateLabel = () => {
     if (dateRange?.from && dateRange?.to) {
@@ -232,7 +242,14 @@ export default function PerformanceTable({
     return value >= 1000 ? Math.round(value).toLocaleString() : value;
   };
 
-  if (allMetrics.length === 0) {
+  const visibleMetrics = isExpanded
+    ? allMetrics
+    : allMetrics.slice(0, DEFAULT_VISIBLE_ROWS);
+  const hasMoreRows = allMetrics.length > DEFAULT_VISIBLE_ROWS;
+  const skeletonRowCount =
+    visibleMetrics.length > 0 ? visibleMetrics.length : DEFAULT_VISIBLE_ROWS;
+
+  if (!loading && allMetrics.length === 0) {
     return (
       <div className="bg-white border rounded-lg shadow-md p-6">
         <div className="text-center text-slate-500 py-8">
@@ -241,20 +258,6 @@ export default function PerformanceTable({
       </div>
     );
   }
-
-  const periods: Period[] = [
-    "yesterday",
-    "last7Days",
-    "last14Days",
-    "last30Days",
-    "quarterly",
-    "custom",
-  ];
-  const DEFAULT_VISIBLE_ROWS = 6;
-  const visibleMetrics = isExpanded
-    ? allMetrics
-    : allMetrics.slice(0, DEFAULT_VISIBLE_ROWS);
-  const hasMoreRows = allMetrics.length > DEFAULT_VISIBLE_ROWS;
 
   return (
     <div className="bg-white border rounded-lg shadow-md p-6">
@@ -333,7 +336,33 @@ export default function PerformanceTable({
             </tr>
           </thead>
           <tbody className="transition-all duration-300">
-            {visibleMetrics.map((metricKey, metricIdx) => (
+            {loading
+              ? Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
+                  <tr
+                    key={`performance-skeleton-${rowIndex}`}
+                    className={cn(
+                      "border-b border-slate-100",
+                      rowIndex % 2 === 0 ? "bg-white" : "bg-slate-25",
+                    )}
+                  >
+                    <td className="p-3 bg-slate-50 sticky left-0 z-10 border-r border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </td>
+                    {periods.map((period) => (
+                      <td key={period} className="p-3">
+                        <div className="flex justify-around">
+                          <Skeleton className="h-4 w-14" />
+                          <Skeleton className="h-4 w-14" />
+                          <Skeleton className="h-4 w-14" />
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : visibleMetrics.map((metricKey, metricIdx) => (
               <tr
                 key={metricKey}
                 className={cn(
@@ -410,7 +439,7 @@ export default function PerformanceTable({
       </div>
 
       {/* Footer indicator when collapsed */}
-      {!isExpanded && hasMoreRows && (
+      {!loading && !isExpanded && hasMoreRows && (
         <div className="mt-4 text-center">
           <Button
             onClick={() => setIsExpanded(true)}

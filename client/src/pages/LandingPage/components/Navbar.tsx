@@ -25,7 +25,7 @@ export default function Navbar() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-white/92 backdrop-blur-xl shadow-sm border-b border-slate-200/70' : 'bg-transparent'
+        scrolled ? 'bg-[#07071a]/90 backdrop-blur-xl border-b border-white/8 shadow-xl shadow-black/20' : 'bg-transparent'
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -34,7 +34,7 @@ export default function Navbar() {
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
             <span className="text-white text-xs font-bold">P</span>
           </div>
-          <span className="font-bold text-lg text-slate-900 tracking-tight">Parallels</span>
+          <span className="font-bold text-lg text-white tracking-tight">Parallels</span>
         </Link>
 
         {/* Desktop nav */}
@@ -43,7 +43,7 @@ export default function Navbar() {
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              className="text-sm font-medium text-white/60 hover:text-white transition-colors"
             >
               {link.label}
             </a>
@@ -54,13 +54,13 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           <Link
             to="/login"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5"
+            className="text-sm font-medium text-white/60 hover:text-white transition-colors px-3 py-1.5"
           >
             Sign In
           </Link>
           <Link
             to="/login"
-            className="btn-primary inline-flex items-center gap-1.5 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+            className="btn-glow inline-flex items-center gap-1.5 text-white text-sm font-semibold px-4 py-2 rounded-lg"
           >
             Get Demo
           </Link>
@@ -68,7 +68,7 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          className="md:hidden p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
         >
@@ -84,7 +84,7 @@ export default function Navbar() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-white border-b border-slate-200 overflow-hidden"
+            className="md:hidden bg-[#07071a] border-b border-white/10 overflow-hidden"
           >
             <div className="px-6 py-4 flex flex-col gap-4">
               {NAV_LINKS.map((link) => (
@@ -92,16 +92,16 @@ export default function Navbar() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="text-sm font-medium text-slate-700"
+                  className="text-sm font-medium text-white/70"
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
-                <Link to="/login" className="text-sm font-medium text-slate-700 py-2">Sign In</Link>
+              <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+                <Link to="/login" className="text-sm font-medium text-white/60 py-2">Sign In</Link>
                 <Link
                   to="/login"
-                  className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg text-center"
+                  className="btn-glow text-white text-sm font-semibold px-4 py-2 rounded-lg text-center"
                 >
                   Get Demo
                 </Link>

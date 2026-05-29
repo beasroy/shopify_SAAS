@@ -9,51 +9,68 @@
   scroll-behavior: smooth;
 }
 
-/* ─── Dot-grid background ────────────────────────────────────────── */
+/* ─── Dark hero background ───────────────────────────────────────── */
+.hero-dark {
+  background-color: #07071a;
+}
+
+/* ─── Dot grid (dark version) ────────────────────────────────────── */
+.dot-grid-dark {
+  background-image: radial-gradient(circle, rgba(99,102,241,0.18) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* ─── Dot-grid background (light) ───────────────────────────────── */
 .dot-grid-bg {
   background-color: #fafafe;
   background-image: radial-gradient(circle, #c7d2fe 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
-/* ─── Gradient orbs ──────────────────────────────────────────────── */
+/* ─── Glow orbs ──────────────────────────────────────────────────── */
 .orb-indigo {
   position: absolute;
   width: 700px;
   height: 700px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.14) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, transparent 60%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
-
 .orb-cyan {
   position: absolute;
   width: 560px;
   height: 560px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, transparent 60%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
-
 .orb-violet {
   position: absolute;
-  width: 480px;
-  height: 480px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.10) 0%, transparent 65%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 60%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
 
-/* ─── Glass card ─────────────────────────────────────────────────── */
+/* ─── Glass card (light) ─────────────────────────────────────────── */
 .glass-card {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.07), 0 1px 4px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.07);
+}
+
+/* ─── Glass card (dark) ──────────────────────────────────────────── */
+.glass-dark {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* ─── Section spacing ────────────────────────────────────────────── */
@@ -64,25 +81,48 @@
 
 /* ─── Gradient text ──────────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 40%, #06b6d4 100%);
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 40%, #06b6d4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.gradient-text-warm {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 60%, #ec4899 100%);
+.gradient-text-hero {
+  background: linear-gradient(100deg, #ffffff 0%, #a5b4fc 40%, #67e8f9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* ─── Bento card hover glow ──────────────────────────────────────── */
+/* ─── Primary button ─────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.5), 0 4px 16px rgba(99,102,241,0.45);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.7), 0 6px 24px rgba(99,102,241,0.55);
+  transform: translateY(-1px);
+}
+
+/* ─── Glow button (on dark bg) ───────────────────────────────────── */
+.btn-glow {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 0 20px rgba(99,102,241,0.6), 0 0 40px rgba(99,102,241,0.3), 0 4px 16px rgba(99,102,241,0.5);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 28px rgba(99,102,241,0.8), 0 0 56px rgba(99,102,241,0.4), 0 6px 20px rgba(99,102,241,0.6);
+  transform: translateY(-2px);
+}
+
+/* ─── Bento card ─────────────────────────────────────────────────── */
 .bento-card {
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 .bento-card:hover {
-  box-shadow: 0 24px 48px rgba(99, 102, 241, 0.13), 0 0 0 1.5px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 20px 48px rgba(99, 102, 241, 0.13), 0 0 0 1.5px rgba(99, 102, 241, 0.2);
 }
 
 /* ─── Marquee ────────────────────────────────────────────────────── */
@@ -90,67 +130,27 @@
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+.marquee-track { animation: marquee 28s linear infinite; }
 
-.marquee-track {
-  animation: marquee 28s linear infinite;
-}
-
-/* ─── Perspective dashboard ──────────────────────────────────────── */
-.hero-perspective {
-  perspective: 1200px;
-}
-
-.hero-tilt {
-  transform: rotateX(6deg) rotateY(-2deg) scale(1);
-  transform-style: preserve-3d;
-  transition: transform 0.6s ease;
-}
-
-.hero-tilt:hover {
-  transform: rotateX(2deg) rotateY(0deg) scale(1.01);
-}
-
-/* ─── Noise overlay ──────────────────────────────────────────────── */
-.noise-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ─── Gradient border button ─────────────────────────────────────── */
-.btn-primary {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4), 0 1px 3px rgba(99, 102, 241, 0.3);
-  transition: box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
-}
-
-.btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5), 0 2px 6px rgba(99, 102, 241, 0.3);
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-}
-
-/* ─── Tab indicator ──────────────────────────────────────────────── */
-.use-case-tab[data-active="true"] {
-  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(6,182,212,0.05));
-  border-left: 2px solid #6366f1;
-}
-
-/* ─── Section divider ────────────────────────────────────────────── */
-.section-divider {
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(99,102,241,0.2), transparent);
-}
-
-/* ─── Pulse ring ─────────────────────────────────────────────────── */
+/* ─── Ping pulse ─────────────────────────────────────────────────── */
 @keyframes ping-slow {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.5); opacity: 0; }
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 0; transform: scale(2); }
+}
+.ping-slow { animation: ping-slow 2.2s ease-in-out infinite; }
+
+/* ─── Glow line ──────────────────────────────────────────────────── */
+.glow-line {
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(99,102,241,0.6) 30%, rgba(6,182,212,0.6) 70%, transparent 100%);
+  filter: blur(0.5px);
 }
 
-.ping-slow {
-  animation: ping-slow 2.5s ease-in-out infinite;
+/* ─── Problem card noise ─────────────────────────────────────────── */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
 }
+.float-anim { animation: float-y 4s ease-in-out infinite; }
+.float-anim-slow { animation: float-y 5.5s ease-in-out infinite; }
+.float-anim-fast { animation: float-y 3s ease-in-out infinite; }

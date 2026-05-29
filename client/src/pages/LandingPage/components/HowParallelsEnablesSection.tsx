@@ -1,129 +1,214 @@
-import { Database, GitBranch, Lightbulb, ArrowRight } from "lucide-react";
-import { useInView } from "@/hooks/useInView";
+import { motion } from 'framer-motion'
+import { FadeIn } from './AnimationHelpers'
+import { TrendingUp, ShoppingBag, Filter, CheckCircle } from 'lucide-react'
 
-const pillars = [
-  {
-    icon: Database,
-    number: "01",
-    title: "Data Unification",
-    // description: "Parallels automatically consolidates data from Meta Pixel, GA4, and Shopify into a single, structured environment.",
-    description: "Parallels automatically consolidates data from Meta Pixel, GA4, and Shopify into a single, structured, analytics-ready unified workspace",
-    outcome: "Teams work from consistent, reliable performance metrics across all channels.",
-    color: "accent",
-    gradient: "from-accent to-accent/60",
-  },
-  {
-    icon: GitBranch,
-    number: "02",
-    title: "Revenue Correlation",
-    description: "Marketing activity is mapped directly to ecommerce outcomes, allowing teams to understand how campaigns influence revenue over time.",
-    outcome: "Clear visibility into the relationship between spend, traffic quality, and sales performance.",
-    color: "brand-green",
-    gradient: "from-brand-green to-brand-green/60",
-  },
-  {
-    icon: Lightbulb,
-    number: "03",
-    title: "Actionable Intelligence",
-    description: "Parallels transforms complex datasets into understandable insights, highlighting trends, changes, and opportunities for optimisation.",
-    outcome: "Teams can act quickly and confidently, guided by data rather than assumptions.",
-    color: "brand-amber",
-    gradient: "from-brand-amber to-brand-amber/60",
-  },
-];
-
-const HowParallelsEnablesSection = () => {
-  const { ref: sectionRef, isInView } = useInView({ threshold: 0.1 });
-
+function RoasMockChart() {
+  const bars = [
+    { label: 'Meta', roas: 3.8, color: '#6366f1', spend: '$12k' },
+    { label: 'Google', roas: 4.9, color: '#06b6d4', spend: '$8k' },
+    { label: 'GA4', roas: 2.1, color: '#f59e0b', spend: '$4k' },
+  ]
   return (
-    <section className="bg-dark-section py-24 lg:py-32 relative overflow-hidden">
-      {/* Background elements */}
-      <div className="absolute inset-0 bg-mesh-gradient opacity-30" />
-      
-      <div className="container mx-auto px-6 relative z-10">
-        <div 
-          ref={sectionRef}
-          className={`max-w-3xl mx-auto text-center mb-16 ${isInView ? "animate-fade-in" : "opacity-0"}`}
-        >
-          {/* <span className="inline-block text-accent text-sm font-semibold tracking-wider uppercase mb-4">
-            How It Works
-          </span> */}
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-foreground mb-6">
-            A unified foundation for{" "}
-            <span className="text-gradient">informed decisions.</span>
-          </h2>
-          <p className="text-lg text-primary-foreground/70">
-            How Parallels enables ecommerce growth through three core capabilities.
-          </p>
-        </div>
-
-        {/* Pillars */}
-        <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {pillars.map((pillar, index) => (
-            <div
-              key={index}
-              className={`group relative ${isInView ? "animate-fade-in" : "opacity-0"}`}
-              style={{ animationDelay: `${0.2 + index * 0.15}s` }}
-            >
-              {/* Connection line between cards */}
-              {index < pillars.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-primary-foreground/20 to-transparent z-10">
-                  <ArrowRight size={16} className="absolute -right-2 -top-1.5 text-primary-foreground/20" />
-                </div>
-              )}
-
-              <div className="glass-dark rounded-2xl p-8 h-full border border-primary-foreground/10 group-hover:border-accent/30 transition-all duration-300 hover-lift">
-                {/* Number & Icon */}
-                <div className="flex items-center justify-between mb-8">
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${pillar.gradient} flex items-center justify-center shadow-lg`}>
-                    <pillar.icon size={28} className="text-primary-foreground" />
-                  </div>
-                  <span className="text-5xl font-bold text-primary-foreground/10 group-hover:text-primary-foreground/20 transition-colors">
-                    {pillar.number}
-                  </span>
-                </div>
-
-                <h3 className="text-xl font-bold text-primary-foreground mb-4">{pillar.title}</h3>
-                <p className="text-primary-foreground/70 mb-6 leading-relaxed">{pillar.description}</p>
-
-                {/* Outcome */}
-                <div className={`bg-${pillar.color}/10 rounded-xl p-4 border-l-4 border-${pillar.color}`}>
-                  <p className="text-sm text-primary-foreground">
-                    <span className="text-primary-foreground/50 font-medium">Outcome: </span>
-                    {pillar.outcome}
-                  </p>
-                </div>
-              </div>
+    <div className="glass-card rounded-2xl p-6 w-full max-w-sm">
+      <p className="text-xs font-semibold text-slate-500 mb-4">Cross-Channel ROAS</p>
+      <div className="space-y-4">
+        {bars.map((b, i) => (
+          <div key={b.label}>
+            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+              <span className="font-medium">{b.label}</span>
+              <span className="font-bold" style={{ color: b.color }}>{b.roas}x ROAS</span>
             </div>
-          ))}
-        </div>
-
-        {/* Visual Flow Diagram */}
-        <div className="max-w-4xl mx-auto mt-16 pt-16 border-t border-primary-foreground/10">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0">
-            {["Raw Data", "Unified View", "Correlated Insights", "Growth Actions"].map((step, index) => (
-              <div key={step} className="flex items-center">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    index === 3 ? "bg-success-gradient" : "bg-primary-foreground/10"
-                  }`}>
-                    <span className={`text-sm font-bold ${index === 3 ? "text-primary-foreground" : "text-primary-foreground/70"}`}>
-                      {index + 1}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-primary-foreground/70">{step}</span>
-                </div>
-                {index < 3 && (
-                  <div className="hidden md:block w-12 h-0.5 bg-gradient-to-r from-primary-foreground/20 to-primary-foreground/5 mx-4" />
-                )}
-              </div>
-            ))}
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: b.color }}
+                initial={{ width: 0 }}
+                whileInView={{ width: `${(b.roas / 6) * 100}%` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 + i * 0.1, ease: "easeOut" }}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">Spend: {b.spend}</p>
           </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FunnelMock() {
+  const steps = [
+    { label: 'Ad Impressions', value: '220k', pct: 100, color: '#6366f1' },
+    { label: 'Clicks', value: '12.4k', pct: 60, color: '#818cf8' },
+    { label: 'Product Views', value: '6.8k', pct: 40, color: '#06b6d4' },
+    { label: 'Add to Cart', value: '2.1k', pct: 22, color: '#0ea5e9' },
+    { label: 'Purchases', value: '890', pct: 10, color: '#10b981' },
+  ]
+  return (
+    <div className="glass-card rounded-2xl p-6 w-full max-w-sm">
+      <p className="text-xs font-semibold text-slate-500 mb-4">Conversion Funnel</p>
+      <div className="flex flex-col items-center gap-1">
+        {steps.map((s, i) => (
+          <motion.div
+            key={s.label}
+            className="flex items-center gap-3 w-full"
+            initial={{ opacity: 0, scaleX: 0.5 }}
+            whileInView={{ opacity: 1, scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: i * 0.1 }}
+          >
+            <div
+              className="h-8 rounded-md flex items-center justify-between px-3"
+              style={{ width: `${s.pct}%`, backgroundColor: s.color, minWidth: '40%' }}
+            >
+              <span className="text-white text-[10px] font-semibold truncate">{s.label}</span>
+              <span className="text-white text-[10px] font-bold ml-2 shrink-0">{s.value}</span>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RevMock() {
+  return (
+    <div className="glass-card rounded-2xl p-6 w-full max-w-sm">
+      <p className="text-xs font-semibold text-slate-500 mb-4">Revenue Attribution (Last 30d)</p>
+      <div className="flex items-center justify-center mb-4">
+        <svg viewBox="0 0 120 120" className="w-28 h-28">
+          {[
+            { color: '#6366f1', pct: 42, offset: 0 },
+            { color: '#06b6d4', pct: 31, offset: 42 },
+            { color: '#10b981', pct: 20, offset: 73 },
+            { color: '#f59e0b', pct: 7,  offset: 93 },
+          ].map((seg, i) => {
+            const r = 44
+            const circ = 2 * Math.PI * r
+            return (
+              <motion.circle
+                key={i}
+                cx="60" cy="60" r={r}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth="16"
+                strokeDasharray={`${(seg.pct / 100) * circ} ${circ}`}
+                strokeDashoffset={-((seg.offset / 100) * circ)}
+                strokeLinecap="butt"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.15 }}
+              />
+            )
+          })}
+          <text x="60" y="55" textAnchor="middle" className="text-slate-800" fontSize="11" fontWeight="700" fill="#0f172a">$128k</text>
+          <text x="60" y="68" textAnchor="middle" fontSize="7" fill="#94a3b8">Revenue</text>
+        </svg>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {[
+          { label: 'Meta Ads', color: '#6366f1', pct: '42%' },
+          { label: 'Google Ads', color: '#06b6d4', pct: '31%' },
+          { label: 'Organic', color: '#10b981', pct: '20%' },
+          { label: 'Other', color: '#f59e0b', pct: '7%' },
+        ].map((l) => (
+          <div key={l.label} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
+            <span className="text-slate-500">{l.label}</span>
+            <span className="font-semibold text-slate-800 ml-auto">{l.pct}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const FEATURES = [
+  {
+    tag: 'Cross-Channel Visibility',
+    title: 'See your true ROAS across every channel',
+    desc: 'Platform-reported numbers lie. Parallels computes actual blended ROAS by unifying ad spend with Shopify revenue — so you know where every dollar is really working.',
+    bullets: ['Meta vs Google vs Organic breakdown', 'Spend vs revenue per channel', 'Day-over-day ROAS trend'],
+    mock: <RoasMockChart />,
+    reverse: false,
+    icon: TrendingUp,
+  },
+  {
+    tag: 'Revenue Attribution',
+    title: 'Know exactly which campaigns drove sales',
+    desc: 'Connect Shopify order data directly to your ad campaigns. Understand first-touch, last-touch, and assisted attribution — without paying for a separate attribution tool.',
+    bullets: ['Order-level campaign attribution', 'Multi-touch attribution models', 'LTV by acquisition channel'],
+    mock: <RevMock />,
+    reverse: true,
+    icon: ShoppingBag,
+  },
+  {
+    tag: 'Funnel Analytics',
+    title: 'Find where customers drop — and why',
+    desc: 'Visualize the full customer journey from ad impression to purchase. Identify the biggest drop-off points and fix them before they cost you revenue.',
+    bullets: ['Full-funnel visualization', 'Step-by-step drop-off rates', 'Segment by channel or campaign'],
+    mock: <FunnelMock />,
+    reverse: false,
+    icon: Filter,
+  },
+]
+
+export default function HowParallelsEnablesSection() {
+  return (
+    <section className="section-pad bg-slate-50 overflow-hidden">
+      <div className="max-w-6xl mx-auto px-6">
+        <FadeIn className="text-center mb-16">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-3 block">Feature Deep Dives</span>
+          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+            The details that make the difference
+          </h2>
+        </FadeIn>
+
+        <div className="space-y-24">
+          {FEATURES.map((f) => {
+            const Icon = f.icon
+            return (
+              <div
+                key={f.title}
+                className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${f.reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}
+              >
+                <motion.div
+                  initial={{ opacity: 0, x: f.reverse ? 40 : -40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                >
+                  <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+                    <Icon size={12} />
+                    {f.tag}
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-4 leading-snug">{f.title}</h3>
+                  <p className="text-slate-500 leading-relaxed mb-6">{f.desc}</p>
+                  <ul className="space-y-3">
+                    {f.bullets.map((b) => (
+                      <li key={b} className="flex items-center gap-2.5 text-sm text-slate-600">
+                        <CheckCircle size={16} className="text-indigo-500 shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+
+                <motion.div
+                  className="flex justify-center"
+                  initial={{ opacity: 0, x: f.reverse ? -40 : 40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
+                >
+                  {f.mock}
+                </motion.div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
-  );
-};
-
-export default HowParallelsEnablesSection;
-
+  )
+}

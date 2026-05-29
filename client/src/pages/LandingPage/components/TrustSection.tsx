@@ -1,110 +1,93 @@
-import { Quote, Star } from "lucide-react";
-import { useInView } from "@/hooks/useInView";
+import { FadeIn } from './AnimationHelpers'
+import { Shield, Lock, Globe, Star, Quote } from 'lucide-react'
 
-const testimonials = [
-    {
-        quote: "We see exactly which campaigns are driving revenue. The correlation engine is a game-changer for scaling decisions.",
-        author: "Performance Marketing Lead",
-        company: "DTC Fashion Brand",
-        rating: 5,
-    },
-    {
-        quote: "We've cut our reporting time in half. The unified dashboard gives our entire team the same view of performance.",
-        // quote: "We've cut our reporting time in half. The unified dashboard instantly gives our entire team the exact same view of real-time performance.",
-        author: "Head of Growth",
-        company: "Shopify Plus Brand",
-        rating: 5,
-    },
-    {
-        quote: "Client reporting used to be a nightmare. Now we deliver insights that actually build trust and drive results.",
-        author: "Agency Director",
-        company: "Ecommerce Agency",
-        rating: 5,
-    },
-];
+const TRUST_ITEMS = [
+  {
+    icon: Shield,
+    title: 'SOC 2 Type II',
+    desc: 'Enterprise-grade security controls (certification in progress).',
+    color: 'indigo',
+  },
+  {
+    icon: Globe,
+    title: 'GDPR Compliant',
+    desc: 'Data residency controls and DPA available for EU customers.',
+    color: 'cyan',
+  },
+  {
+    icon: Lock,
+    title: 'TLS Encrypted',
+    desc: 'All data encrypted in transit and at rest. No exceptions.',
+    color: 'emerald',
+  },
+]
 
-const TrustSection = () => {
-    const { ref: sectionRef, isInView } = useInView({ threshold: 0.1 });
+const COLOR_MAP: Record<string, { bg: string; icon: string }> = {
+  indigo:  { bg: 'bg-indigo-50',  icon: 'text-indigo-600' },
+  cyan:    { bg: 'bg-cyan-50',    icon: 'text-cyan-600' },
+  emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600' },
+}
 
-    return (
-        <section className="bg-section-gradient py-24 lg:py-32 relative overflow-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-accent/5 rounded-full blur-3xl" />
+export default function TrustSection() {
+  return (
+    <section className="section-pad bg-slate-50">
+      <div className="max-w-6xl mx-auto px-6">
+        <FadeIn className="text-center mb-12">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-3 block">Trust & Security</span>
+          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+            Built for security-conscious teams
+          </h2>
+          <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            Your data is never sold, never shared, and never used to train models.
+          </p>
+        </FadeIn>
 
-            <div className="container mx-auto px-6 relative z-10">
-                <div
-                    ref={sectionRef}
-                    className={`max-w-3xl mx-auto text-center mb-16 ${isInView ? "animate-fade-in" : "opacity-0"}`}
-                >
-                    <span className="inline-block text-accent-foreground text-sm font-semibold tracking-wider uppercase mb-4">
-                        Testimonials
-                    </span>
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-                        Developed with{" "}
-                        <span className="text-gradient">ecommerce teams.</span>
-                    </h2>
-                    <p className="text-lg text-muted-foreground">
-                        Built by a team with deep ecommerce and analytics experience. Currently in private beta with select brands.
-                    </p>
+        {/* Trust cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16">
+          {TRUST_ITEMS.map((item, i) => {
+            const Icon = item.icon
+            const c = COLOR_MAP[item.color]
+            return (
+              <FadeIn key={item.title} delay={i * 0.1}>
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
+                  <div className={`w-12 h-12 ${c.bg} rounded-xl flex items-center justify-center mx-auto mb-4`}>
+                    <Icon size={22} className={c.icon} />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">{item.title}</h3>
+                  <p className="text-sm text-slate-500">{item.desc}</p>
                 </div>
+              </FadeIn>
+            )
+          })}
+        </div>
 
-                <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                    {testimonials.map((testimonial, index) => (
-                        <div
-                            key={index}
-                            className={`group ${isInView ? "animate-fade-in" : "opacity-0"}`}
-                            style={{ animationDelay: `${0.1 + index * 0.1}s` }}
-                        >
-                            <div className="bg-card border border-border rounded-2xl p-8 h-full card-hover relative overflow-hidden">
-                                {/* Decorative gradient */}
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                                <div className="relative z-10">
-                                    {/* Quote icon */}
-                                    <div className="w-12 h-12 rounded-xl bg-accent-foreground/10 flex items-center justify-center mb-6">
-                                        <Quote size={24} className="text-accent-foreground" />
-                                    </div>
-
-                                    {/* Rating */}
-                                    <div className="flex gap-1 mb-4">
-                                        {Array.from({ length: testimonial.rating }).map((_, i) => (
-                                            <Star key={i} size={16} className="text-brand-amber fill-brand-amber" />
-                                        ))}
-                                    </div>
-
-                                    <p className="text-foreground mb-6 leading-relaxed">
-                                        "{testimonial.quote}"
-                                    </p>
-
-                                    <div className="border-t border-border pt-6">
-                                        <p className="font-semibold text-foreground">{testimonial.author}</p>
-                                        <p className="text-sm text-muted-foreground">{testimonial.company}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Beta badge */}
-                {/* <div className="text-center mt-12">
-                    <div className="inline-flex items-center gap-3 bg-accent/10 border border-accent/20 rounded-full px-6 py-3">
-                        <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                        <span className="text-sm font-medium text-accent">Currently in private beta with select ecommerce teams</span>
-                    </div>
-                </div> */}
-                <div className="text-center mt-12">
-                    <div className="inline-flex items-center gap-3 bg-brand-blue/10 border border-brand-blue/20 rounded-full px-6 py-3">
-                        {/* Added flex-shrink-0 here to prevent squashing */}
-                        <div className="w-2 h-2 rounded-full bg-brand-blue animate-pulse flex-shrink-0" />
-
-                        <span className="text-sm font-medium text-brand-blue text-left">
-                            Currently in private beta with select ecommerce teams
-                        </span>
-                    </div>
-                </div>
+        {/* Social proof / testimonial */}
+        <FadeIn>
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 lg:p-12 text-center shadow-sm max-w-3xl mx-auto">
+            <div className="flex justify-center gap-1 mb-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} size={18} className="text-amber-400 fill-amber-400" />
+              ))}
             </div>
-        </section>
-    );
-};
-
-export default TrustSection;
+            <Quote size={32} className="text-indigo-200 mx-auto mb-4" />
+            <blockquote className="text-lg font-medium text-slate-700 leading-relaxed mb-6">
+              "Parallels replaced three separate dashboards and saved my team 8 hours a week on reporting. We finally know which channels are actually profitable."
+            </blockquote>
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
+                SR
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-slate-900">Sarah R.</p>
+                <p className="text-xs text-slate-500">CMO, DTC Fashion Brand · Early Access User</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-6">
+              Trusted by <span className="font-semibold text-slate-600">50+ D2C brands</span> in early access
+            </p>
+          </div>
+        </FadeIn>
+      </div>
+    </section>
+  )
+}

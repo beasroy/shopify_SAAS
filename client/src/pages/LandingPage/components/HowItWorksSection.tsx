@@ -1,142 +1,101 @@
-import { Plug, RefreshCw, Cpu, BarChart, Zap } from "lucide-react";
-import { useInView } from "@/hooks/useInView";
+import { motion, useInView } from 'framer-motion'
+import { useRef } from 'react'
+import { FadeIn } from './AnimationHelpers'
+import { Plug, Layers, Zap } from 'lucide-react'
 
-const steps = [
-    {
-        icon: Plug,
-        number: "01",
-        title: "Connect your platforms",
-        description: "Link Shopify, Meta, and GA4 with a few clicks. No engineering required.",
-        color: "accent",
-    },
-    {
-        icon: RefreshCw,
-        number: "02",
-        title: "Data syncs automatically",
-        description: "Your data is pulled and structured in real-time, always up to date.",
-        color: "brand-green",
-    },
-    {
-        icon: Cpu,
-        number: "03",
-        title: "Parallels analyses relationships",
-        description: "Our engine correlates marketing activity with revenue outcomes.",
-        color: "brand-amber",
-    },
-    {
-        icon: BarChart,
-        number: "04",
-        title: "Insights appear in your dashboard",
-        description: "See performance signals, trends, and opportunities instantly.",
-        color: "brand-coral",
-    },
-];
+const STEPS = [
+  {
+    number: '01',
+    icon: Plug,
+    title: 'Connect',
+    desc: 'Link Meta Ads, Google Ads, GA4, and Shopify in minutes with secure OAuth — no engineers needed.',
+    color: 'indigo',
+  },
+  {
+    number: '02',
+    icon: Layers,
+    title: 'Unify',
+    desc: 'Parallels normalizes your data into a single model. No manual exports, no mismatched attribution.',
+    color: 'cyan',
+  },
+  {
+    number: '03',
+    icon: Zap,
+    title: 'Act',
+    desc: 'Get actionable insights, automated alerts, and shareable reports — always up to date.',
+    color: 'emerald',
+  },
+]
 
-const colorStyles = {
-    accent: {
-        bg: "bg-accent-foreground/10",
-        border: "border-accent-foreground/30",
-        text: "text-accent-foreground",
-    },
-    "brand-green": {
-        bg: "bg-brand-green/10",
-        border: "border-brand-green/30",
-        text: "text-brand-green",
-    },
-    "brand-amber": {
-        bg: "bg-brand-amber/10",
-        border: "border-brand-amber/30",
-        text: "text-brand-amber",
-    },
-    "brand-coral": {
-        bg: "bg-brand-coral/10",
-        border: "border-brand-coral/30",
-        text: "text-brand-coral",
-    },
-};
+const COLOR_MAP: Record<string, { bg: string; text: string; ring: string }> = {
+  indigo:  { bg: 'bg-indigo-600',  text: 'text-indigo-600',  ring: 'ring-indigo-200' },
+  cyan:    { bg: 'bg-cyan-600',    text: 'text-cyan-600',    ring: 'ring-cyan-200' },
+  emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', ring: 'ring-emerald-200' },
+}
 
+export default function HowItWorksSection() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(containerRef, { once: true })
 
-const HowItWorksSection = () => {
-    const { ref: sectionRef, isInView } = useInView({ threshold: 0.1 });
+  return (
+    <section className="section-pad bg-white" id="how-it-works">
+      <div className="max-w-5xl mx-auto px-6">
+        <FadeIn className="text-center mb-16">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-3 block">How It Works</span>
+          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+            From scattered data to{' '}
+            <span className="gradient-text">clear decisions</span>
+          </h2>
+          <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            Up and running in under 10 minutes.
+          </p>
+        </FadeIn>
 
-    return (
-        <section id="how-it-works" className="bg-section-gradient py-24 lg:py-32 relative overflow-hidden">
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-brand-green/5 rounded-full blur-3xl" />
+        <div ref={containerRef} className="relative">
+          {/* Connector line (desktop) */}
+          <div className="hidden lg:block absolute top-12 left-[calc(16.67%+32px)] right-[calc(16.67%+32px)] h-px">
+            <svg className="w-full h-8 overflow-visible" preserveAspectRatio="none">
+              <motion.path
+                d="M0,4 Q50%,4 100%,4"
+                fill="none"
+                stroke="#6366f1"
+                strokeWidth="2"
+                strokeDasharray="6 4"
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={isInView ? { pathLength: 1, opacity: 1 } : {}}
+                transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
+              />
+            </svg>
+          </div>
 
-            <div className="container mx-auto px-6 relative z-10">
-                <div
-                    ref={sectionRef}
-                    className={`max-w-3xl mx-auto text-center mb-16 ${isInView ? "animate-fade-in" : "opacity-0"}`}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {STEPS.map((step, i) => {
+              const Icon = step.icon
+              const c = COLOR_MAP[step.color]
+              return (
+                <motion.div
+                  key={step.title}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.15 }}
+                  className="flex flex-col items-center text-center"
                 >
-                    {/* <span className="inline-block text-accent text-sm font-semibold tracking-wider uppercase mb-4">
-                        How It Works.....
-                    </span> */}
-                    <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-blue/10 text-brand-blue text-sm font-medium mb-4">
-                        <Zap size={14} />
-                        How It Works
-                    </span>
-
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-                        From connection to{" "}
-                        <span className="text-gradient">insight.</span>
-                    </h2>
-                    <p className="text-lg text-muted-foreground">
-                        No engineering. No setup headaches.
-                    </p>
-                </div>
-
-                <div className="max-w-4xl mx-auto">
-                    <div className="relative">
-
-                        {/* <div className="absolute left-8 md:left-10 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent via-brand-green to-brand-coral hidden md:block" /> */}
-
-                        <div className="space-y-6 md:space-y-0">
-                            {steps.map((step, index) => (
-                                <div
-                                    key={index}
-                                    className={`relative flex gap-6 md:gap-10 ${isInView ? "animate-fade-in" : "opacity-0"}`}
-                                    style={{ animationDelay: `${0.2 + index * 0.15}s` }}
-                                >
-                                    {/* Step Number & Icon */}
-                                    <div className="relative z-10 flex-shrink-0">
-                                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl ${colorStyles[step.color as keyof typeof colorStyles].bg} border-2 ${colorStyles[step.color as keyof typeof colorStyles].border} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                            <step.icon size={28} className={`${colorStyles[step.color as keyof typeof colorStyles].text}`} />
-                                        </div>
-
-                                        {/* Vertical line between icons */}
-                                        {index < steps.length - 1 && (
-                                            <div className="mx-auto hidden md:block w-0.5 h-32 bg-gradient-to-b from-muted-foreground/20 to-muted-foreground/10 " />
-                                        )}
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="flex-1 pb-12 md:pb-16">
-                                        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 card-hover">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <span className={`text-sm font-mono ${colorStyles[step.color as keyof typeof colorStyles].text} ${colorStyles[step.color as keyof typeof colorStyles].bg} px-3 py-1 rounded-full`}>
-                                                    Step {step.number}
-                                                </span>
-                                                <h3 className={`text-xl font-bold  ${colorStyles[step.color as keyof typeof colorStyles].text}`}>{step.title}</h3>
-                                            </div>
-                                            <p className="text-muted-foreground leading-relaxed">{step.description}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Summary badge */}
-                    <div className="text-center mt-8">
-                        <div className="inline-flex items-center gap-3 bg-brand-green/10 border border-brand-green/20 rounded-full px-6 py-3">
-                            <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
-                            <span className="text-sm font-medium text-brand-green">Average setup time: Under 5 minutes</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
-
-export default HowItWorksSection;
+                  <div className={`w-16 h-16 ${c.bg} rounded-2xl flex items-center justify-center mb-5 shadow-lg ring-4 ${c.ring}`}>
+                    <Icon size={28} className="text-white" />
+                  </div>
+                  <div className={`text-xs font-bold ${c.text} uppercase tracking-widest mb-2`}>
+                    Step {step.number}
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{step.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{step.desc}</p>
+                </motion.div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}

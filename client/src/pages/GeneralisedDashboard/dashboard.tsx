@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { PlusCircle, ChevronRight, X } from "lucide-react";
+import { PlusCircle, ChevronRight, X, Shield, Database, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAxiosInstance } from "../ConversionReportPage/components/axiosInstance";
@@ -429,6 +429,25 @@ const SummaryDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="w-full border-b border-emerald-100 bg-emerald-50/80">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-3 text-sm text-emerald-900">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>No data is stored</span>
+          </div>
+          <div className="hidden h-4 w-px bg-emerald-200 sm:block" aria-hidden />
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>No third party gets your data</span>
+          </div>
+          <div className="hidden h-4 w-px bg-emerald-200 sm:block" aria-hidden />
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>You can revoke access anytime</span>
+          </div>
+        </div>
+      </div>
+
       <div className="mx-auto p-6 max-w-7xl">
         <div className="mb-6 animate-fade-up">
           <div className="flex items-center justify-between">

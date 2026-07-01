@@ -1,0 +1,35 @@
+module.exports = {
+  apps: [
+    {
+      name: 'parallels-api',
+      cwd: './server',
+      script: 'index.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 8000,
+      },
+      max_memory_restart: '1G',
+      error_file: './logs/api-error.log',
+      out_file: './logs/api-out.log',
+      merge_logs: true,
+      time: true,
+    },
+    {
+      name: 'metrics-worker',
+      cwd: './server',
+      script: 'workers/metricsWorker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+      },
+      max_memory_restart: '1G',
+      error_file: './logs/worker-error.log',
+      out_file: './logs/worker-out.log',
+      merge_logs: true,
+      time: true,
+    },
+  ],
+};

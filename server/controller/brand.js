@@ -80,6 +80,24 @@ export const getBrands = async (req, res) => {
     }
 }
 
+export const getBrandNames = async (req, res) => {
+    try {
+        const brands = await Brand.find({}, { name: 1, _id: 0 }).sort({ name: 1 }).lean();
+        const names = brands.map((brand) => brand.name);
+        const list = names.map((name) => `• ${name}`).join('\n');
+
+        res.json({
+            success: true,
+            count: names.length,
+            names,
+            list
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error fetching brand names', error: error.message });
+    }
+}
+
 export const getCurrency = async (req, res) => {
     try {
         const { brandId } = req.params;

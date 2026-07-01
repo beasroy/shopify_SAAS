@@ -28,13 +28,15 @@ interface EcommerceMetricsProps {
   visibleColumns: string[];
   columnOrder: string[];
   refreshTrigger: number;
+  hasGA4Account?: boolean;
 }
 
 const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({ 
   dateRange: propDateRange, 
   visibleColumns,
   columnOrder,
-  refreshTrigger
+  refreshTrigger,
+  hasGA4Account = true,
 }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
@@ -127,6 +129,11 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (!hasGA4Account) {
+        setData([]);
+        return;
+      }
+
       const dateRanges = [];
 
       // Always add primary date range
@@ -180,7 +187,7 @@ const EcommerceMetricsPage: React.FC<EcommerceMetricsProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, hasGA4Account]);
 
   // Fetch data when dates or brandId change
   useEffect(() => {

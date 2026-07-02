@@ -1281,3 +1281,313 @@
 2025-05-16T09:56:30.810Z [info]: Successfully processed brand 67a60c4eb41925417e85ade6 with user 67eb85f2f583a37ca251622a
 2025-05-16T09:56:30.886Z [info]: Successfully processed brand 67a6165bb41925417e85af95 with user 67eb85f2f583a37ca251622a
 2025-05-16T09:56:30.887Z [info]: Metrics calculation summary:
+2026-07-01T03:00:00.153Z [info]: Found 50 brands for metrics calculation.
+2026-07-01T03:00:00.155Z [info]: 
+=== Processing brand: 68ca95ad548d518de4fca1af ===
+2026-07-01T03:00:00.156Z [info]: 
+=== Processing brand: 68cc2437e78884ea57ff5385 ===
+2026-07-01T03:00:00.156Z [info]: 
+=== Processing brand: 68d10cabe78884ea57ff5be3 ===
+2026-07-01T03:00:00.156Z [info]: 
+=== Processing brand: 68d3ca10e78884ea57ff6485 ===
+2026-07-01T03:00:00.156Z [info]: 
+=== Processing brand: 68dd1be0e78884ea57ff74d4 ===
+2026-07-01T03:00:00.156Z [info]: 
+=== Processing brand: 68dd21f5e78884ea57ff762f ===
+2026-07-01T03:00:00.157Z [info]: 
+=== Processing brand: 68e8bffe11ea9da7f62ad6cd ===
+2026-07-01T03:00:00.157Z [info]: 
+=== Processing brand: 68e8cd7811ea9da7f62ad985 ===
+2026-07-01T03:00:00.157Z [info]: 
+=== Processing brand: 690b24d5b5eeef0b8b4ed79f ===
+2026-07-01T03:00:00.157Z [info]: 
+=== Processing brand: 690c8630e8ed87ae2f68d72f ===
+2026-07-01T03:00:00.158Z [info]: 
+=== Processing brand: 691226abea5c3824b6cddb23 ===
+2026-07-01T03:00:00.158Z [info]: 
+=== Processing brand: 6918a5b0f35fc0ee23874cb9 ===
+2026-07-01T03:00:00.158Z [info]: 
+=== Processing brand: 6936a2196da93ede091b01da ===
+2026-07-01T03:00:00.158Z [info]: 
+=== Processing brand: 6939031b6da93ede091b0df8 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 6941510e2deb1bce03ca02a2 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 694403cdeb1502b7b832368e ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 694ebc88428591822f4ec366 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 695793c02d2fb7ad98fb38b4 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 695ca9d7ff8894bc66d7e1d8 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 695e30a0ff8894bc66d801c5 ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 6964c7f0db57ef0efe61b25f ===
+2026-07-01T03:00:00.159Z [info]: 
+=== Processing brand: 6968ba1ddb57ef0efe620f37 ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 6969b318db57ef0efe622366 ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 6970ab1ed639a12fc8b7ed1d ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 6973b3e2d639a12fc8b81c37 ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 69779a7dd639a12fc8b8347a ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 697ca0c1d7bda63df0775e62 ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 6996c6db049176b75d224988 ===
+2026-07-01T03:00:00.160Z [info]: 
+=== Processing brand: 69a52de3ba2f03738a4de712 ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69a55076ba2f03738a4dee7a ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69ae6981ba2f03738a4e29df ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69c232921db3871ad3f8874f ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69c5531591b9fab4659e8d73 ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69c6278a91b9fab4659e929b ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69cd4b94fbec251ee96f3799 ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69de1ef4f484a52aec5d1101 ===
+2026-07-01T03:00:00.163Z [info]: 
+=== Processing brand: 69e11ca7f484a52aec5d2b2d ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 69e5d0c03e288457fce0fab9 ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 69f2e78cf8a9da598b03e4bf ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 69fc60d0f8a9da598b041ca6 ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a05f829f8a9da598b044fdc ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a094491b937c43887500d24 ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a0d45d9b937c4388750250e ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a16b5d8b937c43887505a21 ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a227049b937c4388750916e ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a292b14ef4d8c09a5d606b2 ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a2a8392ef4d8c09a5d6105b ===
+2026-07-01T03:00:00.164Z [info]: 
+=== Processing brand: 6a2aa0f9ef4d8c09a5d61545 ===
+2026-07-01T03:00:00.165Z [info]: 
+=== Processing brand: 6a2fc7c9ef4d8c09a5d62c21 ===
+2026-07-01T03:00:00.165Z [info]: 
+=== Processing brand: 6a3b5e0edb3557056a2ad017 ===
+2026-07-01T03:00:00.569Z [warn]: Failed to process brand 69a55076ba2f03738a4dee7a: An error occurred while calculating and saving metrics.
+2026-07-01T03:00:00.991Z [warn]: Failed to process brand 6970ab1ed639a12fc8b7ed1d: An error occurred while calculating and saving metrics.
+2026-07-01T03:00:01.158Z [warn]: Failed to process brand 6969b318db57ef0efe622366: An error occurred while calculating and saving metrics.
+2026-07-01T03:00:01.170Z [warn]: Failed to process brand 69c232921db3871ad3f8874f: An error occurred while calculating and saving metrics.
+2026-07-01T03:00:02.257Z [info]: Successfully processed brand 6a2fc7c9ef4d8c09a5d62c21
+2026-07-01T03:00:02.349Z [info]: Successfully processed brand 695793c02d2fb7ad98fb38b4
+2026-07-01T03:00:02.748Z [info]: Successfully processed brand 691226abea5c3824b6cddb23
+2026-07-01T03:00:02.843Z [info]: Successfully processed brand 690b24d5b5eeef0b8b4ed79f
+2026-07-01T03:00:02.896Z [info]: Successfully processed brand 69ae6981ba2f03738a4e29df
+2026-07-01T03:00:02.908Z [info]: Successfully processed brand 68e8cd7811ea9da7f62ad985
+2026-07-01T03:00:02.909Z [info]: Successfully processed brand 6918a5b0f35fc0ee23874cb9
+2026-07-01T03:00:02.910Z [info]: Successfully processed brand 68dd1be0e78884ea57ff74d4
+2026-07-01T03:00:02.913Z [info]: Successfully processed brand 69e11ca7f484a52aec5d2b2d
+2026-07-01T03:00:02.921Z [warn]: Failed to process brand 69779a7dd639a12fc8b8347a: An error occurred while calculating and saving metrics.
+2026-07-01T03:00:02.948Z [info]: Successfully processed brand 6939031b6da93ede091b0df8
+2026-07-01T03:00:02.982Z [info]: Successfully processed brand 6964c7f0db57ef0efe61b25f
+2026-07-01T03:00:03.102Z [info]: Successfully processed brand 69cd4b94fbec251ee96f3799
+2026-07-01T03:00:03.106Z [info]: Successfully processed brand 6996c6db049176b75d224988
+2026-07-01T03:00:03.203Z [info]: Successfully processed brand 69c5531591b9fab4659e8d73
+2026-07-01T03:00:03.288Z [info]: Successfully processed brand 697ca0c1d7bda63df0775e62
+2026-07-01T03:00:03.352Z [info]: Successfully processed brand 695ca9d7ff8894bc66d7e1d8
+2026-07-01T03:00:03.353Z [info]: Successfully processed brand 6973b3e2d639a12fc8b81c37
+2026-07-01T03:00:03.356Z [info]: Successfully processed brand 6a292b14ef4d8c09a5d606b2
+2026-07-01T03:00:03.409Z [info]: Successfully processed brand 6a16b5d8b937c43887505a21
+2026-07-01T03:00:03.474Z [info]: Successfully processed brand 6a094491b937c43887500d24
+2026-07-01T03:00:03.492Z [info]: Successfully processed brand 68d3ca10e78884ea57ff6485
+2026-07-01T03:00:03.516Z [info]: Successfully processed brand 69e5d0c03e288457fce0fab9
+2026-07-01T03:00:03.563Z [info]: Successfully processed brand 69f2e78cf8a9da598b03e4bf
+2026-07-01T03:00:03.589Z [info]: Successfully processed brand 6a2a8392ef4d8c09a5d6105b
+2026-07-01T03:00:03.600Z [info]: Successfully processed brand 6936a2196da93ede091b01da
+2026-07-01T03:00:03.666Z [info]: Successfully processed brand 695e30a0ff8894bc66d801c5
+2026-07-01T03:00:03.697Z [info]: Successfully processed brand 68d10cabe78884ea57ff5be3
+2026-07-01T03:00:03.700Z [info]: Successfully processed brand 694403cdeb1502b7b832368e
+2026-07-01T03:00:03.794Z [info]: Successfully processed brand 6a0d45d9b937c4388750250e
+2026-07-01T03:00:03.920Z [info]: Successfully processed brand 6a3b5e0edb3557056a2ad017
+2026-07-01T03:00:04.023Z [info]: Successfully processed brand 6a05f829f8a9da598b044fdc
+2026-07-01T03:00:04.101Z [info]: Successfully processed brand 69c6278a91b9fab4659e929b
+2026-07-01T03:00:04.203Z [info]: Successfully processed brand 6a2aa0f9ef4d8c09a5d61545
+2026-07-01T03:00:04.574Z [info]: Successfully processed brand 69a52de3ba2f03738a4de712
+2026-07-01T03:00:05.381Z [info]: Successfully processed brand 68dd21f5e78884ea57ff762f
+2026-07-01T03:00:05.483Z [info]: Successfully processed brand 6a227049b937c4388750916e
+2026-07-01T03:00:05.544Z [info]: Successfully processed brand 6941510e2deb1bce03ca02a2
+2026-07-01T03:00:05.771Z [info]: Successfully processed brand 6968ba1ddb57ef0efe620f37
+2026-07-01T03:00:05.889Z [info]: Successfully processed brand 69de1ef4f484a52aec5d1101
+2026-07-01T03:00:06.095Z [info]: Successfully processed brand 68cc2437e78884ea57ff5385
+2026-07-01T03:00:06.146Z [info]: Successfully processed brand 690c8630e8ed87ae2f68d72f
+2026-07-01T03:00:06.300Z [info]: Successfully processed brand 68ca95ad548d518de4fca1af
+2026-07-01T03:00:06.493Z [info]: Successfully processed brand 69fc60d0f8a9da598b041ca6
+2026-07-01T03:00:07.716Z [info]: Successfully processed brand 68e8bffe11ea9da7f62ad6cd
+2026-07-01T03:00:08.398Z [info]: Successfully processed brand 694ebc88428591822f4ec366
+2026-07-01T03:00:08.399Z [info]: Metrics calculation summary:
+2026-07-02T03:00:00.671Z [info]: Found 52 brands for metrics calculation.
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 68dd21f5e78884ea57ff762f ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 695e30a0ff8894bc66d801c5 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 68e8bffe11ea9da7f62ad6cd ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 695ca9d7ff8894bc66d7e1d8 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 694ebc88428591822f4ec366 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 6973b3e2d639a12fc8b81c37 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 697ca0c1d7bda63df0775e62 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 69a52de3ba2f03738a4de712 ===
+2026-07-02T03:00:00.672Z [info]: 
+=== Processing brand: 6918a5b0f35fc0ee23874cb9 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 6941510e2deb1bce03ca02a2 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 68d3ca10e78884ea57ff6485 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 695793c02d2fb7ad98fb38b4 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 690c8630e8ed87ae2f68d72f ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 6970ab1ed639a12fc8b7ed1d ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 68d10cabe78884ea57ff5be3 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 68cc2437e78884ea57ff5385 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 69779a7dd639a12fc8b8347a ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 6996c6db049176b75d224988 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 6939031b6da93ede091b0df8 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 68e8cd7811ea9da7f62ad985 ===
+2026-07-02T03:00:00.673Z [info]: 
+=== Processing brand: 694403cdeb1502b7b832368e ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 68ca95ad548d518de4fca1af ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 691226abea5c3824b6cddb23 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 6936a2196da93ede091b01da ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 6964c7f0db57ef0efe61b25f ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 6969b318db57ef0efe622366 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69a55076ba2f03738a4dee7a ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69ae6981ba2f03738a4e29df ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 68dd1be0e78884ea57ff74d4 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 690b24d5b5eeef0b8b4ed79f ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 6968ba1ddb57ef0efe620f37 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69c232921db3871ad3f8874f ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69c5531591b9fab4659e8d73 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69c6278a91b9fab4659e929b ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69cd4b94fbec251ee96f3799 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69de1ef4f484a52aec5d1101 ===
+2026-07-02T03:00:00.674Z [info]: 
+=== Processing brand: 69e11ca7f484a52aec5d2b2d ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 69e5d0c03e288457fce0fab9 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 69f2e78cf8a9da598b03e4bf ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 69fc60d0f8a9da598b041ca6 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a05f829f8a9da598b044fdc ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a094491b937c43887500d24 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a0d45d9b937c4388750250e ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a16b5d8b937c43887505a21 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a227049b937c4388750916e ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a292b14ef4d8c09a5d606b2 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a2a8392ef4d8c09a5d6105b ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a2aa0f9ef4d8c09a5d61545 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a2fc7c9ef4d8c09a5d62c21 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a3b5e0edb3557056a2ad017 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a44daae066fa8046e64bdb8 ===
+2026-07-02T03:00:00.675Z [info]: 
+=== Processing brand: 6a44edcb066fa8046e64c0d0 ===
+2026-07-02T03:00:01.092Z [warn]: Failed to process brand 69a55076ba2f03738a4dee7a: An error occurred while calculating and saving metrics.
+2026-07-02T03:00:01.422Z [warn]: Failed to process brand 6970ab1ed639a12fc8b7ed1d: An error occurred while calculating and saving metrics.
+2026-07-02T03:00:01.594Z [warn]: Failed to process brand 6969b318db57ef0efe622366: An error occurred while calculating and saving metrics.
+2026-07-02T03:00:01.635Z [warn]: Failed to process brand 69c232921db3871ad3f8874f: An error occurred while calculating and saving metrics.
+2026-07-02T03:00:02.288Z [info]: Successfully processed brand 69ae6981ba2f03738a4e29df
+2026-07-02T03:00:02.396Z [info]: Successfully processed brand 6a2fc7c9ef4d8c09a5d62c21
+2026-07-02T03:00:02.719Z [info]: Successfully processed brand 6918a5b0f35fc0ee23874cb9
+2026-07-02T03:00:03.243Z [info]: Successfully processed brand 690b24d5b5eeef0b8b4ed79f
+2026-07-02T03:00:03.246Z [info]: Successfully processed brand 691226abea5c3824b6cddb23
+2026-07-02T03:00:03.249Z [info]: Successfully processed brand 68e8cd7811ea9da7f62ad985
+2026-07-02T03:00:03.256Z [warn]: Failed to process brand 69779a7dd639a12fc8b8347a: An error occurred while calculating and saving metrics.
+2026-07-02T03:00:03.321Z [info]: Successfully processed brand 695793c02d2fb7ad98fb38b4
+2026-07-02T03:00:03.326Z [info]: Successfully processed brand 6939031b6da93ede091b0df8
+2026-07-02T03:00:03.391Z [info]: Successfully processed brand 69e11ca7f484a52aec5d2b2d
+2026-07-02T03:00:03.404Z [info]: Successfully processed brand 68dd1be0e78884ea57ff74d4
+2026-07-02T03:00:03.408Z [info]: Successfully processed brand 6964c7f0db57ef0efe61b25f
+2026-07-02T03:00:03.644Z [info]: Successfully processed brand 6973b3e2d639a12fc8b81c37
+2026-07-02T03:00:03.713Z [info]: Successfully processed brand 6a44edcb066fa8046e64c0d0
+2026-07-02T03:00:03.740Z [info]: Successfully processed brand 69cd4b94fbec251ee96f3799
+2026-07-02T03:00:03.751Z [info]: Successfully processed brand 6a292b14ef4d8c09a5d606b2
+2026-07-02T03:00:03.788Z [info]: Successfully processed brand 6a16b5d8b937c43887505a21
+2026-07-02T03:00:03.790Z [info]: Successfully processed brand 69f2e78cf8a9da598b03e4bf
+2026-07-02T03:00:03.806Z [info]: Successfully processed brand 6a44daae066fa8046e64bdb8
+2026-07-02T03:00:03.807Z [info]: Successfully processed brand 695ca9d7ff8894bc66d7e1d8
+2026-07-02T03:00:03.826Z [info]: Successfully processed brand 6a2a8392ef4d8c09a5d6105b
+2026-07-02T03:00:03.838Z [info]: Successfully processed brand 68d3ca10e78884ea57ff6485
+2026-07-02T03:00:03.904Z [info]: Successfully processed brand 6996c6db049176b75d224988
+2026-07-02T03:00:03.952Z [info]: Successfully processed brand 6a2aa0f9ef4d8c09a5d61545
+2026-07-02T03:00:04.027Z [info]: Successfully processed brand 6a3b5e0edb3557056a2ad017
+2026-07-02T03:00:04.135Z [info]: Successfully processed brand 6a094491b937c43887500d24
+2026-07-02T03:00:04.335Z [info]: Successfully processed brand 6936a2196da93ede091b01da
+2026-07-02T03:00:04.337Z [info]: Successfully processed brand 694403cdeb1502b7b832368e
+2026-07-02T03:00:04.340Z [info]: Successfully processed brand 697ca0c1d7bda63df0775e62
+2026-07-02T03:00:04.513Z [info]: Successfully processed brand 6a0d45d9b937c4388750250e
+2026-07-02T03:00:04.528Z [info]: Successfully processed brand 695e30a0ff8894bc66d801c5
+2026-07-02T03:00:04.563Z [info]: Successfully processed brand 6a05f829f8a9da598b044fdc
+2026-07-02T03:00:04.617Z [info]: Successfully processed brand 69c6278a91b9fab4659e929b
+2026-07-02T03:00:04.641Z [info]: Successfully processed brand 69c5531591b9fab4659e8d73
+2026-07-02T03:00:04.838Z [info]: Successfully processed brand 69e5d0c03e288457fce0fab9
+2026-07-02T03:00:05.079Z [info]: Successfully processed brand 690c8630e8ed87ae2f68d72f
+2026-07-02T03:00:05.305Z [info]: Successfully processed brand 68d10cabe78884ea57ff5be3
+2026-07-02T03:00:05.993Z [info]: Successfully processed brand 69a52de3ba2f03738a4de712
+2026-07-02T03:00:06.085Z [info]: Successfully processed brand 68dd21f5e78884ea57ff762f
+2026-07-02T03:00:06.582Z [info]: Successfully processed brand 69de1ef4f484a52aec5d1101
+2026-07-02T03:00:06.813Z [info]: Successfully processed brand 69fc60d0f8a9da598b041ca6
+2026-07-02T03:00:06.954Z [info]: Successfully processed brand 6968ba1ddb57ef0efe620f37
+2026-07-02T03:00:06.962Z [info]: Successfully processed brand 68cc2437e78884ea57ff5385
+2026-07-02T03:00:07.111Z [info]: Successfully processed brand 68ca95ad548d518de4fca1af
+2026-07-02T03:00:07.495Z [info]: Successfully processed brand 68e8bffe11ea9da7f62ad6cd
+2026-07-02T03:00:08.135Z [info]: Successfully processed brand 6941510e2deb1bce03ca02a2
+2026-07-02T03:00:08.977Z [info]: Successfully processed brand 694ebc88428591822f4ec366
+2026-07-02T03:00:12.284Z [info]: Successfully processed brand 6a227049b937c4388750916e
+2026-07-02T03:00:12.285Z [info]: Metrics calculation summary:

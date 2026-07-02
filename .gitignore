@@ -23,4 +23,4 @@ package.json
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.sw?client/.env.production

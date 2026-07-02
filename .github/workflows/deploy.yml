@@ -34,16 +34,18 @@ jobs:
             cd ..
             pm2 restart ecosystem.config.js
 
-            # Update frontend (dist folder)
+            # Copy committed client/dist straight to Nginx web root
             echo "=== Updating Frontend ==="
-            cd ~/shopify_SAAS/client
-            npm install
+            NGINX_WEB_ROOT="/home/ec2-user/shopify_SAAS/client/dist"
             if [ -d ~/shopify_SAAS/client/dist ]; then
-              sudo cp -rf ~/shopify_SAAS/client/dist/* /home/ec2-user/shopify_SAAS/client/dist/
+              sudo mkdir -p "$NGINX_WEB_ROOT"
+              sudo rsync -av --delete ~/shopify_SAAS/client/dist/ "$NGINX_WEB_ROOT"/
+              sudo chown -R ec2-user:ec2-user "$NGINX_WEB_ROOT"
               sudo systemctl reload nginx
-              echo "Frontend updated successfully!"
+              echo "Frontend copied to Nginx root: $NGINX_WEB_ROOT"
             else
-              echo "dist folder not found!"
+              echo "ERROR: client/dist not found — build locally and commit dist before pushing"
+              exit 1
             fi
           
       - name: Notify on Success

@@ -49,7 +49,7 @@ Elastic IP -> EC2 (Amazon Linux)
     +-- MongoDB Atlas (MONGO_URI in server/.env)
 ```
 
-**GitHub Actions** (`.github/workflows/deploy.yml`) SSHs into the server on every push to `main`, runs `git pull`, `npm install`, and `pm2 restart ecosystem.config.js`.
+**GitHub Actions** (`.github/workflows/deploy.yml`) SSHs into the server on every push to `main`, runs `git pull`, `npm install`, `pm2 restart ecosystem.config.js`, then **rsyncs the committed `client/dist/` folder to the Nginx web root** and reloads Nginx.
 
 ---
 
@@ -395,7 +395,7 @@ npm run build
 
 This creates `client/dist/` — Nginx will serve these static files.
 
-> The GitHub Action copies `dist/*` on deploy and reloads Nginx. For the **first deploy**, build locally on the server as above.
+> **Deploy flow:** Build on your machine (`cd client && npm run build`), commit and push `client/dist/` with your changes. GitHub Actions pulls the repo and **rsyncs `client/dist/` to the Nginx web root** (`/home/ec2-user/shopify_SAAS/client/dist`). For the **first deploy**, build once on the server if `dist/` is not yet in the repo.
 
 ---
 
@@ -499,10 +499,10 @@ Workflow file: `.github/workflows/deploy.yml`
 On every push to `main`, GitHub:
 
 1. SSHs into EC2
-2. `git pull origin main`
+2. `git pull origin main` (includes your committed `client/dist/`)
 3. `npm install` in `server/`
 4. `pm2 restart ecosystem.config.js`
-5. `npm install` + copy `client/dist` + `sudo systemctl reload nginx`
+5. `rsync client/dist/` → Nginx web root + `sudo systemctl reload nginx`
 
 ### 12.1 Required GitHub repository secrets
 
@@ -540,7 +540,7 @@ cd ~/shopify_SAAS
 git pull origin main
 cd server && npm install && cd ..
 pm2 restart ecosystem.config.js
-cd client && npm install && npm run build
+sudo rsync -av --delete ~/shopify_SAAS/client/dist/ /home/ec2-user/shopify_SAAS/client/dist/
 sudo systemctl reload nginx
 ```
 
@@ -624,7 +624,9 @@ cd ~/shopify_SAAS && git pull origin main
 
 ### Frontend shows old version after deploy
 
-- Rebuild: `cd client && npm run build`
+- Rebuild locally: `cd client && npm run build`
+- Commit and push `client/dist/` to `main`
+- On server, sync to Nginx root: `sudo rsync -av --delete ~/shopify_SAAS/client/dist/ /home/ec2-user/shopify_SAAS/client/dist/`
 - Reload nginx: `sudo systemctl reload nginx`
 - Hard refresh browser (Ctrl+Shift+R)
 

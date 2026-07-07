@@ -1,135 +1,51 @@
-import { Check, X, Sparkles } from "lucide-react";
-import { useInView } from "@/hooks/useInView";
+import { motion } from 'framer-motion'
+import { FadeIn } from './AnimationHelpers'
 
-const comparisons = [
-    {
-        feature: "Cross-platform consistency",
-        traditional: "Limited",
-        parallels: "Strong",
-        isBoolean: false,
-    },
-    {
-        feature: "Revenue-centric insights",
-        traditional: "Partial",
-        parallels: "Comprehensive",
-        isBoolean: false,
-    },
-    {
-        feature: "Ecommerce-specific focus",
-        traditional: "Generalised",
-        parallels: "Purpose-built",
-        isBoolean: false,
-    },
-    {
-        feature: "Actionable intelligence",
-        traditional: "Manual",
-        parallels: "Automated",
-        isBoolean: false,
-    },
-    {
-        feature: "Raw data exports required",
-        traditional: true,
-        parallels: false,
-        isBoolean: true,
-    },
-    {
-        feature: "Manual reconciliation",
-        traditional: true,
-        parallels: false,
-        isBoolean: true,
-    },
-];
+const INTEGRATIONS = [
+  { name: 'Meta Ads', color: '#1877F2', bg: '#E7F0FF', abbr: 'M' },
+  { name: 'Google Ads', color: '#4285F4', bg: '#E8F0FE', abbr: 'G' },
+  { name: 'Google Analytics 4', color: '#E37400', bg: '#FFF3E0', abbr: 'GA4' },
+  { name: 'Shopify', color: '#96BF48', bg: '#F1F8E9', abbr: 'S' },
+  { name: 'Meta Ads', color: '#1877F2', bg: '#E7F0FF', abbr: 'M' },
+  { name: 'Google Ads', color: '#4285F4', bg: '#E8F0FE', abbr: 'G' },
+  { name: 'Google Analytics 4', color: '#E37400', bg: '#FFF3E0', abbr: 'GA4' },
+  { name: 'Shopify', color: '#96BF48', bg: '#F1F8E9', abbr: 'S' },
+]
 
-const WhyParallelsSection = () => {
-    const { ref: sectionRef, isInView } = useInView({ threshold: 0.1 });
-
-    return (
-        <section id="why-parallels" className="bg-dark-section py-24 lg:py-32 relative overflow-hidden">
-            <div className="absolute inset-0 bg-mesh-gradient opacity-30" />
-
-            <div className="container mx-auto px-6 relative z-10">
-                <div
-                    ref={sectionRef}
-                    className={`max-w-3xl mx-auto text-center mb-16 ${isInView ? "animate-fade-in" : "opacity-0"}`}
-                >
-                    <span className="inline-block text-accent text-sm font-semibold tracking-wider uppercase mb-4">
-                        Comparison
-                    </span>
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-foreground mb-6">
-                        Built specifically for{" "}
-                        <span className="text-gradient">ecommerce growth.</span>
-                    </h2>
-                    <p className="text-lg text-primary-foreground/70">
-                        Why teams choose Parallels.
-                    </p>
-                </div>
-
-                <div className="max-w-4xl mx-auto">
-                    <div className="glass-dark rounded-2xl overflow-hidden border border-primary-foreground/10">
-                        {/* Table Header */}
-                        <div className="grid grid-cols-3 bg-primary-foreground/5 border-b border-primary-foreground/10">
-                            <div className="p-4 md:p-6">
-                                <span className="font-semibold text-primary-foreground">Capability</span>
-                            </div>
-                            <div className="p-4 md:p-6 text-center border-x border-primary-foreground/10">
-                                <span className="font-semibold text-primary-foreground/50">Traditional Tools</span>
-                            </div>
-                            <div className="p-4 md:p-6 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                    <Sparkles size={16} className="text-accent" />
-                                    <span className="font-semibold text-accent">Parallels</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Table Body */}
-                        {comparisons.map((row, index) => (
-                            <div
-                                key={index}
-                                className={`grid grid-cols-3 ${index !== comparisons.length - 1 ? "border-b border-primary-foreground/10" : ""
-                                    } ${isInView ? "animate-fade-in" : "opacity-0"}`}
-                                style={{ animationDelay: `${0.1 + index * 0.05}s` }}
-                            >
-                                <div className="p-4 md:p-6 flex items-center">
-                                    <span className="text-sm md:text-base text-primary-foreground">{row.feature}</span>
-                                </div>
-                                <div className="p-4 md:p-6 flex items-center justify-center border-x border-primary-foreground/10">
-                                    {row.isBoolean ? (
-                                        row.traditional ? (
-                                            <div className="w-8 h-8 rounded-full bg-brand-coral/20 flex items-center justify-center">
-                                                <X size={16} className="text-brand-coral" />
-                                            </div>
-                                        ) : (
-                                            <div className="w-8 h-8 rounded-full bg-brand-green/20 flex items-center justify-center">
-                                                <Check size={16} className="text-brand-green" />
-                                            </div>
-                                        )
-                                    ) : (
-                                        <span className="text-sm md:text-base text-primary-foreground/50">{row.traditional as string}</span>
-                                    )}
-                                </div>
-                                <div className="p-4 md:p-6 flex items-center justify-center bg-accent/5">
-                                    {row.isBoolean ? (
-                                        !row.parallels ? (
-                                            <div className="w-8 h-8 rounded-full bg-brand-green/20 flex items-center justify-center">
-                                                <Check size={16} className="text-brand-green" />
-                                            </div>
-                                        ) : (
-                                            <div className="w-8 h-8 rounded-full bg-brand-coral/20 flex items-center justify-center">
-                                                <X size={16} className="text-brand-coral" />
-                                            </div>
-                                        )
-                                    ) : (
-                                        <span className="text-sm md:text-base font-medium text-accent">{row.parallels as string}</span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+export default function WhyParallelsSection() {
+  return (
+    <section className="section-pad bg-white overflow-hidden">
+      <div className="max-w-6xl mx-auto px-6">
+        <FadeIn className="text-center mb-12">
+          <span className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-3 block">Integrations</span>
+          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">Works with your entire stack</h2>
+          <p className="text-lg text-slate-500 max-w-xl mx-auto">Native integrations — data syncs automatically, no webhooks to maintain.</p>
+        </FadeIn>
+        <div className="overflow-hidden relative">
+          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+          <div className="flex gap-4 marquee-track w-max">
+            {[...INTEGRATIONS, ...INTEGRATIONS].map((integ, i) => (
+              <div key={`${integ.name}-${i}`} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-5 py-4 shadow-sm shrink-0 min-w-[180px]">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold" style={{ backgroundColor: integ.bg, color: integ.color }}>{integ.abbr}</div>
+                <span className="text-sm font-medium text-slate-700">{integ.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <motion.div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+          {[
+            { title: '5-minute setup', desc: 'Connect all platforms with OAuth — no engineering required.' },
+            { title: 'Real-time sync', desc: 'Data refreshes every 15 minutes so you never make stale decisions.' },
+            { title: 'No data limits', desc: 'Query historical data without row limits or sampling.' },
+          ].map((f) => (
+            <div key={f.title} className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
+              <h4 className="text-base font-bold text-slate-900 mb-2">{f.title}</h4>
+              <p className="text-sm text-slate-500">{f.desc}</p>
             </div>
-        </section>
-    );
-};
-
-export default WhyParallelsSection;
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  )
+}

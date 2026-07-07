@@ -1,91 +1,46 @@
-import { ArrowUpRight } from "lucide-react";
+import { Link } from 'react-router-dom'
 
-const NewFooter = () => {
-    return (
-        <footer className="bg-black border-t border-primary-foreground/10 py-16">
-            <div className="container mx-auto px-6">
-                <div className="grid md:grid-cols-4 gap-12 mb-12">
-                    {/* Brand */}
-                    <div className="md:col-span-2">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-accent-gradient rounded-lg flex items-center justify-center">
-                                <span className="text-primary-foreground font-bold text-xl">P</span>
-                            </div>
-                            <span className="text-primary-foreground font-bold text-2xl tracking-tight">
-                                Parallels
-                            </span>
-                        </div>
-                        <p className="text-primary-foreground/60 text-sm max-w-md leading-relaxed mb-6">
-                            Ecommerce growth intelligence platform that unifies Meta, GA4, and Shopify data to help teams understand, optimise, and scale revenue with confidence.
-                        </p>
-                        <div className="flex gap-4">
-                            {["Twitter", "LinkedIn"].map((social) => (
-                                <a
-                                    key={social}
-                                    href="#"
-                                    className="w-10 h-10 rounded-lg bg-primary-foreground/5 border border-primary-foreground/10 flex items-center justify-center text-primary-foreground/60 hover:text-primary-foreground hover:border-accent/30 transition-colors"
-                                >
-                                    <span className="text-xs font-medium">{social[0]}</span>
-                                </a>
-                            ))}
-                        </div>
-                    </div>
+type NavLink = { label: string; href: string; internal?: boolean }
+type Column = { heading: string; links: NavLink[] }
 
-                    {/* Links */}
-                    <div>
-                        <h4 className="font-semibold text-primary-foreground mb-6">Product</h4>
-                        <ul className="space-y-3">
-                            {["Features", "Use Cases", "How It Works", "Pricing"].map((link) => (
-                                <li key={link}>
-                                    <a
-                                        href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
-                                        className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors flex items-center gap-1 group"
-                                    >
-                                        {link}
-                                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+const COLUMNS: Column[] = [
+  { heading: 'Product', links: [{ label: 'Features', href: '#features' }, { label: 'How It Works', href: '#how-it-works' }, { label: 'Integrations', href: '#integrations' }, { label: 'Use Cases', href: '#use-cases' }] },
+  { heading: 'Company', links: [{ label: 'About', href: '#' }, { label: 'Blog', href: '#' }, { label: 'Careers', href: '#' }] },
+  { heading: 'Legal', links: [{ label: 'Privacy Policy', href: '/privacy-policy', internal: true }, { label: 'Terms of Service', href: '/terms-and-conditions', internal: true }] },
+]
 
-                    <div>
-                        <h4 className="font-semibold text-primary-foreground mb-6">Company</h4>
-                        <ul className="space-y-3">
-                            {["About", "Blog", "Careers", "Contact"].map((link) => (
-                                <li key={link}>
-                                    <a
-                                        href="#"
-                                        className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors flex items-center gap-1 group"
-                                    >
-                                        {link}
-                                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="border-t border-primary-foreground/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-sm text-primary-foreground/50">
-                        © {new Date().getFullYear()} Parallels. All rights reserved.
-                    </p>
-                    <div className="flex items-center gap-6">
-                        <a href="#" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
-                            Privacy Policy
-                        </a>
-                        <a href="#" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
-                            Terms of Service
-                        </a>
-                    </div>
-                    <p className="text-sm text-primary-foreground/50">
-                        A product by <span className="text-accent">Messold</span>
-                    </p>
-                </div>
+export default function NewFooter() {
+  return (
+    <footer className="bg-slate-900 text-slate-400">
+      <div className="max-w-6xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center"><span className="text-white text-xs font-bold">P</span></div>
+              <span className="font-bold text-lg text-white tracking-tight">Parallels</span>
             </div>
-        </footer>
-    );
-};
-
-export default NewFooter;
+            <p className="text-sm leading-relaxed text-slate-400 max-w-xs">Unified marketing analytics for D2C brands that want to grow smarter, not harder.</p>
+          </div>
+          {COLUMNS.map((col) => (
+            <div key={col.heading}>
+              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-widest mb-4">{col.heading}</h4>
+              <ul className="space-y-3">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    {link.internal
+                      ? <Link to={link.href} className="text-sm text-slate-400 hover:text-white transition-colors">{link.label}</Link>
+                      : <a href={link.href} className="text-sm text-slate-400 hover:text-white transition-colors">{link.label}</a>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <p>© {new Date().getFullYear()} Parallels. All rights reserved.</p>
+          <p>Built for D2C growth teams.</p>
+        </div>
+      </div>
+    </footer>
+  )
+}

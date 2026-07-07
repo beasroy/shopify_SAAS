@@ -1,187 +1,70 @@
-import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-function Navbar() {
+const NAV_LINKS = [
+  { label: 'Features', href: '#features' },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Use Cases', href: '#use-cases' },
+]
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const navigate = useNavigate();
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isMenuOpen || isScrolled
-        ? "bg-black/95 backdrop-blur-md"
-        : "bg-transparent"
-        }`}
+    <motion.header
+      initial={{ y: -64, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200/60' : 'bg-transparent'
+      }`}
     >
-      <div className="container mx-auto px-6 py-3">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 bg-accent-gradient rounded-lg flex items-center justify-center animate-pulse-glow">
-                <span className="text-accent font-bold text-xl">P</span>
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">P</span>
+          </div>
+          <span className="font-bold text-lg text-slate-900 tracking-tight">Parallels</span>
+        </Link>
+        <nav className="hidden md:flex items-center gap-8">
+          {NAV_LINKS.map((link) => (
+            <a key={link.label} href={link.href} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              {link.label}
+            </a>
+          ))}
+        </nav>
+        <div className="hidden md:flex items-center gap-3">
+          <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5">Sign In</Link>
+          <Link to="/login" className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-sm">Get Demo</Link>
+        </div>
+        <button className="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="md:hidden bg-white border-b border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 flex flex-col gap-4">
+              {NAV_LINKS.map((link) => (
+                <a key={link.label} href={link.href} onClick={() => setMenuOpen(false)} className="text-sm font-medium text-slate-700">{link.label}</a>
+              ))}
+              <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                <Link to="/login" className="text-sm font-medium text-slate-700 py-2">Sign In</Link>
+                <Link to="/login" className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg text-center">Get Demo</Link>
               </div>
             </div>
-            <span className="text-accent font-bold text-2xl tracking-tight">
-              Parallels
-            </span>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            {["Features", "Use Cases", "How It Works", "Why Parallels"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                className="text-accent/90 hover:text-accent transition-colors text-sm font-medium relative group"
-              >
-                {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent transition-all duration-300 group-hover:w-full" />
-              </a>
-            ))}
-          </nav>
-
-          {/* CTAs */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button
-              onClick={() => navigate('/login')}
-              variant="ghost"
-              className="text-accent/90 hover:text-accent hover:bg-accent/10 py-5"
-            >
-              Request Demo
-            </Button>
-            <Button
-              onClick={() => navigate('/login')}
-              className="bg-accent-gradient text-accent hover:opacity-90 transition-opacity py-5">
-              Sign In
-            </Button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-primary-foreground p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden  mt-4 pb-4 border-t border-primary-foreground/40 animate-fade-in-up">
-            <nav className="flex flex-col gap-4 mt-4">
-              {["Features", "Use Cases", "How It Works", "Why Parallels"].map((item) => (
-                <Link
-                  key={item}
-                  to={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                  className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-accent/10 py-2  rounded-md transition-colors font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item}
-                </Link>
-              ))}
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-primary-foreground/40">
-                <Button
-                  onClick={() => navigate('/login')}
-                  variant="ghost" className="text-accent/90 hover:text-accent hover:bg-accent/10 md:justify-start justify-center">
-                  Request Demo
-                </Button>
-                <Button onClick={() => navigate('/login')} className="bg-accent-gradient text-primary-foreground">
-                  Sign In
-                </Button>
-              </div>
-            </nav>
-          </div>
+          </motion.div>
         )}
-      </div>
-    </header>
-  );
-
+      </AnimatePresence>
+    </motion.header>
+  )
 }
-
-export default Navbar;
-
-
-// import { Button } from "@/components/ui/button";
-// import Logo from "@/assets/messold-icon.png";
-// import { useDispatch,useSelector } from "react-redux";
-// import { RootState } from "@/store";
-// import axios from "axios";
-// import { clearUser } from "@/store/slices/UserSlice";
-// import { resetBrand } from "@/store/slices/BrandSlice";
-// import { baseURL } from "@/data/constant";
-// import { useNavigate, Link } from "react-router-dom";
-
-// function Navbar() {
-//   const user = useSelector((state: RootState) => state.user.user);
-//   const dispatch = useDispatch();
-//   const navigate = useNavigate();
-
-//   const handleLogout = async () => {
-//     try {
-//         const response = await axios.post(`${baseURL}/api/auth/logout`, {}, { withCredentials: true });
-//         if (response.status === 200) {
-//             dispatch(clearUser());
-//             dispatch(resetBrand());
-//             navigate('/');
-//         }
-//     } catch (error) {
-//         console.error('Error logging out:', error);
-//     }
-// };
-//   return (
-//     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-//       <div className="container px-10 flex h-16 items-center justify-between">
-//         <Link to="/">
-//           <div className="flex items-center gap-2 font-bold text-xl">
-//             <img src={Logo} alt="Messold Logo" className="h-8 w-8" />
-//             <span>Parallels</span>
-//           </div>
-//         </Link>
-//         <nav className="hidden md:flex gap-6">
-//           <Link to="#features" className="text-sm font-medium hover:text-primary">
-//             Features
-//           </Link>
-//           <Link to="#integrations" className="text-sm font-medium hover:text-primary">
-//             Integrations
-//           </Link>
-//           <Link to="#analytics" className="text-sm font-medium hover:text-primary">
-//             Analytics
-//           </Link>
-//         </nav>
-//         <div className="flex items-center gap-4">
-//           {user ? (
-//             <div className="flex items-center gap-3">
-//               <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
-//                 Dashboard
-//               </Link>
-//               <Button variant="outline" onClick={handleLogout}>Log Out</Button>
-//             </div>
-//           ) : (
-//             <>
-//               <Link to="/login" className="text-sm font-medium hover:text-primary">
-//                 Log in
-//               </Link>
-//               <Link to="/login" >
-//               <Button>Get Started</Button>
-//               </Link>
-//             </>
-//           )}
-//         </div>
-//       </div>
-//     </header>
-//   );
-// }
-
-// export default Navbar;

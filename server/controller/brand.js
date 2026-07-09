@@ -1,6 +1,7 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
+import mongoose from "mongoose";
 
 
 import { metricsQueue } from "../config/redis.js";
@@ -457,3 +458,27 @@ export async function deleteProductsByBrand(req, res) {
     }
 }
 
+export const getBrandEarliestDate = async (req, res) => {
+    try {
+        const { brandId } = req.params;
+        
+        if (!brandId || !mongoose.Types.ObjectId.isValid(brandId)) {
+            return res.status(400).json({ success: false, error: 'Invalid or missing brandId' });
+        }
+
+        const earliestMetric = await AdMetrics.findOne({ brandId }).sort({ date: 1 });
+        if (earliestMetric && earliestMetric.date) {
+            return res.status(200).json({ earliestDate: earliestMetric.date });
+        }
+        
+        const brand = await Brand.findById(brandId);
+        if (brand && brand.createdAt) {
+            return res.status(200).json({ earliestDate: brand.createdAt });
+        }
+
+        return res.status(200).json({ earliestDate: new Date('2000-01-01') });
+    } catch (error) {
+        console.error('Error fetching earliest date:', error);
+        return res.status(500).json({ error: error.message });
+    }
+};

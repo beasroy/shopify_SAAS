@@ -33,6 +33,7 @@ interface BrandIntegrationModalProps {
         googleAnalytics: PlatformIcon;
         facebook: PlatformIcon;
     };
+    initialPlatform?: string | null;
 }
 
 export function BrandIntegrationModal({
@@ -42,7 +43,8 @@ export function BrandIntegrationModal({
     brandName,
     brandData,
     onBrandUpdate,
-    platformIcons
+    platformIcons,
+    initialPlatform = null,
 }: BrandIntegrationModalProps) {
     const [activeTab, setActiveTab] = useState("overview")
     const [platformModalOpen, setPlatformModalOpen] = useState(false)
@@ -55,6 +57,14 @@ export function BrandIntegrationModal({
     useEffect(() => {
         setLocalBrandData(brandData)
     }, [brandData])
+
+    // After OAuth redirect, auto-open the platform account picker
+    useEffect(() => {
+        if (!initialPlatform) return
+        setActiveTab(initialPlatform)
+        setSelectedPlatform(initialPlatform)
+        setPlatformModalOpen(true)
+    }, [initialPlatform])
 
     const platforms = [
         {
@@ -189,11 +199,54 @@ export function BrandIntegrationModal({
         setSelectedPlatform(platformKey)
         setPlatformModalOpen(true)
     }
+
+    const refreshBrandData = async () => {
+        try {
+            const response = await axios.get(`${baseURL}/api/brands/${brandId}`, {
+                withCredentials: true,
+            })
+            const updatedBrand = response.data as FullBrandData
+            setLocalBrandData(updatedBrand)
+            onBrandUpdate?.(updatedBrand)
+
+            const updatedBrands: IBrand[] = brands.map((b) => {
+                if (b._id !== brandId) return b
+                return {
+                    ...b,
+                    fbAdAccounts: (updatedBrand.fbAdAccounts || []) as [],
+                    googleAdAccount: updatedBrand.googleAdAccount,
+                    ga4Account: updatedBrand.ga4Account?.PropertyID
+                        ? { PropertyID: updatedBrand.ga4Account.PropertyID }
+                        : {},
+                    shopifyAccount: updatedBrand.shopifyAccount?.shopName
+                        ? {
+                            shopName: updatedBrand.shopifyAccount.shopName,
+                            shopId: String(updatedBrand.shopifyAccount.shopId ?? ''),
+                          }
+                        : {},
+                }
+            })
+            dispatch(setBrands(updatedBrands))
+            return updatedBrand
+        } catch (error) {
+            console.error('Error refreshing brand after connect:', error)
+            return null
+        }
+    }
     
-    const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
-        // Refresh the brand data or update the UI as needed
-        console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`)
-        // You might want to trigger a refresh of the brand data here
+    const handlePlatformModalSuccess = async (_platform: string, _accountName: string, _accountId: string) => {
+        await refreshBrandData()
+        setPlatformModalOpen(false)
+        setSelectedPlatform("")
+    }
+
+    const handlePlatformModalOpenChange = async (open: boolean) => {
+        setPlatformModalOpen(open)
+        if (!open) {
+            // Re-fetch after close so reconnect/OAuth + account select always reflects in UI
+            await refreshBrandData()
+            setSelectedPlatform("")
+        }
     }
     
     return (
@@ -355,7 +408,7 @@ export function BrandIntegrationModal({
                               selectedPlatform === 'googleAnalytics' ? 'Google Analytics' : 
                               selectedPlatform === 'facebook' ? 'Facebook' : 'Shopify'}
                     open={platformModalOpen}
-                    onOpenChange={setPlatformModalOpen}
+                    onOpenChange={handlePlatformModalOpenChange}
                     brandId={brandId}
                     onSuccess={handlePlatformModalSuccess}
                 />

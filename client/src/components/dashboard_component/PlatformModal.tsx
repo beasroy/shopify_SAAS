@@ -431,10 +431,17 @@ export default function PlatformModal({
     }
   };
 
+  const getOAuthSource = (modalKey: string) => {
+    const params = new URLSearchParams();
+    params.set('reconnectBrand', brandId);
+    params.set('openModal', modalKey);
+    return `${window.location.pathname}?${params.toString()}`;
+  };
+
   const handleGoogleAdLogin = async () => {
     try {
       const response = await axios.get(
-        `${baseURL}/api/auth/google?context=googleAdSetup&source=${encodeURIComponent(window.location.pathname)}`, 
+        `${baseURL}/api/auth/google?context=googleAdSetup&source=${encodeURIComponent(getOAuthSource('googleAds'))}`, 
         { withCredentials: true }
       );
       const { authUrl } = response.data;
@@ -447,7 +454,7 @@ export default function PlatformModal({
   const handleGoogleAnalyticsLogin = async () => {
     try {
       const response = await axios.get(
-        `${baseURL}/api/auth/google?context=googleAnalyticsSetup&source=${encodeURIComponent(window.location.pathname)}`, 
+        `${baseURL}/api/auth/google?context=googleAnalyticsSetup&source=${encodeURIComponent(getOAuthSource('googleAnalytics'))}`, 
         { withCredentials: true }
       );
       const { authUrl } = response.data;
@@ -460,7 +467,7 @@ export default function PlatformModal({
   const handleFbLogin = async () => {
     try {
       const response = await axios.get(
-        `${baseURL}/api/auth/facebook?source=${encodeURIComponent(window.location.pathname)}`, 
+        `${baseURL}/api/auth/facebook?source=${encodeURIComponent(getOAuthSource('facebook'))}`, 
         { withCredentials: true }
       );
       if (response.data.success) {

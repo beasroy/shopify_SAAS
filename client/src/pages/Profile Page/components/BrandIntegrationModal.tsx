@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, PlusCircle, CheckCircle, XCircle } from "lucide-react"
-import { FullBrandData } from "@/interfaces"
+import { FullBrandData, IBrand } from "@/interfaces"
 import PlatformModal from "@/components/dashboard_component/PlatformModal"
 import { useDispatch, useSelector } from "react-redux"
 import { RootState } from "@/store"
@@ -26,6 +26,7 @@ interface BrandIntegrationModalProps {
     brandId: string;
     brandName: string;
     brandData: FullBrandData;
+    onBrandUpdate?: (brand: FullBrandData) => void;
     platformIcons: {
         shopify: PlatformIcon;
         googleAds: PlatformIcon;
@@ -40,63 +41,67 @@ export function BrandIntegrationModal({
     brandId,
     brandName,
     brandData,
+    onBrandUpdate,
     platformIcons
 }: BrandIntegrationModalProps) {
     const [activeTab, setActiveTab] = useState("overview")
     const [platformModalOpen, setPlatformModalOpen] = useState(false)
     const [selectedPlatform, setSelectedPlatform] = useState("")
     const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null)
+    const [localBrandData, setLocalBrandData] = useState<FullBrandData>(brandData)
     const dispatch = useDispatch()
     const brands = useSelector((state: RootState) => state.brand.brands)
+
+    useEffect(() => {
+        setLocalBrandData(brandData)
+    }, [brandData])
+
     const platforms = [
         {
             key: "shopify",
             icon: platformIcons.shopify.icon,
             name: platformIcons.shopify.name,
-            isConnected: !!brandData.shopifyAccount,
+            isConnected: !!localBrandData.shopifyAccount?.shopName,
             accountNumber: '1 Store',
-            accountName: brandData.shopifyAccount?.shopName,
-            data: brandData.shopifyAccount,
+            accountName: localBrandData.shopifyAccount?.shopName,
+            data: localBrandData.shopifyAccount,
             allowMultipleAccounts: false
         },
         {
             key: "googleAds",
             icon: platformIcons.googleAds.icon,
             name: platformIcons.googleAds.name,
-            isConnected: brandData.googleAdAccount && brandData.googleAdAccount.length > 0,
-            accountNumber: brandData.googleAdAccount ? `${brandData.googleAdAccount.length} Account(s)` : undefined,
-            accountName: brandData.googleAdAccount && brandData.googleAdAccount.length > 0
-            ? `${brandData.googleAdAccount.map((acc) => acc.clientId).join(", ")}` 
+            isConnected: !!(localBrandData.googleAdAccount && localBrandData.googleAdAccount.length > 0),
+            accountNumber: localBrandData.googleAdAccount ? `${localBrandData.googleAdAccount.length} Account(s)` : undefined,
+            accountName: localBrandData.googleAdAccount && localBrandData.googleAdAccount.length > 0
+            ? `${localBrandData.googleAdAccount.map((acc) => acc.clientId).join(", ")}` 
             : undefined,
-            data: brandData.googleAdAccount,
+            data: localBrandData.googleAdAccount,
             allowMultipleAccounts: true
         },
         {
             key: "googleAnalytics",
             icon: platformIcons.googleAnalytics.icon,
             name: platformIcons.googleAnalytics.name,
-            isConnected: !!brandData.ga4Account?.PropertyID,
+            isConnected: !!localBrandData.ga4Account?.PropertyID,
             accountNumber: '1 Property',
-            accountName: brandData.ga4Account?.PropertyID ? `Property ${brandData.ga4Account.PropertyID}` : undefined,
-            data: brandData.ga4Account,
+            accountName: localBrandData.ga4Account?.PropertyID ? `Property ${localBrandData.ga4Account.PropertyID}` : undefined,
+            data: localBrandData.ga4Account,
             allowMultipleAccounts: false
         },
         {
             key: "facebook",
             icon: platformIcons.facebook.icon,
             name: platformIcons.facebook.name,
-            isConnected: brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0,
-            accountNumber: brandData.fbAdAccounts ? `${brandData.fbAdAccounts.length} Account(s)` : undefined,
-            accountName: brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0
-            ? `${brandData.fbAdAccounts.join(", ")}` 
+            isConnected: !!(localBrandData.fbAdAccounts && localBrandData.fbAdAccounts.length > 0),
+            accountNumber: localBrandData.fbAdAccounts ? `${localBrandData.fbAdAccounts.length} Account(s)` : undefined,
+            accountName: localBrandData.fbAdAccounts && localBrandData.fbAdAccounts.length > 0
+            ? `${localBrandData.fbAdAccounts.join(", ")}` 
             : undefined,
-            data: brandData.fbAdAccounts,
+            data: localBrandData.fbAdAccounts,
             allowMultipleAccounts: true
         }
     ]
-    useEffect(() => {
-        console.log(brandId);
-    }, [])
 
     const handleDisconnect = async (platformKey: string) => {
         setDisconnectingPlatform(platformKey)
@@ -107,24 +112,15 @@ export function BrandIntegrationModal({
                     : platformKey
             }
 
-            // Determine what data to send for each platform
+            // Omit accountId for facebook/googleAds so the API disconnects all accounts
             switch (platformKey) {
                 case 'facebook':
-                    // Disconnect all Facebook accounts
-                    if (brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0) {
-                        payload.accountId = brandData.fbAdAccounts[0]
-                    }
-                    break
                 case 'googleAds':
-                    if (brandData.googleAdAccount && brandData.googleAdAccount.length > 0) {
-                        payload.accountId = brandData.googleAdAccount[0].clientId
-                    }
                     break
                 case 'googleAnalytics':
-                    // No accountId needed for GA4, just platform
                     break
                 case 'shopify':
-                    payload.shopName = brandData.shopifyAccount?.shopName
+                    payload.shopName = localBrandData.shopifyAccount?.shopName
                     break
             }
 
@@ -146,11 +142,36 @@ export function BrandIntegrationModal({
                 console.warn('Cache clear failed, but continuing:', cacheError)
             }
 
-            // Update local Redux state
+            // Update local + parent + Redux state so the modal refreshes immediately
             if (response.data.brand) {
-                const updatedBrands = brands.map(b =>
-                    b._id === brandId ? response.data.brand : b
-                )
+                const updatedBrand = response.data.brand as FullBrandData
+                setLocalBrandData(updatedBrand)
+                onBrandUpdate?.(updatedBrand)
+
+                const updatedBrands: IBrand[] = brands.map((b) => {
+                    if (b._id !== brandId) return b
+
+                    const next: IBrand = { ...b }
+
+                    if (platformKey === 'facebook') {
+                        next.fbAdAccounts = (updatedBrand.fbAdAccounts || []) as []
+                    } else if (platformKey === 'googleAds') {
+                        next.googleAdAccount = updatedBrand.googleAdAccount
+                    } else if (platformKey === 'googleAnalytics') {
+                        next.ga4Account = updatedBrand.ga4Account
+                            ? { PropertyID: updatedBrand.ga4Account.PropertyID }
+                            : {}
+                    } else if (platformKey === 'shopify') {
+                        next.shopifyAccount = updatedBrand.shopifyAccount?.shopName
+                            ? {
+                                shopName: updatedBrand.shopifyAccount.shopName,
+                                shopId: String(updatedBrand.shopifyAccount.shopId ?? ''),
+                              }
+                            : {}
+                    }
+
+                    return next
+                })
                 dispatch(setBrands(updatedBrands))
             }
 

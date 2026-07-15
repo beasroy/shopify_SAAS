@@ -1,6 +1,7 @@
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
+import axios from "axios";
 
 
 import { metricsQueue } from "../config/redis.js";
@@ -344,6 +345,7 @@ export const deletePlatformIntegration = async (req, res) => {
         }
 
         let updateData = {};
+        let unsetData = {};
         let deletedInfo = {};
 
         switch (platform.toLowerCase()) {
@@ -360,43 +362,79 @@ export const deletePlatformIntegration = async (req, res) => {
                 }
                 break;
 
-            case 'facebook':
-                if (!accountId) {
-                    return res.status(400).json({ error: 'Account ID is required for Facebook platform.' });
+            case 'facebook': {
+                const currentFbAccounts = brand.fbAdAccounts || [];
+
+                if (currentFbAccounts.length === 0) {
+                    return res.status(404).json({ error: 'Facebook account not found for this brand.' });
                 }
 
-                const currentFbAccounts = brand.fbAdAccounts || [];
-                const updatedFbAccounts = currentFbAccounts.filter(account => account !== accountId);
-
-                if (updatedFbAccounts.length === currentFbAccounts.length) {
-                    return res.status(404).json({ error: 'Facebook account not found for this brand.' });
+                // No accountId => disconnect all; otherwise remove that one account
+                let updatedFbAccounts;
+                if (!accountId) {
+                    updatedFbAccounts = [];
+                } else {
+                    updatedFbAccounts = currentFbAccounts.filter(account => account !== accountId);
+                    if (updatedFbAccounts.length === currentFbAccounts.length) {
+                        return res.status(404).json({ error: 'Facebook account not found for this brand.' });
+                    }
                 }
 
                 updateData = { fbAdAccounts: updatedFbAccounts };
 
-                // If no Facebook accounts remain, clear the access token
+                // When no Facebook accounts remain: revoke Meta app access + remove token
                 if (updatedFbAccounts.length === 0) {
-                    updateData.fbAccessToken = null;
+                    if (brand.fbAccessToken) {
+                        try {
+                            // Revokes the app from the user's Meta settings so next login asks for permission again
+                            await axios.delete('https://graph.facebook.com/v22.0/me/permissions', {
+                                params: { access_token: brand.fbAccessToken }
+                            });
+                        } catch (revokeError) {
+                            // Token may already be invalid/expired — still clear it from DB
+                            console.warn('Failed to revoke Facebook permissions (continuing):', revokeError?.response?.data || revokeError.message);
+                        }
+                    }
+                    unsetData.fbAccessToken = 1;
                 }
 
-                deletedInfo = { platform: 'facebook', accountId };
+                deletedInfo = {
+                    platform: 'facebook',
+                    accountId: accountId || null,
+                    disconnectedAll: !accountId,
+                    removedCount: currentFbAccounts.length - updatedFbAccounts.length,
+                    tokenCleared: updatedFbAccounts.length === 0
+                };
                 break;
+            }
 
-            case 'google ads':
-                if (!accountId) {
-                    return res.status(400).json({ error: 'Account ID is required for Google Ads platform.' });
-                }
-
+            case 'google ads': {
                 const currentGoogleAccounts = brand.googleAdAccount || [];
-                const updatedGoogleAccounts = currentGoogleAccounts.filter(account => account.clientId !== accountId);
 
-                if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
+                if (currentGoogleAccounts.length === 0) {
                     return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
                 }
 
+                // No accountId => disconnect all; otherwise remove that one account
+                let updatedGoogleAccounts;
+                if (!accountId) {
+                    updatedGoogleAccounts = [];
+                } else {
+                    updatedGoogleAccounts = currentGoogleAccounts.filter(account => account.clientId !== accountId);
+                    if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
+                        return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
+                    }
+                }
+
                 updateData = { googleAdAccount: updatedGoogleAccounts };
-                deletedInfo = { platform: 'google ads', accountId };
+                deletedInfo = {
+                    platform: 'google ads',
+                    accountId: accountId || null,
+                    disconnectedAll: !accountId,
+                    removedCount: currentGoogleAccounts.length - updatedGoogleAccounts.length
+                };
                 break;
+            }
 
             case 'google analytics':
             case 'ga4':
@@ -412,9 +450,17 @@ export const deletePlatformIntegration = async (req, res) => {
                 return res.status(400).json({ error: 'Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics' });
         }
 
+        const updateOps = {};
+        if (Object.keys(updateData).length > 0) {
+            updateOps.$set = updateData;
+        }
+        if (Object.keys(unsetData).length > 0) {
+            updateOps.$unset = unsetData;
+        }
+
         const updatedBrand = await Brand.findByIdAndUpdate(
             brandId,
-            { $set: updateData },
+            updateOps,
             { new: true, runValidators: true }
         );
 

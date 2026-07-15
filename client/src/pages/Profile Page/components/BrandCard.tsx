@@ -75,6 +75,10 @@ export function BrandCards({
     setSelectedBrandData(null)
   }
 
+  const handleBrandUpdate = (updatedBrand: FullBrandData) => {
+    setSelectedBrandData(updatedBrand)
+  }
+
   const handleDeleteBrand = async (brandId: string) => {
     try {
       
@@ -164,6 +168,7 @@ export function BrandCards({
           brandId={selectedBrand.id}
           brandName={selectedBrand.name}
           brandData={selectedBrandData}
+          onBrandUpdate={handleBrandUpdate}
           platformIcons={platformIcons}
         />
       )}

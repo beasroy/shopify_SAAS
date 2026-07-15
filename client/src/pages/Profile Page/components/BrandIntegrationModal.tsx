@@ -1,6 +1,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import axios from "axios"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, PlusCircle, CheckCircle, XCircle } from "lucide-react"
 import { FullBrandData } from "@/interfaces"
 import PlatformModal from "@/components/dashboard_component/PlatformModal"
+import { useDispatch, useSelector } from "react-redux"
+import { RootState } from "@/store"
+import { setBrands } from "@/store/slices/BrandSlice"
+import { baseURL } from "@/data/constant"
 
 
 interface PlatformIcon {
@@ -29,17 +34,20 @@ interface BrandIntegrationModalProps {
     };
 }
 
-export function BrandIntegrationModal({ 
-    isOpen, 
-    onClose, 
-    brandId, 
-    brandName, 
-    brandData, 
-    platformIcons 
+export function BrandIntegrationModal({
+    isOpen,
+    onClose,
+    brandId,
+    brandName,
+    brandData,
+    platformIcons
 }: BrandIntegrationModalProps) {
     const [activeTab, setActiveTab] = useState("overview")
     const [platformModalOpen, setPlatformModalOpen] = useState(false)
     const [selectedPlatform, setSelectedPlatform] = useState("")
+    const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null)
+    const dispatch = useDispatch()
+    const brands = useSelector((state: RootState) => state.brand.brands)
     const platforms = [
         {
             key: "shopify",
@@ -86,10 +94,76 @@ export function BrandIntegrationModal({
             allowMultipleAccounts: true
         }
     ]
-    useEffect(()=>{
+    useEffect(() => {
         console.log(brandId);
-    },[])
-    
+    }, [])
+
+    const handleDisconnect = async (platformKey: string) => {
+        setDisconnectingPlatform(platformKey)
+        try {
+            let payload: any = {
+                platform: platformKey === 'googleAds' ? 'google ads'
+                    : platformKey === 'googleAnalytics' ? 'google analytics'
+                    : platformKey
+            }
+
+            // Determine what data to send for each platform
+            switch (platformKey) {
+                case 'facebook':
+                    // Disconnect all Facebook accounts
+                    if (brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0) {
+                        payload.accountId = brandData.fbAdAccounts[0]
+                    }
+                    break
+                case 'googleAds':
+                    if (brandData.googleAdAccount && brandData.googleAdAccount.length > 0) {
+                        payload.accountId = brandData.googleAdAccount[0].clientId
+                    }
+                    break
+                case 'googleAnalytics':
+                    // No accountId needed for GA4, just platform
+                    break
+                case 'shopify':
+                    payload.shopName = brandData.shopifyAccount?.shopName
+                    break
+            }
+
+            const response = await axios.patch(
+                `${baseURL}/api/brands/platform/${brandId}`,
+                payload,
+                { withCredentials: true }
+            )
+
+            // Clear cache for this platform
+            try {
+                if (platformKey === 'facebook') {
+                    await axios.delete(
+                        `${baseURL}/api/setup/fb-ad-accounts-cache/${brandId}`,
+                        { withCredentials: true }
+                    )
+                }
+            } catch (cacheError) {
+                console.warn('Cache clear failed, but continuing:', cacheError)
+            }
+
+            // Update local Redux state
+            if (response.data.brand) {
+                const updatedBrands = brands.map(b =>
+                    b._id === brandId ? response.data.brand : b
+                )
+                dispatch(setBrands(updatedBrands))
+            }
+
+            // Reset to overview tab
+            setActiveTab("overview")
+        } catch (error) {
+            console.error(`Error disconnecting ${platformKey}:`, error)
+            alert(`Failed to disconnect ${platformKey}. Please try again.`)
+        } finally {
+            setDisconnectingPlatform(null)
+        }
+    }
+
     const handleAddAccount = (platformKey: string) => {
         setSelectedPlatform(platformKey)
         setPlatformModalOpen(true)
@@ -210,12 +284,18 @@ export function BrandIntegrationModal({
                                         </div>
 
                                         <div className="flex gap-3 mt-4 justify-end">
-                                        {platform.allowMultipleAccounts && ( <Button size={"sm"} onClick={() => handleAddAccount(platform.key)}>
-                                            <PlusCircle className="h-4 w-4 mr-1" />
-                                            Add {platform.key === 'shopify' ? 'Store' : 'Account'}
-                                        </Button>)}
-                                            <Button variant="destructive" size="sm" className="text-white hover:bg-red-800">
-                                                Disconnect
+                                            {platform.allowMultipleAccounts && (<Button size={"sm"} onClick={() => handleAddAccount(platform.key)}>
+                                                <PlusCircle className="h-4 w-4 mr-1" />
+                                                Add {platform.key === 'shopify' ? 'Store' : 'Account'}
+                                            </Button>)}
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                className="text-white hover:bg-red-800"
+                                                onClick={() => handleDisconnect(platform.key)}
+                                                disabled={disconnectingPlatform === platform.key}
+                                            >
+                                                {disconnectingPlatform === platform.key ? 'Disconnecting...' : 'Disconnect'}
                                             </Button>
                                         </div>
                                     </div>

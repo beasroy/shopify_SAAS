@@ -364,11 +364,11 @@ export const userLogout = (req, res) => {
 };
 
 export const getFbAuthURL = (req, res) => {
-    const { source } = req.query; 
-    
+    const { source } = req.query;
+
     // Generate a random state for security
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
+
     // Store both state and source in the cookie
     const stateData = JSON.stringify({ state, source: source || '/dashboard' });
     res.cookie('fb_state', stateData, { httpOnly: true, secure: true }); // Store in a secure cookie
@@ -377,7 +377,8 @@ export const getFbAuthURL = (req, res) => {
         `client_id=${process.env.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
         `&state=${state}` +
-        `&scope=ads_read`;
+        `&scope=ads_read` +
+        `&prompt=rerequest`;
 
     return res.status(200).json({ success: true, authURL });
 };

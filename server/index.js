@@ -120,7 +120,7 @@ dataOperationRouter.use("/festival-dates", festivalDateRoutes)
 dataOperationRouter.use("/product", productRoutes)
 dataOperationRouter.use("/masterDashboard", masterDashboardRoutes)
 
-calculateMetricsForSingleBrand("6a44daae066fa8046e64bdb8","6a44daae066fa8046e64bdb5");
+calculateMetricsForSingleBrand("68d3ca10e78884ea57ff6485","68d3ca10e78884ea57ff6482");
 
 //calculateMetricsForSingleBrand("6a292b14ef4d8c09a5d606b2","6a292b14ef4d8c09a5d606af");
 

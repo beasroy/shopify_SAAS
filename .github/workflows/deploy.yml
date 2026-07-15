@@ -2,56 +2,53 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ] 
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+      - name: Deploy to Amazon Linux
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
           script: |
-            echo "=== Pulling latest code ==="
-            cd ~/shopify_SAAS
-            git pull origin main
-            
-            # Restart backend server with PM2
-            echo "=== Restarting Server ==="
-            cd ~/shopify_SAAS/server
-            npm install 
-            cd ..
-            pm2 restart ecosystem.config.js
+            set -e
 
-            # Copy committed client/dist straight to Nginx web root
-            echo "=== Updating Frontend ==="
-            NGINX_WEB_ROOT="/home/ec2-user/shopify_SAAS/client/dist"
-            if [ -d ~/shopify_SAAS/client/dist ]; then
-              sudo mkdir -p "$NGINX_WEB_ROOT"
-              sudo rsync -av --delete ~/shopify_SAAS/client/dist/ "$NGINX_WEB_ROOT"/
-              sudo chown -R ec2-user:ec2-user "$NGINX_WEB_ROOT"
-              sudo systemctl reload nginx
-              echo "Frontend copied to Nginx root: $NGINX_WEB_ROOT"
+            APP_DIR=/home/ec2-user/shopify_SAAS
+
+            echo "=== Updating repository ==="
+            cd $APP_DIR
+
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "=== Installing backend dependencies ==="
+            cd server
+            npm install
+            cd ..
+
+            echo "=== Restarting PM2 ==="
+            pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js
+
+            echo "=== Updating frontend ==="
+
+            NGINX_WEB_ROOT="/usr/share/nginx/html"
+
+            sudo mkdir -p $NGINX_WEB_ROOT
+
+            if [ -d "$APP_DIR/client/dist" ]; then
+              sudo rsync -av --delete "$APP_DIR/client/dist/" "$NGINX_WEB_ROOT/"
             else
-              echo "ERROR: client/dist not found — build locally and commit dist before pushing"
+              echo "client/dist not found."
               exit 1
             fi
-          
-      - name: Notify on Success
-        if: success()
-        run: echo "Deployment completed successfully!"
-          
-      - name: Notify on Failure
-        if: failure()
-        run: echo "Deployment failed!"
+
+            sudo systemctl reload nginx
+
+            echo "✅ Deployment successful"

@@ -373,6 +373,12 @@ export const deletePlatformIntegration = async (req, res) => {
                 }
 
                 updateData = { fbAdAccounts: updatedFbAccounts };
+
+                // If no Facebook accounts remain, clear the access token
+                if (updatedFbAccounts.length === 0) {
+                    updateData.fbAccessToken = null;
+                }
+
                 deletedInfo = { platform: 'facebook', accountId };
                 break;
 

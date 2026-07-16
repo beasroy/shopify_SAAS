@@ -9,8 +9,10 @@
     "dev": "nodemon index.js",
     "dev:redis": "docker run --name redis-dev -p 6379:6379 -d redis",
     "dev:redis:stop": "docker stop redis-dev && docker rm redis-dev",
-    "dev:worker": "NODE_ENV=development node workers/metricsWorker.js",
-    "dev:worker:watch": "nodemon workers/metricsWorker.js"
+    "dev:worker": "node workers/metricsWorker.js",
+    "dev:worker:watch": "nodemon workers/metricsWorker.js",
+    "dev:worker:scraping": "node workers/brandScrapingWorker.js",
+    "dev:worker:scraping:watch": "nodemon workers/brandScrapingWorker.js"
   },
   "author": "",
   "license": "ISC",

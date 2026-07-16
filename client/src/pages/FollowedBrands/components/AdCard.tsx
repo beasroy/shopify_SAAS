@@ -175,7 +175,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, onClick }) => {
                   <Play className="w-12 h-12 text-white" />
                 </div>
               )}
-              <img
+              <img referrerPolicy="no-referrer"
                 src={mediaUrl}
                 alt={displayTitle || snapshot.title || 'Ad preview'}
                 className="w-full h-full object-cover"

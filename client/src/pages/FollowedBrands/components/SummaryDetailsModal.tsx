@@ -170,7 +170,7 @@ const SummaryDetailsModal: React.FC<SummaryDetailsModalProps> = ({
                             style={{ maxHeight: '100%' }}
                           />
                         ) : 'image' in currentCarouselItem && currentCarouselItem.image ? (
-                          <img
+                          <img referrerPolicy="no-referrer"
                             src={currentCarouselItem.image}
                             alt={'name' in currentCarouselItem ? currentCarouselItem.name || 'Carousel item' : 'Carousel item'}
                             className="w-full h-full object-contain"
@@ -239,7 +239,7 @@ const SummaryDetailsModal: React.FC<SummaryDetailsModalProps> = ({
                     </div>
                   ) : hasImages && snapshot.images && snapshot.images.length > 0 ? (
                     <div className="flex-1 bg-gray-100 flex items-center justify-center overflow-hidden min-h-[280px]">
-                      <img
+                      <img referrerPolicy="no-referrer"
                         src={typeof snapshot.images[0] === 'string' ? snapshot.images[0] : snapshot.images[0].url}
                         alt={snapshot.title || 'Ad image'}
                         className="w-full h-full object-contain"

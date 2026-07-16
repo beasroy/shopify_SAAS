@@ -111,7 +111,7 @@ export const getFollowedBrands = async (req, res) => {
     const brandsWithAds = await Promise.all(
         scrapingBrands.map(async (scrapingBrand) => {
             const ads = await ScrapedAdDetail.find({ scrapingBrandId: scrapingBrand._id })
-                .sort({ createdAt: 1 });
+                .sort({ createdAt: -1 });
 
             return {
                 _id: scrapingBrand._id,
@@ -149,7 +149,7 @@ export const getFollowedBrands = async (req, res) => {
 export const scrapeBrand = async (req, res) => {
 
   try {
-    const { pageUrl, count = 200, countries = ['IN'], activeStatus = 'all', brandId } = req.body;
+    const { pageUrl, count = 100, countries = ['IN'], activeStatus = 'all', brandId } = req.body;
     
     if (!pageUrl) {
         return res.status(400).json({
@@ -245,7 +245,7 @@ export const getSingleAdFromAllScrapedBrands = async (req, res) => {
 
                 if (shouldIncludeAds) {
                     const ads = await ScrapedAdDetail.find({ scrapingBrandId: brand._id })
-                        .sort({ createdAt: 1 })
+                        .sort({ createdAt: -1 })
                         .limit(1); // Limit to prevent huge responses
                     brandData.ads = ads;
                 }

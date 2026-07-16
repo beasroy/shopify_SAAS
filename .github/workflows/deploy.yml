@@ -2,54 +2,54 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ] 
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
           script: |
-            echo "=== Pulling latest code ==="
-            cd ~/shopify_SAAS
-            git pull origin main
-            
-            # Restart backend server with PM2
-            echo "=== Restarting Server ==="
-            cd ~/shopify_SAAS/server
-            npm install 
-            cd ..
-            pm2 restart ecosystem.config.js
+            set -e
 
-            # Update frontend (dist folder)
-            echo "=== Updating Frontend ==="
-            cd ~/shopify_SAAS/client
+            APP_DIR="/home/ec2-user/shopify_SAAS"
+            WEB_ROOT="/var/www/parallels"
+
+            echo "===== Pull Latest Code ====="
+            cd $APP_DIR
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "===== Install Backend Dependencies ====="
+            cd server
             npm install
-            if [ -d ~/shopify_SAAS/client/dist ]; then
-              sudo cp -rf ~/shopify_SAAS/client/dist/* /home/ec2-user/shopify_SAAS/client/dist/
-              sudo systemctl reload nginx
-              echo "Frontend updated successfully!"
+            cd ..
+
+            echo "===== Restart Backend ====="
+            pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js
+
+            echo "===== Deploy Frontend ====="
+            sudo mkdir -p $WEB_ROOT
+
+            if [ -d "$APP_DIR/client/dist" ]; then
+              sudo rsync -av --delete "$APP_DIR/client/dist/" "$WEB_ROOT/"
+              sudo chown -R nginx:nginx $WEB_ROOT
+              sudo chmod -R 755 $WEB_ROOT
             else
-              echo "dist folder not found!"
+              echo "ERROR: client/dist not found"
+              exit 1
             fi
-          
-      - name: Notify on Success
-        if: success()
-        run: echo "Deployment completed successfully!"
-          
-      - name: Notify on Failure
-        if: failure()
-        run: echo "Deployment failed!"
+
+            echo "===== Reload Nginx ====="
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            echo "✅ Deployment Successful"

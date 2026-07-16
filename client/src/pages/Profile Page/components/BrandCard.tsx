@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Building2, Plus, Settings, Trash2, ShoppingBag, BarChart3, LineChart, Facebook } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +9,7 @@ import { RootState } from "@/store"
 import axios from "axios"
 import { baseURL } from "@/data/constant"
 import { BrandDetail , FullBrandData } from "@/interfaces"
-import { deleteBrand } from "@/store/slices/BrandSlice"
+import { deleteBrand, setSelectedBrandId } from "@/store/slices/BrandSlice"
 import { removeBrandFromUser } from "@/store/slices/UserSlice"
 
 const platformIcons = {
@@ -37,8 +37,10 @@ export function BrandCards({
     userBrands?: string[] 
   }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedBrand, setSelectedBrand] = useState<{id: string, name: string} | null>(null)
   const [selectedBrandData, setSelectedBrandData] = useState<FullBrandData | null>(null)
+  const [initialPlatformTab, setInitialPlatformTab] = useState<string | null>(null)
   const brands = useSelector((state: RootState) => state.brand.brands);
 
   const dispatch = useDispatch();
@@ -50,6 +52,39 @@ export function BrandCards({
       ? { _id: brand._id, name: brand.name }
       : { _id: brandId, name: "Unknown Brand" };
   }) || [];
+
+  // After OAuth reconnect, reopen the managed brand + platform modal
+  useEffect(() => {
+    const reconnectBrandId = searchParams.get('reconnectBrand')
+    const openModal = searchParams.get('openModal')
+    if (!reconnectBrandId) return
+
+    const brand =
+      brands.find((b) => b._id === reconnectBrandId) ||
+      (userBrands?.includes(reconnectBrandId)
+        ? { _id: reconnectBrandId, name: "Unknown Brand" }
+        : null)
+
+    if (!brand) return
+
+    dispatch(setSelectedBrandId(reconnectBrandId))
+    setSelectedBrand({ id: brand._id, name: brand.name })
+
+    const platformMap: Record<string, string> = {
+      facebook: 'facebook',
+      googleads: 'googleAds',
+      googleanalytics: 'googleAnalytics',
+      shopify: 'shopify',
+    }
+    if (openModal) {
+      setInitialPlatformTab(platformMap[openModal.toLowerCase()] || null)
+    }
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('reconnectBrand')
+    next.delete('openModal')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, brands, userBrands, dispatch, setSearchParams])
 
   useEffect(() => {
     const fetchBrandDetails = async () => {
@@ -67,12 +102,18 @@ export function BrandCards({
   }, [selectedBrand]);
 
   const handleOpenModal = (brand: {id: string, name: string}) => {
+    dispatch(setSelectedBrandId(brand.id))
     setSelectedBrand(brand)
   }
 
   const handleCloseModal = () => {
     setSelectedBrand(null)
     setSelectedBrandData(null)
+    setInitialPlatformTab(null)
+  }
+
+  const handleBrandUpdate = (updatedBrand: FullBrandData) => {
+    setSelectedBrandData(updatedBrand)
   }
 
   const handleDeleteBrand = async (brandId: string) => {
@@ -164,7 +205,9 @@ export function BrandCards({
           brandId={selectedBrand.id}
           brandName={selectedBrand.name}
           brandData={selectedBrandData}
+          onBrandUpdate={handleBrandUpdate}
           platformIcons={platformIcons}
+          initialPlatform={initialPlatformTab}
         />
       )}
     </div>

@@ -7,7 +7,6 @@ import { ChartBar, Maximize, Minimize, RefreshCw } from "lucide-react";
 import { selectGoogleAnalyticsTokenError } from "@/store/slices/TokenSllice";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
-import ConnectPlatform from "./ConnectPlatformPage";
 import DaywiseMetricsPage from "./component/DaywiseMetricsPage";
 import HelpDeskModal from "@/components/dashboard_component/HelpDeskModal";
 import MissingDateWarning from "@/components/dashboard_component/Missing-Date-Waning";
@@ -19,13 +18,14 @@ import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "@/components/dashboard_component/DatePickerWithRange";
 import ColumnManagementSheet from "@/pages/AnalyticsDashboard/Components/ColumnManagementSheet";
 import MonthlyMetricsPage from "./component/MonthlyMetricsPage";
+import PlatformModal from "@/components/dashboard_component/PlatformModal";
 
 const ReportsPage: React.FC = () => {
   const isLoading = false;
   const { brandId } = useParams<{ brandId: string }>();
   const brands = useSelector((state: RootState) => state.brand.brands);
   const selectedBrand = brands.find((brand) => brand._id === brandId);
-  const hasGA4Account = selectedBrand?.ga4Account ?? false;
+  const hasGA4Account = !!selectedBrand?.ga4Account?.PropertyID;
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
 
@@ -51,6 +51,7 @@ const ReportsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState("month wise");
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isGa4ModalOpen, setIsGa4ModalOpen] = useState(false);
 
   // Memoize the dateRange to prevent unnecessary re-renders
   const memoizedDateRange = useMemo(
@@ -212,7 +213,7 @@ const ReportsPage: React.FC = () => {
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
       <div className="flex-1 h-screen overflow-auto">
-        {googleAnalyticsTokenError ? (
+        {googleAnalyticsTokenError && hasGA4Account ? (
           <NoAccessPage
             platform="Google Analytics"
             message="We need access to your Google Analytics account to show you amazing insights about your website performance."
@@ -225,18 +226,6 @@ const ReportsPage: React.FC = () => {
               },
             ]}
           />
-        ) : !hasGA4Account ? (
-          <>
-            <ConnectPlatform
-              platform="google analytics"
-              brandId={brandId ?? ""}
-              onSuccess={(platform, accountName, accountId) => {
-                console.log(
-                  `Successfully connected ${platform} account: ${accountName} (${accountId})`,
-                );
-              }}
-            />
-          </>
         ) : !dateRange.from || !dateRange.to ? (
           <MissingDateWarning />
         ) : (
@@ -265,6 +254,15 @@ const ReportsPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
+                      {!hasGA4Account && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => setIsGa4ModalOpen(true)}
+                        >
+                          Connect GA4
+                        </Button>
+                      )}
                       <DatePickerWithRange />
                       <Button
                         onClick={handleManualRefresh}
@@ -312,6 +310,7 @@ const ReportsPage: React.FC = () => {
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
+                          hasGA4Account={!!hasGA4Account}
                         />
                       )}
                       {activeTab === "day wise" && (
@@ -321,6 +320,7 @@ const ReportsPage: React.FC = () => {
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
+                          hasGA4Account={!!hasGA4Account}
                         />
                       )}
                       {activeTab === "month wise" && (
@@ -330,6 +330,7 @@ const ReportsPage: React.FC = () => {
                           visibleColumns={visibleColumns}
                           columnOrder={columnOrder}
                           refreshTrigger={refreshTrigger}
+                          hasGA4Account={!!hasGA4Account}
                         />
                       )}
                     </section>
@@ -337,6 +338,12 @@ const ReportsPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+            <PlatformModal
+              platform="google analytics"
+              open={isGa4ModalOpen}
+              onOpenChange={setIsGa4ModalOpen}
+              brandId={brandId ?? ""}
+            />
           </div>
         )}
       </div>

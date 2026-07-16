@@ -1,13 +1,18 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import axios from "axios"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, PlusCircle, CheckCircle, XCircle } from "lucide-react"
-import { FullBrandData } from "@/interfaces"
+import { FullBrandData, IBrand } from "@/interfaces"
 import PlatformModal from "@/components/dashboard_component/PlatformModal"
+import { useDispatch, useSelector } from "react-redux"
+import { RootState } from "@/store"
+import { setBrands } from "@/store/slices/BrandSlice"
+import { baseURL } from "@/data/constant"
 
 
 interface PlatformIcon {
@@ -21,84 +26,227 @@ interface BrandIntegrationModalProps {
     brandId: string;
     brandName: string;
     brandData: FullBrandData;
+    onBrandUpdate?: (brand: FullBrandData) => void;
     platformIcons: {
         shopify: PlatformIcon;
         googleAds: PlatformIcon;
         googleAnalytics: PlatformIcon;
         facebook: PlatformIcon;
     };
+    initialPlatform?: string | null;
 }
 
-export function BrandIntegrationModal({ 
-    isOpen, 
-    onClose, 
-    brandId, 
-    brandName, 
-    brandData, 
-    platformIcons 
+export function BrandIntegrationModal({
+    isOpen,
+    onClose,
+    brandId,
+    brandName,
+    brandData,
+    onBrandUpdate,
+    platformIcons,
+    initialPlatform = null,
 }: BrandIntegrationModalProps) {
     const [activeTab, setActiveTab] = useState("overview")
     const [platformModalOpen, setPlatformModalOpen] = useState(false)
     const [selectedPlatform, setSelectedPlatform] = useState("")
+    const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null)
+    const [localBrandData, setLocalBrandData] = useState<FullBrandData>(brandData)
+    const dispatch = useDispatch()
+    const brands = useSelector((state: RootState) => state.brand.brands)
+
+    useEffect(() => {
+        setLocalBrandData(brandData)
+    }, [brandData])
+
+    // After OAuth redirect, auto-open the platform account picker
+    useEffect(() => {
+        if (!initialPlatform) return
+        setActiveTab(initialPlatform)
+        setSelectedPlatform(initialPlatform)
+        setPlatformModalOpen(true)
+    }, [initialPlatform])
+
     const platforms = [
         {
             key: "shopify",
             icon: platformIcons.shopify.icon,
             name: platformIcons.shopify.name,
-            isConnected: !!brandData.shopifyAccount,
+            isConnected: !!localBrandData.shopifyAccount?.shopName,
             accountNumber: '1 Store',
-            accountName: brandData.shopifyAccount?.shopName,
-            data: brandData.shopifyAccount,
+            accountName: localBrandData.shopifyAccount?.shopName,
+            data: localBrandData.shopifyAccount,
             allowMultipleAccounts: false
         },
         {
             key: "googleAds",
             icon: platformIcons.googleAds.icon,
             name: platformIcons.googleAds.name,
-            isConnected: brandData.googleAdAccount && brandData.googleAdAccount.length > 0,
-            accountNumber: brandData.googleAdAccount ? `${brandData.googleAdAccount.length} Account(s)` : undefined,
-            accountName: brandData.googleAdAccount && brandData.googleAdAccount.length > 0
-            ? `${brandData.googleAdAccount.map((acc) => acc.clientId).join(", ")}` 
+            isConnected: !!(localBrandData.googleAdAccount && localBrandData.googleAdAccount.length > 0),
+            accountNumber: localBrandData.googleAdAccount ? `${localBrandData.googleAdAccount.length} Account(s)` : undefined,
+            accountName: localBrandData.googleAdAccount && localBrandData.googleAdAccount.length > 0
+            ? `${localBrandData.googleAdAccount.map((acc) => acc.clientId).join(", ")}` 
             : undefined,
-            data: brandData.googleAdAccount,
+            data: localBrandData.googleAdAccount,
             allowMultipleAccounts: true
         },
         {
             key: "googleAnalytics",
             icon: platformIcons.googleAnalytics.icon,
             name: platformIcons.googleAnalytics.name,
-            isConnected: !!brandData.ga4Account?.PropertyID,
+            isConnected: !!localBrandData.ga4Account?.PropertyID,
             accountNumber: '1 Property',
-            accountName: brandData.ga4Account?.PropertyID ? `Property ${brandData.ga4Account.PropertyID}` : undefined,
-            data: brandData.ga4Account,
+            accountName: localBrandData.ga4Account?.PropertyID ? `Property ${localBrandData.ga4Account.PropertyID}` : undefined,
+            data: localBrandData.ga4Account,
             allowMultipleAccounts: false
         },
         {
             key: "facebook",
             icon: platformIcons.facebook.icon,
             name: platformIcons.facebook.name,
-            isConnected: brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0,
-            accountNumber: brandData.fbAdAccounts ? `${brandData.fbAdAccounts.length} Account(s)` : undefined,
-            accountName: brandData.fbAdAccounts && brandData.fbAdAccounts.length > 0
-            ? `${brandData.fbAdAccounts.join(", ")}` 
+            isConnected: !!(localBrandData.fbAdAccounts && localBrandData.fbAdAccounts.length > 0),
+            accountNumber: localBrandData.fbAdAccounts ? `${localBrandData.fbAdAccounts.length} Account(s)` : undefined,
+            accountName: localBrandData.fbAdAccounts && localBrandData.fbAdAccounts.length > 0
+            ? `${localBrandData.fbAdAccounts.join(", ")}` 
             : undefined,
-            data: brandData.fbAdAccounts,
+            data: localBrandData.fbAdAccounts,
             allowMultipleAccounts: true
         }
     ]
-    useEffect(()=>{
-        console.log(brandId);
-    },[])
-    
+
+    const handleDisconnect = async (platformKey: string) => {
+        setDisconnectingPlatform(platformKey)
+        try {
+            let payload: any = {
+                platform: platformKey === 'googleAds' ? 'google ads'
+                    : platformKey === 'googleAnalytics' ? 'google analytics'
+                    : platformKey
+            }
+
+            // Omit accountId for facebook/googleAds so the API disconnects all accounts
+            switch (platformKey) {
+                case 'facebook':
+                case 'googleAds':
+                    break
+                case 'googleAnalytics':
+                    break
+                case 'shopify':
+                    payload.shopName = localBrandData.shopifyAccount?.shopName
+                    break
+            }
+
+            const response = await axios.patch(
+                `${baseURL}/api/brands/platform/${brandId}`,
+                payload,
+                { withCredentials: true }
+            )
+
+            // Clear cache for this platform
+            try {
+                if (platformKey === 'facebook') {
+                    await axios.delete(
+                        `${baseURL}/api/setup/fb-ad-accounts-cache/${brandId}`,
+                        { withCredentials: true }
+                    )
+                }
+            } catch (cacheError) {
+                console.warn('Cache clear failed, but continuing:', cacheError)
+            }
+
+            // Update local + parent + Redux state so the modal refreshes immediately
+            if (response.data.brand) {
+                const updatedBrand = response.data.brand as FullBrandData
+                setLocalBrandData(updatedBrand)
+                onBrandUpdate?.(updatedBrand)
+
+                const updatedBrands: IBrand[] = brands.map((b) => {
+                    if (b._id !== brandId) return b
+
+                    const next: IBrand = { ...b }
+
+                    if (platformKey === 'facebook') {
+                        next.fbAdAccounts = (updatedBrand.fbAdAccounts || []) as []
+                    } else if (platformKey === 'googleAds') {
+                        next.googleAdAccount = updatedBrand.googleAdAccount
+                    } else if (platformKey === 'googleAnalytics') {
+                        next.ga4Account = updatedBrand.ga4Account
+                            ? { PropertyID: updatedBrand.ga4Account.PropertyID }
+                            : {}
+                    } else if (platformKey === 'shopify') {
+                        next.shopifyAccount = updatedBrand.shopifyAccount?.shopName
+                            ? {
+                                shopName: updatedBrand.shopifyAccount.shopName,
+                                shopId: String(updatedBrand.shopifyAccount.shopId ?? ''),
+                              }
+                            : {}
+                    }
+
+                    return next
+                })
+                dispatch(setBrands(updatedBrands))
+            }
+
+            // Reset to overview tab
+            setActiveTab("overview")
+        } catch (error) {
+            console.error(`Error disconnecting ${platformKey}:`, error)
+            alert(`Failed to disconnect ${platformKey}. Please try again.`)
+        } finally {
+            setDisconnectingPlatform(null)
+        }
+    }
+
     const handleAddAccount = (platformKey: string) => {
         setSelectedPlatform(platformKey)
         setPlatformModalOpen(true)
     }
+
+    const refreshBrandData = async () => {
+        try {
+            const response = await axios.get(`${baseURL}/api/brands/${brandId}`, {
+                withCredentials: true,
+            })
+            const updatedBrand = response.data as FullBrandData
+            setLocalBrandData(updatedBrand)
+            onBrandUpdate?.(updatedBrand)
+
+            const updatedBrands: IBrand[] = brands.map((b) => {
+                if (b._id !== brandId) return b
+                return {
+                    ...b,
+                    fbAdAccounts: (updatedBrand.fbAdAccounts || []) as [],
+                    googleAdAccount: updatedBrand.googleAdAccount,
+                    ga4Account: updatedBrand.ga4Account?.PropertyID
+                        ? { PropertyID: updatedBrand.ga4Account.PropertyID }
+                        : {},
+                    shopifyAccount: updatedBrand.shopifyAccount?.shopName
+                        ? {
+                            shopName: updatedBrand.shopifyAccount.shopName,
+                            shopId: String(updatedBrand.shopifyAccount.shopId ?? ''),
+                          }
+                        : {},
+                }
+            })
+            dispatch(setBrands(updatedBrands))
+            return updatedBrand
+        } catch (error) {
+            console.error('Error refreshing brand after connect:', error)
+            return null
+        }
+    }
     
-    const handlePlatformModalSuccess = (platform: string, accountName: string, accountId: string) => {
-        // Refresh the brand data or update the UI as needed
-        console.log(`Successfully connected ${platform} account: ${accountName} (${accountId})`)
-        // You might want to trigger a refresh of the brand data here
+    const handlePlatformModalSuccess = async (_platform: string, _accountName: string, _accountId: string) => {
+        await refreshBrandData()
+        setPlatformModalOpen(false)
+        setSelectedPlatform("")
+    }
+
+    const handlePlatformModalOpenChange = async (open: boolean) => {
+        setPlatformModalOpen(open)
+        if (!open) {
+            // Re-fetch after close so reconnect/OAuth + account select always reflects in UI
+            await refreshBrandData()
+            setSelectedPlatform("")
+        }
     }
     
     return (
@@ -210,12 +358,18 @@ export function BrandIntegrationModal({
                                         </div>
 
                                         <div className="flex gap-3 mt-4 justify-end">
-                                        {platform.allowMultipleAccounts && ( <Button size={"sm"} onClick={() => handleAddAccount(platform.key)}>
-                                            <PlusCircle className="h-4 w-4 mr-1" />
-                                            Add {platform.key === 'shopify' ? 'Store' : 'Account'}
-                                        </Button>)}
-                                            <Button variant="destructive" size="sm" className="text-white hover:bg-red-800">
-                                                Disconnect
+                                            {platform.allowMultipleAccounts && (<Button size={"sm"} onClick={() => handleAddAccount(platform.key)}>
+                                                <PlusCircle className="h-4 w-4 mr-1" />
+                                                Add {platform.key === 'shopify' ? 'Store' : 'Account'}
+                                            </Button>)}
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                className="text-white hover:bg-red-800"
+                                                onClick={() => handleDisconnect(platform.key)}
+                                                disabled={disconnectingPlatform === platform.key}
+                                            >
+                                                {disconnectingPlatform === platform.key ? 'Disconnecting...' : 'Disconnect'}
                                             </Button>
                                         </div>
                                     </div>
@@ -254,7 +408,7 @@ export function BrandIntegrationModal({
                               selectedPlatform === 'googleAnalytics' ? 'Google Analytics' : 
                               selectedPlatform === 'facebook' ? 'Facebook' : 'Shopify'}
                     open={platformModalOpen}
-                    onOpenChange={setPlatformModalOpen}
+                    onOpenChange={handlePlatformModalOpenChange}
                     brandId={brandId}
                     onSuccess={handlePlatformModalSuccess}
                 />

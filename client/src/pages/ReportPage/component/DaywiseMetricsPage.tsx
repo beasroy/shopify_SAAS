@@ -27,13 +27,15 @@ interface DaywiseMetricProps {
   visibleColumns: string[];
   columnOrder: string[];
   refreshTrigger: number;
+  hasGA4Account?: boolean;
 }
 
 const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({ 
   dateRange: propDateRange, 
    visibleColumns,
   columnOrder,
-  refreshTrigger
+  refreshTrigger,
+  hasGA4Account = true,
 }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
@@ -106,6 +108,11 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
   const fetchMetrics = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (!hasGA4Account) {
+        setData([]);
+        return;
+      }
+
       const response = await axiosInstance.post(
         `/api/analytics/dayAtcReport/${brandId}`,
         {
@@ -125,7 +132,7 @@ const DaywiseMetricsPage: React.FC<DaywiseMetricProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, brandId]);
+  }, [startDate, endDate, brandId, hasGA4Account]);
 
    // Fetch data when dates or brandId change
    useEffect(() => {

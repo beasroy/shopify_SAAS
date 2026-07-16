@@ -36,10 +36,25 @@ const GoogleCallback = () => {
                 // Helper function for token update
                 const updateToken = async (url: string, token: string, type: string) => {
                     try {
-                     
+                        const sourcePage = queryParams.get('source') || '/dashboard';
+                        const sourceUrl = new URL(sourcePage, window.location.origin);
+                        const brandIdFromSource = sourceUrl.searchParams.get('reconnectBrand') || selectedBrandId;
+
+                        if (!brandIdFromSource) {
+                            toast({
+                                title: 'Update Failed',
+                                description: 'No brand selected for token update. Please try again from the brand profile.',
+                                variant: 'destructive',
+                            });
+                            navigate('/profile');
+                            return false;
+                        }
+
+                        dispatch(setSelectedBrandId(brandIdFromSource));
+
                         // If we have a brandId, proceed with normal token update
                         const response = await axios.put(
-                            `${baseURL}${url}/${type}?brandId=${selectedBrandId}`,
+                            `${baseURL}${url}/${type}?brandId=${brandIdFromSource}`,
                             {}, // Empty body since we are using query params
                             { 
                                 params: { [type]: token },
@@ -55,7 +70,6 @@ const GoogleCallback = () => {
                                 console.log("Zoho token updated, redirecting to /profile");
                                 navigate('/profile');
                             } else {
-                                const sourcePage = queryParams.get('source') || '/dashboard';
                                 let modalToOpen = '';
                                 
                                 // Determine which modal to open based on token type
@@ -78,11 +92,15 @@ const GoogleCallback = () => {
                                     variant: 'default',
                                 });
                                 
-                                // Redirect to the source page with modal parameter if applicable
+                                // Preserve reconnectBrand (and other) query params from source
                                 if (modalToOpen) {
-                                    navigate(`${sourcePage}?openModal=${modalToOpen}`);
+                                    sourceUrl.searchParams.set('openModal', modalToOpen);
+                                    if (!sourceUrl.searchParams.get('reconnectBrand')) {
+                                        sourceUrl.searchParams.set('reconnectBrand', brandIdFromSource);
+                                    }
+                                    navigate(`${sourceUrl.pathname}${sourceUrl.search}`);
                                 } else {
-                                    navigate(sourcePage);
+                                    navigate(sourceUrl.pathname + sourceUrl.search);
                                 }
                                 return true;
                             }

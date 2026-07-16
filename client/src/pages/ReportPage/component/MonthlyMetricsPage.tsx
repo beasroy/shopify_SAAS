@@ -28,13 +28,15 @@ interface EcommerceMetricsProps {
   visibleColumns: string[];
   columnOrder: string[];
   refreshTrigger: number;
+  hasGA4Account?: boolean;
 }
 
 const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({ 
   dateRange: propDateRange, 
   visibleColumns,
   columnOrder,
-  refreshTrigger
+  refreshTrigger,
+  hasGA4Account = true,
 }) => {
   const dateFrom = useSelector((state: RootState) => state.date.from);
   const dateTo = useSelector((state: RootState) => state.date.to);
@@ -83,11 +85,6 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
   // Transform data to match ReportTable's expected format and merge AOV and payment orders data
   const transformedData = useMemo(() => {
-    // If ecommerce API failed, return empty array or show error state
-    if (apiErrors.ecommerce && data.length === 0) {
-      return [];
-    }
-
     // Create maps of AOV data by month for quick lookup
     const aovMap = new Map<string, number>();
     const avgItemsMap = new Map<string, number>();
@@ -303,8 +300,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
       // Fetch both ecommerce metrics and AOV data in parallel
       const promises = [];
 
-      // Fetch ecommerce metrics if we have at least one date range
-      if (dateRanges.length > 0) {
+      // Fetch ecommerce (GA4) metrics only when GA4 is connected
+      if (hasGA4Account && dateRanges.length > 0) {
         promises.push(
           axiosInstance.post(
             `/api/analytics/monthAtcReport/${brandId}`,
@@ -372,20 +369,30 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
 
       // Use Promise.allSettled to handle each API independently
       const results = await Promise.allSettled(promises);
-      console.log('Returning Customer ------->:', results[4]);
+
+      const ga4ResultIndex = hasGA4Account ? 0 : -1;
+      const aovResultIndex = hasGA4Account ? 1 : 0;
+      const paymentOrdersResultIndex = hasGA4Account ? 2 : 1;
+      const productsLaunchedResultIndex = hasGA4Account ? 3 : 2;
+      const returnedCustomersResultIndex = hasGA4Account ? 4 : 3;
+
       // Reset error states
       setApiErrors({
-        ecommerce: false,
+        ecommerce: !hasGA4Account,
         aov: false,
         paymentOrders: false,
         productsLaunched: false,
         returningCustomerPercentage: false
       });
 
-      // Process ecommerce metrics response (index 0)
-      if (results[0]) {
-        if (results[0].status === 'fulfilled') {
-          const DailyAnalyticsResponse = results[0].value;
+      if (!hasGA4Account) {
+        setData([]);
+      }
+
+      // Process ecommerce metrics response
+      if (ga4ResultIndex >= 0 && results[ga4ResultIndex]) {
+        if (results[ga4ResultIndex].status === 'fulfilled') {
+          const DailyAnalyticsResponse = results[ga4ResultIndex].value;
           const fetchedRanges = DailyAnalyticsResponse.data.ranges || [];
       
           // More flexible data handling
@@ -405,16 +412,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           }
         } else {
           // Ecommerce API failed
-          console.error('Ecommerce metrics API failed:', results[0].reason);
+          console.error('Ecommerce metrics API failed:', results[ga4ResultIndex].reason);
           setApiErrors(prev => ({ ...prev, ecommerce: true }));
           setData([]);
         }
       }
 
-      // Process AOV response (index 1)
-      if (results[1]) {
-        if (results[1].status === 'fulfilled') {
-          const aovResponse = results[1].value;
+      // Process AOV response
+      if (results[aovResultIndex]) {
+        if (results[aovResultIndex].status === 'fulfilled') {
+          const aovResponse = results[aovResultIndex].value;
           console.log('AOV API Response:', aovResponse.data);
           if (aovResponse.data.success && aovResponse.data.data) {
             console.log('AOV Data:', aovResponse.data.data);
@@ -425,16 +432,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           }
         } else {
           // AOV API failed
-          console.error('AOV API failed:', results[1].reason);
+          console.error('AOV API failed:', results[aovResultIndex].reason);
           setApiErrors(prev => ({ ...prev, aov: true }));
           setAovData([]);
         }
       }
 
-      // Process payment orders response (index 2)
-      if (results[2]) {
-        if (results[2].status === 'fulfilled') {
-          const paymentOrdersResponse = results[2].value;
+      // Process payment orders response
+      if (results[paymentOrdersResultIndex]) {
+        if (results[paymentOrdersResultIndex].status === 'fulfilled') {
+          const paymentOrdersResponse = results[paymentOrdersResultIndex].value;
           console.log('Payment Orders API Response:', paymentOrdersResponse.data);
           if (paymentOrdersResponse.data.success && paymentOrdersResponse.data.data) {
             console.log('Payment Orders Data:', paymentOrdersResponse.data.data);
@@ -445,16 +452,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           }
         } else {
           // Payment Orders API failed
-          console.error('Payment Orders API failed:', results[2].reason);
+          console.error('Payment Orders API failed:', results[paymentOrdersResultIndex].reason);
           setApiErrors(prev => ({ ...prev, paymentOrders: true }));
           setPaymentOrdersData([]);
         }
       }
 
-      // Process products launched response (index 3)
-      if (results[3]) {
-        if (results[3].status === 'fulfilled') {
-          const productsLaunchedResponse = results[3].value;
+      // Process products launched response
+      if (results[productsLaunchedResultIndex]) {
+        if (results[productsLaunchedResultIndex].status === 'fulfilled') {
+          const productsLaunchedResponse = results[productsLaunchedResultIndex].value;
           console.log('Products Launched API Response:', productsLaunchedResponse.data);
           if (productsLaunchedResponse.data.success && productsLaunchedResponse.data.data) {
             console.log('Products Launched Data:', productsLaunchedResponse.data.data);
@@ -462,16 +469,16 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           }
         } else {
           // Products Launched API failed
-          console.error('Products Launched API failed:', results[3].reason);
+          console.error('Products Launched API failed:', results[productsLaunchedResultIndex].reason);
           setApiErrors(prev => ({ ...prev, productsLaunched: true }));
           setProductsLaunchedData([]);
         }
       }
 
-      // Process returned customers response (index 4)
-      if (results[4]) {
-        if (results[4].status === 'fulfilled') {
-          const returnedCustomersResponse = results[4].value;
+      // Process returned customers response
+      if (results[returnedCustomersResultIndex]) {
+        if (results[returnedCustomersResultIndex].status === 'fulfilled') {
+          const returnedCustomersResponse = results[returnedCustomersResultIndex].value;
           console.log('Returned Customers API Response:', returnedCustomersResponse.data);
           if (returnedCustomersResponse.data.success && returnedCustomersResponse.data.data) {
             console.log('Returned Customers Data:', returnedCustomersResponse.data.data);
@@ -479,8 +486,8 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
           }
         } else {
           // Returned Customers API failed
-          console.error('Returned Customers API failed:', results[4].reason);
-          setApiErrors(prev => ({ ...prev, returnedCustomers: true }));
+          console.error('Returned Customers API failed:', results[returnedCustomersResultIndex].reason);
+          setApiErrors(prev => ({ ...prev, returningCustomerPercentage: true }));
           setReturningCustomerPercentage([]);
         }
       }
@@ -499,7 +506,7 @@ const MonthlyMetricsPage: React.FC<EcommerceMetricsProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, compareStartDate, compareEndDate, brandId]);
+  }, [startDate, endDate, compareStartDate, compareEndDate, brandId, hasGA4Account]);
 
   // Fetch data when dates or brandId change
   useEffect(() => {

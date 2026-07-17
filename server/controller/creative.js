@@ -633,8 +633,8 @@ export const getBrandCreativesBatch = async (req, res) => {
         if (creativeData?.id) creativeIds.push(creativeData.id);
 
         const videoId =
-          creativeData?.video_id ||
-          creativeData?.object_story_spec?.video_data?.video_id;
+          creativeData?.object_story_spec?.video_data?.video_id ||
+          creativeData?.video_id;
         if (videoId) videoIds.push(videoId);
 
         // Extract image hashes from carousel child attachments
@@ -791,7 +791,7 @@ export const getBrandCreativesBatch = async (req, res) => {
         ) {
           creativeType = "video";
           const videoId =
-            creativeData?.video_id || creative?.video_data?.video_id;
+            creative?.video_data?.video_id || creativeData?.video_id;
           let video = null;
           if (videoId) {
             video = videoMap.get(videoId);

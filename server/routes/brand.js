@@ -1,5 +1,5 @@
 import express from 'express';
-import { addBrands, getBrandbyId, getBrands, getBrandNames, updateBrands, filterBrands, getCurrency, deleteBrand, deletePlatformIntegration } from '../controller/brand.js';
+import { addBrands, getBrandbyId, getBrands, getBrandNames, updateBrands, filterBrands, getCurrency, deleteBrand, deletePlatformIntegration, getBrandEarliestDate } from '../controller/brand.js';
 import { verifyAuth } from '../middleware/verifyAuth.js';
 const router = express.Router();
 

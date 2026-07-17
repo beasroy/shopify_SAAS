@@ -31,5 +31,20 @@ module.exports = {
       merge_logs: true,
       time: true,
     },
+    {
+      name: 'scraping-worker',
+      cwd: './server',
+      script: 'workers/brandScrapingWorker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+      },
+      max_memory_restart: '1G',
+      error_file: './logs/scraping-error.log',
+      out_file: './logs/scraping-out.log',
+      merge_logs: true,
+      time: true,
+    },
   ],
 };

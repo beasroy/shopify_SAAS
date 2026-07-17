@@ -169,18 +169,14 @@ const shutdown = async (signal) => {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-const isRunDirectly =
-  path.resolve(__filename) === path.resolve(process.argv[1] || "");
-
-if (isRunDirectly) {
-  (async () => {
-    try {
-      await ensureMongoConnection();
-      await scheduleScrapingJob();
-      console.log("[ScrapingWorker] Worker ready and listening for jobs");
-    } catch (err) {
-      console.error("[ScrapingWorker] Failed to start worker:", err.message);
-      process.exit(1);
-    }
-  })();
-}
+// Automatically start the worker (PM2 handles process management)
+(async () => {
+  try {
+    await ensureMongoConnection();
+    await scheduleScrapingJob();
+    console.log("[ScrapingWorker] Worker ready and listening for jobs");
+  } catch (err) {
+    console.error("[ScrapingWorker] Failed to start worker:", err.message);
+    process.exit(1);
+  }
+})();

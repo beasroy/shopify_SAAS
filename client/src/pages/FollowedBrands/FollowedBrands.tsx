@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Plus, Loader2, AlertCircle, ChevronDown, ChevronUp, Heart, Link2} from 'lucide-react';
-import { SideTab } from '@/components/ui/side-tab';
-import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
-import { baseURL } from '@/data/constant';
-import axios from 'axios';
-import { useToast } from '@/hooks/use-toast';
-import AdCard from './components/AdCard';
-import CatalogAdCard from './components/CatalogAdCard';
-import SummaryDetailsModal from './components/SummaryDetailsModal';
-import Loader from '@/components/dashboard_component/loader';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Search,
+  Plus,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Heart,
+  Link2,
+} from "lucide-react";
+import { SideTab } from "@/components/ui/side-tab";
+import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
+import { baseURL } from "@/data/constant";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
+import AdCard from "./components/AdCard";
+import CatalogAdCard from "./components/CatalogAdCard";
+import SummaryDetailsModal from "./components/SummaryDetailsModal";
+import Loader from "@/components/dashboard_component/loader";
+import { useParams } from "react-router-dom";
 
 interface ScrapingBrand {
   _id: string;
@@ -73,39 +82,46 @@ const FollowedBrands: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [pageUrl, setPageUrl] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [pageUrl, setPageUrl] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedAds, setSelectedAds] = useState<ScrapedAd[]>([]);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('explore');
-  const [followedBrandIds, setFollowedBrandIds] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("explore");
+  const [followedBrandIds, setFollowedBrandIds] = useState<Set<string>>(
+    new Set(),
+  );
   const { toast } = useToast();
 
   // Fetch all brands and their ads
   const fetchBrands = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${baseURL}/api/scraping/get-followed-brands/${brandId}`, {
-        withCredentials: true
-      });
-
+      const response = await axios.get(
+        `${baseURL}/api/scraping/get-followed-brands/${brandId}`,
+        {
+          withCredentials: true,
+        },
+      );
+      console.log("followed response : ",response);
       if (response.data.success) {
         setBrands(response.data.data);
         // Update followed brand IDs set
-        const ids = new Set<string>(response.data.data.map((b: ScrapingBrand) => b._id));
+        const ids = new Set<string>(
+          response.data.data.map((b: ScrapingBrand) => b._id),
+        );
         setFollowedBrandIds(ids);
       } else {
         toast({
-          variant: 'destructive',
-          description: 'Failed to fetch brands'
+          variant: "destructive",
+          description: "Failed to fetch brands",
         });
       }
     } catch (error: any) {
-      console.error('Error fetching brands:', error);
+      console.error("Error fetching brands:", error);
       toast({
-        variant: 'destructive',
-        description: error.response?.data?.message || 'Error fetching brands'
+        variant: "destructive",
+        description: error.response?.data?.message || "Error fetching brands",
       });
     } finally {
       setLoading(false);
@@ -116,23 +132,27 @@ const FollowedBrands: React.FC = () => {
   const fetchCatalogBrands = async () => {
     setCatalogLoading(true);
     try {
-      const response = await axios.get(`${baseURL}/api/scraping/get-single-ad-from-all-scraped-brands?includeAds=true`, {
-        withCredentials: true
-      });
+      const response = await axios.get(
+        `${baseURL}/api/scraping/get-single-ad-from-all-scraped-brands?includeAds=true`,
+        {
+          withCredentials: true,
+        },
+      );
 
       if (response.data.success) {
         setCatalogBrands(response.data.data);
       } else {
         toast({
-          variant: 'destructive',
-          description: 'Failed to fetch catalog brands'
+          variant: "destructive",
+          description: "Failed to fetch catalog brands",
         });
       }
     } catch (error: any) {
-      console.error('Error fetching catalog brands:', error);
+      console.error("Error fetching catalog brands:", error);
       toast({
-        variant: 'destructive',
-        description: error.response?.data?.message || 'Error fetching catalog brands'
+        variant: "destructive",
+        description:
+          error.response?.data?.message || "Error fetching catalog brands",
       });
     } finally {
       setCatalogLoading(false);
@@ -143,8 +163,8 @@ const FollowedBrands: React.FC = () => {
   const handleFollowBrand = async (scrapedBrandId: string) => {
     if (!brandId) {
       toast({
-        variant: 'destructive',
-        description: 'Brand ID is missing'
+        variant: "destructive",
+        description: "Brand ID is missing",
       });
       return;
     }
@@ -153,32 +173,32 @@ const FollowedBrands: React.FC = () => {
       const response = await axios.post(
         `${baseURL}/api/scraping/follow-brand/${brandId}`,
         { scrapedBrandId },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
-      if (response.data.message === 'Brand followed successfully') {
+      if (response.data.message === "Brand followed successfully") {
         toast({
-          description: 'Brand followed successfully'
+          description: "Brand followed successfully",
         });
         // Update followed brand IDs
-        setFollowedBrandIds(prev => new Set(prev).add(scrapedBrandId));
+        setFollowedBrandIds((prev) => new Set(prev).add(scrapedBrandId));
         // Refresh followed brands list
         await fetchBrands();
         // Switch to followed brands tab if we're on explore tab
-        if (activeTab === 'explore') {
-          setActiveTab('followed');
+        if (activeTab === "explore") {
+          setActiveTab("followed");
         }
       } else {
         toast({
-          variant: 'destructive',
-          description: response.data.message || 'Failed to follow brand'
+          variant: "destructive",
+          description: response.data.message || "Failed to follow brand",
         });
       }
     } catch (error: any) {
-      console.error('Error following brand:', error);
+      console.error("Error following brand:", error);
       toast({
-        variant: 'destructive',
-        description: error.response?.data?.message || 'Error following brand'
+        variant: "destructive",
+        description: error.response?.data?.message || "Error following brand",
       });
     }
   };
@@ -187,8 +207,8 @@ const FollowedBrands: React.FC = () => {
   const handleScrape = async () => {
     if (!pageUrl.trim()) {
       toast({
-        variant: 'destructive',
-        description: 'Please enter a page URL'
+        variant: "destructive",
+        description: "Please enter a page URL",
       });
       return;
     }
@@ -200,35 +220,35 @@ const FollowedBrands: React.FC = () => {
         {
           pageUrl: pageUrl.trim(),
           count: 200,
-          countries: ['IN'],
-          activeStatus: 'all',
-          brandId: brandId
+          countries: ["IN"],
+          activeStatus: "all",
+          brandId: brandId,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       if (response.data.success) {
         toast({
-          description: `Successfully scraped ${response.data.data.saveResult.adsSaved} ads`
+          description: `Successfully scraped ${response.data.data.saveResult.adsSaved} ads`,
         });
-        setPageUrl('');
+        setPageUrl("");
         // Refresh brands list
         await fetchBrands();
         // Refresh catalog if on explore tab
-        if (activeTab === 'explore' || brands.length === 0) {
+        if (activeTab === "explore" || brands.length === 0) {
           await fetchCatalogBrands();
         }
       } else {
         toast({
-          variant: 'destructive',
-          description: 'Failed to scrape page'
+          variant: "destructive",
+          description: "Failed to scrape page",
         });
       }
     } catch (error: any) {
-      console.error('Error scraping:', error);
+      console.error("Error scraping:", error);
       toast({
-        variant: 'destructive',
-        description: error.response?.data?.message || 'Error scraping page'
+        variant: "destructive",
+        description: error.response?.data?.message || "Error scraping page",
       });
     } finally {
       setScraping(false);
@@ -237,7 +257,7 @@ const FollowedBrands: React.FC = () => {
 
   // Toggle brand expansion
   const toggleBrandExpansion = (brandId: string) => {
-    setExpandedBrands(prev => {
+    setExpandedBrands((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(brandId)) {
         newSet.delete(brandId);
@@ -257,8 +277,8 @@ const FollowedBrands: React.FC = () => {
   const unfollowBrand = async (scrapedBrandId: string) => {
     if (!brandId) {
       toast({
-        variant: 'destructive',
-        description: 'Brand ID is missing'
+        variant: "destructive",
+        description: "Brand ID is missing",
       });
       return;
     }
@@ -267,15 +287,15 @@ const FollowedBrands: React.FC = () => {
       const response = await axios.post(
         `${baseURL}/api/scraping/unfollow-brand/${brandId}`,
         { scrapedBrandId },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       if (response.data.success) {
         toast({
-          description: 'Brand unfollowed successfully'
+          description: "Brand unfollowed successfully",
         });
         // Update followed brand IDs
-        setFollowedBrandIds(prev => {
+        setFollowedBrandIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(scrapedBrandId);
           return newSet;
@@ -286,15 +306,15 @@ const FollowedBrands: React.FC = () => {
         await fetchCatalogBrands();
       } else {
         toast({
-          variant: 'destructive',
-          description: response.data.message || 'Failed to unfollow brand'
+          variant: "destructive",
+          description: response.data.message || "Failed to unfollow brand",
         });
       }
     } catch (error: any) {
-      console.error('Error unfollowing brand:', error);
+      console.error("Error unfollowing brand:", error);
       toast({
-        variant: 'destructive',
-        description: error.response?.data?.message || 'Error unfollowing brand'
+        variant: "destructive",
+        description: error.response?.data?.message || "Error unfollowing brand",
       });
     }
   };
@@ -304,13 +324,13 @@ const FollowedBrands: React.FC = () => {
 
   useEffect(() => {
     // Fetch catalog brands when component mounts or when switching to explore tab
-    if (brands.length === 0 || activeTab === 'explore') {
+    if (brands.length === 0 || activeTab === "explore") {
       fetchCatalogBrands();
     }
   }, [brands.length, activeTab]);
 
   // Filter catalog brands based on search query
-  const filteredCatalogBrands = catalogBrands.filter(brand => {
+  const filteredCatalogBrands = catalogBrands.filter((brand) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -333,8 +353,6 @@ const FollowedBrands: React.FC = () => {
   // If no followed brands, show catalog page
   if (brands.length === 0) {
     return (
-
-
       <div className="flex h-screen bg-gray-100">
         <CollapsibleSidebar />
 
@@ -350,7 +368,6 @@ const FollowedBrands: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-3 items-center">
                 {/* Search Bar */}
                 {/* Helper Message */}
-
 
                 <div className="relative flex-1 w-full sm:w-auto">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
@@ -375,7 +392,7 @@ const FollowedBrands: React.FC = () => {
                     placeholder="Paste Facebook page URL..."
                     value={pageUrl}
                     onChange={(e) => setPageUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleScrape()}
+                    onKeyDown={(e) => e.key === "Enter" && handleScrape()}
                     className="pl-9 pr-3 h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-lg bg-white transition-all"
                   />
                 </div>
@@ -399,9 +416,6 @@ const FollowedBrands: React.FC = () => {
                   )}
                 </Button>
               </div>
-
-
-
             </CardContent>
           </Card>
 
@@ -415,9 +429,13 @@ const FollowedBrands: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12">
                   <AlertCircle className="w-16 h-16 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No Brands Found</h3>
+                  <h3 className="text-xl font-semibold mb-2">
+                    No Brands Found
+                  </h3>
                   <p className="text-muted-foreground text-center max-w-md">
-                    {searchQuery ? 'No brands match your search. Try a different query.' : 'No brands available. Start by adding a Facebook page URL to scrape ads.'}
+                    {searchQuery
+                      ? "No brands match your search. Try a different query."
+                      : "No brands available. Start by adding a Facebook page URL to scrape ads."}
                   </p>
                 </div>
               </CardContent>
@@ -429,7 +447,7 @@ const FollowedBrands: React.FC = () => {
                   key={brand._id}
                   className="break-inside-avoid mb-6"
                   style={{
-                    animation: `fadeInUp 0.6s ease-out ${Math.min(index * 0.05, 1)}s both`
+                    animation: `fadeInUp 0.6s ease-out ${Math.min(index * 0.05, 1)}s both`,
                   }}
                 >
                   <CatalogAdCard
@@ -443,27 +461,24 @@ const FollowedBrands: React.FC = () => {
           )}
         </div>
       </div>
-
     );
   }
 
   // If there are followed brands, show side tabs
   const sideTabs = [
     {
-      label: 'Explore Brands',
-      value: 'explore',
-      icon: <Search className="w-5 h-5" />
+      label: "Explore Brands",
+      value: "explore",
+      icon: <Search className="w-5 h-5" />,
     },
     {
-      label: 'Followed Brands',
-      value: 'followed',
-      icon: <Heart className="w-5 h-5" />
-    }
+      label: "Followed Brands",
+      value: "followed",
+      icon: <Heart className="w-5 h-5" />,
+    },
   ];
 
   return (
-
-
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
 
@@ -476,10 +491,8 @@ const FollowedBrands: React.FC = () => {
       />
 
       <div className="flex-1 h-screen overflow-auto p-6 space-y-6">
-
-
         {/* Explore Brands Content */}
-        {activeTab === 'explore' && (
+        {activeTab === "explore" && (
           <div className="space-y-6">
             {/* Search and Add Brand Card */}
             <Card className="border border-gray-200 shadow-md bg-white">
@@ -514,7 +527,7 @@ const FollowedBrands: React.FC = () => {
                       placeholder="Paste Facebook page URL..."
                       value={pageUrl}
                       onChange={(e) => setPageUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleScrape()}
+                      onKeyDown={(e) => e.key === "Enter" && handleScrape()}
                       className="pl-9 pr-3 h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-lg bg-white transition-all"
                     />
                   </div>
@@ -551,9 +564,13 @@ const FollowedBrands: React.FC = () => {
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center justify-center py-12">
                     <AlertCircle className="w-16 h-16 text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No Brands Found</h3>
+                    <h3 className="text-xl font-semibold mb-2">
+                      No Brands Found
+                    </h3>
                     <p className="text-muted-foreground text-center max-w-md">
-                      {searchQuery ? 'No brands match your search. Try a different query.' : 'No brands available. Start by adding a Facebook page URL to scrape ads.'}
+                      {searchQuery
+                        ? "No brands match your search. Try a different query."
+                        : "No brands available. Start by adding a Facebook page URL to scrape ads."}
                     </p>
                   </div>
                 </CardContent>
@@ -565,7 +582,7 @@ const FollowedBrands: React.FC = () => {
                     key={brand._id}
                     className="break-inside-avoid mb-6"
                     style={{
-                      animation: `fadeInUp 0.6s ease-out ${Math.min(index * 0.05, 1)}s both`
+                      animation: `fadeInUp 0.6s ease-out ${Math.min(index * 0.05, 1)}s both`,
                     }}
                   >
                     <CatalogAdCard
@@ -580,108 +597,115 @@ const FollowedBrands: React.FC = () => {
           </div>
         )}
 
-      {/* Followed Brands Content */}
-      {activeTab === 'followed' && (
-        <div className="space-y-6">
-          {brands.map((brand) => {
-            // Filter ads: only show ads without collation_id OR ads with collation_id AND collation_count
-            const filteredAds = (brand.ads || []).filter((ad) => {
-              const collationId = ad.collation_id;
-              const collationCount = ad.collation_count || 0;
-              // Show if: no collation_id (standalone) OR has collation_id with collation_count (representative)
-              return !collationId || (collationId && collationCount > 0);
-            });
+        {/* Followed Brands Content */}
+        {activeTab === "followed" && (
+          <div className="space-y-6">
+            {brands.map((brand) => {
+              // Filter ads: only show ads without collation_id OR ads with collation_id AND collation_count
+              const filteredAds = (brand.ads || []).filter((ad) => {
+                const collationId = ad.collation_id;
+                const collationCount = ad.collation_count || 0;
+                // Show if: no collation_id (standalone) OR has collation_id with collation_count (representative)
+                return !collationId || (collationId && collationCount > 0);
+              });
 
-            const isExpanded = expandedBrands.has(brand._id);
-            const displayAds = isExpanded ? filteredAds : filteredAds.slice(0, 4);
-            const hasMoreAds = filteredAds.length > 4;
+              const isExpanded = expandedBrands.has(brand._id);
+              const displayAds = isExpanded
+                ? filteredAds
+                : filteredAds.slice(0, 4);
+              const hasMoreAds = filteredAds.length > 4;
 
-            return (
-              <Card key={brand._id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl cursor-pointer" onClick={() => window.open(brand.pageUrl, '_blank')}>
-                        {brand.pageName || 'Unknown Brand'}
-                      </CardTitle>
-
-                      <p className="text-sm text-muted-foreground">
-                        Total <strong>{brand.adCount}</strong> ads
-                      </p>
-                    </div>
-                    <div className='flex flex-row items-center gap-2'>
-                      {hasMoreAds && (
-                        <Button
-                          variant="outline"
-                          onClick={() => toggleBrandExpansion(brand._id)}
+              return (
+                <Card key={brand._id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle
+                          className="text-xl cursor-pointer"
+                          onClick={() => window.open(brand.pageUrl, "_blank")}
                         >
-                          {isExpanded ? (
-                            <>
-                              <ChevronUp className="w-4 h-4 mr-2" />
-                              Show Less
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-4 h-4 mr-2" />
-                              View All
-                            </>
-                          )}
+                          {brand.pageName || "Unknown Brand"}
+                        </CardTitle>
+
+                        <p className="text-sm text-muted-foreground">
+                          Total <strong>{brand.adCount}</strong> ads
+                        </p>
+                      </div>
+                      <div className="flex flex-row items-center gap-2">
+                        {hasMoreAds && (
+                          <Button
+                            variant="outline"
+                            onClick={() => toggleBrandExpansion(brand._id)}
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="w-4 h-4 mr-2" />
+                                Show Less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4 mr-2" />
+                                View All
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          onClick={() => unfollowBrand(brand._id)}
+                        >
+                          Unfollow
                         </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        onClick={() => unfollowBrand(brand._id)}
-                      >
-                        Unfollow
-                      </Button>
+                      </div>
                     </div>
+                  </CardHeader>
+                  <CardContent>
+                    {displayAds.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">
+                        No ads available
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {displayAds.map((ad) => {
+                          const collationId = ad.collation_id;
+                          const collationCount = ad.collation_count || 0;
 
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {displayAds.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      No ads available
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {displayAds.map((ad) => {
-                        const collationId = ad.collation_id;
-                        const collationCount = ad.collation_count || 0;
+                          // If ad has collation_id and collation_count, find all ads in the group
+                          if (collationId && collationCount > 1) {
+                            const collationAds =
+                              brand.ads?.filter(
+                                (a) => a.collation_id === collationId,
+                              ) || [];
 
-                        // If ad has collation_id and collation_count, find all ads in the group
-                        if (collationId && collationCount > 1) {
-                          const collationAds = brand.ads?.filter(
-                            a => a.collation_id === collationId
-                          ) || [];
+                            return (
+                              <AdCard
+                                key={ad._id}
+                                ad={ad}
+                                onClick={() =>
+                                  handleSummaryDetails(collationAds)
+                                }
+                              />
+                            );
+                          }
 
+                          // Standalone ad (no collation_id) or collation_count is 1
                           return (
                             <AdCard
                               key={ad._id}
                               ad={ad}
-                              onClick={() => handleSummaryDetails(collationAds)}
+                              onClick={() => handleSummaryDetails([ad])}
                             />
                           );
-                        }
-
-                        // Standalone ad (no collation_id) or collation_count is 1
-                        return (
-                          <AdCard
-                            key={ad._id}
-                            ad={ad}
-                            onClick={() => handleSummaryDetails([ad])}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </div>
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Summary Details Modal */}
       {showSummaryModal && (
@@ -692,9 +716,7 @@ const FollowedBrands: React.FC = () => {
         />
       )}
     </div>
-
   );
 };
 
 export default FollowedBrands;
-

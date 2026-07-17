@@ -224,7 +224,11 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) =
                   className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full"
                   onClick={handleShowFullImage}
                 >
-                  <Maximize2 className="w-5 h-5" />
+                  {creative.creative_type === "video" ? (
+                    <Play className="w-5 h-5 ml-1" />
+                  ) : (
+                    <Maximize2 className="w-5 h-5" />
+                  )}
                 </Button>
               </div>
             </>

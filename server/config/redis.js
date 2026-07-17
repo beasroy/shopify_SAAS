@@ -11,7 +11,7 @@ const host = process.env.REDIS_HOST || '127.0.0.1';
 const port = Number.parseInt(process.env.REDIS_PORT || '6379', 10);
 const password = process.env.REDIS_PASSWORD || null;
 
-console.log(host, port, password, isDevelopment);
+// console.log(host, port, password, isDevelopment);
 
 // Redis connection configuration
 const redisConfig = {

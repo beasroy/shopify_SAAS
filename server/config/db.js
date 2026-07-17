@@ -48,12 +48,12 @@ export const connectDB = async () => {
             cachedConnection = null;
         });
 
-        // Handle process termination
-        process.on('SIGINT', async () => {
-            await mongoose.connection.close();
-            cachedConnection = null;
-            process.exit(0);
-        });
+         // Handle process termination
+        // process.on('SIGINT', async () => {
+        //     await mongoose.connection.close();
+        //     cachedConnection = null;
+        //     process.exit(0);
+        // });
 
         return connection;
 

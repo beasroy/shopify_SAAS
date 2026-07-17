@@ -2,571 +2,622 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
-import { OAuth2Client } from 'google-auth-library';
-import { google } from 'googleapis'
-import axios from 'axios';
+import { OAuth2Client } from "google-auth-library";
+import { google } from "googleapis";
+import axios from "axios";
 import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
-import { registerWebhooks } from '../webhooks/shopify.js';
+import { registerWebhooks } from "../webhooks/shopify.js";
 import { metricsQueue } from "../config/redis.js";
 
 config();
 
 export const oauth2Client = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.REDIRECT_URI
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.REDIRECT_URI,
 );
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
 export const getGoogleAuthURL = async (req, res) => {
-    try {
-        const { context, source, brandId } = req.query;
+  try {
+    const { context, source, brandId } = req.query;
 
-        const isAdOrAnalyticsSetup = context === 'googleAdSetup' || context === 'googleAnalyticsSetup';
+    const isAdOrAnalyticsSetup =
+      context === "googleAdSetup" || context === "googleAnalyticsSetup";
 
-        // Use extended scopes only for Ads/Analytics setup
-        const scopes = isAdOrAnalyticsSetup
-            ? [
-                'https://www.googleapis.com/auth/adwords',
-                'https://www.googleapis.com/auth/analytics.readonly',
-                'https://www.googleapis.com/auth/analytics.edit',
-                'https://www.googleapis.com/auth/userinfo.email',
-                'https://www.googleapis.com/auth/userinfo.profile'
-              ]
-            : [
-                'https://www.googleapis.com/auth/userinfo.email',
-                'https://www.googleapis.com/auth/userinfo.profile'
-              ];
+    // Use extended scopes only for Ads/Analytics setup
+    const scopes = isAdOrAnalyticsSetup
+      ? [
+          "https://www.googleapis.com/auth/adwords",
+          "https://www.googleapis.com/auth/analytics.readonly",
+          "https://www.googleapis.com/auth/analytics.edit",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile",
+        ]
+      : [
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile",
+        ];
 
+    let requireConsent = false;
 
-        let requireConsent = false;
+    if (isAdOrAnalyticsSetup) {
+      requireConsent = true;
 
-        if (isAdOrAnalyticsSetup) {
-            requireConsent = true; 
+      if (brandId) {
+        try {
+          const brand = await Brand.findById(brandId).lean();
+          if (brand) {
+            const alreadyHasToken =
+              (context === "googleAdSetup" && brand.googleAdsRefreshToken) ||
+              (context === "googleAnalyticsSetup" &&
+                brand.googleAnalyticsRefreshToken);
 
-            if (brandId) {
-                try {
-                    const brand = await Brand.findById(brandId).lean();
-                    if (brand) {
-                        const alreadyHasToken =
-                            (context === 'googleAdSetup' && brand.googleAdsRefreshToken) ||
-                            (context === 'googleAnalyticsSetup' && brand.googleAnalyticsRefreshToken);
-
-                        if (alreadyHasToken) requireConsent = false;
-                    }
-                } catch (error) {
-                    console.error('Error checking brand refresh token:', error);
-                    // Keep requireConsent = true as fallback
-                }
-            }
+            if (alreadyHasToken) requireConsent = false;
+          }
+        } catch (error) {
+          console.error("Error checking brand refresh token:", error);
+          // Keep requireConsent = true as fallback
         }
-
-        const authUrlConfig = {
-            access_type: 'offline',
-            scope: scopes,
-            state: JSON.stringify({ context: context || 'default', source: source || '/dashboard' }),
-            ...(requireConsent && { prompt: 'consent' }),
-        };
-
-        const url = oauth2Client.generateAuthUrl(authUrlConfig);
-
-        res.status(200).json({ authUrl: url });
-    } catch (error) {
-        console.error('Error generating Google Auth URL:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate Google Auth URL',
-            error: error.message
-        });
+      }
     }
+
+    const authUrlConfig = {
+      access_type: "offline",
+      scope: scopes,
+      state: JSON.stringify({
+        context: context || "default",
+        source: source || "/dashboard",
+      }),
+      ...(requireConsent && { prompt: "consent" }),
+    };
+
+    const url = oauth2Client.generateAuthUrl(authUrlConfig);
+
+    res.status(200).json({ authUrl: url });
+  } catch (error) {
+    console.error("Error generating Google Auth URL:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate Google Auth URL",
+      error: error.message,
+    });
+  }
 };
 
 export const handleGoogleCallback = async (req, res) => {
-    const { code, state } = req.query;
-    if (!code) return res.status(400).send('Missing code from Google.');
+  const { code, state } = req.query;
+  if (!code) return res.status(400).send("Missing code from Google.");
 
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    let stateObj;
     try {
-        const { tokens } = await oauth2Client.getToken(code);
-        oauth2Client.setCredentials(tokens);
-
-        let stateObj;
-        try {
-            stateObj = JSON.parse(state);
-        } catch (e) {
-            stateObj = { context: 'default', source: '/dashboard' };
-        }
-
-        const context = stateObj.context || 'default';
-        const sourcePage = stateObj.source || '/dashboard';
-        const isProduction = process.env.NODE_ENV === 'production';
-
-        if (context === 'googleAdSetup') {
-            const googleadRefreshToken = tokens.refresh_token;
-
-            const clientURL = isProduction
-                ? 'https://parallels.messold.com/callback'
-                : 'http://localhost:5173/callback';
-
-            return res.redirect(clientURL + `?googleadRefreshToken=${googleadRefreshToken}&source=${encodeURIComponent(sourcePage)}`);
-        } else if (context === 'googleAnalyticsSetup') {
-            const googleanalyticsRefreshToken = tokens.refresh_token;
-
-            const clientURL = isProduction
-                ? 'https://parallels.messold.com/callback'
-                : 'http://localhost:5173/callback';
-
-            return res.redirect(clientURL + `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}&source=${encodeURIComponent(sourcePage)}`);
-        } else if (context === 'userLogin') {
-            const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
-            const userInfo = await oauth2.userinfo.get();
-            const { email, name, id } = userInfo.data;
-            console.log('userInfo in google callback--->:', userInfo.data);
-            let user = await User.findOne({ email });
-            console.log('user--->:', user);
-            if (!user) {
-                user = new User({
-                    username: name,
-                    email,
-                    googleId: id,
-                    method: 'google',
-                    googleLoginRefreshToken: tokens.refresh_token, 
-                    isAdmin: false,
-                    isClient: true
-                });
-                await user.save();
-            } 
-
-            const jwtToken = jwt.sign(
-                { id: user._id, email: user.email, method: user.method },
-                SECRET_KEY,
-                { expiresIn: '7d' }
-            );
-
-            res.cookie('token', jwtToken, {
-                httpOnly: true,
-                secure: isProduction,
-                sameSite: isProduction ? 'strict' : 'lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-            });
-
-            const clientURL = isProduction
-                ? 'https://parallels.messold.com/callback'
-                : 'http://localhost:5173/callback';
-
-            return res.redirect(clientURL + `?token=${jwtToken}&source=${encodeURIComponent(sourcePage)}`);
-        } else {
-            return res.status(400).send('Invalid context in Google callback.');
-        }
-    } catch (error) {
-        console.error('Error during Google OAuth callback:', error);
-        res.status(500).json({ success: false, message: 'Google OAuth failed', error: error.message });
+      stateObj = JSON.parse(state);
+    } catch (e) {
+      stateObj = { context: "default", source: "/dashboard" };
     }
+
+    const context = stateObj.context || "default";
+    const sourcePage = stateObj.source || "/dashboard";
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (context === "googleAdSetup") {
+      const googleadRefreshToken = tokens.refresh_token;
+
+      const clientURL = isProduction
+        ? "https://parallels.messold.com/callback"
+        : "http://localhost:5173/callback";
+
+      return res.redirect(
+        clientURL +
+          `?googleadRefreshToken=${googleadRefreshToken}&source=${encodeURIComponent(sourcePage)}`,
+      );
+    } else if (context === "googleAnalyticsSetup") {
+      const googleanalyticsRefreshToken = tokens.refresh_token;
+
+      const clientURL = isProduction
+        ? "https://parallels.messold.com/callback"
+        : "http://localhost:5173/callback";
+
+      return res.redirect(
+        clientURL +
+          `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}&source=${encodeURIComponent(sourcePage)}`,
+      );
+    } else if (context === "userLogin") {
+      const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
+      const userInfo = await oauth2.userinfo.get();
+      const { email, name, id } = userInfo.data;
+      console.log("userInfo in google callback--->:", userInfo.data);
+      let user = await User.findOne({ email });
+      console.log("user--->:", user);
+      if (!user) {
+        user = new User({
+          username: name,
+          email,
+          googleId: id,
+          method: "google",
+          googleLoginRefreshToken: tokens.refresh_token,
+          isAdmin: false,
+          isClient: true,
+        });
+        await user.save();
+      }
+
+      const jwtToken = jwt.sign(
+        { id: user._id, email: user.email, method: user.method },
+        SECRET_KEY,
+        { expiresIn: "7d" },
+      );
+
+      res.cookie("token", jwtToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      const clientURL = isProduction
+        ? "https://parallels.messold.com/callback"
+        : "http://localhost:5173/callback";
+
+      return res.redirect(
+        clientURL +
+          `?token=${jwtToken}&source=${encodeURIComponent(sourcePage)}`,
+      );
+    } else {
+      return res.status(400).send("Invalid context in Google callback.");
+    }
+  } catch (error) {
+    console.error("Error during Google OAuth callback:", error);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Google OAuth failed",
+        error: error.message,
+      });
+  }
 };
 
 export const userRegistration = async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
+  try {
+    const { username, email, password } = req.body;
 
-        if (!username || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide username, email, and password.'
-            });
-        }
-
-        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-        if (existingUser) {
-            return res.status(409).json({
-                success: false,
-                message: 'Username or email already exists.'
-            });
-        }
-        if (password.length < 8) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password must be at least 8 characters long.'
-            });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const newUser = new User({
-            username,
-            email,
-            password: hashedPassword,
-            method: 'password'
-        });
-
-        await newUser.save();
-
-        const userResponse = {
-            id: newUser._id,
-            username: newUser.username,
-            email: newUser.email
-        };
-
-        return res.status(201).json({
-            success: true,
-            message: 'User registered successfully',
-            user: userResponse
-        });
-
-    } catch (error) {
-        console.error('Error registering user:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to register user.',
-            error: error.message
-        });
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide username, email, and password.",
+      });
     }
-}
+
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "Username or email already exists.",
+      });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long.",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      method: "password",
+    });
+
+    await newUser.save();
+
+    const userResponse = {
+      id: newUser._id,
+      username: newUser.username,
+      email: newUser.email,
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error("Error registering user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to register user.",
+      error: error.message,
+    });
+  }
+};
 
 export const userLogin = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const { type } = req.params;
+  try {
+    const { email, password } = req.body;
+    const { type } = req.params;
 
-        let decoded_token;
+    let decoded_token;
 
-        if (type === 'oauth') {
-            const { auth_token } = req.query;
+    if (type === "oauth") {
+      const { auth_token } = req.query;
 
-            if (!auth_token) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing authentication token for OAuth login.'
-                });
-            }
-
-            try {
-                decoded_token = jwt.verify(auth_token, process.env.JWT_SECRET);
-            } catch (err) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Invalid or expired token'
-                });
-            }
-        }
-
-        const user = await User.findOne({
-            email: type === 'oauth' ? decoded_token?.email : email
+      if (!auth_token) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing authentication token for OAuth login.",
         });
+      }
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found. Please check your email or register.'
-            });
-        }
-
-        if (type === 'oauth') {
-            user.loginCount += 1;
-            await user.save();
-            return res.status(200).json({
-                success: true,
-                message: 'OAuth login successful',
-                user: {
-                    id: user._id,
-                    username: user.username,
-                    email: user.email,
-                    brands: user.brands,
-                    isAdmin: user.isAdmin,
-                    isClient: user.isClient,
-                    method: user.method,
-                    loginCount: user.loginCount
-                }
-            });
-        }
-
-        // Handle normal login
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide both email and password.'
-            });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials. Please check your password.'
-            });
-        }
-
-        const token = jwt.sign(
-            { id: user._id,email: user.email, method: user.method },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        const isProduction = process.env.NODE_ENV === 'production';
-
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+      try {
+        decoded_token = jwt.verify(auth_token, process.env.JWT_SECRET);
+      } catch (err) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid or expired token",
         });
-
-        user.loginCount += 1; // Increment login count
-        await user.save(); // Save updated count
-
-        return res.status(200).json({
-            success: true,
-            message: 'Login successful',
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                brands: user.brands,
-                isAdmin: user.isAdmin,
-                isClient: user.isClient,
-                method: user.method,
-                loginCount: user.loginCount
-            }
-        });
-
-    } catch (error) {
-        console.error('Error during login:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'An error occurred during login.',
-            error: error.message
-        });
+      }
     }
+
+    const user = await User.findOne({
+      email: type === "oauth" ? decoded_token?.email : email,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found. Please check your email or register.",
+      });
+    }
+
+    if (type === "oauth") {
+      user.loginCount += 1;
+      await user.save();
+      return res.status(200).json({
+        success: true,
+        message: "OAuth login successful",
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          brands: user.brands,
+          isAdmin: user.isAdmin,
+          isClient: user.isClient,
+          method: user.method,
+          loginCount: user.loginCount,
+        },
+      });
+    }
+
+    // Handle normal login
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide both email and password.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials. Please check your password.",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, method: user.method },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" },
+    );
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    user.loginCount += 1; // Increment login count
+    await user.save(); // Save updated count
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        brands: user.brands,
+        isAdmin: user.isAdmin,
+        isClient: user.isClient,
+        method: user.method,
+        loginCount: user.loginCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred during login.",
+      error: error.message,
+    });
+  }
 };
 export const userLogout = (req, res) => {
-    try {
-        // Configure cookies for production (HTTPS)
-        const isProduction = process.env.NODE_ENV === 'production';
+  try {
+    // Configure cookies for production (HTTPS)
+    const isProduction = process.env.NODE_ENV === "production";
 
-        res.clearCookie('token', {
-            httpOnly: true,
-            secure: isProduction, // Use true if running on HTTPS in production
-            sameSite: isProduction ? 'strict' : 'lax' // Use 'strict' for better security
-        });
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: isProduction, // Use true if running on HTTPS in production
+      sameSite: isProduction ? "strict" : "lax", // Use 'strict' for better security
+    });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Logged out successfully'
-        });
-    } catch (error) {
-        console.error('Error during logout:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'An error occurred during logout.',
-            error: error.message
-        });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred during logout.",
+      error: error.message,
+    });
+  }
 };
 
 export const getFbAuthURL = (req, res) => {
-    const { source } = req.query;
+  const { source } = req.query;
 
-    // Generate a random state for security
-    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // Generate a random state for security
+  const state =
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
 
-    // Store both state and source in the cookie
-    const stateData = JSON.stringify({ state, source: source || '/dashboard' });
-    res.cookie('fb_state', stateData, { httpOnly: true, secure: true }); // Store in a secure cookie
+  // Store both state and source in the cookie
+  const stateData = JSON.stringify({ state, source: source || "/dashboard" });
+  res.cookie("fb_state", stateData, { httpOnly: true, secure: true }); // Store in a secure cookie
 
-    const authURL = `https://www.facebook.com/v21.0/dialog/oauth?` +
-        `client_id=${process.env.FACEBOOK_APP_ID}` +
-        `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
-        `&state=${state}` +
-        `&scope=ads_read` +
-        `&auth_type=rerequest`;
+  const authURL =
+    `https://www.facebook.com/v21.0/dialog/oauth?` +
+    `client_id=${process.env.FACEBOOK_APP_ID}` +
+    `&redirect_uri=${encodeURIComponent(process.env.FACEBOOK_REDIRECT_URI)}` +
+    `&state=${state}` +
+    `&scope=ads_read,pages_read_engagement,pages_show_list,business_management` +
+    `&auth_type=rerequest`;
 
-    return res.status(200).json({ success: true, authURL });
+  return res.status(200).json({ success: true, authURL });
 };
 
 export const handleFbCallback = async (req, res) => {
+  try {
+    const { code, state: receivedState } = req.query;
+    const storedStateData = req.cookies.fb_state;
+    let sourcePage = "/dashboard";
+
+    // Parse the stored state data
     try {
-        const { code, state: receivedState } = req.query;
-        const storedStateData = req.cookies.fb_state;
-        let sourcePage = '/dashboard';
-
-        // Parse the stored state data
-        try {
-            const stateData = JSON.parse(storedStateData);
-            if (stateData.state !== receivedState) {
-                return res.status(400).send('Invalid state parameter');
-            }
-            sourcePage = stateData.source;
-        } catch (e) {
-            console.error('Error parsing state data:', e);
-            return res.status(400).send('Invalid state data');
-        }
-
-        if (!code) {
-            return res.status(400).send('Authorization code not provided');
-        }
-
-        const tokenResponse = await axios.get('https://graph.facebook.com/v22.0/oauth/access_token', {
-            params: {
-                client_id: process.env.FACEBOOK_APP_ID,
-                client_secret: process.env.FACEBOOK_APP_SECRET,
-                redirect_uri: process.env.FACEBOOK_REDIRECT_URI,
-                code
-            }
-        });
-        const { access_token } = tokenResponse.data;
-
-        const longLivedTokenResponse = await axios.get('https://graph.facebook.com/v22.0/oauth/access_token', {
-            params: {
-                grant_type: 'fb_exchange_token',
-                client_id: process.env.FACEBOOK_APP_ID,
-                client_secret: process.env.FACEBOOK_APP_SECRET,
-                fb_exchange_token: access_token
-            }
-        });
-
-        const longLivedAccessToken = longLivedTokenResponse.data.access_token;
-
-        const isProduction = process.env.NODE_ENV === 'production';
-
-        const clientURL = isProduction
-            ? 'https://parallels.messold.com/callback'
-            : 'http://localhost:5173/callback';
-
-        return res.redirect(clientURL + `?fbToken=${longLivedAccessToken}&source=${encodeURIComponent(sourcePage)}`);
-    } catch (err) {
-        console.error('Error during Facebook OAuth callback:', err);
-        return res.status(500).json({ success: false, message: 'Failed to handle Facebook callback', error: err.message });
+      const stateData = JSON.parse(storedStateData);
+      if (stateData.state !== receivedState) {
+        return res.status(400).send("Invalid state parameter");
+      }
+      sourcePage = stateData.source;
+    } catch (e) {
+      console.error("Error parsing state data:", e);
+      return res.status(400).send("Invalid state data");
     }
-}
+
+    if (!code) {
+      return res.status(400).send("Authorization code not provided");
+    }
+
+    const tokenResponse = await axios.get(
+      "https://graph.facebook.com/v22.0/oauth/access_token",
+      {
+        params: {
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          redirect_uri: process.env.FACEBOOK_REDIRECT_URI,
+          code,
+        },
+      },
+    );
+    const { access_token } = tokenResponse.data;
+
+    const longLivedTokenResponse = await axios.get(
+      "https://graph.facebook.com/v22.0/oauth/access_token",
+      {
+        params: {
+          grant_type: "fb_exchange_token",
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          fb_exchange_token: access_token,
+        },
+      },
+    );
+
+    const longLivedAccessToken = longLivedTokenResponse.data.access_token;
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    const clientURL = isProduction
+      ? "https://parallels.messold.com/callback"
+      : "http://localhost:5173/callback";
+
+    return res.redirect(
+      clientURL +
+        `?fbToken=${longLivedAccessToken}&source=${encodeURIComponent(sourcePage)}`,
+    );
+  } catch (err) {
+    console.error("Error during Facebook OAuth callback:", err);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to handle Facebook callback",
+        error: err.message,
+      });
+  }
+};
 
 export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
-    try {
-      const { type} = req.params;
-      const { brandId } = req.query;
-      const token = req.cookies.token;
-  
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: "Access denied. No token provided.",
-        });
-      }
-  
-      const decoded = jwt.verify(token, SECRET_KEY);
-      const user = await User.findById(decoded.id);
-      if (!user) {
-        return res.status(401).send("User not authenticated.");
-      }
-  
-      // Special case: Zoho token lives on User, not Brand
-      if (type === "zoho") {
-        const { zohoToken } = req.query;
-        if (!zohoToken) {
-          return res.status(400).json({ success: false, message: "Zoho refresh token is required." });
-        }
-  
-        user.zohoRefreshToken = zohoToken;
-        await user.save();
-  
-        return res.status(200).json({
-          success: true,
-          message: "Zoho refresh token updated successfully.",
-        });
-      }
-  
-      // All other tokens should belong to a Brand
-      if (!brandId) {
-        return res.status(400).json({
-          success: false,
-          message: "Brand ID is required for this token type. Please create a brand first.",
-        });
+  try {
+    const { type } = req.params;
+    const { brandId } = req.query;
+    const token = req.cookies.token;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. No token provided.",
+      });
+    }
+
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).send("User not authenticated.");
+    }
+
+    // Special case: Zoho token lives on User, not Brand
+    if (type === "zoho") {
+      const { zohoToken } = req.query;
+      if (!zohoToken) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Zoho refresh token is required." });
       }
 
-      // 🔎 Check ownership
-      const ownsBrand = user.brands.includes(brandId);
-      if (!ownsBrand) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have permission to update this brand.",
-        });
-      }
-  
-      // 🔑 Update brand tokens
-      let update = {};
-      if (type === "fbToken") {
-        const { fbToken } = req.query;
-        if (!fbToken) return res.status(400).json({ success: false, message: "Facebook token is required." });
-        update.fbAccessToken = fbToken;
-  
-      } else if (type === "googleadRefreshToken") {
-        const { googleadRefreshToken } = req.query;
-        if (!googleadRefreshToken) return res.status(400).json({ success: false, message: "Google Ads refresh token is required." });
-        update.googleAdsRefreshToken = googleadRefreshToken;
-  
-      } else if (type === "googleanalyticsRefreshToken") {
-        const { googleanalyticsRefreshToken } = req.query;
-        if (!googleanalyticsRefreshToken) return res.status(400).json({ success: false, message: "Google Analytics refresh token is required." });
-        update.googleAnalyticsRefreshToken = googleanalyticsRefreshToken;
-  
-      } else {
-        return res.status(400).json({ success: false, message: `Unsupported token type: ${type}` });
-      }
-  
-      const updatedBrand = await Brand.findByIdAndUpdate(
-        brandId,
-        update,
-        { new: true }
-      );
-
-      if (!updatedBrand) {
-        return res.status(404).json({ success: false, message: "Brand not found" });
-      }
+      user.zohoRefreshToken = zohoToken;
+      await user.save();
 
       return res.status(200).json({
         success: true,
-        message: `${type} updated successfully for brand ${brandId}`,
-        brand: updatedBrand,
+        message: "Zoho refresh token updated successfully.",
       });
-  
-    } catch (err) {
-      console.error(`Error updating ${req.params.type} token:`, err);
-      return res.status(500).json({
+    }
+
+    // All other tokens should belong to a Brand
+    if (!brandId) {
+      return res.status(400).json({
         success: false,
-        message: `Failed to update ${req.params.type} token.`,
-        error: err.message,
+        message:
+          "Brand ID is required for this token type. Please create a brand first.",
       });
     }
-};
-  
-const buildCleanShop = (shop) => {
-    let cleanShop = (shop || '').trim();
 
-    if (cleanShop.includes('admin.shopify.com/store/')) {
-        const urlParts = cleanShop.split('/store/');
-        if (urlParts.length > 1) {
-            cleanShop = urlParts[urlParts.length - 1].split('/')[0].split('?')[0];
-        }
-    } else if (cleanShop.includes('.myshopify.com')) {
-        cleanShop = cleanShop.replace('.myshopify.com', '').split('/')[0];
-    } else {
-        cleanShop = cleanShop.split('/')[0].split('?')[0];
+    // 🔎 Check ownership
+    const ownsBrand = user.brands.includes(brandId);
+    if (!ownsBrand) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update this brand.",
+      });
     }
 
-    return cleanShop;
+    // 🔑 Update brand tokens
+    let update = {};
+    if (type === "fbToken") {
+      const { fbToken } = req.query;
+      if (!fbToken)
+        return res
+          .status(400)
+          .json({ success: false, message: "Facebook token is required." });
+      update.fbAccessToken = fbToken;
+    } else if (type === "googleadRefreshToken") {
+      const { googleadRefreshToken } = req.query;
+      if (!googleadRefreshToken)
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Google Ads refresh token is required.",
+          });
+      update.googleAdsRefreshToken = googleadRefreshToken;
+    } else if (type === "googleanalyticsRefreshToken") {
+      const { googleanalyticsRefreshToken } = req.query;
+      if (!googleanalyticsRefreshToken)
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Google Analytics refresh token is required.",
+          });
+      update.googleAnalyticsRefreshToken = googleanalyticsRefreshToken;
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: `Unsupported token type: ${type}` });
+    }
+
+    const updatedBrand = await Brand.findByIdAndUpdate(brandId, update, {
+      new: true,
+    });
+
+    if (!updatedBrand) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Brand not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${type} updated successfully for brand ${brandId}`,
+      brand: updatedBrand,
+    });
+  } catch (err) {
+    console.error(`Error updating ${req.params.type} token:`, err);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to update ${req.params.type} token.`,
+      error: err.message,
+    });
+  }
+};
+
+const buildCleanShop = (shop) => {
+  let cleanShop = (shop || "").trim();
+
+  if (cleanShop.includes("admin.shopify.com/store/")) {
+    const urlParts = cleanShop.split("/store/");
+    if (urlParts.length > 1) {
+      cleanShop = urlParts[urlParts.length - 1].split("/")[0].split("?")[0];
+    }
+  } else if (cleanShop.includes(".myshopify.com")) {
+    cleanShop = cleanShop.replace(".myshopify.com", "").split("/")[0];
+  } else {
+    cleanShop = cleanShop.split("/")[0].split("?")[0];
+  }
+
+  return cleanShop;
 };
 
 const buildShopifyAuthUrl = ({ cleanShop, redirectUri, state }) => {
-    const SCOPES =
-        "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory";
+  const SCOPES =
+    "read_all_orders,read_analytics,write_returns,read_returns,write_reports,read_reports,write_orders,read_orders,write_customers,read_customers,write_products,read_products,read_inventory,write_inventory";
 
-    const base =
-        `https://${cleanShop}.myshopify.com/admin/oauth/authorize` +
-        `?client_id=${process.env.SHOPIFY_CLIENT_ID}` +
-        `&scope=${encodeURIComponent(SCOPES)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const base =
+    `https://${cleanShop}.myshopify.com/admin/oauth/authorize` +
+    `?client_id=${process.env.SHOPIFY_CLIENT_ID}` +
+    `&scope=${encodeURIComponent(SCOPES)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-    if (!state) return base;
-    return base + `&state=${encodeURIComponent(state)}`;
+  if (!state) return base;
+  return base + `&state=${encodeURIComponent(state)}`;
 };
 
 /**
@@ -578,55 +629,61 @@ const buildShopifyAuthUrl = ({ cleanShop, redirectUri, state }) => {
  * and respond without frontend redirect (popup-friendly).
  */
 export const getShopifyAuthUrl = (req, res) => {
-    const { shop, flowType, brandId } = req.body;
+  const { shop, flowType, brandId } = req.body;
 
-    if (!shop) {
-        return res.status(400).json({ error: 'Shop name is required' });
+  if (!shop) {
+    return res.status(400).json({ error: "Shop name is required" });
+  }
+
+  const cleanShop = buildCleanShop(shop);
+  let redirectUri;
+  if (flowType === "brandSetup") {
+    redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
+  } else {
+    redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
+  }
+
+  // Only include signed state when brandId is present (PlatformModal connect-brand flow).
+  let stateToken = "";
+  if (brandId) {
+    const userIdFromMiddleware = req.user?._id?.toString?.() || req.user?.id;
+    let userId = userIdFromMiddleware;
+
+    if (!userId) {
+      // Fallback: decode from cookie token when route is not protected by verifyAuth
+      const token = req.cookies?.token;
+      if (!token) {
+        return res
+          .status(401)
+          .json({ error: "Access denied. No token provided." });
+      }
+      try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        userId = decoded?.id;
+      } catch (err) {
+        return res
+          .status(401)
+          .json({ error: "Invalid session. Please log in again." });
+      }
     }
 
-    const cleanShop = buildCleanShop(shop);
-    let redirectUri;
-    if (flowType === 'brandSetup') {
-        redirectUri = process.env.SHOPIFY_BRAND_SETUP_REDIRECT_URI;
-    } else {
-        redirectUri = process.env.SHOPIFY_LOGIN_REDIRECT_URI;
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid session. Missing user." });
     }
 
-    // Only include signed state when brandId is present (PlatformModal connect-brand flow).
-    let stateToken = '';
-    if (brandId) {
-        const userIdFromMiddleware = req.user?._id?.toString?.() || req.user?.id;
-        let userId = userIdFromMiddleware;
-
-        if (!userId) {
-            // Fallback: decode from cookie token when route is not protected by verifyAuth
-            const token = req.cookies?.token;
-            if (!token) {
-                return res.status(401).json({ error: 'Access denied. No token provided.' });
-            }
-            try {
-                const decoded = jwt.verify(token, SECRET_KEY);
-                userId = decoded?.id;
-            } catch (err) {
-                return res.status(401).json({ error: 'Invalid session. Please log in again.' });
-            }
-        }
-
-        if (!userId) {
-            return res.status(401).json({ error: 'Invalid session. Missing user.' });
-        }
-
-        stateToken = jwt.sign({ brandId, userId }, SECRET_KEY, { expiresIn: '10m' });
-    }
-
-    const authUrl = buildShopifyAuthUrl({
-        cleanShop,
-        redirectUri,
-        state: stateToken || undefined
+    stateToken = jwt.sign({ brandId, userId }, SECRET_KEY, {
+      expiresIn: "10m",
     });
+  }
 
-    res.json({ success: true, authUrl });
-}
+  const authUrl = buildShopifyAuthUrl({
+    cleanShop,
+    redirectUri,
+    state: stateToken || undefined,
+  });
+
+  res.json({ success: true, authUrl });
+};
 
 /**
  * Clean endpoint for PlatformModal:
@@ -635,436 +692,481 @@ export const getShopifyAuthUrl = (req, res) => {
  * Requires verifyAuth middleware (req.user available).
  */
 export const getShopifyConnectBrandAuthUrl = (req, res) => {
-    const { shop, brandId } = req.body;
-    if (!shop) return res.status(400).json({ error: 'Shop name is required' });
-    if (!brandId) return res.status(400).json({ error: 'Brand ID is required' });
+  const { shop, brandId } = req.body;
+  if (!shop) return res.status(400).json({ error: "Shop name is required" });
+  if (!brandId) return res.status(400).json({ error: "Brand ID is required" });
 
-    // Ownership check: user must own the brand (or be admin)
-    const user = req.user;
-    if (!user) {
-        return res.status(401).json({ error: 'Access denied. Please log in again.' });
-    }
+  // Ownership check: user must own the brand (or be admin)
+  const user = req.user;
+  if (!user) {
+    return res
+      .status(401)
+      .json({ error: "Access denied. Please log in again." });
+  }
 
-    const ownsBrand =
-        user.isAdmin === true ||
-        (Array.isArray(user.brands) && user.brands.some((id) => id?.toString?.() === brandId));
+  const ownsBrand =
+    user.isAdmin === true ||
+    (Array.isArray(user.brands) &&
+      user.brands.some((id) => id?.toString?.() === brandId));
 
-    if (!ownsBrand) {
-        return res.status(403).json({ error: 'You do not have permission to update this brand.' });
-    }
+  if (!ownsBrand) {
+    return res
+      .status(403)
+      .json({ error: "You do not have permission to update this brand." });
+  }
 
-    // Force brandSetup redirect URI for connect-brand flow
-    req.body.flowType = 'brandSetup';
-    return getShopifyAuthUrl(req, res);
+  // Force brandSetup redirect URI for connect-brand flow
+  req.body.flowType = "brandSetup";
+  return getShopifyAuthUrl(req, res);
 };
 export const handleShopifyCallback = async (req, res) => {
-    const absoluteUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-    const url = new URL(absoluteUrl);
+  const absoluteUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const url = new URL(absoluteUrl);
 
-    const code = url.searchParams.get('code');
-    const shop = url.searchParams.get('shop');
+  const code = url.searchParams.get("code");
+  const shop = url.searchParams.get("shop");
 
-    const clientId = process.env.SHOPIFY_CLIENT_ID;
-    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+  const clientId = process.env.SHOPIFY_CLIENT_ID;
+  const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
-    if (!code || !shop) {
-        return res.status(400).json({ error: 'Missing required parameters: code or shop' });
+  if (!code || !shop) {
+    return res
+      .status(400)
+      .json({ error: "Missing required parameters: code or shop" });
+  }
+
+  try {
+    // Step 1: Exchange code for access token
+    const tokenResponse = await axios.post(
+      `https://${shop}/admin/oauth/access_token`,
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+      },
+    );
+
+    const accessToken = tokenResponse.data?.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: "Failed to obtain access token" });
     }
+
+    // Step 2: Fetch shop details
+    const shopResponse = await axios.get(
+      `https://${shop}/admin/api/2024-04/shop.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+        },
+      },
+    );
+
+    const shopData = shopResponse.data.shop;
+    const shopId = shopData.id;
+    const shopName = shopData.name;
+    const ownerEmail = shopData.email;
+    const ownerName = shopData.shop_owner;
+    const storeCurrency = shopData.currency || "USD";
+
+    // Step 3: Find or create user
+    const emailToUse = ownerEmail || `${shopName}@${shop}`;
+    let user = await User.findOne({ email: emailToUse });
+
+    if (user) {
+      user.loginCount += 1;
+      await user.save();
+    }
+
+    if (!user) {
+      user = new User({
+        username: ownerName || shopName,
+        email: emailToUse,
+        method: "shopify",
+        brands: [],
+        isAdmin: false,
+        loginCount: 0,
+      });
+      await user.save();
+    }
+
+    // Step 4: Find or create brand
+    let brand = await Brand.findOne({ "shopifyAccount.shopName": shop });
+
+    if (brand) {
+      brand.shopifyAccount.shopifyAccessToken = accessToken;
+      brand.shopifyAccount.shopId = shopId;
+      brand.shopifyAccount.currency = storeCurrency;
+      await brand.save();
+
+      if (!user.brands.includes(brand._id.toString())) {
+        user.brands.push(brand._id);
+        await user.save();
+      }
+
+      // Also add brand to all admin users
+      const adminUsers = await User.find({ isAdmin: true });
+      for (const adminUser of adminUsers) {
+        if (!adminUser.brands.includes(brand._id.toString())) {
+          adminUser.brands.push(brand._id);
+          await adminUser.save();
+        }
+      }
+    } else {
+      brand = new Brand({
+        name: shopName,
+        shopifyAccount: {
+          shopName: shop,
+          shopifyAccessToken: accessToken,
+          shopId: shopId,
+          currency: storeCurrency,
+        },
+      });
+      await brand.save();
+
+      // Add brand to the current user
+      user.brands.push(brand._id);
+      await user.save();
+
+      // Also add brand to all admin users
+      const adminUsers = await User.find({ isAdmin: true });
+      for (const adminUser of adminUsers) {
+        if (!adminUser.brands.includes(brand._id.toString())) {
+          adminUser.brands.push(brand._id);
+          await adminUser.save();
+        }
+      }
+    }
+
+    // Step 5: Create subscription if not exists
+    let subscription = await Subscription.findOne({
+      brandId: brand._id.toString(),
+      shopId: shopId,
+    });
+
+    if (!subscription) {
+      subscription = new Subscription({
+        brandId: brand._id.toString(),
+        shopId: shopId,
+        planName: "Free Plan",
+        price: 0,
+        status: "active",
+        billingOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      });
+      await subscription.save();
+    }
+
+    await registerWebhooks(shop, accessToken);
 
     try {
-        // Step 1: Exchange code for access token
-        const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
-            client_id: clientId,
-            client_secret: clientSecret,
-            code: code,
-        });
-
-        const accessToken = tokenResponse.data?.access_token;
-        if (!accessToken) {
-            return res.status(500).json({ error: 'Failed to obtain access token' });
-        }
-
-        // Step 2: Fetch shop details
-        const shopResponse = await axios.get(`https://${shop}/admin/api/2024-04/shop.json`, {
-            headers: {
-                'X-Shopify-Access-Token': accessToken
-            }
-        });
-
-        const shopData = shopResponse.data.shop;
-        const shopId = shopData.id;
-        const shopName = shopData.name;
-        const ownerEmail = shopData.email;
-        const ownerName = shopData.shop_owner;
-        const storeCurrency = shopData.currency || 'USD';
-
-        // Step 3: Find or create user
-        const emailToUse = ownerEmail || `${shopName}@${shop}`;
-        let user = await User.findOne({ email: emailToUse });
-
-        if (user) {
-            user.loginCount += 1;
-            await user.save();
-        }
-
-        if (!user) {
-            user = new User({
-                username: ownerName || shopName,
-                email: emailToUse,
-                method: 'shopify',
-                brands: [],
-                isAdmin: false,
-                loginCount: 0,
-            });
-            await user.save();
-        }
-
-        // Step 4: Find or create brand
-        let brand = await Brand.findOne({ 'shopifyAccount.shopName': shop });
-
-        if (brand) {
-            brand.shopifyAccount.shopifyAccessToken = accessToken;
-            brand.shopifyAccount.shopId = shopId;
-            brand.shopifyAccount.currency = storeCurrency;
-            await brand.save();
-
-            if (!user.brands.includes(brand._id.toString())) {
-                user.brands.push(brand._id);
-                await user.save();
-            }
-
-            // Also add brand to all admin users
-            const adminUsers = await User.find({ isAdmin: true });
-            for (const adminUser of adminUsers) {
-                if (!adminUser.brands.includes(brand._id.toString())) {
-                    adminUser.brands.push(brand._id);
-                    await adminUser.save();
-                }
-            }
-        } else {
-            brand = new Brand({
-                name: shopName,
-                shopifyAccount: {
-                    shopName: shop,
-                    shopifyAccessToken: accessToken,
-                    shopId: shopId,
-                    currency: storeCurrency
-                }
-            });
-            await brand.save();
-
-            // Add brand to the current user
-            user.brands.push(brand._id);
-            await user.save();
-
-            // Also add brand to all admin users
-            const adminUsers = await User.find({ isAdmin: true });
-            for (const adminUser of adminUsers) {
-                if (!adminUser.brands.includes(brand._id.toString())) {
-                    adminUser.brands.push(brand._id);
-                    await adminUser.save();
-                }
-            }
-        }
-
-        // Step 5: Create subscription if not exists
-        let subscription = await Subscription.findOne({
-            brandId: brand._id.toString(),
-            shopId: shopId,
-        });
-
-        if (!subscription) {
-            subscription = new Subscription({
-                brandId: brand._id.toString(),
-                shopId: shopId,
-                planName: 'Free Plan',
-                price: 0,
-                status: 'active',
-                billingOn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-            });
-            await subscription.save();
-        }
-
-        await registerWebhooks(shop, accessToken);
-
-        try {
-            await metricsQueue.add('calculate-metrics', {
-                brandId: brand._id.toString(),
-                userId: user._id.toString()
-            }, {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 1000
-                }
-            });
-            console.log(`Metrics calculation queued for brand ${brand._id}`);
-        } catch (metricsError) {
-            console.error(`Failed to queue metrics calculation for brand ${brand._id}:`, metricsError);
-        }
-
-        const token = jwt.sign(
-            {
-                id: user._id,
-                email: user.email,
-                method: user.method
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '30d' }
-        );
-
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000
-        });
-
-        // Step 9: Redirect to frontend
-        const clientURL = process.env.NODE_ENV === 'production'
-            ? 'https://parallels.messold.com/callback'
-            : 'http://localhost:5173/callback';
-
-        return res.redirect(`${clientURL}?shopify_token=${token}&userId=${user._id}`);
-
-    } catch (error) {
-        console.error('Shopify OAuth callback error:', error);
-        return res.status(500).json({
-            error: 'Something went wrong during Shopify callback',
-            details: error.response?.data || error.message
-        });
+      await metricsQueue.add(
+        "calculate-metrics",
+        {
+          brandId: brand._id.toString(),
+          userId: user._id.toString(),
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000,
+          },
+        },
+      );
+      console.log(`Metrics calculation queued for brand ${brand._id}`);
+    } catch (metricsError) {
+      console.error(
+        `Failed to queue metrics calculation for brand ${brand._id}:`,
+        metricsError,
+      );
     }
+
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        method: user.method,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" },
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    // Step 9: Redirect to frontend
+    const clientURL =
+      process.env.NODE_ENV === "production"
+        ? "https://parallels.messold.com/callback"
+        : "http://localhost:5173/callback";
+
+    return res.redirect(
+      `${clientURL}?shopify_token=${token}&userId=${user._id}`,
+    );
+  } catch (error) {
+    console.error("Shopify OAuth callback error:", error);
+    return res.status(500).json({
+      error: "Something went wrong during Shopify callback",
+      details: error.response?.data || error.message,
+    });
+  }
 };
 
 export const handleShopifyBrandSetupCallback = async (req, res) => {
-    const { code, shop, state } = req.query;
-    const clientId = process.env.SHOPIFY_CLIENT_ID;
-    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+  const { code, shop, state } = req.query;
+  const clientId = process.env.SHOPIFY_CLIENT_ID;
+  const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 
-    if (!code || !shop) {
-        return res.status(400).json({ error: 'Missing required parameters: code or shop' });
+  if (!code || !shop) {
+    return res
+      .status(400)
+      .json({ error: "Missing required parameters: code or shop" });
+  }
+
+  try {
+    // Step 1: Exchange code for access token
+    const tokenResponse = await axios.post(
+      `https://${shop}/admin/oauth/access_token`,
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+      },
+    );
+
+    const accessToken = tokenResponse.data?.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: "Failed to obtain access token" });
     }
 
-    try {
-        // Step 1: Exchange code for access token
-        const tokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
-            client_id: clientId,
-            client_secret: clientSecret,
-            code: code,
-        });
+    // Step 2: Fetch shop details to get shop name
+    const shopResponse = await axios.get(
+      `https://${shop}/admin/api/2024-04/shop.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+        },
+      },
+    );
 
-        const accessToken = tokenResponse.data?.access_token;
-        if (!accessToken) {
-            return res.status(500).json({ error: 'Failed to obtain access token' });
+    const shopData = shopResponse.data.shop;
+    const shopName = shopData.name;
+    const shopId = shopData.id;
+    const storeCurrency = shopData.currency || "USD";
+
+    // If state was provided (connect-brand flow), update the existing brand and do NOT redirect.
+    if (typeof state === "string" && state) {
+      let decodedState;
+      try {
+        decodedState = jwt.verify(state, SECRET_KEY);
+      } catch (err) {
+        decodedState = null;
+      }
+
+      const brandId = decodedState?.brandId;
+      const userId = decodedState?.userId;
+
+      if (brandId && userId) {
+        try {
+          const updatedBrand = await Brand.findByIdAndUpdate(
+            brandId,
+            {
+              $set: {
+                shopifyAccount: {
+                  shopName: shop, // store domain, used by webhooks/reporting
+                  shopifyAccessToken: accessToken,
+                  shopId: Number(shopId),
+                  currency: storeCurrency,
+                },
+              },
+            },
+            { new: true, runValidators: true },
+          );
+
+          if (!updatedBrand) {
+            return res.status(404).send("Brand not found");
+          }
+
+          await registerWebhooks(shop, accessToken);
+
+          // Queue metrics calculation for this brand
+          await metricsQueue.add("calculate-metrics", {
+            brandId: updatedBrand._id.toString(),
+            userId: userId.toString(),
+          });
+
+          const dashboardUrl =
+            process.env.NODE_ENV === "production"
+              ? "https://parallels.messold.com/dashboard"
+              : "http://localhost:5173/dashboard";
+
+          const redirectUrl =
+            `${dashboardUrl}` +
+            `?shopify_connected=1` +
+            `&brandId=${encodeURIComponent(updatedBrand._id.toString())}` +
+            `&shop=${encodeURIComponent(String(shop))}`;
+
+          return res.redirect(redirectUrl);
+        } catch (err) {
+          console.error("Shopify connect-brand callback error:", err);
+          const dashboardUrl =
+            process.env.NODE_ENV === "production"
+              ? "https://parallels.messold.com/dashboard"
+              : "http://localhost:5173/dashboard";
+
+          const redirectUrl =
+            `${dashboardUrl}` +
+            `?shopify_connected=0` +
+            `&brandId=${encodeURIComponent(String(brandId))}` +
+            `&error=${encodeURIComponent(err?.message || "Failed to connect Shopify")}`;
+
+          return res.redirect(redirectUrl);
         }
-
-        // Step 2: Fetch shop details to get shop name
-        const shopResponse = await axios.get(`https://${shop}/admin/api/2024-04/shop.json`, {
-            headers: {
-                'X-Shopify-Access-Token': accessToken
-            }
-        });
-
-        const shopData = shopResponse.data.shop;
-        const shopName = shopData.name;
-        const shopId = shopData.id;
-        const storeCurrency = shopData.currency || 'USD';
-
-        // If state was provided (connect-brand flow), update the existing brand and do NOT redirect.
-        if (typeof state === 'string' && state) {
-            let decodedState;
-            try {
-                decodedState = jwt.verify(state, SECRET_KEY);
-            } catch (err) {
-                decodedState = null;
-            }
-
-            const brandId = decodedState?.brandId;
-            const userId = decodedState?.userId;
-
-            if (brandId && userId) {
-                try {
-                    const updatedBrand = await Brand.findByIdAndUpdate(
-                        brandId,
-                        {
-                            $set: {
-                                shopifyAccount: {
-                                    shopName: shop, // store domain, used by webhooks/reporting
-                                    shopifyAccessToken: accessToken,
-                                    shopId: Number(shopId),
-                                    currency: storeCurrency
-                                }
-                            }
-                        },
-                        { new: true, runValidators: true }
-                    );
-
-                    if (!updatedBrand) {
-                        return res.status(404).send('Brand not found');
-                    }
-
-                    await registerWebhooks(shop, accessToken);
-
-                    // Queue metrics calculation for this brand
-                    await metricsQueue.add('calculate-metrics', {
-                        brandId: updatedBrand._id.toString(),
-                        userId: userId.toString()
-                    });
-
-                    const dashboardUrl = process.env.NODE_ENV === 'production'
-                        ? 'https://parallels.messold.com/dashboard'
-                        : 'http://localhost:5173/dashboard';
-
-                    const redirectUrl =
-                        `${dashboardUrl}` +
-                        `?shopify_connected=1` +
-                        `&brandId=${encodeURIComponent(updatedBrand._id.toString())}` +
-                        `&shop=${encodeURIComponent(String(shop))}`;
-
-                    return res.redirect(redirectUrl);
-                } catch (err) {
-                    console.error('Shopify connect-brand callback error:', err);
-                    const dashboardUrl = process.env.NODE_ENV === 'production'
-                        ? 'https://parallels.messold.com/dashboard'
-                        : 'http://localhost:5173/dashboard';
-
-                    const redirectUrl =
-                        `${dashboardUrl}` +
-                        `?shopify_connected=0` +
-                        `&brandId=${encodeURIComponent(String(brandId))}` +
-                        `&error=${encodeURIComponent(err?.message || 'Failed to connect Shopify')}`;
-
-                    return res.redirect(redirectUrl);
-                }
-            }
-        }
-
-    
-        const clientURL = process.env.NODE_ENV === 'production'
-            ? 'https://parallels.messold.com/brand-setup'
-            : 'http://localhost:5173/brand-setup';
-
-        const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
-
-        return res.redirect(redirectUrl);
-
-    } catch (error) {
-        console.error('Shopify Brand Setup OAuth callback error:', error);
-        return res.status(500).json({
-            error: 'Something went wrong during Shopify brand setup callback',
-            details: error.response?.data || error.message
-        });
+      }
     }
+
+    const clientURL =
+      process.env.NODE_ENV === "production"
+        ? "https://parallels.messold.com/brand-setup"
+        : "http://localhost:5173/brand-setup";
+
+    const redirectUrl = `${clientURL}?access_token=${encodeURIComponent(accessToken)}&shop_name=${encodeURIComponent(shopName)}&shop=${encodeURIComponent(shop)}`;
+
+    return res.redirect(redirectUrl);
+  } catch (error) {
+    console.error("Shopify Brand Setup OAuth callback error:", error);
+    return res.status(500).json({
+      error: "Something went wrong during Shopify brand setup callback",
+      details: error.response?.data || error.message,
+    });
+  }
 };
 
 export const getZohoAuthURL = (req, res) => {
-    const authUrl = 'https://accounts.zoho.com/oauth/v2/auth' +
-        `?client_id=${process.env.ZOHO_CLIENT_ID}` +
-        '&response_type=code' +
-        `&redirect_uri=${process.env.ZOHO_REDIRECT_URI}` +
-        '&scope=Desk.tickets.ALL,Desk.basic.READ,Desk.settings.ALL,Desk.search.READ' +
-        '&access_type=offline';
-    res.json({ success: true, authUrl });
+  const authUrl =
+    "https://accounts.zoho.com/oauth/v2/auth" +
+    `?client_id=${process.env.ZOHO_CLIENT_ID}` +
+    "&response_type=code" +
+    `&redirect_uri=${process.env.ZOHO_REDIRECT_URI}` +
+    "&scope=Desk.tickets.ALL,Desk.basic.READ,Desk.settings.ALL,Desk.search.READ" +
+    "&access_type=offline";
+  res.json({ success: true, authUrl });
 };
 
 export const handleZohoCallback = async (req, res) => {
-    const { code } = req.query;
-    const sourcePage = req.query.source || '/dashboard';
+  const { code } = req.query;
+  const sourcePage = req.query.source || "/dashboard";
 
-    if (!code) {
-        return res.status(400).send('Authorization code is missing');
+  if (!code) {
+    return res.status(400).send("Authorization code is missing");
+  }
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await axios.post(
+      "https://accounts.zoho.com/oauth/v2/token",
+      null,
+      {
+        params: {
+          client_id: process.env.ZOHO_CLIENT_ID,
+          client_secret: process.env.ZOHO_CLIENT_SECRET,
+          redirect_uri: process.env.ZOHO_REDIRECT_URI,
+          code: code,
+          grant_type: "authorization_code",
+        },
+      },
+    );
+    const { refresh_token } = tokenResponse.data;
+
+    // Store refresh token on admin user
+    const adminUser = await User.findOne({ isAdmin: true });
+    if (adminUser) {
+      adminUser.zohoRefreshToken = refresh_token;
+      await adminUser.save();
+      console.log("Zoho refresh token stored on admin user:", adminUser._id);
+    } else {
+      console.error("No admin user found to store Zoho refresh token");
+      // Still redirect but with error message
+      const isProduction = process.env.NODE_ENV === "production";
+      const clientURL = isProduction
+        ? "https://parallels.messold.com/callback"
+        : "http://localhost:5173/callback";
+      return res.redirect(
+        clientURL +
+          `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&error=no_admin`,
+      );
     }
 
-    try {
-        // Exchange code for tokens
-        const tokenResponse = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
-            params: {
-                client_id: process.env.ZOHO_CLIENT_ID,
-                client_secret: process.env.ZOHO_CLIENT_SECRET,
-                redirect_uri: process.env.ZOHO_REDIRECT_URI,
-                code: code,
-                grant_type: 'authorization_code',
-            }
-        });
-        const { refresh_token } = tokenResponse.data;
+    const isProduction = process.env.NODE_ENV === "production";
+    const clientURL = isProduction
+      ? "https://parallels.messold.com/callback"
+      : "http://localhost:5173/callback";
 
-        // Store refresh token on admin user
-        const adminUser = await User.findOne({ isAdmin: true });
-        if (adminUser) {
-            adminUser.zohoRefreshToken = refresh_token;
-            await adminUser.save();
-            console.log('Zoho refresh token stored on admin user:', adminUser._id);
-        } else {
-            console.error('No admin user found to store Zoho refresh token');
-            // Still redirect but with error message
-            const isProduction = process.env.NODE_ENV === 'production';
-            const clientURL = isProduction
-                ? 'https://parallels.messold.com/callback'
-                : 'http://localhost:5173/callback';
-            return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&error=no_admin`);
-        }
-
-        const isProduction = process.env.NODE_ENV === 'production';
-        const clientURL = isProduction
-            ? 'https://parallels.messold.com/callback'
-            : 'http://localhost:5173/callback';
-
-        return res.redirect(clientURL + `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&success=true`);
-    } catch (error) {
-        console.error('Token exchange error:', error.response?.data || error.message);
-        res.status(500).send('Authentication failed');
-    }
+    return res.redirect(
+      clientURL +
+        `?zohoToken=${refresh_token}&source=${encodeURIComponent(sourcePage)}&success=true`,
+    );
+  } catch (error) {
+    console.error(
+      "Token exchange error:",
+      error.response?.data || error.message,
+    );
+    res.status(500).send("Authentication failed");
+  }
 };
 
 export const checkTokenValidity = async (req, res) => {
-    try {
-        const token = req.cookies.token;
+  try {
+    const token = req.cookies.token;
 
-        if (!token) {
-            return res.status(401).json({
-                success: false,
-                message: 'No token provided',
-                isValid: false
-            });
-        }
-
-        try {
-            const decoded = jwt.verify(token, SECRET_KEY);
-            const currentTime = Math.floor(Date.now() / 1000);
-            
-            if (decoded.exp < currentTime) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Token has expired',
-                    isValid: false,
-                    expiresAt: decoded.exp
-                });
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: 'Token is valid',
-                isValid: true,
-                expiresAt: decoded.exp,
-                user: {
-                    id: decoded.id,
-                    email: decoded.email,
-                    method: decoded.method
-                }
-            });
-        } catch (jwtError) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid token',
-                isValid: false
-            });
-        }
-    } catch (error) {
-        console.error('Error checking token validity:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Error checking token validity',
-            isValid: false
-        });
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+        isValid: false,
+      });
     }
+
+    try {
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      if (decoded.exp < currentTime) {
+        return res.status(401).json({
+          success: false,
+          message: "Token has expired",
+          isValid: false,
+          expiresAt: decoded.exp,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Token is valid",
+        isValid: true,
+        expiresAt: decoded.exp,
+        user: {
+          id: decoded.id,
+          email: decoded.email,
+          method: decoded.method,
+        },
+      });
+    } catch (jwtError) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+        isValid: false,
+      });
+    }
+  } catch (error) {
+    console.error("Error checking token validity:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error checking token validity",
+      isValid: false,
+    });
+  }
 };

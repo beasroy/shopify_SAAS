@@ -350,7 +350,7 @@ router.get('/all', async (req, res) => {
         const brandsWithAds = await Promise.all(
             scrapingBrands.map(async (brand) => {
                 const ads = await ScrapedAdDetail.find({ scrapingBrandId: brand._id })
-                    .sort({ createdAt: 1 });
+                    .sort({ createdAt: -1 });
 
                 return {
                     _id: brand._id,

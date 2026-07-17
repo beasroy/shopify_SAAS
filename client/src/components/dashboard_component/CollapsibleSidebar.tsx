@@ -27,7 +27,7 @@ import {
   X,
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
-import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice.ts"
+import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice"
 import axios from "axios"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Logo from "@/assets/messold-icon.png"
@@ -154,6 +154,7 @@ export default function CollapsibleSidebar() {
       dispatch(setSelectedBrandId(pathParts[2]))
     }
   }, [location.pathname, dispatch])
+
 
   useEffect(() => {
     setIsMobileMoreOpen(false)

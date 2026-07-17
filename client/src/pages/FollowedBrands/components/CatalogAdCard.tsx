@@ -179,7 +179,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                 {cardImages.length === 1 ? (
                   // Single image fills entire collage
                   <div className="w-full h-full relative overflow-hidden rounded-lg">
-                    <img
+                    <img referrerPolicy="no-referrer"
                       src={cardImages[0].resized_image_url || cardImages[0].original_image_url || cardImages[0].image_url || "/placeholder.svg"}
                       alt="Card 1"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -193,7 +193,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                   <div className="grid grid-cols-2 gap-1 h-full">
                     {cardImages.map((card, idx) => (
                       <div key={idx} className="relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={card.resized_image_url || card.original_image_url || card.image_url || "/placeholder.svg"}
                           alt={`Card ${idx + 1}`}
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -208,7 +208,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                   // Three images: full width top, two below
                   <div className="flex flex-col gap-1 h-full">
                     <div className="w-full h-1/2 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                      <img
+                      <img referrerPolicy="no-referrer"
                         src={cardImages[0].resized_image_url || cardImages[0].original_image_url || cardImages[0].image_url || "/placeholder.svg"}
                         alt="Card 1"
                         className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -219,7 +219,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                     </div>
                     <div className="flex gap-1 h-1/2">
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[1].resized_image_url || cardImages[1].image_url || "/placeholder.svg"}
                           alt="Card 2"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -229,7 +229,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                         />
                       </div>
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[2].resized_image_url || cardImages[2].image_url || "/placeholder.svg"}
                           alt="Card 3"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -245,7 +245,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                   <div className="grid grid-cols-2 gap-1 h-full">
                     {cardImages.map((card, idx) => (
                       <div key={idx} className="relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={card.resized_image_url || card.image_url || "/placeholder.svg"}
                           alt={`Card ${idx + 1}`}
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -261,7 +261,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                   <div className="flex flex-col gap-1 h-full">
                     <div className="flex gap-1 h-1/2">
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[0].resized_image_url || cardImages[0].image_url || "/placeholder.svg"}
                           alt="Card 1"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -271,7 +271,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                         />
                       </div>
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[1].resized_image_url || cardImages[1].image_url || "/placeholder.svg"}
                           alt="Card 2"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -281,7 +281,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                         />
                       </div>
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[2].resized_image_url || cardImages[2].image_url || "/placeholder.svg"}
                           alt="Card 3"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -293,7 +293,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                     </div>
                     <div className="flex gap-1 h-1/2">
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[3].resized_image_url || cardImages[3].image_url || "/placeholder.svg"}
                           alt="Card 4"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -303,7 +303,7 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                         />
                       </div>
                       <div className="flex-1 relative overflow-hidden rounded-lg bg-gray-700 group/item">
-                        <img
+                        <img referrerPolicy="no-referrer"
                           src={cardImages[4].resized_image_url || cardImages[4].image_url || "/placeholder.svg"}
                           alt="Card 5"
                           className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500"
@@ -327,16 +327,17 @@ const CatalogAdCard: React.FC<CatalogAdCardProps> = ({ brand, onFollow, isFollow
                           <video
                    
                             src={videoUrl}
+                            poster={mediaUrl || undefined}
                             className="w-full h-full object-cover"
                             controls
-                            
+                            preload="none"
                           
                             onClick={(e) => e.stopPropagation()}
                           />
                       
                       </>
                     ) : (
-                      <img
+                      <img referrerPolicy="no-referrer"
                         src={mediaUrl || "/placeholder.svg"}
                         alt={brand.pageName || 'Ad preview'}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"

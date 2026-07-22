@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react';
 import { LocationData } from '../interfaces';
 import { formatCurrency } from '@/utils/currency';
 
@@ -37,6 +37,7 @@ export default function LocationTable({
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [sortField, setSortField] = useState<SortField>('totalSales');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -114,32 +115,45 @@ export default function LocationTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold capitalize">{dimensionValue}</h3>
+      <div 
+        className="flex items-center justify-between cursor-pointer select-none"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
-          <Select
-            value={rowsPerPage.toString()}
-            onValueChange={(value) => {
-              setRowsPerPage(Number(value));
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="200">200</SelectItem>
-            </SelectContent>
-          </Select>
+          {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+          <h3 className="text-lg font-semibold capitalize">{dimensionValue}</h3>
+        </div>
+        
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {isExpanded && (
+            <>
+              <span className="text-sm text-muted-foreground">Rows per page:</span>
+              <Select
+                value={rowsPerPage.toString()}
+                onValueChange={(value) => {
+                  setRowsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      {isExpanded && (
+        <>
+          <div className="rounded-md border">
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-[300px]">
@@ -238,6 +252,8 @@ export default function LocationTable({
             </Button>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -14,7 +14,7 @@ export interface IBrand {
 export interface IBrandState {
     selectedBrandId: string | null;
     brands: IBrand[];
-    earliestDate?: string | null;
+
 }
 
 export interface ITooltipHeaderProps {

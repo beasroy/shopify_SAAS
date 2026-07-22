@@ -37,7 +37,7 @@ export default function MissingDateWarning() {
 
                                     <div className="text-xs text-slate-500 flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
-                                        <span>Last 24 months available</span>
+                                        <span>Last 37 months available</span>
                                     </div>
                                 </div>
 

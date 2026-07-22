@@ -504,27 +504,13 @@ export function DatePickerWithRange({
 }: DatePickerWithRangeProps) {
   const dispatch = useDispatch();
   const dateRange = useSelector(selectDateRange);
-  const earliestDateString = useSelector((state: any) => state.brand?.earliestDate);
-  const selectedBrandId = useSelector((state: any) => state.brand?.selectedBrandId);
-  const earliestDate = useMemo(() => earliestDateString ? new Date(earliestDateString) : new Date(2000, 0, 1), [earliestDateString]);
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    console.log("DatePicker: Current earliestDateString in Redux is:", earliestDateString);
-    if (selectedBrandId) {
-      import('@/store/slices/BrandSlice').then((module) => {
-        dispatch(module.fetchBrandEarliestDate(selectedBrandId) as any);
-      });
-    }
-  }, [selectedBrandId, dispatch]);
+  const [isMobile, setIsMobile] = useState(false);
 
   const initialDate = useMemo(() => {
     if (dateRange?.from || dateRange?.to) {
       let fromDate = dateRange.from ? new Date(dateRange.from) : undefined;
 
-      if (fromDate && fromDate.getFullYear() === 2000 && earliestDate.getFullYear() !== 2000) {
-        fromDate = earliestDate;
-      }
       return {
         from: fromDate,
         to: dateRange.to ? new Date(dateRange.to) : undefined,
@@ -655,10 +641,6 @@ export function DatePickerWithRange({
 
   const presets = useMemo(
     () => [
-      {
-        label: "Maximum",
-        fn: () => setPresetRange(earliestDate, dates.today),
-      },
       { label: "Today", fn: () => setPresetRange(dates.today, dates.today) },
       {
         label: "Yesterday",
@@ -744,8 +726,12 @@ export function DatePickerWithRange({
             subYears(endOfYear(new Date()), 1),
           ),
       },
+      {
+        label: "Maximum (37 mon)",
+        fn: () => setPresetRange(subMonths(dates.today, 37), dates.today),
+      },
     ],
-    [dates, setPresetRange, earliestDate],
+    [dates, setPresetRange],
   );
 
   const handleCalendarSelect = useCallback(

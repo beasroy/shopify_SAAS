@@ -806,8 +806,8 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         endDate.setDate(endDate.getDate() - 1); // Set to yesterday
         endDate.setHours(23, 59, 59, 999);
 
-        const startDate = new Date();
-        startDate.setFullYear(endDate.getFullYear() - 2);
+        const startDate = new Date(endDate);
+        startDate.setMonth(endDate.getMonth() - 37);
         startDate.setDate(1); // Set to first day of the month
         startDate.setHours(0, 0, 0, 0);
 
@@ -900,7 +900,7 @@ export const updateMetricsForSingleBrand = async (brandId, userId, startDateInpu
 
         const startDate = startDateInput ? new Date(startDateInput) : new Date(endDate);
         if (!startDateInput) {
-            startDate.setFullYear(endDate.getFullYear() - 2);
+            startDate.setMonth(endDate.getMonth() - 37);
             startDate.setDate(1);
         }
         startDate.setHours(0, 0, 0, 0);
@@ -969,9 +969,9 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
         endDate.setDate(endDate.getDate() - 1); // Set to yesterday
         endDate.setHours(23, 59, 59, 999);
 
-        // Start date is 2 years before brand creation date
+        // Start date is 37 months before brand creation date
         const startDate = new Date(brandCreatedAt);
-        startDate.setFullYear(startDate.getFullYear() - 2);
+        startDate.setMonth(startDate.getMonth() - 37);
         startDate.setHours(0, 0, 0, 0);
 
         console.log(`Brand creation date: ${brandCreatedAt.toISOString()}`);

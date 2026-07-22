@@ -11,17 +11,18 @@ export const getMetricsbyID = async (req, res) => {
         const query = { brandId: objectID };
 
         const today = new Date();
-        const twoYearsAgo = new Date(today);
-        twoYearsAgo.setFullYear(today.getFullYear() - 2);
+        const ApproxThreeAgo = new Date(today);
+        ApproxThreeAgo.setMonth(today.getMonth() - 38); // Using 38 for buffer to allow the whole 37th month
+        ApproxThreeAgo.setHours(0, 0, 0, 0);
 
         if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
 
-            if (start < twoYearsAgo || end < twoYearsAgo) {
+            if (start < ApproxThreeAgo || end < ApproxThreeAgo) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Please select a date range within the last 2 years.'
+                    message: 'Please select a date range within the last 37 months.'
                 });
             }
 

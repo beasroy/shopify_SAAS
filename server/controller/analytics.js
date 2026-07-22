@@ -3131,7 +3131,7 @@ export async function getPagePathWiseMetrics(req, res) {
     let cpc = 0;
     try {
       const data = await fetchGoogleAdAndCampaignMetrics(brandId, adjustedStartDate, adjustedEndDate);
-      cpc = data.data.cpc || 0;
+      cpc = data?.data?.cpc || 0;
       
     } catch (error) {
       console.error('Error fetching Page Path Wise Metrics:', error);

@@ -24,19 +24,19 @@ function transformToResponse(aggregatedData, dimension, startDate, endDate) {
 
         switch (dimension) {
             case 'metro':
-                dimValue = location.metroStatus || 'unclassified';
+                dimValue = (location.metroStatus === 'metro') ? 'metro' : 'non-metro';
                 break;
             case 'region':
-                dimValue = location.region || 'unclassified';
+                dimValue = location.region || 'other';
                 break;
             case 'tier':
-                dimValue = location.tier || 'unclassified';
+                dimValue = location.tier || 'tier3';
                 break;
             case 'coastal':
                 dimValue = location.isCoastal ? 'coastal' : 'non-coastal';
                 break;
             default:
-                dimValue = location.metroStatus || 'unclassified';
+                dimValue = (location.metroStatus === 'metro') ? 'metro' : 'non-metro';
         }
 
         if (!result[dimValue]) {

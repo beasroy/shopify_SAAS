@@ -658,7 +658,7 @@ import axios from "axios"
 import { format } from "date-fns"
 import { useParams } from "react-router-dom"
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar"
-import { ChevronDown, Download, Maximize, Minimize, } from "lucide-react"
+import { ChevronDown, Download, Maximize, Minimize, Shield } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import { FacebookLogo, GoogleLogo, ShopifyLogo } from "@/data/logo.tsx"
@@ -796,6 +796,15 @@ export const ExcelMetricsPage: React.FC = () => {
 
   const startDate = date?.from ? format(date.from, "yyyy-MM-dd") : ""
   const endDate = date?.to ? format(date.to, "yyyy-MM-dd") : ""
+
+  const isOver37Months = useMemo(() => {
+    if (dateFrom) {
+      const diffTime = new Date().getTime() - new Date(dateFrom).getTime();
+      const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+      return diffMonths > 37.1;
+    }
+    return false;
+  }, [dateFrom]);
 
   // Ensure socket connection exists (for notifications)
   useSocketConnection();
@@ -1258,6 +1267,20 @@ export const ExcelMetricsPage: React.FC = () => {
           </div>
         )}
         <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
+          {/* 37-Month Warning Banner */}
+          {isOver37Months && (
+            <div className="mb-4 bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-lg shadow-sm p-4 relative overflow-hidden flex items-start gap-3 flex-shrink-0 animate-fade-up">
+              <Shield className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold mb-1">
+                  Data Range Notice
+                </h3>
+                <p className="text-sm text-amber-800">
+                  You have selected a date older than 37 months. Meta limits historical data to 37 months, so your Meta metrics only reflect the last 37 months.
+                </p>
+              </div>
+            </div>
+          )}
           <Card
             id="metrics-table"
             className={`${isFullScreen ? "fixed inset-0 z-50 m-0 rounded-none" : ""} shadow-md flex-1 flex flex-col min-h-0`}

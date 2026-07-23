@@ -151,6 +151,22 @@ export async function fetchAnalyticsData(
       response: error.response?.data,
       status: error.response?.status,
     });
+
+    // GA4 throws 400 Bad Request if the start date is before the property was created
+    // or before GA4 was released. Instead of crashing, gracefully return empty data.
+    if (error.response?.status === 400) {
+      console.warn("GA4 returned 400 Bad Request. Date range likely older than property creation. Returning empty data.");
+      return {
+        sessions: 0,
+        addToCarts: 0,
+        checkouts: 0,
+        purchases: 0,
+        addToCartRate: 0,
+        checkoutRate: 0,
+        purchaseRate: 0,
+      };
+    }
+
     throw error;
   }
 }

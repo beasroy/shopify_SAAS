@@ -415,6 +415,17 @@ const SummaryDashboard: React.FC = () => {
     fetchBreakdownData();
   };
 
+  // Check if the selected date range is older than 37 months
+  const isOver37Months = React.useMemo(() => {
+    if (dateFrom) {
+      const diffTime = new Date().getTime() - new Date(dateFrom).getTime();
+      const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+      // Use 37.1 to safely account for time differences and leap years
+      return diffMonths > 37.1;
+    }
+    return false;
+  }, [dateFrom]);
+
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
@@ -513,6 +524,23 @@ const SummaryDashboard: React.FC = () => {
                 >
                   Fill Form
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 37-Month Warning Banner */}
+        {isOver37Months && (
+          <div className="mb-6 animate-fade-up">
+            <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-lg shadow-sm p-4 relative overflow-hidden flex items-start gap-3">
+              <Shield className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold mb-1">
+                  Data Range Notice
+                </h3>
+                <p className="text-sm text-amber-800">
+                  You have selected a date older than 37 months. Meta limits historical data to 37 months, so your Meta metrics only reflect the last 37 months. Other platforms are showing your full selected date range.
+                </p>
               </div>
             </div>
           </div>

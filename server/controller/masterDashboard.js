@@ -1058,11 +1058,23 @@ function getDateRanges(filter) {
 // }
 
 export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccountIds) {
+  const maxPastDate = new Date();
+  maxPastDate.setMonth(maxPastDate.getMonth() - 37);
+  maxPastDate.setDate(maxPastDate.getDate() + 1);
+
+  let safeStartDate = new Date(startDate);
+  if (safeStartDate < maxPastDate) safeStartDate = maxPastDate;
+
+  let safeEndDate = new Date(endDate);
+
   return retryWithBackoff(async () => {
+    if (safeEndDate < maxPastDate || safeStartDate > safeEndDate) {
+      return { sales: 0 };
+    }
 
     const batchRequests = adAccountIds.map((accountId) => ({
       method: 'GET',
-      relative_url: `${accountId}/insights?fields=actions&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+      relative_url: `${accountId}/insights?fields=actions&time_range={'since':'${formatDate(safeStartDate)}','until':'${formatDate(safeEndDate)}'}`,
     }));
 
     const response = await axios.post(

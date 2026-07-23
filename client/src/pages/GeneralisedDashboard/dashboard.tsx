@@ -222,8 +222,12 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Meta data:", error);
-          setApiStatus((prev) => ({ ...prev, meta: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          // Only mark as disconnected if token expired / reconnect needed
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, meta: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const googlePromise = axiosInstance
@@ -233,8 +237,11 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Google data:", error);
-          setApiStatus((prev) => ({ ...prev, google: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, google: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const shopifyPromise = axiosInstance
@@ -244,7 +251,6 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Shopify data:", error);
-          setApiStatus((prev) => ({ ...prev, shopify: false }));
           return { data: { success: false } };
         });
 
@@ -255,8 +261,11 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Analytics data:", error);
-          setApiStatus((prev) => ({ ...prev, analytics: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, analytics: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const [metaResponse, googleResponse, shopifyResponse, analyticsResponse] =
@@ -282,22 +291,20 @@ const SummaryDashboard: React.FC = () => {
           : undefined,
       });
 
-      // Update API status based on response success property
+      // Helper: platform is disconnected only if server explicitly says
+      // connected === false (not configured) or reconnectRequired === true (token expired)
+      const isDisconnected = (res: any) =>
+        res.data.connected === false || res.data.reconnectRequired === true;
+
       setApiStatus({
-        meta: metaResponse.data.success,
-        google: googleResponse.data.success,
+        meta: !isDisconnected(metaResponse),
+        google: !isDisconnected(googleResponse),
         shopify: shopifyResponse.data.success,
-        analytics: analyticsResponse.data.success,
+        analytics: !isDisconnected(analyticsResponse),
       });
     } catch (error) {
       console.error("Error in fetchPerformanceData:", error);
-      // If we had an overall error, mark all APIs as failed
-      setApiStatus({
-        meta: false,
-        google: false,
-        shopify: false,
-        analytics: false,
-      });
+      // Overall error does NOT mean platforms are disconnected — don't touch apiStatus
     } finally {
       setLoading(false);
       setInitialLoading(false);

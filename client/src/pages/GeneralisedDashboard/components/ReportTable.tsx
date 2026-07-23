@@ -283,7 +283,9 @@ export default function ReportTable({
       <div className="bg-white border rounded-lg shadow-md p-6 mt-8">
         <div className="flex items-center justify-center py-8">
           <div className="text-center text-slate-500">
-            No report data available. Connect Meta Ads to see metrics.
+            {metaConnected
+              ? "No report data available for the selected date range."
+              : "No report data available. Connect Meta Ads to see metrics."}
           </div>
         </div>
       </div>

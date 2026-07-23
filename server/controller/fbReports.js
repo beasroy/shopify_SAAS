@@ -202,10 +202,23 @@ async function fetchMetaBreakdownPeriod(
   adAccountIds,
   breakdownCatagory,
 ) {
+  const maxPastDate = new Date();
+  maxPastDate.setMonth(maxPastDate.getMonth() - 37);
+  maxPastDate.setDate(maxPastDate.getDate() + 1);
+
+  let safeStartDate = new Date(startDate);
+  if (safeStartDate < maxPastDate) safeStartDate = maxPastDate;
+
+  let safeEndDate = new Date(endDate);
+
   const config = BREAKDOWN_CONFIG[breakdownCatagory];
   const blendedData = new Map();
   const accountData = new Map();
   const BATCH_SIZE = 10;
+
+  if (safeEndDate < maxPastDate || safeStartDate > safeEndDate) {
+    return { blended: blendedData, accounts: accountData };
+  }
 
   async function fetchBreakdownForAccount(accountId) {
     const cleanedAccountId = accountId.replace(/^act_/, "");
@@ -221,8 +234,8 @@ async function fetchMetaBreakdownPeriod(
         access_token: accessToken,
         fields: "spend,action_values,account_name",
         time_range: JSON.stringify({
-          since: formatDate(startDate),
-          until: formatDate(endDate),
+          since: formatDate(safeStartDate),
+          until: formatDate(safeEndDate),
         }),
         breakdowns: config.breakdowns,
         limit: 2000,

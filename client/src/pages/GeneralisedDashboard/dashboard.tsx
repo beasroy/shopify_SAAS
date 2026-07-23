@@ -222,8 +222,12 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Meta data:", error);
-          setApiStatus((prev) => ({ ...prev, meta: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          // Only mark as disconnected if token expired / reconnect needed
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, meta: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const googlePromise = axiosInstance
@@ -233,8 +237,11 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Google data:", error);
-          setApiStatus((prev) => ({ ...prev, google: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, google: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const shopifyPromise = axiosInstance
@@ -244,7 +251,6 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Shopify data:", error);
-          setApiStatus((prev) => ({ ...prev, shopify: false }));
           return { data: { success: false } };
         });
 
@@ -255,8 +261,11 @@ const SummaryDashboard: React.FC = () => {
         })
         .catch((error) => {
           console.error("Error fetching Analytics data:", error);
-          setApiStatus((prev) => ({ ...prev, analytics: false }));
-          return { data: { success: false } };
+          const errData = error?.response?.data;
+          if (errData?.reconnectRequired) {
+            setApiStatus((prev) => ({ ...prev, analytics: false }));
+          }
+          return { data: { success: false, connected: errData?.connected, reconnectRequired: errData?.reconnectRequired } };
         });
 
       const [metaResponse, googleResponse, shopifyResponse, analyticsResponse] =
@@ -282,22 +291,20 @@ const SummaryDashboard: React.FC = () => {
           : undefined,
       });
 
-      // Update API status based on response success property
+      // Helper: platform is disconnected only if server explicitly says
+      // connected === false (not configured) or reconnectRequired === true (token expired)
+      const isDisconnected = (res: any) =>
+        res.data.connected === false || res.data.reconnectRequired === true;
+
       setApiStatus({
-        meta: metaResponse.data.success,
-        google: googleResponse.data.success,
+        meta: !isDisconnected(metaResponse),
+        google: !isDisconnected(googleResponse),
         shopify: shopifyResponse.data.success,
-        analytics: analyticsResponse.data.success,
+        analytics: !isDisconnected(analyticsResponse),
       });
     } catch (error) {
       console.error("Error in fetchPerformanceData:", error);
-      // If we had an overall error, mark all APIs as failed
-      setApiStatus({
-        meta: false,
-        google: false,
-        shopify: false,
-        analytics: false,
-      });
+      // Overall error does NOT mean platforms are disconnected — don't touch apiStatus
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -408,6 +415,17 @@ const SummaryDashboard: React.FC = () => {
     fetchBreakdownData();
   };
 
+  // Check if the selected date range is older than 37 months
+  const isOver37Months = React.useMemo(() => {
+    if (dateFrom) {
+      const diffTime = new Date().getTime() - new Date(dateFrom).getTime();
+      const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+      // Use 37.1 to safely account for time differences and leap years
+      return diffMonths > 37.1;
+    }
+    return false;
+  }, [dateFrom]);
+
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
@@ -506,6 +524,23 @@ const SummaryDashboard: React.FC = () => {
                 >
                   Fill Form
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 37-Month Warning Banner */}
+        {isOver37Months && (
+          <div className="mb-6 animate-fade-up">
+            <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-lg shadow-sm p-4 relative overflow-hidden flex items-start gap-3">
+              <Shield className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold mb-1">
+                  Data Range Notice
+                </h3>
+                <p className="text-sm text-amber-800">
+                  You have selected a date older than 37 months. Meta limits historical data to 37 months, so your Meta metrics only reflect the last 37 months. Other platforms are showing your full selected date range.
+                </p>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { format } from "date-fns"
-import { Blend, LineChart } from "lucide-react"
+import { Blend, LineChart, Shield } from "lucide-react"
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from "axios"
 import AdAccountMetricsCard from "./AdAccountsMetricsCard.tsx"
@@ -45,6 +45,16 @@ export default function Dashboard() {
     from: dateFrom,
     to: dateTo
   }), [dateFrom, dateTo]);
+  
+  const isOver37Months = useMemo(() => {
+    if (dateFrom) {
+      const diffTime = new Date().getTime() - new Date(dateFrom).getTime();
+      const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+      return diffMonths > 37.1;
+    }
+    return false;
+  }, [dateFrom]);
+
   const axiosInstance = createAxiosInstance();
 
   const selectedBrand = brands.find((brand) => brand._id === brandId);
@@ -347,7 +357,22 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="p-4 md:p-6 lg:px-8">
         {!hasAnyAdAccounts ? <></> : (
-          <div className="space-y-2">
+          <div className="space-y-4">
+            {/* 37-Month Warning Banner */}
+            {isOver37Months && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-lg shadow-sm p-4 relative overflow-hidden flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">
+                    Data Range Notice
+                  </h3>
+                  <p className="text-sm text-amber-800">
+                    You have selected a date older than 37 months. Meta limits historical data to 37 months, so your Meta metrics (and Blended totals) only reflect the last 37 months. Other platforms are showing your full selected date range.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Blended summary */}
             <section id='all'>
               <h2 className="text-xl font-semibold flex flex-row items-center justify-between">

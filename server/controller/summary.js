@@ -151,6 +151,22 @@ export async function fetchAnalyticsData(
       response: error.response?.data,
       status: error.response?.status,
     });
+
+    // GA4 throws 400 Bad Request if the start date is before the property was created
+    // or before GA4 was released. Instead of crashing, gracefully return empty data.
+    if (error.response?.status === 400) {
+      console.warn("GA4 returned 400 Bad Request. Date range likely older than property creation. Returning empty data.");
+      return {
+        sessions: 0,
+        addToCarts: 0,
+        checkouts: 0,
+        purchases: 0,
+        addToCartRate: 0,
+        checkoutRate: 0,
+        purchaseRate: 0,
+      };
+    }
+
     throw error;
   }
 }
@@ -321,11 +337,35 @@ export async function fetchMetaAdsData(
   accessToken,
   adAccountIds,
 ) {
+  const maxPastDate = new Date();
+  maxPastDate.setMonth(maxPastDate.getMonth() - 37);
+  maxPastDate.setDate(maxPastDate.getDate() + 1);
+
+  let safeStartDate = new Date(startDate);
+  if (safeStartDate < maxPastDate) safeStartDate = maxPastDate;
+
+  let safeEndDate = new Date(endDate);
+
   return retryWithBackoff(
     async () => {
+      if (safeEndDate < maxPastDate || safeStartDate > safeEndDate) {
+        return {
+          metaspend: 0,
+          metarevenue: 0,
+          metaclicks: 0,
+          metaimpressions: 0,
+          metapurchases: 0,
+          metaroas: 0,
+          metacpc: 0,
+          metacpm: 0,
+          metactr: 0,
+          metacpp: 0,
+        };
+      }
+
       const batchRequests = adAccountIds.map((accountId) => ({
         method: "GET",
-        relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values,clicks,impressions,actions&time_range={'since':'${formatDate(startDate)}','until':'${formatDate(endDate)}'}`,
+        relative_url: `${accountId}/insights?fields=spend,purchase_roas,action_values,clicks,impressions,actions&time_range={'since':'${formatDate(safeStartDate)}','until':'${formatDate(safeEndDate)}'}`,
       }));
 
       let response;
@@ -605,6 +645,7 @@ export async function getMetaSummary(req, res, next) {
     if (!brand.fbAdAccounts?.length || !brand.fbAccessToken) {
       return res.status(200).json({
         success: false,
+        connected: false,
         message: "Meta Ads not configured for this brand.",
         periodData: null,
       });
@@ -863,6 +904,7 @@ export async function getGoogleAdsSummary(req, res) {
     if (!brand.googleAdAccount?.length || !brand.googleAdsRefreshToken) {
       return res.status(200).json({
         success: false,
+        connected: false,
         message: "Google Ads not configured for this brand.",
         periodData: null,
       });
@@ -1418,6 +1460,7 @@ export async function getAnalyticsSummary(req, res) {
     if (!brand.ga4Account?.PropertyID || !brand.googleAnalyticsRefreshToken) {
       return res.status(200).json({
         success: false,
+        connected: false,
         message: "Google Analytics not configured for this brand.",
         periodData: null,
       });

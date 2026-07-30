@@ -1076,8 +1076,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
 
                     // Recalculate ROI metrics based on existing ad spend data
                     const totalSpend = (existingMetric.metaSpend || 0) + (existingMetric.googleSpend || 0);
-                    const metaSales = (existingMetric.metaSpend || 0) * (existingMetric.metaROAS || 0);
-                    const adTotalSales = metaSales + (existingMetric.googleSales || 0);
+                    const adTotalSales = (existingMetric.metaRevenue || 0) + (existingMetric.googleSales || 0);
                     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
                 
 
@@ -1123,7 +1122,9 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                 userId 
             });
             
-            return successResult;
+            if (newFbAccounts.length === 0 && newGoogleAccounts.length === 0) {
+                return successResult;
+            }
         }
 
         // CASE 2 & 3: New Ad Accounts Only - Update existing metrics
@@ -1214,11 +1215,11 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                     // Get Facebook data for this date
                     const dateFbData = fbData.filter(entry => entry.date === dateStr);
                     let newMetaSpend = 0;
-                    let newMetaROAS = 0;
+                    let newMetaRevenue = 0;
 
                     dateFbData.forEach(entry => {
                         newMetaSpend += parseFloat(entry.spend) || 0;
-                        newMetaROAS += parseFloat(entry.revenue) || 0;
+                        newMetaRevenue += parseFloat(entry.revenue) || 0;
                     });
 
                     // Get Google data for this date
@@ -1231,7 +1232,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                     const updatedMetric = {
                         ...existingMetric.toObject(),
                         metaSpend: (existingMetric.metaSpend || 0) + newMetaSpend,
-                        metaROAS: (existingMetric.metaROAS || 0) + newMetaROAS,
+                        metaRevenue: (existingMetric.metaRevenue || 0) + newMetaRevenue,
                         googleSpend: (existingMetric.googleSpend || 0) + newGoogleSpend,
                         googleROAS: (existingMetric.googleROAS || 0) + newGoogleROAS,
                         googleSales: (existingMetric.googleSales || 0) + newGoogleSales
@@ -1239,8 +1240,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
 
                     // Recalculate totals
                     const totalSpend = updatedMetric.metaSpend + updatedMetric.googleSpend;
-                    const metaSales = updatedMetric.metaSpend * updatedMetric.metaROAS;
-                    const adTotalSales = metaSales + updatedMetric.googleSales;
+                    const adTotalSales = updatedMetric.metaRevenue + updatedMetric.googleSales;
                     const grossROI = totalSpend > 0 ? adTotalSales / totalSpend : 0;
                 
 
@@ -1262,7 +1262,7 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
                         update: { 
                             $set: {
                                 metaSpend: metric.metaSpend,
-                                metaROAS: metric.metaROAS,
+                                metaRevenue: metric.metaRevenue,
                                 googleSpend: metric.googleSpend,
                                 googleROAS: metric.googleROAS,
                                 googleSales: metric.googleSales,

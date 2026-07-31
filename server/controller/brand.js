@@ -469,6 +469,17 @@ export const deletePlatformIntegration = async (req, res) => {
             return res.status(404).json({ error: 'Brand not found.' });
         }
 
+        // Trigger full wipe & rebuild metrics job for remaining accounts
+        try {
+            await metricsQueue.add('update-metrics', {
+                brandId,
+                userId: req.user?.id
+            });
+            console.log(`Metrics update queued for brand ${brandId} after platform disconnect`);
+        } catch (queueError) {
+            console.error(`Failed to queue metrics update for brand ${brandId}:`, queueError);
+        }
+
         res.status(200).json({
             message: 'Platform integration deleted successfully',
             deletedInfo,

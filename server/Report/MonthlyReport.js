@@ -130,34 +130,16 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
                                     }
                                 } catch (parseError) {
                                     console.error(`Error parsing response for ${accountId} on ${formattedDate}:`, parseError);
-                                    results.push({
-                                        adAccountId: accountId,
-                                        date: formattedDate,
-                                        spend: '0',
-                                        revenue: '0'
-                                    });
+                                    throw parseError;
                                 }
                             } else {
                                 console.error(`Error for account ${accountId} on ${formattedDate}:`, res.body);
-                                results.push({
-                                    adAccountId: accountId,
-                                    date: formattedDate,
-                                    spend: '0',
-                                    revenue: '0'
-                                });
+                                throw new Error(`Facebook API error: ${res.body}`);
                             }
                         });
                     } catch (batchError) {
                         console.error('Batch request error:', batchError);
-                        // Add empty results for failed batch
-                        requestDates.forEach(({ accountId, date }) => {
-                            results.push({
-                                adAccountId: accountId,
-                                date: date.format('YYYY-MM-DD'),
-                                spend: '0',
-                                revenue: '0'
-                            });
-                        });
+                        throw batchError;
                     }
 
                     // Reset batch arrays
@@ -391,14 +373,13 @@ export const monthlyGoogleAdData = async (brandId, startDate, endDate) => {
                             console.error(
                                 `Authentication error for account ${adAccountId} after ${maxRetries} retries. Skipping remaining dates for this account.`
                             );
-                            accountAuthFailed = true;
-                            break;
+                            throw new Error(`Google Ads Auth Error: ${error.message}`);
                         }
 
                         console.warn(
                             `Non-authentication error for account ${adAccountId} on ${formattedDate}. Skipping this date.`
                         );
-                        break;
+                        throw error;
                     }
                 }
 
@@ -493,17 +474,17 @@ export const monthlyAddReportData = async (brandId, startDate, endDate) => {
                         monthlyFetchFBAdReport(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching FB data:', err);
-                                return { data: [] };
+                                throw err;
                             }),
                         monthlyFetchTotalSalesGraphQL(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching Shopify data:', err);
-                                return [];
+                                throw err;
                             }),
                         monthlyGoogleAdData(brandId, chunk.start, chunk.end)
                             .catch(err => {
                                 console.error('Error fetching Google data:', err);
-                                return { data: [] };
+                                throw err;
                             })
                     ]);
 

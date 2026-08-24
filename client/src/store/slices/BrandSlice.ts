@@ -23,6 +23,12 @@ const brandSlice = createSlice({
         state.selectedBrandId = null;
       }
     },
+    updateBrandLabel: (state, action: PayloadAction<{ id: string; customLabel: string }>) => {
+      const brand = state.brands.find(b => b._id === action.payload.id);
+      if (brand) {
+        brand.customLabel = action.payload.customLabel;
+      }
+    },
     resetBrand: (state) => {
       state.selectedBrandId = null;
       state.brands = [];
@@ -30,5 +36,5 @@ const brandSlice = createSlice({
   },
 });
 
-export const { setSelectedBrandId, setBrands, deleteBrand, resetBrand } = brandSlice.actions;
+export const { setSelectedBrandId, setBrands, deleteBrand, resetBrand, updateBrandLabel } = brandSlice.actions;
 export default brandSlice.reducer;

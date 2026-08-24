@@ -9,6 +9,7 @@ export interface IBrand {
     }[];
     ga4Account?: { [key: string]: string };
     shopifyAccount: { [key: string]: string };
+    customLabel?: string;
 }
 
 export interface IBrandState {
@@ -185,6 +186,7 @@ export interface FullBrandData {
         shopName: string;
         shopId: number;
     };
+    customLabel?: string;
 }
 
 export interface ReportData {

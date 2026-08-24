@@ -130,7 +130,7 @@ export const getBrandbyId = async (req, res) => {
 export const updateBrands = async (req, res) => {
     try {
         const { brandid } = req.params;
-        const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+        const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount, customLabel } = req.body;
         const userId = req.user?.id;
 
         if (!brandid) {
@@ -153,6 +153,7 @@ export const updateBrands = async (req, res) => {
 
         if (name) updateData.name = name;
         if (ga4Account) updateData.ga4Account = ga4Account;
+        if (customLabel !== undefined) updateData.customLabel = customLabel;
 
         // Check for new store (Shopify account)
         if (shopifyAccount) {

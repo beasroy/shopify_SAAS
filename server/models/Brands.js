@@ -38,7 +38,11 @@ const brandSchema = new mongoose.Schema({
   followedBrands: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ScrapedBrand'
-  }]
+  }],
+  customLabel: {
+    type: String,
+    default: ""
+  }
 }, {
   timestamps: true 
 });

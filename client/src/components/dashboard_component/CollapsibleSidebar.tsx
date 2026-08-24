@@ -25,6 +25,7 @@ import {
   SquareDashedMousePointer,
   Menu,
   X,
+  Link,
 } from "lucide-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { setSelectedBrandId, setBrands, resetBrand } from "@/store/slices/BrandSlice"
@@ -238,7 +239,8 @@ export default function CollapsibleSidebar() {
   }
 
   const allDashboards: DashboardItem[] = useMemo(
-    () => [
+    () => {
+      const baseDashboards: DashboardItem[] = [
       { name: "Dashboard", path: `/dashboard`, icon: <Home size={20} /> },
       { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
       { name: "Revenue Analytics", path: `/location-analytics/${selectedBrandId}`, icon: <ChartBarIncreasing size={20} /> },
@@ -263,14 +265,21 @@ export default function CollapsibleSidebar() {
       { name: "Google Ads", path: `/google-reports/${selectedBrandId}`, icon: <WhiteGoogleAdsLogo /> },
       { name: "Page Analytics", path: `/page-analytics/${selectedBrandId}`, icon: <Package size={20} /> },
       { name: "Master Dashboard", path: `/master-dashboard/`, icon: <SquareDashedMousePointer size={20} /> },
-    ],
-    [selectedBrandId]
+    ]
+
+    if (user?.isAdmin) {
+      baseDashboards.push({ name: "Brand Connections", path: `/brand-connections`, icon: <Link size={20} /> })
+    }
+
+    return baseDashboards;
+  },
+  [selectedBrandId, user?.isAdmin]
   )
 
   const isItemDisabled = (item: DashboardItem | SubItem): boolean => {
     const itemPath = "path" in item ? item.path : ""
 
-    if (!selectedBrandId && itemPath !== "/dashboard" && itemPath !== "/speed-insights") {
+    if (!selectedBrandId && itemPath !== "/dashboard" && itemPath !== "/speed-insights" && itemPath !== "/brand-connections") {
       return true
     }
 
@@ -364,6 +373,7 @@ export default function CollapsibleSidebar() {
                           key={brand._id}
                           path={`#`}
                           text={brand.name.replace(/_/g, " ")}
+                          badge={brand.customLabel}
                           onClick={() => handleBrandChange(brand._id)}
                           isSelected={selectedBrandId === brand._id}
                         />
@@ -564,12 +574,17 @@ export default function CollapsibleSidebar() {
                                 handleBrandChange(brand._id)
                                 setIsMobileMoreOpen(false)
                               }}
-                              className={`w-full rounded-xl px-3 py-3 text-left text-sm transition-all duration-200 ${selectedBrandId === brand._id
+                              className={`w-full flex items-center justify-between rounded-xl px-3 py-3 text-left text-sm transition-all duration-200 ${selectedBrandId === brand._id
                                 ? "bg-slate-700 text-white shadow-lg shadow-black/10"
                                 : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
                                 }`}
                             >
-                              {brand.name.replace(/_/g, " ")}
+                              <span className="truncate">{brand.name.replace(/_/g, " ")}</span>
+                              {brand.customLabel && (
+                                <span className="shrink-0 ml-2 px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-[9px] uppercase font-bold tracking-wider">
+                                  {brand.customLabel}
+                                </span>
+                              )}
                             </button>
                           ))}
 
@@ -660,6 +675,7 @@ interface SidebarChildProps {
   disabled?: boolean
   isSelected?: boolean
   children?: React.ReactNode
+  badge?: string
 }
 
 function SidebarChild({
@@ -669,6 +685,7 @@ function SidebarChild({
   disabled = false,
   isSelected = false,
   children,
+  badge,
 }: SidebarChildProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const hasChildren = React.Children.count(children) > 0
@@ -695,8 +712,11 @@ function SidebarChild({
 
   const content = (
     <div className="flex items-center justify-between w-full">
-      <span className="font-medium capitalize">{text}</span>
-      {hasChildren && <span className="ml-2">{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>}
+      <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium capitalize truncate">{text}</span>
+          {badge && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-[9px] uppercase font-bold tracking-wider">{badge}</span>}
+      </div>
+      {hasChildren && <span className="ml-2 shrink-0">{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>}
     </div>
   )
 

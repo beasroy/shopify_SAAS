@@ -37,7 +37,7 @@ import SpeedInsightsPage from './pages/SpeedInsights/SpeedInsightsPage.tsx';
 import LocationAnalyticsPage from './pages/LocationAnalytics/LocationAnalyticsPage.tsx';
 import AuthPage from './Auth/NewAuthPage.tsx';
 import MasterDashboard from './pages/MasterDashboard/MasterDashboard.tsx';
-
+import BrandConnections from './pages/BrandConnections/BrandConnections.tsx';
 
 
 
@@ -82,6 +82,7 @@ function App() {
                   <Route path="/speed-insights" element={<SpeedInsightsPage />} />
                   <Route path="/location-analytics/:brandId" element={<LocationAnalyticsPage />} />
                   <Route path="/master-dashboard/" element={<MasterDashboard />} />
+                  <Route path="/brand-connections" element={<BrandConnections />} />
                 </Routes>
               </TutorialManager>
             </AutoLogout>

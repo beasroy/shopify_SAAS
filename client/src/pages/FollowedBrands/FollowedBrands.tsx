@@ -91,6 +91,7 @@ const FollowedBrands: React.FC = () => {
   const [followedBrandIds, setFollowedBrandIds] = useState<Set<string>>(
     new Set(),
   );
+  const [refreshingBrands, setRefreshingBrands] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Fetch all brands and their ads
@@ -133,7 +134,7 @@ const FollowedBrands: React.FC = () => {
     setCatalogLoading(true);
     try {
       const response = await axios.get(
-        `${baseURL}/api/scraping/get-single-ad-from-all-scraped-brands?includeAds=true`,
+        `${baseURL}/api/scraping/get-single-ad-from-all-scraped-brands?includeAds=false`,
         {
           withCredentials: true,
         },
@@ -203,6 +204,31 @@ const FollowedBrands: React.FC = () => {
     }
   };
 
+  const handleRefreshBrand = async (scrapedBrandId: string) => {
+    setRefreshingBrands(prev => new Set(prev).add(scrapedBrandId));
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/scraping/refresh/${scrapedBrandId}`,
+        {},
+        { withCredentials: true }
+      );
+      if (response.data.success) {
+        toast({ description: "Brand ads refreshed successfully!" });
+        await fetchBrands();
+      } else {
+        toast({ variant: "destructive", description: "Failed to refresh brand" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", description: "Error refreshing brand" });
+    } finally {
+      setRefreshingBrands(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(scrapedBrandId);
+        return newSet;
+      });
+    }
+  };
+
   // Scrape and save new brand
   const handleScrape = async () => {
     if (!pageUrl.trim()) {
@@ -219,7 +245,6 @@ const FollowedBrands: React.FC = () => {
         `${baseURL}/api/scraping/scrape-brand`,
         {
           pageUrl: pageUrl.trim(),
-          count: 200,
           countries: ["IN"],
           activeStatus: "all",
           brandId: brandId,
@@ -601,6 +626,11 @@ const FollowedBrands: React.FC = () => {
         {activeTab === "followed" && (
           <div className="space-y-6">
             {brands.map((brand) => {
+              // 15-day stale check
+              const lastScrapedAt = brand.updatedAt || brand.createdAt; // Backend hasn't exposed lastScrapedAt yet, but updatedAt updates on scrape.
+              const daysSinceScrape = lastScrapedAt ? (Date.now() - new Date(lastScrapedAt).getTime()) / (1000 * 60 * 60 * 24) : 0;
+              const isStale = daysSinceScrape > 15;
+
               // Filter ads: only show ads without collation_id OR ads with collation_id AND collation_count
               const filteredAds = (brand.ads || []).filter((ad) => {
                 const collationId = ad.collation_id;
@@ -647,6 +677,20 @@ const FollowedBrands: React.FC = () => {
                                 <ChevronDown className="w-4 h-4 mr-2" />
                                 View All
                               </>
+                            )}
+                          </Button>
+                        )}
+                        {isStale && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleRefreshBrand(brand._id)}
+                            disabled={refreshingBrands.has(brand._id)}
+                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                          >
+                            {refreshingBrands.has(brand._id) ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Refreshing...</>
+                            ) : (
+                              "Re-scrape Ads"
                             )}
                           </Button>
                         )}

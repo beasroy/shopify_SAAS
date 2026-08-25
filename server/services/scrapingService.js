@@ -73,7 +73,7 @@ const normalizePageUrl = (pageIdentifier) => {
 export const fetchPageAds = async (pageIdentifier, options = {}) => {
   const {
     countries = ["IN"],
-    count = 100,
+    count = process.env.MAX_ADS_TO_SCRAPE || 25,
     activeStatus = "all",
     period = "",
     countryCode = null,
@@ -171,7 +171,7 @@ export const fetchMultiplePageAds = async (pageIdentifiers, options = {}) => {
 export const startActorRun = async (pageIdentifier, options = {}) => {
   const {
     countries = ["IN"],
-    count = 100,
+    count = process.env.MAX_ADS_TO_SCRAPE || 25,
     activeStatus = "all",
     period = "",
     countryCode = null,
@@ -397,11 +397,14 @@ const extractPageInfo = (scrapingResults) => {
     // Check for page_name or pageName in various possible locations
     const pageName =
       result.page_name || result.pageName || result.page?.name || null;
+    const logoUrl =
+      result.page_profile_picture_url || result.snapshot?.page_profile_picture_url || result.page_profile_uri || result.pageProfilePictureUrl || result.page?.profile_picture_url || null;
 
-    if (pageId || pageName) {
+    if (pageId || pageName || logoUrl) {
       return {
         pageId: pageId || null,
         pageName: pageName || null,
+        logoUrl: logoUrl || null,
       };
     }
   }
@@ -474,27 +477,33 @@ const findOrCreateScrapingBrand = async (pageUrl) => {
  * Update ScrapingBrand with pageId and pageName from scraping results
  * @param {Object} scrapingBrand - ScrapingBrand document
  * @param {Object} pageInfo - Object with pageId and pageName
+ * @param {boolean} isManual - Whether this scrape was manually triggered
  * @returns {Promise<Object>} - Updated ScrapingBrand
  */
-const updateScrapingBrandInfo = async (scrapingBrand, pageInfo) => {
-  if (!pageInfo) {
-    return scrapingBrand;
+const updateScrapingBrandInfo = async (scrapingBrand, pageInfo, isManual = false) => {
+  let updated = true;
+  
+  scrapingBrand.lastScrapedAt = Date.now();
+  if (isManual) {
+    scrapingBrand.lastManualActionAt = Date.now();
   }
 
-  let updated = false;
-  if (pageInfo.pageId && !scrapingBrand.pageId) {
-    scrapingBrand.pageId = pageInfo.pageId;
-    updated = true;
-  }
-  if (pageInfo.pageName && !scrapingBrand.pageName) {
-    scrapingBrand.pageName = pageInfo.pageName;
-    updated = true;
+  if (pageInfo) {
+    if (pageInfo.pageId && !scrapingBrand.pageId) {
+      scrapingBrand.pageId = pageInfo.pageId;
+    }
+    if (pageInfo.pageName && !scrapingBrand.pageName) {
+      scrapingBrand.pageName = pageInfo.pageName;
+    }
+    if (pageInfo.logoUrl) {
+      scrapingBrand.logoUrl = pageInfo.logoUrl;
+    }
   }
 
   if (updated) {
     await scrapingBrand.save();
     console.log(
-      `[Save] Updated ScrapingBrand with pageId: ${pageInfo.pageId}, pageName: ${pageInfo.pageName}`,
+      `[Save] Updated ScrapingBrand with latest scraped time${isManual ? ' & manual action' : ''}${pageInfo?.pageId ? `, pageId: ${pageInfo.pageId}` : ''}`,
     );
   }
 
@@ -525,9 +534,10 @@ const saveSingleAdDetail = async (result, scrapingBrandId) => {
  * Creates or updates ScrapingBrand and saves all ad details
  * @param {string} pageUrl - The page URL that was scraped
  * @param {Array} scrapingResults - Array of ad results from Apify
+ * @param {Object} options - Additional options including isManual
  * @returns {Promise<Object>} - Object with saved brand info and ad counts
  */
-export const saveScrapingResults = async (pageUrl, scrapingResults) => {
+export const saveScrapingResults = async (pageUrl, scrapingResults, options = {}) => {
   try {
     if (!pageUrl) {
       throw new Error("Page URL is required");
@@ -579,7 +589,7 @@ export const saveScrapingResults = async (pageUrl, scrapingResults) => {
     }
 
     // Apply any missing pageInfo fields to the brand
-    await updateScrapingBrandInfo(scrapingBrand, pageInfo);
+    await updateScrapingBrandInfo(scrapingBrand, pageInfo, options.isManual);
 
     // Save each ad detail
     let adsSaved = 0;
@@ -675,8 +685,8 @@ const saveScrapingResultsToExistingBrand = async (
     let adsSkipped = 0;
     const errors = [];
 
-    // Enforce a hard maximum of 100 ads saved to the database per scrape
-    const resultsToSave = scrapingResults.slice(0, 100);
+    // Enforce a hard maximum limit on ads saved to the database per scrape
+    const resultsToSave = scrapingResults.slice(0, parseInt(process.env.MAX_ADS_TO_SCRAPE) || 25);
 
     for (const result of resultsToSave) {
       try {
@@ -805,7 +815,7 @@ export const refreshScrapingBrandAds = async (
         const strategy = getActiveStrategy();
         const adsToInsert = fetchResult.ads
           .filter((item) => !item.error)
-          .slice(0, 100)
+          .slice(0, overrideCount || parseInt(process.env.MAX_ADS_TO_SCRAPE) || 25)
           .map((result) => {
             const normalized = strategy.parseOutput(result);
             const mapped = mapApifyResultToAdDetail(normalized);
@@ -824,7 +834,7 @@ export const refreshScrapingBrandAds = async (
 
     // Update brand info (outside transaction — non-critical metadata)
     const pageInfo = extractPageInfo(fetchResult.ads);
-    await updateScrapingBrandInfo(scrapingBrand, pageInfo);
+    await updateScrapingBrandInfo(scrapingBrand, pageInfo, options.isManual);
 
     console.log(
       `[Refresh] Refresh completed for ScrapingBrand: ${scrapingBrandId}`,
@@ -885,7 +895,7 @@ export const fetchAndSavePageAds = async (pageIdentifier, options = {}) => {
     }
 
     // Save to database
-    const saveResult = await saveScrapingResults(pageUrl, fetchResult.ads);
+    const saveResult = await saveScrapingResults(pageUrl, fetchResult.ads, options);
 
     return {
       fetchResult,

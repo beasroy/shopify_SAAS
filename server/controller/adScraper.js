@@ -1,7 +1,7 @@
 import ScrapedBrand from '../models/ScrapedBrand.js';
 import Brand from '../models/Brands.js';
 import ScrapedAdDetail from '../models/ScrapedAdDetail.js';
-import { fetchAndSavePageAds } from '../services/scrapingService.js';
+import { fetchAndSavePageAds, refreshScrapingBrandAds } from '../services/scrapingService.js';
 
 export const followBrand = async (req, res) => {
   const { brandId } = req.params;
@@ -20,6 +20,20 @@ export const followBrand = async (req, res) => {
 
     brand.followedBrands.push(scrapedBrand._id);
     await brand.save();
+
+    // Check if the brand data is stale (older than 15 days) before re-scraping
+    const lastManualActionAt = scrapedBrand.lastManualActionAt || scrapedBrand.updatedAt || scrapedBrand.createdAt;
+    const daysSinceScrape = lastManualActionAt ? (Date.now() - new Date(lastManualActionAt).getTime()) / (1000 * 60 * 60 * 24) : 0;
+    
+    if (daysSinceScrape > 15) {
+      console.log(`[API] Brand ${scrapedBrand._id} is stale (${daysSinceScrape.toFixed(1)} days old). Triggering background re-scrape.`);
+      // Trigger background scrape for the followed brand (manual action resets the timer)
+      refreshScrapingBrandAds(scrapedBrand._id, { count: process.env.MAX_ADS_TO_SCRAPE || 25, isManual: true })
+        .then(res => console.log(`[API] Background scrape completed for followed brand ${scrapedBrand._id}`))
+        .catch(err => console.error(`[API] Background scrape failed for followed brand ${scrapedBrand._id}:`, err));
+    } else {
+      console.log(`[API] Brand ${scrapedBrand._id} is fresh (${daysSinceScrape.toFixed(1)} days old). Skipping background scrape.`);
+    }
 
     return res.status(200).json({ message: 'Brand followed successfully' });
 
@@ -118,6 +132,7 @@ export const getFollowedBrands = async (req, res) => {
                 pageId: scrapingBrand.pageId,
                 pageName: scrapingBrand.pageName,
                 pageUrl: scrapingBrand.pageUrl,
+                logoUrl: scrapingBrand.logoUrl,
                 createdAt: scrapingBrand.createdAt,
                 updatedAt: scrapingBrand.updatedAt,
                 adCount: ads.length,
@@ -149,7 +164,7 @@ export const getFollowedBrands = async (req, res) => {
 export const scrapeBrand = async (req, res) => {
 
   try {
-    const { pageUrl, count = 100, countries = ['IN'], activeStatus = 'all', brandId } = req.body;
+    const { pageUrl, count = process.env.MAX_ADS_TO_SCRAPE || 25, countries = ['IN'], activeStatus = 'all', brandId } = req.body;
     
     if (!pageUrl) {
         return res.status(400).json({
@@ -163,7 +178,8 @@ export const scrapeBrand = async (req, res) => {
     const result = await fetchAndSavePageAds(pageUrl, {
         count,
         countries,
-        activeStatus
+        activeStatus,
+        isManual: true
     });
     
     // If brandId is provided and scrapingBrand was created, add it to followedBrands
@@ -238,6 +254,7 @@ export const getSingleAdFromAllScrapedBrands = async (req, res) => {
                     pageId: brand.pageId,
                     pageName: brand.pageName,
                     pageUrl: brand.pageUrl,
+                    logoUrl: brand.logoUrl,
                     adCount: adCount,
                     createdAt: brand.createdAt,
                     updatedAt: brand.updatedAt

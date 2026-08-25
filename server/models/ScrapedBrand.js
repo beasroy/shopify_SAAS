@@ -16,6 +16,17 @@ const scrapedBrandSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
+  logoUrl: {
+    type: String
+  },
+  lastScrapedAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastManualActionAt: {
+    type: Date,
+    default: Date.now
+  }
 }, {
   timestamps: true
 });

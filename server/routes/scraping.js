@@ -212,6 +212,7 @@ router.get('/brands', async (req, res) => {
                     pageId: brand.pageId,
                     pageName: brand.pageName,
                     pageUrl: brand.pageUrl,
+                    logoUrl: brand.logoUrl,
                     adCount: adCount,
                     createdAt: brand.createdAt,
                     updatedAt: brand.updatedAt

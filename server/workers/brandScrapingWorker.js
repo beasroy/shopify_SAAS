@@ -6,12 +6,13 @@ import { createRedisConnection } from "../config/redis.js";
 import { connectDB, getConnectionStatus } from "../config/db.js";
 import { refreshScrapingBrandAds } from "../services/scrapingService.js";
 import ScrapedBrand from "../models/ScrapedBrand.js";
+import Brand from "../models/Brands.js";
 import dotenv from "dotenv";
 dotenv.config();
 
 const QUEUE_NAME = "brand-scraping";
 const SCRAPING_INTERVAL_MS =
-  parseInt(process.env.SCRAPING_INTERVAL_MS, 10) || 48 * 60 * 60 * 1000;
+  parseInt(process.env.SCRAPING_INTERVAL_MS, 10) || 24 * 60 * 60 * 1000;
 
 const redisConnection = createRedisConnection();
 
@@ -42,18 +43,46 @@ export const scrapingWorker = new Worker(
 
     // ── SCHEDULER JOB: Dispatch one job per brand ──
     if (job.name === "refresh-all-brands") {
-      const brands = await ScrapedBrand.find({});
-      console.log(`[ScrapingWorker] Found ${brands.length} brands to refresh`);
+      // 1. Get all unique followed brand IDs across all users/workspaces
+      const allBrands = await Brand.find({}, 'followedBrands');
+      const uniqueFollowedIds = new Set();
+      allBrands.forEach(b => {
+        if (b.followedBrands) {
+          b.followedBrands.forEach(id => uniqueFollowedIds.add(id.toString()));
+        }
+      });
 
-      if (brands.length === 0) return { brandsEnqueued: 0 };
+      if (uniqueFollowedIds.size === 0) {
+        console.log(`[ScrapingWorker] No brands are currently followed by anyone.`);
+        return { brandsEnqueued: 0 };
+      }
+
+      // 2. Fetch the actual ScrapedBrand documents that are followed
+      const followedBrands = await ScrapedBrand.find({
+        _id: { $in: Array.from(uniqueFollowedIds) }
+      });
+
+      // 3. Apply the 15-day rule based on lastManualActionAt
+      const now = Date.now();
+      const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
+      
+      const eligibleBrands = followedBrands.filter(brand => {
+        const lastManualActionAt = brand.lastManualActionAt || brand.updatedAt || brand.createdAt;
+        const timeSinceAction = now - new Date(lastManualActionAt).getTime();
+        return timeSinceAction <= fifteenDaysMs;
+      });
+
+      console.log(`[ScrapingWorker] Found ${followedBrands.length} followed brands. ${eligibleBrands.length} are within the 15-day manual action window.`);
+
+      if (eligibleBrands.length === 0) return { brandsEnqueued: 0 };
 
       // Derive a stable interval number for deterministic job IDs
       const intervalNumber = Math.floor(job.timestamp / SCRAPING_INTERVAL_MS);
 
-      // Enqueue all brand jobs in one atomic Redis round-trip
+      // Enqueue all eligible brand jobs in one atomic Redis round-trip
       // Deterministic jobId prevents duplicates if dispatcher retries
       await scrapingQueue.addBulk(
-        brands.map((brand) => ({
+        eligibleBrands.map((brand) => ({
           name: "refresh-single-brand",
           data: {
             brandId: brand._id.toString(),
@@ -70,9 +99,9 @@ export const scrapingWorker = new Worker(
       );
 
       console.log(
-        `[ScrapingWorker] Enqueued ${brands.length} brand jobs via addBulk (interval: ${intervalNumber})`,
+        `[ScrapingWorker] Enqueued ${eligibleBrands.length} brand jobs via addBulk (interval: ${intervalNumber})`,
       );
-      return { brandsEnqueued: brands.length, intervalNumber };
+      return { brandsEnqueued: eligibleBrands.length, intervalNumber };
     }
 
     // ── PER-BRAND JOB: Process a single brand ──

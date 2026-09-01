@@ -373,7 +373,7 @@ export default function CollapsibleSidebar() {
                           key={brand._id}
                           path={`#`}
                           text={brand.name.replace(/_/g, " ")}
-                          badge={brand.customLabel}
+                          badge={user?.isAdmin ? brand.customLabel : undefined}
                           onClick={() => handleBrandChange(brand._id)}
                           isSelected={selectedBrandId === brand._id}
                         />
@@ -580,7 +580,7 @@ export default function CollapsibleSidebar() {
                                 }`}
                             >
                               <span className="truncate">{brand.name.replace(/_/g, " ")}</span>
-                              {brand.customLabel && (
+                              {user?.isAdmin && brand.customLabel && (
                                 <span className="shrink-0 ml-2 px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-[9px] uppercase font-bold tracking-wider">
                                   {brand.customLabel}
                                 </span>

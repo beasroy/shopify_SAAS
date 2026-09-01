@@ -46,5 +46,20 @@ module.exports = {
       merge_logs: true,
       time: true,
     },
+    {
+      name: 'city-classification-worker',
+      cwd: './server',
+      script: 'workers/cityClassificationWorker.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+      },
+      max_memory_restart: '1G',
+      error_file: './logs/city-classification-error.log',
+      out_file: './logs/city-classification-out.log',
+      merge_logs: true,
+      time: true,
+    },
   ],
 };

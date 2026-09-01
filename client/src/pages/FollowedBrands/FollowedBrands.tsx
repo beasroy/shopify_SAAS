@@ -92,6 +92,7 @@ const FollowedBrands: React.FC = () => {
     new Set(),
   );
   const [refreshingBrands, setRefreshingBrands] = useState<Set<string>>(new Set());
+  const [expiredBrands, setExpiredBrands] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Fetch all brands and their ads
@@ -214,6 +215,11 @@ const FollowedBrands: React.FC = () => {
       );
       if (response.data.success) {
         toast({ description: "Brand ads refreshed successfully!" });
+        setExpiredBrands(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(scrapedBrandId);
+          return newSet;
+        });
         await fetchBrands();
       } else {
         toast({ variant: "destructive", description: "Failed to refresh brand" });
@@ -343,6 +349,11 @@ const FollowedBrands: React.FC = () => {
       });
     }
   };
+
+  const handleImageError = (scrapedBrandId: string) => {
+    setExpiredBrands((prev) => new Set(prev).add(scrapedBrandId));
+  };
+
   useEffect(() => {
     fetchBrands();
   }, [brandId]);
@@ -645,6 +656,9 @@ const FollowedBrands: React.FC = () => {
                 : filteredAds.slice(0, 4);
               const hasMoreAds = filteredAds.length > 4;
 
+              const hasExpiredMedia = expiredBrands.has(brand._id);
+              const showRescrape = isStale || hasExpiredMedia;
+
               return (
                 <Card key={brand._id}>
                   <CardHeader>
@@ -680,7 +694,7 @@ const FollowedBrands: React.FC = () => {
                             )}
                           </Button>
                         )}
-                        {isStale && (
+                        {showRescrape && (
                           <Button
                             variant="outline"
                             onClick={() => handleRefreshBrand(brand._id)}
@@ -728,6 +742,7 @@ const FollowedBrands: React.FC = () => {
                                 onClick={() =>
                                   handleSummaryDetails(collationAds)
                                 }
+                                onImageError={() => handleImageError(brand._id)}
                               />
                             );
                           }
@@ -738,6 +753,7 @@ const FollowedBrands: React.FC = () => {
                               key={ad._id}
                               ad={ad}
                               onClick={() => handleSummaryDetails([ad])}
+                              onImageError={() => handleImageError(brand._id)}
                             />
                           );
                         })}

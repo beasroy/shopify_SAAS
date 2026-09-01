@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { calculateMetricsForAllBrands, syncAllBrandProducts as syncYesterdayProductsForAllBrands } from '../Report/Report.js';
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
 import { setupHolidayGenerationCron } from '../cron/holidayGenerationCron.js';
+import { setupLocationClassificationCron } from '../cron/locationClassificationCron.js';
 import { metricsQueue } from '../config/redis.js';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
@@ -78,5 +79,8 @@ export const setupCronJobs = () => {
 
   // Setup yearly holiday generation cron (runs on January 1st at 2 AM UTC)
   setupHolidayGenerationCron();
+
+  // Setup Daily Location Ad Spend and City Classification Cron
+  setupLocationClassificationCron();
 
 };

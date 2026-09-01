@@ -30,7 +30,7 @@ export default function LocationAnalytics() {
     [dateFrom, dateTo]
   );
 
-  const [dimension, setDimension] = useState<'metro' | 'region' | 'tier' | 'coastal'>('metro');
+  const [dimension, setDimension] = useState<'metro' | 'region' | 'tier' | 'coastal'>('region');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<LocationAnalyticsResponse | null>(null);
@@ -150,7 +150,11 @@ export default function LocationAnalytics() {
           <>
             {/* Summary Cards */}
             <div className="mb-6">
-              <SummaryCards summary={data.summary} currencyCode={currencyCode} />
+              <SummaryCards 
+                summary={data.summary} 
+                overallSpend={data.overallSpend}
+                currencyCode={currencyCode} 
+              />
             </div>
 
      

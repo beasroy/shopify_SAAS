@@ -2,14 +2,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LocationAnalyticsSummary } from '../interfaces';
 import { formatCurrency } from '@/utils/currency';
-import { TrendingUp, Package, MapPin } from 'lucide-react';
+import { TrendingUp, Package, MapPin, IndianRupee } from 'lucide-react';
 
 interface SummaryCardsProps {
   summary: LocationAnalyticsSummary;
+  overallSpend?: {
+    metaSpend: number;
+    googleSpend: number;
+    totalSpend: number;
+  };
   currencyCode?: string;
 }
 
-export default function SummaryCards({ summary, currencyCode = 'USD' }: SummaryCardsProps) {
+export default function SummaryCards({ summary, overallSpend, currencyCode = 'USD' }: SummaryCardsProps) {
   // Calculate totals across all dimension values
   const totals = Object.values(summary).reduce(
     (acc, dimSummary) => ({
@@ -39,6 +44,17 @@ export default function SummaryCards({ summary, currencyCode = 'USD' }: SummaryC
               {formatCurrency(dimSummary.totalSales, currencyCode)}
             </span>
           </div>
+          {dimSummary.totalSpend !== undefined && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IndianRupee className="h-4 w-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Total Spend</span>
+              </div>
+              <span className="text-lg font-semibold">
+                {formatCurrency(dimSummary.totalSpend, currencyCode)}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
@@ -70,7 +86,7 @@ export default function SummaryCards({ summary, currencyCode = 'USD' }: SummaryC
           <CardTitle className="text-lg font-semibold">Overall Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${overallSpend !== undefined ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
             <div className="flex items-center justify-between p-3 bg-background rounded-lg">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
@@ -80,6 +96,17 @@ export default function SummaryCards({ summary, currencyCode = 'USD' }: SummaryC
                 {formatCurrency(totals.totalSales, currencyCode)}
               </span>
             </div>
+            {overallSpend !== undefined && (
+              <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                <div className="flex items-center gap-2">
+                  <IndianRupee className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">Total Spend</span>
+                </div>
+                <span className="text-xl font-bold">
+                  {formatCurrency(overallSpend.totalSpend, currencyCode)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between p-3 bg-background rounded-lg">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />

@@ -815,7 +815,7 @@ export const refreshScrapingBrandAds = async (
         const strategy = getActiveStrategy();
         const adsToInsert = fetchResult.ads
           .filter((item) => !item.error)
-          .slice(0, overrideCount || parseInt(process.env.MAX_ADS_TO_SCRAPE) || 25)
+          .slice(0, options.count || parseInt(process.env.MAX_ADS_TO_SCRAPE) || 25)
           .map((result) => {
             const normalized = strategy.parseOutput(result);
             const mapped = mapApifyResultToAdDetail(normalized);

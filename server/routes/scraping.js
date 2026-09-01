@@ -145,9 +145,9 @@ router.get('/test-saundindia', async (req, res) => {
  * POST /api/scraping/fetch-and-save
  * Body: { pageUrl: string, count?: number, countries?: string[], activeStatus?: string }
  */
-router.post('/fetch-and-save', async (req, res) => {
+router.post('/scrape-brand', async (req, res) => {
     try {
-        const { pageUrl, count = 200, countries = ['IN'], activeStatus = 'all' } = req.body;
+        const { pageUrl, count = 25, countries = ['IN'], activeStatus = 'all', brandId } = req.body;
         
         if (!pageUrl) {
             return res.status(400).json({
@@ -396,7 +396,7 @@ router.get('/all', async (req, res) => {
 router.post('/refresh/:scrapingBrandId', async (req, res) => {
     try {
         const { scrapingBrandId } = req.params;
-        const { count = 100, countries = ['IN'], activeStatus = 'all', period = '' } = req.body;
+        const { count = 25, countries = ['IN'], activeStatus = 'all', period = '' } = req.body;
 
         if (!scrapingBrandId) {
             return res.status(400).json({

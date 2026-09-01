@@ -30,6 +30,7 @@ interface ScrapedAd {
 interface AdCardProps {
   ad: ScrapedAd;
   onClick: () => void;
+  onImageError?: () => void;
 }
 
 // Get platform logo component - pure utility function, no memoization needed
@@ -49,7 +50,7 @@ export const getPlatformLogo = (platform: string) => {
   return null;
 };
 
-const AdCard: React.FC<AdCardProps> = ({ ad, onClick }) => {
+const AdCard: React.FC<AdCardProps> = ({ ad, onClick, onImageError }) => {
   const snapshot = ad.snapshot || {};
   const hasImages = snapshot.images && snapshot.images.length > 0;
   const hasVideos = snapshot.videos && snapshot.videos.length > 0;
@@ -181,6 +182,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, onClick }) => {
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
+                  if (onImageError) onImageError();
                 }}
               />
             </>

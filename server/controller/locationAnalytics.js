@@ -3,6 +3,7 @@ import Order from '../models/Order.js';
 import { parseDate, validateDateRange } from '../utils/dateUtils.js';
 import { getCityCanonicalSwitch } from '../utils/cityAliases.js';
 import { connection as redis } from '../config/redis.js';
+import LocationAdSpend from '../models/LocationAdSpend.js';
 
 // Constants
 const MAX_LOCATIONS_PER_DIMENSION = 1000;
@@ -369,6 +370,70 @@ export async function getLocationSales(req, res) {
             .filter(c => !c.isClassified)
             .reduce((sum, c) => sum + (c.totalSales || 0), 0);
 
+        // -- FETCH AD SPEND --
+        // Fetch ad spend for the date range
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        const spendData = await LocationAdSpend.aggregate([
+            {
+                $match: {
+                    brandId: new mongoose.Types.ObjectId(brandId),
+                    date: { $gte: startStr, $lte: endStr }
+                }
+            },
+            {
+                $group: {
+                    _id: "$region",
+                    metaSpend: { $sum: "$metaSpend" },
+                    googleSpend: { $sum: "$googleSpend" }
+                }
+            }
+        ]);
+
+        // Merge spend into summary
+        let totalMetaSpend = 0;
+        let totalGoogleSpend = 0;
+
+        spendData.forEach(regionSpend => {
+            const region = regionSpend._id;
+            const meta = regionSpend.metaSpend || 0;
+            const google = regionSpend.googleSpend || 0;
+
+            totalMetaSpend += meta;
+            totalGoogleSpend += google;
+
+            // If we are grouping by region, attach spend to the specific region summary
+            if (dimension === 'region') {
+                if (response.summary[region]) {
+                    response.summary[region].metaSpend = meta;
+                    response.summary[region].googleSpend = google;
+                    response.summary[region].totalSpend = meta + google;
+                } else {
+                    // Region exists in spend but not in sales, create an empty summary for it
+                    response.summary[region] = {
+                        totalSales: 0,
+                        totalOrderCount: 0,
+                        locationCount: 0,
+                        metaSpend: meta,
+                        googleSpend: google,
+                        totalSpend: meta + google
+                    };
+                    // Ensure the data array exists too
+                    if (!response.data[region]) response.data[region] = [];
+                }
+            }
+        });
+
+        // Initialize spend fields for all other summary cards to 0 if not set
+        Object.keys(response.summary).forEach(key => {
+            if (response.summary[key].metaSpend === undefined) {
+                response.summary[key].metaSpend = 0;
+                response.summary[key].googleSpend = 0;
+                response.summary[key].totalSpend = 0;
+            }
+        });
+
         // Log unclassified location count
         if (unclassifiedLocations.length > 0) {
             console.log(`ℹ️  Found ${unclassifiedLocations.length} unclassified locations for brandId=${brandId}, dimension=${dimension}`);
@@ -384,11 +449,16 @@ export async function getLocationSales(req, res) {
             success: true,
             dimension,
             period: {
-                startDate: start.toISOString().split('T')[0],
-                endDate: end.toISOString().split('T')[0],
+                startDate: startStr,
+                endDate: endStr,
                 currentDate: today.toISOString().split('T')[0]
             },
             ...response,
+            overallSpend: {
+                metaSpend: totalMetaSpend,
+                googleSpend: totalGoogleSpend,
+                totalSpend: totalMetaSpend + totalGoogleSpend
+            },
             metadata: {
                 status: unclassifiedLocations.length > 0 ? "partial" : "complete",
                 unclassifiedLocations: [...new Set(unclassifiedLocations)],

@@ -18,6 +18,9 @@ export interface DimensionSummary {
   totalSales: number;
   totalOrderCount: number;
   locationCount: number;
+  metaSpend?: number;
+  googleSpend?: number;
+  totalSpend?: number;
 }
 
 export interface LocationAnalyticsData {
@@ -55,8 +58,12 @@ export interface LocationAnalyticsResponse {
   period: Period;
   data: LocationAnalyticsData;
   summary: LocationAnalyticsSummary;
+  overallSpend?: {
+    metaSpend: number;
+    googleSpend: number;
+    totalSpend: number;
+  };
   metadata: LocationAnalyticsMetadata;
   fromCache: boolean;
   queryTime?: number;
 }
-

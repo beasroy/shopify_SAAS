@@ -327,6 +327,17 @@ const CreativesLibrary: React.FC = () => {
     };
   }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter, dateFrom, dateTo]); // Re-run when these change
 
+  // Automatically fetch missing creatives for the active group
+  useEffect(() => {
+    if (isDrawerOpen && activeGroup && hasMore && !loading && nextCursor) {
+      const missingIds = activeGroup.adIds.filter(id => !creatives.some(c => c.creative_id === id || c.ad_id === id));
+      if (missingIds.length > 0) {
+        console.log(`🔄 Active group has ${missingIds.length} missing creatives. Auto-fetching next page...`);
+        fetchCreatives(nextCursor);
+      }
+    }
+  }, [isDrawerOpen, activeGroup, creatives, hasMore, loading, nextCursor]);
+
   const handleRefresh = () => {
     fetchCreatives(null, true);
   };
@@ -943,6 +954,14 @@ const CreativesLibrary: React.FC = () => {
               </div>
             );
           })}
+          
+          {/* Loading indicator for missing paginated ads */}
+          {isDrawerOpen && activeGroup && loading && activeGroup.adIds.some(id => !creatives.some(c => c.creative_id === id || c.ad_id === id)) && (
+            <div className="col-span-2 flex flex-col items-center justify-center py-10">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">Loading missing ads...</p>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

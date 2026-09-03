@@ -158,10 +158,10 @@ export default function BrandConnections() {
                                     <TableBody>
                                         {currentBrands.length > 0 ? (
                                             currentBrands.map((brand: IBrand) => {
-                                                const metaConnected = !!(brand.fbAdAccounts && brand.fbAdAccounts.length > 0);
-                                                const googleConnected = !!(brand.googleAdAccount && brand.googleAdAccount.length > 0);
-                                                const ga4Connected = !!(brand.ga4Account && Object.keys(brand.ga4Account).length > 0);
-                                                const shopifyConnected = !!(brand.shopifyAccount && Object.keys(brand.shopifyAccount).length > 0);
+                                                const metaConnected = !!(brand.fbAccessToken && brand.fbAdAccounts && brand.fbAdAccounts.length > 0);
+                                                const googleConnected = !!(brand.googleAdsRefreshToken && brand.googleAdAccount && brand.googleAdAccount.length > 0);
+                                                const ga4Connected = !!(brand.googleAnalyticsRefreshToken && brand.ga4Account && brand.ga4Account.PropertyID);
+                                                const shopifyConnected = !!(brand.shopifyAccount && brand.shopifyAccount.shopifyAccessToken);
                                                 
                                                 return (
                                                     <TableRow key={brand._id} className="hover:bg-blue-50 transition-colors duration-150 group text-sm">

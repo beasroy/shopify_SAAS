@@ -10,6 +10,9 @@ export interface IBrand {
     ga4Account?: { [key: string]: string };
     shopifyAccount: { [key: string]: string };
     customLabel?: string;
+    fbAccessToken?: string;
+    googleAdsRefreshToken?: string;
+    googleAnalyticsRefreshToken?: string;
 }
 
 export interface IBrandState {

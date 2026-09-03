@@ -4,539 +4,744 @@ import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
 import axios from "axios";
 
-
 import { metricsQueue } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
 
+const fetchShopifyPrimaryDomain = async (shopName, accessToken) => {
+  if (!shopName || !accessToken) return null;
+  try {
+    const cleanShopName = shopName.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const url = `https://${cleanShopName}/admin/api/2024-04/shop.json`;
+    const response = await axios.get(url, {
+      headers: { "X-Shopify-Access-Token": accessToken },
+    });
+    return response.data.shop.domain;
+  } catch (e) {
+    console.error("Could not fetch primary domain:", e.response ? e.response.data : e.message);
+    return null;
+  }
+};
+
 export const addBrands = async (req, res) => {
-    const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } = req.body;
+  const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount } =
+    req.body;
+
+  try {
+    if (shopifyAccount && shopifyAccount.shopName && shopifyAccount.shopifyAccessToken) {
+      const domain = await fetchShopifyPrimaryDomain(shopifyAccount.shopName, shopifyAccount.shopifyAccessToken);
+      if (domain) {
+        shopifyAccount.primaryDomain = domain;
+      }
+    }
+
+    const newBrand = new Brand({
+      name,
+      fbAdAccounts,
+      googleAdAccount,
+      ga4Account,
+      shopifyAccount,
+    });
+
+    await newBrand.save();
+
+    // Also add brand to all admin users
+    const adminUsers = await User.find({ isAdmin: true });
+    for (const adminUser of adminUsers) {
+      if (!adminUser.brands.includes(newBrand._id.toString())) {
+        adminUser.brands.push(newBrand._id);
+        await adminUser.save();
+      }
+    }
+
+    // Add brand to current user's brands array
+    const currentUserId = req.user?.id;
+    if (currentUserId) {
+      try {
+        const currentUser = await User.findById(currentUserId);
+        if (
+          currentUser &&
+          !currentUser.brands.includes(newBrand._id.toString())
+        ) {
+          currentUser.brands.push(newBrand._id);
+          await currentUser.save();
+          console.log(
+            `Added brand ${newBrand._id} to current user ${currentUserId}`,
+          );
+        }
+      } catch (userUpdateError) {
+        console.error(
+          `Error adding brand to current user ${currentUserId}:`,
+          userUpdateError,
+        );
+      }
+    }
+
+    const brandId = newBrand._id.toString();
 
     try {
-        const newBrand = new Brand({
-            name,
-            fbAdAccounts,
-            googleAdAccount,
-            ga4Account,
-            shopifyAccount
-        });
-
-        await newBrand.save();
-
-        // Also add brand to all admin users
-        const adminUsers = await User.find({ isAdmin: true });
-        for (const adminUser of adminUsers) {
-            if (!adminUser.brands.includes(newBrand._id.toString())) {
-                adminUser.brands.push(newBrand._id);
-                await adminUser.save();
-            }
-        }
-
-        // Add brand to current user's brands array
-        const currentUserId = req.user?.id;
-        if (currentUserId) {
-            try {
-                const currentUser = await User.findById(currentUserId);
-                if (currentUser && !currentUser.brands.includes(newBrand._id.toString())) {
-                    currentUser.brands.push(newBrand._id);
-                    await currentUser.save();
-                    console.log(`Added brand ${newBrand._id} to current user ${currentUserId}`);
-                }
-            } catch (userUpdateError) {
-                console.error(`Error adding brand to current user ${currentUserId}:`, userUpdateError);
-            }
-        }
-
-        const brandId = newBrand._id.toString();
-
-        try {
-            await metricsQueue.add('calculate-metrics', {
-                brandId: brandId,
-                userId: currentUserId
-            }, {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 1000
-                }
-            });
-            console.log(`Metrics calculation queued for brand ${brandId}`);
-        } catch (metricsError) {
-            console.error(`Failed to queue metrics calculation for brand ${brandId}:`, metricsError);
-        }
-
-        res.status(201).json({ message: "Brand created successfully", brand: newBrand });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error creating brand', error: error.message });
+      await metricsQueue.add(
+        "calculate-metrics",
+        {
+          brandId: brandId,
+          userId: currentUserId,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 1000,
+          },
+        },
+      );
+      console.log(`Metrics calculation queued for brand ${brandId}`);
+    } catch (metricsError) {
+      console.error(
+        `Failed to queue metrics calculation for brand ${brandId}:`,
+        metricsError,
+      );
     }
-}
 
+    res
+      .status(201)
+      .json({ message: "Brand created successfully", brand: newBrand });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error creating brand", error: error.message });
+  }
+};
 
 export const getBrands = async (req, res) => {
-    try {
-        const brands = await Brand.find();
-        res.json(brands);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching brands', error: error.message });
-    }
-}
+  try {
+    const brands = await Brand.find();
+    res.json(brands);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error fetching brands", error: error.message });
+  }
+};
 
 export const getBrandNames = async (req, res) => {
-    try {
-        const brands = await Brand.find({}, { name: 1, _id: 0 }).sort({ name: 1 }).lean();
-        const names = brands.map((brand) => brand.name);
-        const list = names.map((name) => `• ${name}`).join('\n');
+  try {
+    const brands = await Brand.find({}, { name: 1, _id: 0 })
+      .sort({ name: 1 })
+      .lean();
+    const names = brands.map((brand) => brand.name);
+    const list = names.map((name) => `• ${name}`).join("\n");
 
-        res.json({
-            success: true,
-            count: names.length,
-            names,
-            list
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Error fetching brand names', error: error.message });
-    }
-}
+    res.json({
+      success: true,
+      count: names.length,
+      names,
+      list,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error fetching brand names",
+        error: error.message,
+      });
+  }
+};
 
 export const getCurrency = async (req, res) => {
-    try {
-        const { brandId } = req.params;
-        const brand = await Brand.findById(brandId);
-        res.json(brand.shopifyAccount.currency);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching currency', error: error.message });
-    }
-}
+  try {
+    const { brandId } = req.params;
+    const brand = await Brand.findById(brandId);
+    res.json(brand.shopifyAccount.currency);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error fetching currency", error: error.message });
+  }
+};
 
 export const getBrandbyId = async (req, res) => {
-    try {
-        const { brandId } = req.params;
+  try {
+    const { brandId } = req.params;
 
-        const brand = await Brand.findById(brandId);
+    const brand = await Brand.findById(brandId);
 
-        if (!brand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-        res.status(200).json(brand);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching brand', error: error.message });
+    if (!brand) {
+      return res.status(404).json({ error: "Brand not found." });
     }
-}
+    res.status(200).json(brand);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error fetching brand", error: error.message });
+  }
+};
 
 export const updateBrands = async (req, res) => {
-    try {
-        const { brandid } = req.params;
-        const { name, fbAdAccounts, googleAdAccount, ga4Account, shopifyAccount, customLabel } = req.body;
-        const userId = req.user?.id;
+  try {
+    const { brandid } = req.params;
+    const {
+      name,
+      fbAdAccounts,
+      googleAdAccount,
+      ga4Account,
+      shopifyAccount,
+      customLabel,
+    } = req.body;
+    const userId = req.user?.id;
 
-        if (!brandid) {
-            return res.status(400).json({ error: 'Brand ID is required.' });
-        }
-
-        // Get current brand data to compare changes
-        const currentBrand = await Brand.findById(brandid);
-        if (!currentBrand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-        const updateData = {};
-        let hasNewAdditions = false;
-        let newAdditions = {
-            newStore: false,
-            newFbAccounts: [],
-            newGoogleAccounts: []
-        };
-
-        if (name) updateData.name = name;
-        if (ga4Account) updateData.ga4Account = ga4Account;
-        if (customLabel !== undefined) updateData.customLabel = customLabel;
-
-        // Check for new store (Shopify account)
-        if (shopifyAccount) {
-            const currentShopName = currentBrand.shopifyAccount?.shopName;
-            const newShopName = shopifyAccount.shopName;
-
-            if (newShopName && (!currentShopName || currentShopName !== newShopName)) {
-                newAdditions.newStore = true;
-                hasNewAdditions = true;
-                console.log(`New store detected: ${newShopName}`);
-            }
-            updateData.shopifyAccount = shopifyAccount;
-        }
-
-        // Check for new Facebook ad accounts
-        if (fbAdAccounts) {
-            // Get existing Facebook ad accounts
-            const existingFbAccounts = currentBrand.fbAdAccounts || [];
-
-            // Find new accounts that aren't already connected
-            newAdditions.newFbAccounts = fbAdAccounts.filter(account =>
-                !existingFbAccounts.includes(account)
-            );
-
-            if (newAdditions.newFbAccounts.length > 0) {
-                hasNewAdditions = true;
-                console.log(`New Facebook ad accounts detected: ${newAdditions.newFbAccounts.join(', ')}`);
-            }
-
-            // Merge existing and new accounts, avoiding duplicates
-            const mergedFbAccounts = [...new Set([...existingFbAccounts, ...fbAdAccounts])];
-            updateData.fbAdAccounts = mergedFbAccounts;
-        }
-
-        // Check for new Google ad accounts
-        if (googleAdAccount) {
-            // Get existing Google ad accounts
-            const existingGoogleAccounts = currentBrand.googleAdAccount || [];
-
-            // Convert to array if it's not already
-            const newGoogleAccounts = Array.isArray(googleAdAccount) ? googleAdAccount : [googleAdAccount];
-
-            // Find new accounts that aren't already connected
-            newAdditions.newGoogleAccounts = newGoogleAccounts.filter(newAccount =>
-                !existingGoogleAccounts.some(existingAccount =>
-                    existingAccount.clientId === newAccount.clientId
-                )
-            );
-
-            if (newAdditions.newGoogleAccounts.length > 0) {
-                hasNewAdditions = true;
-                console.log(`New Google ad accounts detected: ${newAdditions.newGoogleAccounts.map(acc => acc.clientId).join(', ')}`);
-            }
-
-            // Merge existing and new accounts, avoiding duplicates
-            const mergedGoogleAccounts = [...existingGoogleAccounts];
-            newGoogleAccounts.forEach(newAccount => {
-                const exists = mergedGoogleAccounts.some(existing =>
-                    existing.clientId === newAccount.clientId
-                );
-                if (!exists) {
-                    mergedGoogleAccounts.push(newAccount);
-                }
-            });
-
-            updateData.googleAdAccount = mergedGoogleAccounts;
-        }
-
-        const updatedBrand = await Brand.findByIdAndUpdate(
-            brandid,
-            { $set: updateData },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedBrand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-        // If new additions were detected, trigger appropriate metrics calculation
-        if (hasNewAdditions && userId) {
-            try {
-                await metricsQueue.add('calculate-metrics', {
-                    brandId: brandid,
-                    userId: userId,
-                    newAdditions: newAdditions
-                }, {
-                    attempts: 3,
-                    backoff: {
-                        type: 'exponential',
-                        delay: 1000
-                    }
-                });
-                console.log(`Metrics calculation for new additions queued for brand ${brandid}:`, newAdditions);
-            } catch (metricsError) {
-                console.error(`Failed to queue metrics calculation for new additions for brand ${brandid}:`, metricsError);
-            }
-        }
-
-        res.status(200).json(updatedBrand);
-    } catch (error) {
-        console.error('Error updating brand:', error);
-        res.status(500).json({ error: 'Failed to update brand. Please try again.' });
+    if (!brandid) {
+      return res.status(400).json({ error: "Brand ID is required." });
     }
+
+    // Get current brand data to compare changes
+    const currentBrand = await Brand.findById(brandid);
+    if (!currentBrand) {
+      return res.status(404).json({ error: "Brand not found." });
+    }
+
+    const updateData = {};
+    let hasNewAdditions = false;
+    let newAdditions = {
+      newStore: false,
+      newFbAccounts: [],
+      newGoogleAccounts: [],
+    };
+
+    if (name) updateData.name = name;
+    if (ga4Account) updateData.ga4Account = ga4Account;
+    if (customLabel !== undefined) updateData.customLabel = customLabel;
+
+    // Check for new store (Shopify account)
+    if (shopifyAccount) {
+      const currentShopName = currentBrand.shopifyAccount?.shopName;
+      const newShopName = shopifyAccount.shopName;
+
+      if (
+        newShopName &&
+        (!currentShopName || currentShopName !== newShopName)
+      ) {
+        newAdditions.newStore = true;
+        hasNewAdditions = true;
+        console.log(`New store detected: ${newShopName}`);
+
+        if (shopifyAccount.shopifyAccessToken) {
+          const domain = await fetchShopifyPrimaryDomain(newShopName, shopifyAccount.shopifyAccessToken);
+          if (domain) {
+            shopifyAccount.primaryDomain = domain;
+          }
+        }
+      } else if (currentShopName === newShopName && !shopifyAccount.primaryDomain && currentBrand.shopifyAccount?.primaryDomain) {
+        // Keep existing primaryDomain if shopName hasn't changed but frontend didn't send it
+        shopifyAccount.primaryDomain = currentBrand.shopifyAccount.primaryDomain;
+      }
+      updateData.shopifyAccount = shopifyAccount;
+    }
+
+    // Check for new Facebook ad accounts
+    if (fbAdAccounts) {
+      // Get existing Facebook ad accounts
+      const existingFbAccounts = currentBrand.fbAdAccounts || [];
+
+      // Find new accounts that aren't already connected
+      newAdditions.newFbAccounts = fbAdAccounts.filter(
+        (account) => !existingFbAccounts.includes(account),
+      );
+
+      if (newAdditions.newFbAccounts.length > 0) {
+        hasNewAdditions = true;
+        console.log(
+          `New Facebook ad accounts detected: ${newAdditions.newFbAccounts.join(", ")}`,
+        );
+      }
+
+      // Merge existing and new accounts, avoiding duplicates
+      const mergedFbAccounts = [
+        ...new Set([...existingFbAccounts, ...fbAdAccounts]),
+      ];
+      updateData.fbAdAccounts = mergedFbAccounts;
+    }
+
+    // Check for new Google ad accounts
+    if (googleAdAccount) {
+      // Get existing Google ad accounts
+      const existingGoogleAccounts = currentBrand.googleAdAccount || [];
+
+      // Convert to array if it's not already
+      const newGoogleAccounts = Array.isArray(googleAdAccount)
+        ? googleAdAccount
+        : [googleAdAccount];
+
+      // Find new accounts that aren't already connected
+      newAdditions.newGoogleAccounts = newGoogleAccounts.filter(
+        (newAccount) =>
+          !existingGoogleAccounts.some(
+            (existingAccount) =>
+              existingAccount.clientId === newAccount.clientId,
+          ),
+      );
+
+      if (newAdditions.newGoogleAccounts.length > 0) {
+        hasNewAdditions = true;
+        console.log(
+          `New Google ad accounts detected: ${newAdditions.newGoogleAccounts.map((acc) => acc.clientId).join(", ")}`,
+        );
+      }
+
+      // Merge existing and new accounts, avoiding duplicates
+      const mergedGoogleAccounts = [...existingGoogleAccounts];
+      newGoogleAccounts.forEach((newAccount) => {
+        const exists = mergedGoogleAccounts.some(
+          (existing) => existing.clientId === newAccount.clientId,
+        );
+        if (!exists) {
+          mergedGoogleAccounts.push(newAccount);
+        }
+      });
+
+      updateData.googleAdAccount = mergedGoogleAccounts;
+    }
+
+    const updatedBrand = await Brand.findByIdAndUpdate(
+      brandid,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedBrand) {
+      return res.status(404).json({ error: "Brand not found." });
+    }
+
+    // If new additions were detected, trigger appropriate metrics calculation
+    if (hasNewAdditions && userId) {
+      try {
+        await metricsQueue.add(
+          "calculate-metrics",
+          {
+            brandId: brandid,
+            userId: userId,
+            newAdditions: newAdditions,
+          },
+          {
+            attempts: 3,
+            backoff: {
+              type: "exponential",
+              delay: 1000,
+            },
+          },
+        );
+        console.log(
+          `Metrics calculation for new additions queued for brand ${brandid}:`,
+          newAdditions,
+        );
+      } catch (metricsError) {
+        console.error(
+          `Failed to queue metrics calculation for new additions for brand ${brandid}:`,
+          metricsError,
+        );
+      }
+    }
+
+    res.status(200).json(updatedBrand);
+  } catch (error) {
+    console.error("Error updating brand:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to update brand. Please try again." });
+  }
 };
 
 export const filterBrands = async (req, res) => {
-    try {
-        const { brandIds } = req.body;
+  try {
+    const { brandIds } = req.body;
 
-        if (!brandIds || !Array.isArray(brandIds)) {
-            return res.status(400).json({ message: 'Invalid or missing brand IDs.' });
-        }
-
-        // Fetch brands matching the given IDs
-        const brands = await Brand.find({ _id: { $in: brandIds } });
-
-        res.status(200).json(brands);
-    } catch (error) {
-        console.error('Error filtering brands:', error);
-        res.status(500).json({ message: 'Error fetching brands.', error: error.message });
+    if (!brandIds || !Array.isArray(brandIds)) {
+      return res.status(400).json({ message: "Invalid or missing brand IDs." });
     }
+
+    // Fetch brands matching the given IDs
+    const brands = await Brand.find({ _id: { $in: brandIds } });
+
+    res.status(200).json(brands);
+  } catch (error) {
+    console.error("Error filtering brands:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching brands.", error: error.message });
+  }
 };
 
 export const deleteBrand = async (req, res) => {
-    try {
-        const { brandId } = req.params;
+  try {
+    const { brandId } = req.params;
 
-        // First, check if the brand exists
-        const brand = await Brand.findById(brandId);
+    // First, check if the brand exists
+    const brand = await Brand.findById(brandId);
 
-        if (!brand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-
-        // Delete related data from AdMetrics collection
-        try {
-            const adMetricsResult = await AdMetrics.deleteMany({ brandId: brandId });
-            console.log(`Deleted ${adMetricsResult.deletedCount} ad metrics entries for brand ${brandId}`);
-        } catch (adMetricsError) {
-            console.error(`Error deleting ad metrics data for brand ${brandId}:`, adMetricsError);
-        }
-
-        // Remove brand from all users' brands array
-        try {
-            const userUpdateResult = await User.updateMany(
-                { brands: brandId },
-                { $pull: { brands: brandId } }
-            );
-            console.log(`Removed brand ${brandId} from ${userUpdateResult.modifiedCount} users`);
-        } catch (userUpdateError) {
-            console.error(`Error removing brand from users for brand ${brandId}:`, userUpdateError);
-        }
-
-        // Finally, delete the brand itself
-        const deletedBrand = await Brand.findByIdAndDelete(brandId);
-
-        if (!deletedBrand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-        res.status(200).json({
-            message: 'Brand and all related data deleted successfully',
-            deletedBrand: {
-                id: deletedBrand._id,
-                name: deletedBrand.name
-            }
-        });
-    } catch (error) {
-        console.error('Error deleting brand:', error);
-        res.status(500).json({ message: 'Error deleting brand', error: error.message });
+    if (!brand) {
+      return res.status(404).json({ error: "Brand not found." });
     }
-}
+
+    // Delete related data from AdMetrics collection
+    try {
+      const adMetricsResult = await AdMetrics.deleteMany({ brandId: brandId });
+      console.log(
+        `Deleted ${adMetricsResult.deletedCount} ad metrics entries for brand ${brandId}`,
+      );
+    } catch (adMetricsError) {
+      console.error(
+        `Error deleting ad metrics data for brand ${brandId}:`,
+        adMetricsError,
+      );
+    }
+
+    // Remove brand from all users' brands array
+    try {
+      const userUpdateResult = await User.updateMany(
+        { brands: brandId },
+        { $pull: { brands: brandId } },
+      );
+      console.log(
+        `Removed brand ${brandId} from ${userUpdateResult.modifiedCount} users`,
+      );
+    } catch (userUpdateError) {
+      console.error(
+        `Error removing brand from users for brand ${brandId}:`,
+        userUpdateError,
+      );
+    }
+
+    // Finally, delete the brand itself
+    const deletedBrand = await Brand.findByIdAndDelete(brandId);
+
+    if (!deletedBrand) {
+      return res.status(404).json({ error: "Brand not found." });
+    }
+
+    res.status(200).json({
+      message: "Brand and all related data deleted successfully",
+      deletedBrand: {
+        id: deletedBrand._id,
+        name: deletedBrand.name,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting brand:", error);
+    res
+      .status(500)
+      .json({ message: "Error deleting brand", error: error.message });
+  }
+};
 
 export const deletePlatformIntegration = async (req, res) => {
-    try {
-        const { brandId } = req.params;
-        const { platform, accountId, shopName } = req.body;
+  try {
+    const { brandId } = req.params;
+    const { platform, accountId, shopName } = req.body;
 
-        if (!brandId) {
-            return res.status(400).json({ error: 'Brand ID is required.' });
-        }
-
-        if (!platform) {
-            return res.status(400).json({ error: 'Platform is required.' });
-        }
-
-        const brand = await Brand.findById(brandId);
-        if (!brand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-        let updateData = {};
-        let unsetData = {};
-        let deletedInfo = {};
-
-        switch (platform.toLowerCase()) {
-            case 'shopify':
-                if (!shopName) {
-                    return res.status(400).json({ error: 'Shop name is required for Shopify platform.' });
-                }
-
-                if (brand.shopifyAccount?.shopName === shopName) {
-                    updateData = { shopifyAccount: {} };
-                    deletedInfo = { platform: 'shopify', shopName };
-                } else {
-                    return res.status(404).json({ error: 'Shopify store not found for this brand.' });
-                }
-                break;
-
-            case 'facebook': {
-                const currentFbAccounts = brand.fbAdAccounts || [];
-
-                if (currentFbAccounts.length === 0) {
-                    return res.status(404).json({ error: 'Facebook account not found for this brand.' });
-                }
-
-                // No accountId => disconnect all; otherwise remove that one account
-                let updatedFbAccounts;
-                if (!accountId) {
-                    updatedFbAccounts = [];
-                } else {
-                    updatedFbAccounts = currentFbAccounts.filter(account => account !== accountId);
-                    if (updatedFbAccounts.length === currentFbAccounts.length) {
-                        return res.status(404).json({ error: 'Facebook account not found for this brand.' });
-                    }
-                }
-
-                updateData = { fbAdAccounts: updatedFbAccounts };
-
-                // When no Facebook accounts remain: revoke Meta app access + remove token
-                if (updatedFbAccounts.length === 0) {
-                    if (brand.fbAccessToken) {
-                        try {
-                            // Revokes the app from the user's Meta settings so next login asks for permission again
-                            await axios.delete('https://graph.facebook.com/v22.0/me/permissions', {
-                                params: { access_token: brand.fbAccessToken }
-                            });
-                        } catch (revokeError) {
-                            // Token may already be invalid/expired — still clear it from DB
-                            console.warn('Failed to revoke Facebook permissions (continuing):', revokeError?.response?.data || revokeError.message);
-                        }
-                    }
-                    unsetData.fbAccessToken = 1;
-                }
-
-                deletedInfo = {
-                    platform: 'facebook',
-                    accountId: accountId || null,
-                    disconnectedAll: !accountId,
-                    removedCount: currentFbAccounts.length - updatedFbAccounts.length,
-                    tokenCleared: updatedFbAccounts.length === 0
-                };
-                break;
-            }
-
-            case 'google ads': {
-                const currentGoogleAccounts = brand.googleAdAccount || [];
-
-                if (currentGoogleAccounts.length === 0) {
-                    return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
-                }
-
-                // No accountId => disconnect all; otherwise remove that one account
-                let updatedGoogleAccounts;
-                if (!accountId) {
-                    updatedGoogleAccounts = [];
-                } else {
-                    updatedGoogleAccounts = currentGoogleAccounts.filter(account => account.clientId !== accountId);
-                    if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
-                        return res.status(404).json({ error: 'Google Ads account not found for this brand.' });
-                    }
-                }
-
-                updateData = { googleAdAccount: updatedGoogleAccounts };
-                deletedInfo = {
-                    platform: 'google ads',
-                    accountId: accountId || null,
-                    disconnectedAll: !accountId,
-                    removedCount: currentGoogleAccounts.length - updatedGoogleAccounts.length
-                };
-                break;
-            }
-
-            case 'google analytics':
-            case 'ga4':
-                if (brand.ga4Account?.PropertyID) {
-                    updateData = { ga4Account: {} };
-                    deletedInfo = { platform: 'google analytics', propertyId: brand.ga4Account.PropertyID };
-                } else {
-                    return res.status(404).json({ error: 'Google Analytics account not found for this brand.' });
-                }
-                break;
-
-            default:
-                return res.status(400).json({ error: 'Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics' });
-        }
-
-        const updateOps = {};
-        if (Object.keys(updateData).length > 0) {
-            updateOps.$set = updateData;
-        }
-        if (Object.keys(unsetData).length > 0) {
-            updateOps.$unset = unsetData;
-        }
-
-        const updatedBrand = await Brand.findByIdAndUpdate(
-            brandId,
-            updateOps,
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedBrand) {
-            return res.status(404).json({ error: 'Brand not found.' });
-        }
-
-        // Trigger full wipe & rebuild metrics job for remaining accounts
-        try {
-            await metricsQueue.add('update-metrics', {
-                brandId,
-                userId: req.user?.id
-            });
-            console.log(`Metrics update queued for brand ${brandId} after platform disconnect`);
-        } catch (queueError) {
-            console.error(`Failed to queue metrics update for brand ${brandId}:`, queueError);
-        }
-
-        res.status(200).json({
-            message: 'Platform integration deleted successfully',
-            deletedInfo,
-            brand: updatedBrand
-        });
-
-    } catch (error) {
-        console.error('Error deleting platform integration:', error);
-        res.status(500).json({ message: 'Error deleting platform integration', error: error.message });
+    if (!brandId) {
+      return res.status(400).json({ error: "Brand ID is required." });
     }
-}
+
+    if (!platform) {
+      return res.status(400).json({ error: "Platform is required." });
+    }
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ error: "Brand not found." });
+    }
+
+    let updateData = {};
+    let unsetData = {};
+    let deletedInfo = {};
+
+    switch (platform.toLowerCase()) {
+      case "shopify":
+        if (!shopName) {
+          return res
+            .status(400)
+            .json({ error: "Shop name is required for Shopify platform." });
+        }
+
+        if (brand.shopifyAccount?.shopName === shopName) {
+          updateData = { shopifyAccount: {} };
+          deletedInfo = { platform: "shopify", shopName };
+        } else {
+          return res
+            .status(404)
+            .json({ error: "Shopify store not found for this brand." });
+        }
+        break;
+
+      case "facebook": {
+        const currentFbAccounts = brand.fbAdAccounts || [];
+
+        if (currentFbAccounts.length === 0) {
+          return res
+            .status(404)
+            .json({ error: "Facebook account not found for this brand." });
+        }
+
+        // No accountId => disconnect all; otherwise remove that one account
+        let updatedFbAccounts;
+        if (!accountId) {
+          updatedFbAccounts = [];
+        } else {
+          updatedFbAccounts = currentFbAccounts.filter(
+            (account) => account !== accountId,
+          );
+          if (updatedFbAccounts.length === currentFbAccounts.length) {
+            return res
+              .status(404)
+              .json({ error: "Facebook account not found for this brand." });
+          }
+        }
+
+        updateData = { fbAdAccounts: updatedFbAccounts };
+
+        // When no Facebook accounts remain: revoke Meta app access + remove token
+        if (updatedFbAccounts.length === 0) {
+          if (brand.fbAccessToken) {
+            try {
+              // Revokes the app from the user's Meta settings so next login asks for permission again
+              await axios.delete(
+                "https://graph.facebook.com/v22.0/me/permissions",
+                {
+                  params: { access_token: brand.fbAccessToken },
+                },
+              );
+            } catch (revokeError) {
+              // Token may already be invalid/expired — still clear it from DB
+              console.warn(
+                "Failed to revoke Facebook permissions (continuing):",
+                revokeError?.response?.data || revokeError.message,
+              );
+            }
+          }
+          unsetData.fbAccessToken = 1;
+        }
+
+        deletedInfo = {
+          platform: "facebook",
+          accountId: accountId || null,
+          disconnectedAll: !accountId,
+          removedCount: currentFbAccounts.length - updatedFbAccounts.length,
+          tokenCleared: updatedFbAccounts.length === 0,
+        };
+        break;
+      }
+
+      case "google ads": {
+        const currentGoogleAccounts = brand.googleAdAccount || [];
+
+        if (currentGoogleAccounts.length === 0) {
+          return res
+            .status(404)
+            .json({ error: "Google Ads account not found for this brand." });
+        }
+
+        // No accountId => disconnect all; otherwise remove that one account
+        let updatedGoogleAccounts;
+        if (!accountId) {
+          updatedGoogleAccounts = [];
+        } else {
+          updatedGoogleAccounts = currentGoogleAccounts.filter(
+            (account) => account.clientId !== accountId,
+          );
+          if (updatedGoogleAccounts.length === currentGoogleAccounts.length) {
+            return res
+              .status(404)
+              .json({ error: "Google Ads account not found for this brand." });
+          }
+        }
+
+        updateData = { googleAdAccount: updatedGoogleAccounts };
+        deletedInfo = {
+          platform: "google ads",
+          accountId: accountId || null,
+          disconnectedAll: !accountId,
+          removedCount:
+            currentGoogleAccounts.length - updatedGoogleAccounts.length,
+        };
+        break;
+      }
+
+      case "google analytics":
+      case "ga4":
+        if (brand.ga4Account?.PropertyID) {
+          updateData = { ga4Account: {} };
+          deletedInfo = {
+            platform: "google analytics",
+            propertyId: brand.ga4Account.PropertyID,
+          };
+        } else {
+          return res
+            .status(404)
+            .json({
+              error: "Google Analytics account not found for this brand.",
+            });
+        }
+        break;
+
+      default:
+        return res
+          .status(400)
+          .json({
+            error:
+              "Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics",
+          });
+    }
+
+    const updateOps = {};
+    if (Object.keys(updateData).length > 0) {
+      updateOps.$set = updateData;
+    }
+    if (Object.keys(unsetData).length > 0) {
+      updateOps.$unset = unsetData;
+    }
+
+    const updatedBrand = await Brand.findByIdAndUpdate(brandId, updateOps, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedBrand) {
+      return res.status(404).json({ error: "Brand not found." });
+    }
+
+    // Trigger full wipe & rebuild metrics job for remaining accounts
+    try {
+      await metricsQueue.add("update-metrics", {
+        brandId,
+        userId: req.user?.id,
+      });
+      console.log(
+        `Metrics update queued for brand ${brandId} after platform disconnect`,
+      );
+    } catch (queueError) {
+      console.error(
+        `Failed to queue metrics update for brand ${brandId}:`,
+        queueError,
+      );
+    }
+
+    res.status(200).json({
+      message: "Platform integration deleted successfully",
+      deletedInfo,
+      brand: updatedBrand,
+    });
+  } catch (error) {
+    console.error("Error deleting platform integration:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error deleting platform integration",
+        error: error.message,
+      });
+  }
+};
 
 export async function deleteProductsByBrand(req, res) {
-    try {
-        const { brandId } = req.params;
+  try {
+    const { brandId } = req.params;
 
-        if (!brandId) {
-            return res.status(400).json({
-                success: false,
-                error: 'brandId is required',
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(brandId)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid Brand ID format'
-            });
-        }
-
-        const brand = await Brand.findById(brandId);
-
-        if (!brand) {
-            return res.status(404).json({ success: false, error: 'Brand not found' });
-        }
-        const result = await Product.deleteMany({ brandId:brandId });
-
-        if (result.deletedCount === 0) {
-            return res.status(200).json({
-                success: true,
-                message: 'No products found for this brand',
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: `${result.deletedCount} products deleted successfully for brand ${brand.name}`,
-            deletedCount: result.deletedCount,
-            brand: brand.name
-        });
-    } catch (error) {
-        console.error('Error deleting product:', error);
-        return res.status(500).json({
-            success: false,
-            error: error.message
-        });
+    if (!brandId) {
+      return res.status(400).json({
+        success: false,
+        error: "brandId is required",
+      });
     }
+
+    if (!mongoose.Types.ObjectId.isValid(brandId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid Brand ID format",
+      });
+    }
+
+    const brand = await Brand.findById(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ success: false, error: "Brand not found" });
+    }
+    const result = await Product.deleteMany({ brandId: brandId });
+
+    if (result.deletedCount === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No products found for this brand",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} products deleted successfully for brand ${brand.name}`,
+      deletedCount: result.deletedCount,
+      brand: brand.name,
+    });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 }
 
+export const getBrandDomain = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(brandId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid Brand ID format" });
+    }
+
+    const brand = await Brand.findById(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ success: false, error: "Brand not found" });
+    }
+
+    if (brand.shopifyAccount && brand.shopifyAccount.primaryDomain) {
+      return res
+        .status(200)
+        .json({ success: true, domain: brand.shopifyAccount.primaryDomain });
+    }
+
+    const { shopName, shopifyAccessToken } = brand.shopifyAccount || {};
+
+    if (!shopName || !shopifyAccessToken) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Brand does not have Shopify credentials",
+        });
+    }
+
+    const customDomain = await fetchShopifyPrimaryDomain(shopName, shopifyAccessToken);
+
+    if (customDomain) {
+      brand.shopifyAccount.primaryDomain = customDomain;
+      brand.markModified("shopifyAccount");
+      await brand.save();
+
+      return res.status(200).json({ success: true, domain: customDomain });
+    } else {
+      return res
+        .status(500)
+        .json({ success: false, error: "Domain not available" });
+    }
+  } catch (error) {
+    console.error("Error fetching brand domain:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, error: "Domain not available" });
+  }
+};

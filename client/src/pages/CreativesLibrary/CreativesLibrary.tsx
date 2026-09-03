@@ -8,10 +8,13 @@ import {
   Search,
   RefreshCw,
   AlertCircle,
-  ListFilter
+  ListFilter,
+  Folder
 } from "lucide-react";
+import { SideTab } from "@/components/ui/side-tab";
 import { cn } from "@/lib/utils";
 import CreativeCard from "./components/CreativeCard";
+import CreativeGroupCard, { CreativeGroup } from "./components/CreativeGroupCard";
 import CollapsibleSidebar from "@/components/dashboard_component/CollapsibleSidebar";
 import { useParams } from "react-router-dom";
 import {
@@ -29,6 +32,8 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +142,17 @@ interface CreativesResponse {
 
 const CreativesLibrary: React.FC = () => {
   const [creatives, setCreatives] = useState<Creative[]>([]);
+  const [groups, setGroups] = useState<CreativeGroup[]>([]);
+  const [viewMode, setViewMode] = useState<"groups" | "individual">("individual");
+  const [selectedAds, setSelectedAds] = useState<string[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [isAddingToGroup, setIsAddingToGroup] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<CreativeGroup | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -245,12 +261,22 @@ const CreativesLibrary: React.FC = () => {
 
 
 
+  const fetchGroups = async () => {
+    try {
+      const response = await axiosInstance.get(`/api/ads/groups/${brandId}`);
+      if (response.data.success) setGroups(response.data.groups);
+    } catch (err) {
+      console.error("Error fetching groups", err);
+    }
+  };
+
   // Fetch creatives when brand changes
   useEffect(() => {
     if (brandId) {
-      console.log("🔄 Brand changed, fetching creatives...");
+      console.log("🔄 Brand changed, fetching creatives and groups...");
  
       fetchCreatives(null, true);
+      fetchGroups();
     }
   }, [brandId, dispatch]);
 
@@ -374,6 +400,86 @@ const CreativesLibrary: React.FC = () => {
     return grouped;
   }, []);
 
+  const handleSelectToggle = (id: string, isSelected: boolean) => {
+    setSelectedAds(prev => isSelected ? [...prev, id] : prev.filter(aid => aid !== id));
+  };
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim() || selectedAds.length === 0) return;
+    setIsCreatingGroup(true);
+    try {
+      const response = await axiosInstance.post(`/api/ads/groups/${brandId}`, {
+        name: newGroupName,
+        adIds: selectedAds
+      });
+      if (response.data.success) {
+        setGroups([response.data.group, ...groups]);
+        setSelectedAds([]);
+        setIsCreateModalOpen(false);
+        setNewGroupName("");
+      }
+    } catch (err) {
+      console.error("Failed to create group", err);
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const handleAddToGroup = async (groupId: string) => {
+    if (selectedAds.length === 0) return;
+    const group = groups.find(g => g._id === groupId);
+    if (!group) return;
+    setIsAddingToGroup(true);
+    try {
+      const newAdIds = [...new Set([...group.adIds, ...selectedAds])];
+      const response = await axiosInstance.patch(`/api/ads/groups/${brandId}/${groupId}`, {
+        adIds: newAdIds
+      });
+      if (response.data.success) {
+        setGroups(groups.map(g => g._id === groupId ? response.data.group : g));
+        setSelectedAds([]);
+        setIsAddModalOpen(false);
+      }
+    } catch (err) {
+      console.error("Failed to add to group", err);
+    } finally {
+      setIsAddingToGroup(false);
+    }
+  };
+
+  const handleRemoveFromGroup = async (creativeId: string) => {
+    if (!activeGroup) return;
+    try {
+      const newAdIds = activeGroup.adIds.filter(id => id !== creativeId);
+      const response = await axiosInstance.patch(`/api/ads/groups/${brandId}/${activeGroup._id}`, {
+        adIds: newAdIds
+      });
+      if (response.data.success) {
+        const updatedGroup = response.data.group;
+        setGroups(groups.map(g => g._id === activeGroup._id ? updatedGroup : g));
+        setActiveGroup(updatedGroup);
+        if (updatedGroup.adIds.length === 0) {
+          setIsDrawerOpen(false); // Close if empty
+        }
+      }
+    } catch (err) {
+      console.error("Failed to remove from group", err);
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      const response = await axiosInstance.delete(`/api/ads/groups/${brandId}/${groupId}`);
+      if (response.data.success) {
+        setGroups(groups.filter(g => g._id !== groupId));
+        setIsDrawerOpen(false);
+        setActiveGroup(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete group", err);
+    }
+  };
+
 
   if (!brandId) {
     return (
@@ -389,7 +495,14 @@ const CreativesLibrary: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-
+      <SideTab 
+        tabs={[
+          { label: "Creatives", value: "individual", icon: <Film className="w-4 h-4" /> },
+          { label: "Groups", value: "groups", icon: <Folder className="w-4 h-4" /> }
+        ]}
+        activeTab={viewMode}
+        onTabChange={(v: string) => setViewMode(v as "groups" | "individual")}
+      />
 
       <div className="flex-1 h-screen overflow-auto mx-auto p-6 space-y-6">
 
@@ -399,7 +512,8 @@ const CreativesLibrary: React.FC = () => {
       </div>
     ) : (
       <>
-          <div className="flex flex-col md:flex-row gap-4">
+          {viewMode === "individual" && (
+            <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -602,6 +716,7 @@ const CreativesLibrary: React.FC = () => {
               </Button>   
             </div>
           </div>
+          )}
       
 
       {/* Error Display */}
@@ -617,7 +732,24 @@ const CreativesLibrary: React.FC = () => {
       )}
 
       {/* Creatives Grid */}
-      {creatives.length > 0 ? (
+      {viewMode === "groups" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+          {groups.length > 0 ? groups.map(group => (
+            <div key={group._id} className="h-full">
+              <CreativeGroupCard 
+                group={group} 
+                creatives={creatives} 
+                onClick={() => { setActiveGroup(group); setIsDrawerOpen(true); }} 
+                onDelete={() => handleDeleteGroup(group._id)}
+              />
+            </div>
+          )) : (
+            <div className="col-span-full py-12 text-center text-muted-foreground bg-white rounded-lg border border-dashed">
+              No groups created yet. Select ads in Individual view to create one!
+            </div>
+          )}
+        </div>
+      ) : creatives.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
             {filteredCreatives.map((creative, index) => {
@@ -632,7 +764,13 @@ const CreativesLibrary: React.FC = () => {
                   ref={shouldAttachRef ? lastCardRef : null}
                   className="h-full"
                 >
-                  <CreativeCard creative={creative} selectedKPIs={selectedKPIs} />
+                  <CreativeCard 
+                    creative={creative} 
+                    selectedKPIs={selectedKPIs} 
+                    isSelected={selectedAds.includes(creative.creative_id)}
+                    onSelectToggle={handleSelectToggle}
+                    selectionMode={selectedAds.length > 0}
+                  />
                 </div>
               );
             })}
@@ -728,6 +866,86 @@ const CreativesLibrary: React.FC = () => {
       </>
     )}
     </div>
+
+    {/* Floating Action Bar */}
+    {selectedAds.length > 0 && viewMode === "individual" && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-4 rounded-full shadow-2xl flex items-center space-x-4 z-50">
+        <span className="font-semibold">{selectedAds.length} selected</span>
+        <Separator orientation="vertical" className="h-6 bg-gray-600" />
+        <Button size="sm" onClick={() => setIsCreateModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">Create Group</Button>
+        <Button size="sm" variant="secondary" onClick={() => setIsAddModalOpen(true)}>Add to Existing</Button>
+        <Button size="icon" variant="ghost" className="rounded-full hover:bg-gray-800 h-8 w-8 text-white" onClick={() => setSelectedAds([])}>
+          <Film className="w-4 h-4 hidden" /> {/* Just to satisfy import requirement if X isn't available */}
+          ✕
+        </Button>
+      </div>
+    )}
+
+    {/* Modals & Drawer */}
+    <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Group</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <Label>Group Name</Label>
+          <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="e.g., Summer Campaign" className="mt-2" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} disabled={isCreatingGroup}>Cancel</Button>
+          <Button onClick={handleCreateGroup} disabled={!newGroupName.trim() || isCreatingGroup}>
+            {isCreatingGroup ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add to Existing Group</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-2 max-h-[300px] overflow-y-auto">
+          {groups.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No existing groups found.</p>
+          ) : groups.map(g => (
+            <Button key={g._id} variant="outline" className="w-full justify-start" onClick={() => handleAddToGroup(g._id)} disabled={isAddingToGroup}>
+              {isAddingToGroup ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Film className="w-4 h-4 mr-2" />}
+              {g.name}
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+      <SheetContent side="right" className="w-[400px] sm:max-w-[800px] sm:w-[800px] overflow-y-auto bg-gray-50">
+        <SheetHeader>
+          <SheetTitle>{activeGroup?.name}</SheetTitle>
+          <SheetDescription>{activeGroup?.adIds.length} Creatives</SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 grid grid-cols-2 gap-4 pb-20">
+          {activeGroup?.adIds.map(id => {
+            const creative = creatives.find(c => c.creative_id === id || c.ad_id === id);
+            if (!creative) return null;
+            return (
+              <div key={id} className="relative group">
+                <CreativeCard creative={creative} selectedKPIs={selectedKPIs} />
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md"
+                  onClick={() => handleRemoveFromGroup(id)}
+                >
+                  Remove
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </SheetContent>
+    </Sheet>
   </div>
   );
 };

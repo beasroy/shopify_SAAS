@@ -30,6 +30,9 @@ const brandSchema = new mongoose.Schema({
     },
     currency: {
       type: String
+    },
+    primaryDomain: {
+      type: String
     }
   },
   googleAdsRefreshToken: { type: String }, 

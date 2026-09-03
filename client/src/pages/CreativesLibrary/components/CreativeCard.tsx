@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Image as ImageIcon,
@@ -16,9 +17,18 @@ import { format } from "date-fns";
 interface CreativeCardProps {
   creative: Creative;
   selectedKPIs?: Set<string>;
+  isSelected?: boolean;
+  onSelectToggle?: (id: string, isSelected: boolean) => void;
+  selectionMode?: boolean;
 }
 
-const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) => {
+const CreativeCard: React.FC<CreativeCardProps> = ({ 
+  creative, 
+  selectedKPIs, 
+  isSelected = false,
+  onSelectToggle,
+  selectionMode = false
+}) => {
   // Helper function to check if a KPI should be displayed
   const shouldShowKPI = (kpiKey: string) => {
     if (!selectedKPIs) return true; // Show all if no selection provided
@@ -100,6 +110,20 @@ const CreativeCard: React.FC<CreativeCardProps> = ({ creative, selectedKPIs }) =
       >
         {/* Media Section - Top */}
         <div className="relative w-full aspect-square bg-muted overflow-hidden">
+          {/* Selection Checkbox - Top Right */}
+          {onSelectToggle && (
+            <div className={cn(
+              "absolute top-3 right-3 z-40 transition-all duration-200",
+              (selectionMode || isSelected) ? "opacity-100 scale-100" : "opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100"
+            )}>
+              <Checkbox 
+                checked={isSelected} 
+                onCheckedChange={(checked) => onSelectToggle(creative.creative_id, checked === true)} 
+                className="w-6 h-6 rounded-md border-2 border-white bg-black/20 shadow-md backdrop-blur-sm data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all hover:scale-110"
+              />
+            </div>
+          )}
+
           {/* Ad Status Label - Top Left Corner */}
           <div className="absolute top-2 left-2 z-30">
             <span className={cn(

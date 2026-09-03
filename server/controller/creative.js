@@ -1,6 +1,7 @@
 import axios from "axios";
 import crypto from "node:crypto";
 import Brand from "../models/Brands.js";
+import CreativeGroup from "../models/CreativeGroup.js";
 import { connection as redis } from "../config/redis.js";
 
 const CACHE_TTL = 3600;
@@ -964,5 +965,103 @@ export const clearCreativesCache = async (req, res) => {
       message: "Failed to clear cache",
       error: err.message,
     });
+  }
+};
+
+// --- Creative Group CRUD Operations ---
+
+export const createCreativeGroup = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { name, adIds } = req.body;
+    const userId = req.user._id;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Group name is required" });
+    }
+
+    const newGroup = new CreativeGroup({
+      brandId,
+      userId,
+      name,
+      adIds: adIds || [],
+    });
+
+    await newGroup.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Group created successfully",
+      group: newGroup,
+    });
+  } catch (error) {
+    console.error("Error creating creative group:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+export const getCreativeGroups = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const userId = req.user._id;
+
+    const groups = await CreativeGroup.find({ brandId, userId }).sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      groups,
+    });
+  } catch (error) {
+    console.error("Error fetching creative groups:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+export const updateCreativeGroup = async (req, res) => {
+  try {
+    const { brandId, groupId } = req.params;
+    const { name, adIds } = req.body;
+    const userId = req.user._id;
+
+    const group = await CreativeGroup.findOne({ _id: groupId, brandId, userId });
+    
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    if (name) group.name = name;
+    if (adIds) group.adIds = adIds; // Overwrite or could handle logic for pushing/pulling if preferred
+
+    await group.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Group updated successfully",
+      group,
+    });
+  } catch (error) {
+    console.error("Error updating creative group:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+export const deleteCreativeGroup = async (req, res) => {
+  try {
+    const { brandId, groupId } = req.params;
+    const userId = req.user._id;
+
+    const group = await CreativeGroup.findOneAndDelete({ _id: groupId, brandId, userId });
+
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Group deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting creative group:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };

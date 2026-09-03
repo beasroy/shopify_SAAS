@@ -245,7 +245,7 @@ export default function CollapsibleSidebar() {
       { name: "Marketing Insights", path: `/marketing-insights/${selectedBrandId}`, icon: <CalendarRange size={20} /> },
       { name: "Revenue Analytics", path: `/location-analytics/${selectedBrandId}`, icon: <ChartBarIncreasing size={20} /> },
       { name: "Festival Calendar", path: `/festival-calendar/${selectedBrandId}`, icon: <Calendar size={20} /> },
-      { name: "Speed Insights", path: `/speed-insights`, icon: <Gauge size={20} /> },
+      { name: "Speed Insights", path: `/speed-insights/${selectedBrandId || ''}`, icon: <Gauge size={20} /> },
       { name: "D2C Calculator", path: `/d2c-calculator/${selectedBrandId}`, icon: <Calculator size={20} /> },
       { name: "Creatives Library", path: `/creatives-library/${selectedBrandId}`, icon: <Clapperboard size={20} /> },
       { name: "Ad Market", path: `/followed-brands/${selectedBrandId}`, icon: <Eye size={20} /> },

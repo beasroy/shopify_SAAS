@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import createAxiosInstance from "@/pages/ConversionReportPage/components/axiosInstance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store/index";
+import { IBrand } from "@/interfaces";
 
 type FormFactor = 'PHONE' | 'DESKTOP' | 'TABLET';
 
@@ -52,6 +55,15 @@ interface SpeedInsightsResponse {
 
 // MetricCard component
 const MetricCard = ({ metric, isCoreVital = false }: { metric: MetricData; isCoreVital?: boolean }) => {
+    if (!metric) {
+        return (
+            <div className="bg-white border rounded-lg p-6 shadow-sm flex flex-col justify-center text-center opacity-70">
+                <h3 className="text-base font-semibold text-gray-800 mb-2">Metric Unavailable</h3>
+                <p className="text-sm text-gray-500">Not enough data collected for this metric.</p>
+            </div>
+        );
+    }
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case "good":
@@ -164,9 +176,43 @@ export default function SpeedInsightsPage() {
     const [currentFormFactor, setCurrentFormFactor] = useState<FormFactor>('PHONE');
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [domainError, setDomainError] = useState<string>("");
     const [resultsCache, setResultsCache] = useState<Record<string, SpeedInsightsResponse>>({});
     const [hasInitialResult, setHasInitialResult] = useState(false);
     const axiosInstance = createAxiosInstance();
+
+    const { selectedBrandId, brands } = useSelector((state: RootState) => state.brand);
+
+    useEffect(() => {
+        // Clear previous results when brand changes
+        setSpeedInsights(null);
+        setHasInitialResult(false);
+        setErrors({});
+        setDomainError("");
+
+        if (selectedBrandId) {
+            const selectedBrand = brands.find((b: IBrand) => b._id === selectedBrandId);
+            
+            if (selectedBrand) {
+                const domain = selectedBrand.shopifyAccount?.primaryDomain;
+                const hasShopifyConnected = !!selectedBrand.shopifyAccount?.shopifyAccessToken;
+
+                if (domain) {
+                    setUrl(`https://${domain}`);
+                } else if (hasShopifyConnected) {
+                    setUrl("");
+                    setDomainError("Domain not available for this Shopify store");
+                } else {
+                    setUrl("");
+                    setDomainError("Brand does not have Shopify credentials");
+                }
+            } else {
+                setUrl("");
+            }
+        } else {
+            setUrl("");
+        }
+    }, [selectedBrandId, brands]);
 
     // Normalize URL - add https:// if no protocol is present
     const normalizeUrl = (urlInput: string): string => {
@@ -368,11 +414,11 @@ export default function SpeedInsightsPage() {
                     <div className="max-w-7xl mx-auto">
                         {/* Input Form */}
                         <div className="bg-white border rounded-lg p-6 shadow-sm mb-6">
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <div className="flex-1">
-                                    <label htmlFor="url-input" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Website URL
-                                    </label>
+                            <label htmlFor="url-input" className="block text-sm font-medium text-gray-700 mb-2">
+                                Website URL
+                            </label>
+                            <div className="flex flex-col md:flex-row gap-4 items-start">
+                                <div className="flex-1 w-full">
                                     <Input
                                         id="url-input"
                                         type="text"
@@ -386,16 +432,17 @@ export default function SpeedInsightsPage() {
                                         }}
                                         className="w-full"
                                     />
+                                    {domainError && (
+                                        <p className="text-sm text-red-500 mt-2">{domainError}</p>
+                                    )}
                                 </div>
-                                <div className="flex items-end">
-                                    <Button
-                                        onClick={handleAnalyze}
-                                        disabled={loading || !url.trim()}
-                                        className="w-full md:w-auto"
-                                    >
-                                        {loading ? "Analyzing..." : "Analyze"}
-                                    </Button>
-                                </div>
+                                <Button
+                                    onClick={handleAnalyze}
+                                    disabled={loading || !url.trim()}
+                                    className="w-full md:w-auto"
+                                >
+                                    {loading ? "Analyzing..." : "Analyze"}
+                                </Button>
                             </div>
                         </div>
 

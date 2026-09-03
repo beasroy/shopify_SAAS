@@ -79,7 +79,7 @@ function App() {
                   <Route path="/bounce-rate-reports/:brandId" element={<BounceRatePage />} />
                   <Route path="/followed-brands/:brandId" element={<FollowedBrands />} />
                   <Route path="/festival-calendar/:brandId" element={<FestivalCalendarPage />} />
-                  <Route path="/speed-insights" element={<SpeedInsightsPage />} />
+                  <Route path="/speed-insights/:brandId?" element={<SpeedInsightsPage />} />
                   <Route path="/location-analytics/:brandId" element={<LocationAnalyticsPage />} />
                   <Route path="/master-dashboard/" element={<MasterDashboard />} />
                   <Route path="/brand-connections" element={<BrandConnections />} />

@@ -13,6 +13,7 @@ interface SideTabProps {
   className?: string
   collapsible?: boolean
   mobileBreakpoint?: number
+  title?: string
 }
 
 export function SideTab({ 
@@ -21,7 +22,8 @@ export function SideTab({
   onTabChange, 
   className,
   collapsible = true,
-  mobileBreakpoint = 768
+  mobileBreakpoint = 768,
+  title
 }: SideTabProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -77,7 +79,7 @@ export function SideTab({
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Reports</h3>
+            {title && <h3 className="text-lg font-medium text-gray-900">{title}</h3>}
             <button
               onClick={toggleMobile}
               className="p-1 rounded-md hover:bg-gray-200 transition-colors"
@@ -122,10 +124,10 @@ export function SideTab({
       className
     )}>
       <div className={cn(
-        "p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50",
-        isCollapsed && "justify-center"
+        "p-4 border-b border-gray-200 flex items-center bg-gray-50",
+        (title && !isCollapsed) ? "justify-between" : (isCollapsed ? "justify-center" : "justify-end")
       )}>
-        {!isCollapsed && <h3 className="text-sm font-medium text-gray-900">Reports</h3>}
+        {title && !isCollapsed && <h3 className="text-sm font-medium text-gray-900">{title}</h3>}
         {collapsible && (
           <button
             onClick={toggleCollapse}

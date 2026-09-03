@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import CollapsibleSidebar from '@/components/dashboard_component/CollapsibleSidebar';
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store/index";
+import { IBrand } from "@/interfaces";
 
 type FormFactor = 'PHONE' | 'DESKTOP' | 'TABLET';
 
@@ -180,7 +181,7 @@ export default function SpeedInsightsPage() {
     const [hasInitialResult, setHasInitialResult] = useState(false);
     const axiosInstance = createAxiosInstance();
 
-    const { selectedBrandId } = useSelector((state: RootState) => state.brand);
+    const { selectedBrandId, brands } = useSelector((state: RootState) => state.brand);
 
     useEffect(() => {
         // Clear previous results when brand changes
@@ -190,24 +191,28 @@ export default function SpeedInsightsPage() {
         setDomainError("");
 
         if (selectedBrandId) {
-            const fetchDomain = async () => {
-                try {
-                    const response = await axiosInstance.get(`/api/brands/domain/${selectedBrandId}`);
-                    if (response.data.success && response.data.domain) {
-                        setUrl(`https://${response.data.domain}`);
-                    }
-                } catch (error: any) {
-                    const errorMessage = error.response?.data?.error || "Failed to fetch brand domain";
-                    console.error("Failed to fetch brand domain:", errorMessage);
+            const selectedBrand = brands.find((b: IBrand) => b._id === selectedBrandId);
+            
+            if (selectedBrand) {
+                const domain = selectedBrand.shopifyAccount?.primaryDomain;
+                const hasShopifyConnected = !!selectedBrand.shopifyAccount?.shopifyAccessToken;
+
+                if (domain) {
+                    setUrl(`https://${domain}`);
+                } else if (hasShopifyConnected) {
                     setUrl("");
-                    setDomainError(errorMessage);
+                    setDomainError("Domain not available for this Shopify store");
+                } else {
+                    setUrl("");
+                    setDomainError("Brand does not have Shopify credentials");
                 }
-            };
-            fetchDomain();
+            } else {
+                setUrl("");
+            }
         } else {
             setUrl("");
         }
-    }, [selectedBrandId]);
+    }, [selectedBrandId, brands]);
 
     // Normalize URL - add https:// if no protocol is present
     const normalizeUrl = (urlInput: string): string => {

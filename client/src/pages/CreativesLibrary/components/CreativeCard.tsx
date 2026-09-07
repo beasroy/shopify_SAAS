@@ -118,7 +118,7 @@ const CreativeCard: React.FC<CreativeCardProps> = ({
             )}>
               <Checkbox 
                 checked={isSelected} 
-                onCheckedChange={(checked) => onSelectToggle(creative.creative_id, checked === true)} 
+                onCheckedChange={(checked) => onSelectToggle(creative.ad_id, checked === true)} 
                 className="w-6 h-6 rounded-md border-2 border-white bg-black/20 shadow-md backdrop-blur-sm data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all hover:scale-110"
               />
             </div>

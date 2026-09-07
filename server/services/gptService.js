@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import dotenv from 'dotenv';
 import { getCanonicalCity } from '../utils/cityAliases.js';
+import { getRegionForState, normalizeRegion } from '../utils/locationDictionary.js';
 
 // Load .env when this module is used standalone (e.g. by cityClassificationWorker run without server)
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -101,6 +102,28 @@ Return ONLY valid JSON, no other text.`;
             } else {
                 throw new Error('Failed to parse GPT response as JSON');
             }
+        }
+
+        // Process and validate the GPT results to prevent hallucinations
+        if (result && Array.isArray(result.cities)) {
+            result.cities = result.cities.map(cityObj => {
+                // Normalize region strictly to the 6 allowed values
+                let finalRegion = normalizeRegion(cityObj.region);
+
+                // If it's an Indian city, OVERRIDE GPT's region completely using our static dictionary
+                if (cityObj.country && cityObj.country.toLowerCase().trim() === 'india') {
+                    if (cityObj.state) {
+                        finalRegion = getRegionForState(cityObj.state);
+                    }
+                }
+
+                // For non-Indian cities, if GPT returned something invalid, normalizeRegion made it "other"
+                
+                return {
+                    ...cityObj,
+                    region: finalRegion
+                };
+            });
         }
 
         // Map GPT results back to our cities with lookupKey

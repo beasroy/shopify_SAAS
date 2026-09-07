@@ -1007,9 +1007,173 @@ export const getCreativeGroups = async (req, res) => {
 
     const groups = await CreativeGroup.find({ brandId, userId }).sort({ createdAt: -1 });
     
+    const brand = await Brand.findById(brandId).lean();
+    if (!brand) return res.status(404).json({ success: false, message: "Brand not found" });
+
+    const accessToken = brand.fbAccessToken;
+
+    const groupsWithMetrics = await Promise.all(groups.map(async (group) => {
+      const groupDoc = group.toObject ? group.toObject() : group;
+      try {
+        const cacheKey = `group_metrics:${group._id}`;
+        const cached = await redis.get(cacheKey);
+        
+        if (cached) {
+          groupDoc.metrics = JSON.parse(cached);
+          return groupDoc;
+        }
+
+        const adIds = group.adIds || [];
+        if (adIds.length === 0) {
+          groupDoc.metrics = {
+            totalSpend: 0, totalRevenue: 0, totalOrders: 0, totalImpressions: 0,
+            totalClicks: 0, totalVideoViews: 0, totalP25: 0, totalP50: 0, totalP100: 0,
+            roas: 0, cpc: 0, cpp: 0, ctr: 0
+          };
+          await redis.set(cacheKey, JSON.stringify(groupDoc.metrics), 'EX', 7200);
+          return groupDoc;
+        }
+
+        const metrics = {
+          totalSpend: 0, totalRevenue: 0, totalOrders: 0, totalImpressions: 0,
+          totalClicks: 0, totalVideoViews: 0, totalP25: 0, totalP50: 0, totalP100: 0,
+          roas: 0, cpc: 0, cpp: 0, ctr: 0
+        };
+        
+        let frequencySum = 0;
+        let frequencyCount = 0;
+        let hookRateDivisor = 0;
+        let weightedHookRateSum = 0;
+        let engRateDivisor = 0;
+        let weightedEngRateSum = 0;
+
+        const uniqueAdIds = [...new Set(adIds)];
+        const chunks = [];
+        for (let i = 0; i < uniqueAdIds.length; i += 50) {
+          chunks.push(uniqueAdIds.slice(i, i + 50));
+        }
+
+        await Promise.all(chunks.map(async (chunk) => {
+          const batchRequests = chunk.map(id => ({
+            method: 'GET',
+            relative_url: `${id}/insights?fields=spend,actions,impressions,clicks,inline_link_clicks,video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,video_play_actions,frequency,action_values`
+          }));
+
+          const { data: batchResponse } = await axios.post(
+            `https://graph.facebook.com/v24.0/`,
+            { batch: batchRequests },
+            {
+              headers: { "Content-Type": "application/json" },
+              params: { access_token: accessToken },
+            }
+          );
+
+          batchResponse.forEach(item => {
+            if (item.code === 200 && item.body) {
+              const body = JSON.parse(item.body);
+              const insightsData = body.data || [];
+              if (insightsData.length > 0) {
+                const insight = insightsData[0];
+                
+                // Round spend to nearest integer before summing to perfectly match UI's rounded totals
+                const spend = Math.round(parseFloat(insight.spend || 0));
+                const impressions = parseInt(insight.impressions || 0, 10);
+                const clicks = parseInt(insight.clicks || 0, 10);
+                
+                const actions = insight.actions || [];
+                const actionValues = insight.action_values || [];
+                
+                const getActionCount = (type) => {
+                  const action = actions.find(a => a.action_type === type);
+                  return action ? parseInt(action.value || 0, 10) : 0;
+                };
+
+                const getActionValue = (type) => {
+                  const action = actionValues.find(a => a.action_type === type);
+                  return action ? parseFloat(action.value || 0) : 0;
+                };
+
+                const revenueObj = actionValues.find(a => a.action_type === "purchase") || null;
+                // Round revenue to nearest integer before summing
+                const revenue = revenueObj ? Math.round(parseFloat(revenueObj.value || 0)) : 0;
+                const orders = getActionCount("purchase");
+
+                const getVideoWatchCount = (actionsArray) => {
+                  if (!Array.isArray(actionsArray) || actionsArray.length === 0) return 0;
+                  const videoAction = actionsArray.find(a => a.action_type === "video_view");
+                  return videoAction ? parseInt(videoAction.value || 0, 10) : 0;
+                };
+
+                const videoP25 = getVideoWatchCount(insight.video_p25_watched_actions);
+                const videoP50 = getVideoWatchCount(insight.video_p50_watched_actions);
+                const videoP100 = getVideoWatchCount(insight.video_p100_watched_actions);
+                const videoViews = getActionCount("video_view");
+                
+                const inlineLinkClicks = parseInt(insight.inline_link_clicks || 0, 10);
+                const frequency = parseFloat(insight.frequency || 0);
+                
+                const video3sViews = getActionCount("video_view"); // often hook rate uses 3s views
+                const hookRate = impressions > 0 ? (video3sViews / impressions) * 100 : 0;
+                const postEngagement = getActionCount("post_engagement");
+                const engagementRate = impressions > 0 ? (postEngagement / impressions) * 100 : 0;
+
+                metrics.totalSpend += spend;
+                metrics.totalRevenue += revenue;
+                metrics.totalOrders += orders;
+                metrics.totalImpressions += impressions;
+                metrics.totalClicks += clicks;
+                metrics.totalVideoViews += videoViews;
+                metrics.totalP25 += videoP25;
+                metrics.totalP50 += videoP50;
+                metrics.totalP100 += videoP100;
+
+                if (hookRate > 0 || impressions > 0) {
+                  weightedHookRateSum += hookRate * (impressions || 1);
+                  hookRateDivisor += (impressions || 1);
+                }
+
+                if (engagementRate > 0 || impressions > 0) {
+                  weightedEngRateSum += engagementRate * (impressions || 1);
+                  engRateDivisor += (impressions || 1);
+                }
+
+                if (frequency > 0) {
+                  frequencySum += frequency;
+                  frequencyCount++;
+                }
+              }
+            } else {
+              console.log(`[getCreativeGroups Debug] Error in batch item: code=${item.code}, body=${item.body}`);
+            }
+          });
+        }));
+
+        metrics.roas = metrics.totalSpend > 0 ? metrics.totalRevenue / metrics.totalSpend : 0;
+        metrics.cpc = metrics.totalClicks > 0 ? metrics.totalSpend / metrics.totalClicks : 0;
+        metrics.cpp = metrics.totalOrders > 0 ? metrics.totalSpend / metrics.totalOrders : 0;
+        metrics.ctr = metrics.totalImpressions > 0 ? (metrics.totalClicks / metrics.totalImpressions) * 100 : 0;
+        
+        metrics.hookRate = hookRateDivisor > 0 ? weightedHookRateSum / hookRateDivisor : undefined;
+        metrics.engagementRate = engRateDivisor > 0 ? weightedEngRateSum / engRateDivisor : undefined;
+        metrics.avgFrequency = frequencyCount > 0 ? frequencySum / frequencyCount : undefined;
+        
+        metrics.p25Rate = metrics.totalVideoViews > 0 ? (metrics.totalP25 / metrics.totalVideoViews) * 100 : 0;
+        metrics.p50Rate = metrics.totalVideoViews > 0 ? (metrics.totalP50 / metrics.totalVideoViews) * 100 : 0;
+        metrics.p100Rate = metrics.totalVideoViews > 0 ? (metrics.totalP100 / metrics.totalVideoViews) * 100 : 0;
+
+        groupDoc.metrics = metrics;
+        await redis.set(cacheKey, JSON.stringify(metrics), 'EX', 7200);
+
+      } catch (err) {
+        console.error("Error computing metrics for group", group._id, err.message);
+        groupDoc.metrics = null;
+      }
+      return groupDoc;
+    }));
+    
     res.status(200).json({
       success: true,
-      groups,
+      groups: groupsWithMetrics,
     });
   } catch (error) {
     console.error("Error fetching creative groups:", error);
@@ -1034,6 +1198,9 @@ export const updateCreativeGroup = async (req, res) => {
 
     await group.save();
 
+    // Invalidate group cache
+    await redis.del(`group_metrics:${groupId}`);
+
     res.status(200).json({
       success: true,
       message: "Group updated successfully",
@@ -1055,6 +1222,9 @@ export const deleteCreativeGroup = async (req, res) => {
     if (!group) {
       return res.status(404).json({ success: false, message: "Group not found" });
     }
+
+    // Invalidate group cache
+    await redis.del(`group_metrics:${groupId}`);
 
     res.status(200).json({
       success: true,

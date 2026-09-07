@@ -28,11 +28,19 @@ export const GOOGLE_REGION_TO_STATE = {
   21340: "sikkim",
   21341: "uttarakhand",
   9061642: "telangana",
-  // Common UTs that might appear
   21281: "delhi",
   21288: "chandigarh",
   21287: "puducherry",
 };
+
+export const VALID_REGIONS = [
+  "north",
+  "south",
+  "east",
+  "west",
+  "central",
+  "other",
+];
 
 export const STATE_TO_REGION = {
   // North
@@ -55,6 +63,7 @@ export const STATE_TO_REGION = {
   telangana: "south",
   puducherry: "south",
   lakshadweep: "south",
+  "andaman and nicobar islands": "south",
 
   // East
   bihar: "east",
@@ -62,6 +71,13 @@ export const STATE_TO_REGION = {
   odisha: "east",
   "west bengal": "east",
   sikkim: "east",
+  assam: "east",
+  "arunachal pradesh": "east",
+  manipur: "east",
+  meghalaya: "east",
+  mizoram: "east",
+  nagaland: "east",
+  tripura: "east",
 
   // West
   goa: "west",
@@ -73,15 +89,6 @@ export const STATE_TO_REGION = {
   // Central
   chhattisgarh: "central",
   "madhya pradesh": "central",
-
-  // Other (Northeast etc)
-  assam: "other",
-  "arunachal pradesh": "other",
-  manipur: "other",
-  meghalaya: "other",
-  mizoram: "other",
-  nagaland: "other",
-  tripura: "other",
 };
 
 /**
@@ -91,4 +98,16 @@ export function getRegionForState(stateName) {
   if (!stateName) return "other";
   const normalized = stateName.toLowerCase().trim();
   return STATE_TO_REGION[normalized] || "other";
+}
+
+/**
+ * Normalizes a region string to ensure it strictly matches the allowed enum.
+ */
+export function normalizeRegion(region) {
+  if (!region) return "other";
+  const normalized = region.toLowerCase().trim();
+  if (VALID_REGIONS.includes(normalized)) {
+    return normalized;
+  }
+  return "other";
 }

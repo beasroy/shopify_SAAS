@@ -11,7 +11,7 @@ import {
   ListFilter,
   Folder
 } from "lucide-react";
-import { SideTab } from "@/components/ui/side-tab";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import CreativeCard from "./components/CreativeCard";
 import CreativeGroupCard, { CreativeGroup } from "./components/CreativeGroupCard";
@@ -325,7 +325,7 @@ const CreativesLibrary: React.FC = () => {
       }
       observer.disconnect();
     };
-  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter, dateFrom, dateTo]); // Re-run when these change
+  }, [creatives.length, hasMore, loading, nextCursor, searchTerm, formatFilter, statusFilter, dateFrom, dateTo, viewMode]); // Re-run when these change
 
   // Automatically fetch missing creatives for the active group
   useEffect(() => {
@@ -428,6 +428,8 @@ const CreativesLibrary: React.FC = () => {
         setSelectedAds([]);
         setIsCreateModalOpen(false);
         setNewGroupName("");
+        // Refetch groups to get updated metrics from backend
+        fetchGroups();
       }
     } catch (err) {
       console.error("Failed to create group", err);
@@ -450,6 +452,8 @@ const CreativesLibrary: React.FC = () => {
         setGroups(groups.map(g => g._id === groupId ? response.data.group : g));
         setSelectedAds([]);
         setIsAddModalOpen(false);
+        // Refetch groups to get updated metrics from backend
+        fetchGroups();
       }
     } catch (err) {
       console.error("Failed to add to group", err);
@@ -472,6 +476,8 @@ const CreativesLibrary: React.FC = () => {
         if (updatedGroup.adIds.length === 0) {
           setIsDrawerOpen(false); // Close if empty
         }
+        // Refetch groups to get updated metrics from backend
+        fetchGroups();
       }
     } catch (err) {
       console.error("Failed to remove from group", err);
@@ -506,16 +512,24 @@ const CreativesLibrary: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CollapsibleSidebar />
-      <SideTab 
-        tabs={[
-          { label: "Creatives", value: "individual", icon: <Film className="w-4 h-4" /> },
-          { label: "Groups", value: "groups", icon: <Folder className="w-4 h-4" /> }
-        ]}
-        activeTab={viewMode}
-        onTabChange={(v: string) => setViewMode(v as "groups" | "individual")}
-      />
 
       <div className="flex-1 h-screen overflow-auto mx-auto p-6 space-y-6">
+        
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Creatives Library</h1>
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "groups" | "individual")} className="w-[300px]">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="individual" className="flex items-center gap-2">
+                <Film className="w-4 h-4" />
+                Creatives
+              </TabsTrigger>
+              <TabsTrigger value="groups" className="flex items-center gap-2">
+                <Folder className="w-4 h-4" />
+                Groups
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
       {initialLoading ? (
       <div>
@@ -750,6 +764,7 @@ const CreativesLibrary: React.FC = () => {
               <CreativeGroupCard 
                 group={group} 
                 creatives={creatives} 
+                selectedKPIs={selectedKPIs}
                 onClick={() => { setActiveGroup(group); setIsDrawerOpen(true); }} 
                 onDelete={() => handleDeleteGroup(group._id)}
               />
@@ -775,10 +790,11 @@ const CreativesLibrary: React.FC = () => {
                   ref={shouldAttachRef ? lastCardRef : null}
                   className="h-full"
                 >
-                  <CreativeCard 
+                  <CreativeCard
+                    key={`${creative.creative_id}-${index}`}
                     creative={creative} 
                     selectedKPIs={selectedKPIs} 
-                    isSelected={selectedAds.includes(creative.creative_id)}
+                    isSelected={selectedAds.includes(creative.ad_id)}
                     onSelectToggle={handleSelectToggle}
                     selectionMode={selectedAds.length > 0}
                   />

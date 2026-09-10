@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import Brand from "../models/Brands.js";
 import AdMetrics from "../models/AdMetrics.js";
+import InstagramMetrics from "../models/InstagramMetrics.js";
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
 import { GoogleAdsApi } from "google-ads-api";
@@ -2143,3 +2144,145 @@ export async function getUnifiedSummary(req, res) {
     });
   }
 }
+
+export async function fetchInstagramMetricsFromDB(brandId, startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  const docs = await InstagramMetrics.find({
+    brandId,
+    date: { $gte: start, $lte: end },
+  }).sort({ date: 1 }).lean();
+
+  const aggregatedData = docs.reduce(
+    (acc, row) => {
+      acc.followers = row.followers || acc.followers;
+      acc.content_published = row.content_published || acc.content_published;
+      acc.reach += row.reach || 0;
+      acc.profile_views += row.profile_views || 0;
+      acc.website_clicks += row.website_clicks || 0;
+      acc.profile_links_taps += row.profile_links_taps || 0;
+      acc.link_clicks += row.link_clicks || 0;
+      acc.engagements += row.engagements || 0;
+      acc.accounts_engaged += row.accounts_engaged || 0;
+      acc.views += row.views || 0;
+      acc.followers_gained += row.followers_gained || 0;
+      acc.unfollows += row.unfollows || 0;
+      acc.net_follower_growth += row.net_follower_growth || 0;
+      return acc;
+    },
+    {
+      followers: 0,
+      content_published: 0,
+      reach: 0,
+      profile_views: 0,
+      website_clicks: 0,
+      profile_links_taps: 0,
+      link_clicks: 0,
+      engagements: 0,
+      accounts_engaged: 0,
+      views: 0,
+      followers_gained: 0,
+      unfollows: 0,
+      net_follower_growth: 0,
+      engagement_rate: 0
+    }
+  );
+
+  if (aggregatedData.reach > 0) {
+      aggregatedData.engagement_rate = parseFloat(((aggregatedData.engagements / aggregatedData.reach) * 100).toFixed(2));
+  }
+  
+  return aggregatedData;
+}
+
+export const getInstagramSummary = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const brand = await Brand.findById(brandId);
+    if (!brand || (!brand.igAccessToken && (!brand.igAccountIds || brand.igAccountIds.length === 0))) {
+      return res.status(200).json({ success: true, connected: false });
+    }
+
+    const {
+      currentStart,
+      currentEnd,
+      prevStart,
+      prevEnd,
+      customStart,
+      customEnd,
+      customCompareStart,
+      customCompareEnd,
+    } = calculateDateRanges();
+
+    const customDates = getCustomDates(req.query);
+
+    const promises = [
+      fetchInstagramMetricsFromDB(brandId, currentStart.yesterday, currentEnd.yesterday),
+      fetchInstagramMetricsFromDB(brandId, prevStart.yesterday, prevEnd.yesterday),
+
+      fetchInstagramMetricsFromDB(brandId, currentStart.last7Days, currentEnd.last7Days),
+      fetchInstagramMetricsFromDB(brandId, prevStart.last7Days, prevEnd.last7Days),
+
+      fetchInstagramMetricsFromDB(brandId, currentStart.last14Days, currentEnd.last14Days),
+      fetchInstagramMetricsFromDB(brandId, prevStart.last14Days, prevEnd.last14Days),
+
+      fetchInstagramMetricsFromDB(brandId, currentStart.last30Days, currentEnd.last30Days),
+      fetchInstagramMetricsFromDB(brandId, prevStart.last30Days, prevEnd.last30Days),
+
+      fetchInstagramMetricsFromDB(brandId, currentStart.quarterly, currentEnd.quarterly),
+      fetchInstagramMetricsFromDB(brandId, prevStart.quarterly, prevEnd.quarterly),
+    ];
+
+    if (customDates) {
+      promises.push(
+        fetchInstagramMetricsFromDB(brandId, customDates.customStart, customDates.customEnd),
+        fetchInstagramMetricsFromDB(brandId, customDates.customCompareStart, customDates.customCompareEnd)
+      );
+    }
+
+    const results = await Promise.all(promises);
+    const [
+      yesterday, prevYesterday,
+      last7, prev7,
+      last14, prev14,
+      last30, prev30,
+      quarter, prevQuarter,
+      custom, prevCustom
+    ] = results;
+
+    const createMetrics = (curr, prev) => ({
+      followers: calculateMetrics(curr.followers, prev.followers),
+      reach: calculateMetrics(curr.reach, prev.reach),
+      views: calculateMetrics(curr.views, prev.views),
+      profile_views: calculateMetrics(curr.profile_views, prev.profile_views),
+      engagements: calculateMetrics(curr.engagements, prev.engagements),
+      engagement_rate: calculateMetrics(curr.engagement_rate, prev.engagement_rate),
+      link_clicks: calculateMetrics(curr.link_clicks, prev.link_clicks),
+      net_follower_growth: calculateMetrics(curr.net_follower_growth, prev.net_follower_growth)
+    });
+
+    const periodData = {
+      yesterday: createMetrics(yesterday, prevYesterday),
+      last7Days: createMetrics(last7, prev7),
+      last14Days: createMetrics(last14, prev14),
+      last30Days: createMetrics(last30, prev30),
+      quarterly: createMetrics(quarter, prevQuarter),
+    };
+
+    if (customDates) {
+      periodData.custom = createMetrics(custom, prevCustom);
+    }
+
+    return res.status(200).json({
+      success: true,
+      connected: true,
+      periodData
+    });
+  } catch (error) {
+    console.error("Error fetching Instagram summary:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};

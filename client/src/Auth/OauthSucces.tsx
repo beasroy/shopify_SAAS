@@ -26,6 +26,7 @@ const GoogleCallback = () => {
                 const queryParams = new URLSearchParams(window.location.search);
                 const googletoken = queryParams.get('token');
                 const fbToken = queryParams.get('fbToken');
+                const igToken = queryParams.get('igToken');
                 const googleAdRefreshToken = queryParams.get('googleadRefreshToken');
                 const googleAnalyticsRefreshToken = queryParams.get('googleanalyticsRefreshToken');
                 const zohoRefreshToken = queryParams.get('zohoToken');
@@ -82,6 +83,9 @@ const GoogleCallback = () => {
                                         break;
                                     case 'fbToken':
                                         modalToOpen = 'facebook';
+                                        break;
+                                    case 'igToken':
+                                        modalToOpen = 'instagram';
                                         break;
                                 }
                                 
@@ -161,6 +165,11 @@ const GoogleCallback = () => {
 
                 if (fbToken) {
                     await updateToken('/api/auth/updateTokens', fbToken, 'fbToken');
+                    return;
+                }
+
+                if (igToken) {
+                    await updateToken('/api/auth/updateTokens', igToken, 'igToken');
                     return;
                 }
 

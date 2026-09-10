@@ -38,6 +38,8 @@ const brandSchema = new mongoose.Schema({
   googleAdsRefreshToken: { type: String }, 
   googleAnalyticsRefreshToken: { type: String },   
   fbAccessToken: {type: String},
+  igAccessToken: {type: String},
+  igAccountIds: [{ type: String }],
   followedBrands: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ScrapedBrand'

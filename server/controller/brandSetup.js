@@ -405,3 +405,121 @@ export const clearFbAdAccountCache = async (req, res) => {
     });
   }
 };
+
+export const getIgAccountIds = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
+    }
+
+    const cacheKey = `ig_accounts_${brandId}`;
+
+    const cachedIgAccounts = cache.get(cacheKey);
+    if (cachedIgAccounts) {
+      return res
+        .status(200)
+        .json({ adAccounts: cachedIgAccounts, fromCache: true });
+    }
+
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found." });
+    }
+
+    if (!brand.igAccessToken) {
+      return res
+        .status(403)
+        .json({ message: "This brand does not have an Instagram access token." });
+    }
+
+    // Step 1: Get all pages the user has access to
+    const pagesUrl = `https://graph.facebook.com/v22.0/me/accounts?fields=instagram_business_account,name&access_token=${brand.igAccessToken}`;
+    const pagesResponse = await axios.get(pagesUrl);
+
+    let allIgAccounts = [];
+
+    // Check for nested instagram_business_account
+    if (pagesResponse.data && pagesResponse.data.data) {
+      pagesResponse.data.data.forEach((page) => {
+        if (page.instagram_business_account) {
+          allIgAccounts.push({
+            id: page.instagram_business_account.id,
+            adname: `${page.name} (Instagram)`,
+          });
+        }
+      });
+    }
+
+    console.log(`Fetched ${allIgAccounts.length} Instagram accounts.`);
+
+    if (allIgAccounts.length > 0) {
+      cache.set(cacheKey, allIgAccounts, 604800); // 7 days TTL
+      return res
+        .status(200)
+        .json({ adAccounts: allIgAccounts, fromCache: false }); // Returning as adAccounts so frontend maps correctly in filteredAccounts
+    } else {
+      return res
+        .status(404)
+        .json({ message: "No Instagram Business accounts found." });
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching Instagram Accounts:",
+      error.response?.status,
+      error.response?.data,
+    );
+
+    if (error.response?.data?.error) {
+      const igError = error.response.data.error;
+      if (igError.code === 190) {
+        return res.status(401).json({
+          message:
+            "Your Instagram authorization has expired. Please reconnect your account.",
+          code: "OAUTH_NOT_AUTHORIZED",
+          error: igError,
+        });
+      }
+    }
+
+    res
+      .status(500)
+      .json({
+        message: "Error fetching Instagram accounts.",
+        error: error.response?.data,
+      });
+  }
+};
+
+export const clearIgAccountCache = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
+    }
+
+    const cacheKey = `ig_accounts_${brandId}`;
+    const deleted = cache.del(cacheKey);
+
+    if (deleted) {
+      return res.status(200).json({
+        message: "Cache cleared successfully.",
+        brandId,
+        cacheKey,
+      });
+    } else {
+      return res.status(404).json({
+        message: "Cache entry not found.",
+        brandId,
+        cacheKey,
+      });
+    }
+  } catch (error) {
+    console.error("Error clearing Instagram Accounts cache:", error.message);
+    res.status(500).json({
+      message: "Error clearing cache.",
+      error: error.message,
+    });
+  }
+};
+

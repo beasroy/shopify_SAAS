@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Building2, Plus, Settings, Trash2, ShoppingBag, BarChart3, LineChart, Facebook } from "lucide-react"
+import { Building2, Plus, Settings, Trash2, ShoppingBag, BarChart3, LineChart, Facebook, Instagram } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BrandIntegrationModal } from "./BrandIntegrationModal"
@@ -28,6 +28,10 @@ const platformIcons = {
     facebook: { 
       icon: Facebook, 
       name: "Facebook" 
+    },
+    instagram: {
+      icon: Instagram,
+      name: "Instagram"
     }
   }
 
@@ -72,6 +76,7 @@ export function BrandCards({
 
     const platformMap: Record<string, string> = {
       facebook: 'facebook',
+      instagram: 'instagram',
       googleads: 'googleAds',
       googleanalytics: 'googleAnalytics',
       shopify: 'shopify',

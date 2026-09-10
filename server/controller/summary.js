@@ -2206,34 +2206,54 @@ export const getInstagramSummary = async (req, res) => {
       return res.status(200).json({ success: true, connected: false });
     }
 
-    const {
-      currentStart,
-      currentEnd,
-      prevStart,
-      prevEnd,
-      customStart,
-      customEnd,
-      customCompareStart,
-      customCompareEnd,
-    } = calculateDateRanges();
+    // Calculate date ranges
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dayBeforeYesterday = new Date(today);
+    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+    const last7DaysStart = new Date(today);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    const previous7DaysStart = new Date(last7DaysStart);
+    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+    const previous7DaysEnd = new Date(last7DaysStart);
+    previous7DaysEnd.setDate(previous7DaysEnd.getDate() - 1);
+    const last14DaysStart = new Date(today);
+    last14DaysStart.setDate(last14DaysStart.getDate() - 14);
+    const previous14DaysStart = new Date(last14DaysStart);
+    previous14DaysStart.setDate(previous14DaysStart.getDate() - 14);
+    const previous14DaysEnd = new Date(last14DaysStart);
+    previous14DaysEnd.setDate(previous14DaysEnd.getDate() - 1);
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+    const previous30DaysStart = new Date(last30DaysStart);
+    previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
+    const previous30DaysEnd = new Date(last30DaysStart);
+    previous30DaysEnd.setDate(previous30DaysEnd.getDate() - 1);
+    const quarterStart = new Date(today);
+    quarterStart.setDate(quarterStart.getDate() - 90);
+    const previousQuarterStart = new Date(quarterStart);
+    previousQuarterStart.setDate(previousQuarterStart.getDate() - 90);
+    const previousQuarterEnd = new Date(quarterStart);
+    previousQuarterEnd.setDate(previousQuarterEnd.getDate() - 1);
 
     const customDates = getCustomDates(req.query);
 
     const promises = [
-      fetchInstagramMetricsFromDB(brandId, currentStart.yesterday, currentEnd.yesterday),
-      fetchInstagramMetricsFromDB(brandId, prevStart.yesterday, prevEnd.yesterday),
+      fetchInstagramMetricsFromDB(brandId, yesterday, yesterday),
+      fetchInstagramMetricsFromDB(brandId, dayBeforeYesterday, dayBeforeYesterday),
 
-      fetchInstagramMetricsFromDB(brandId, currentStart.last7Days, currentEnd.last7Days),
-      fetchInstagramMetricsFromDB(brandId, prevStart.last7Days, prevEnd.last7Days),
+      fetchInstagramMetricsFromDB(brandId, last7DaysStart, yesterday),
+      fetchInstagramMetricsFromDB(brandId, previous7DaysStart, previous7DaysEnd),
 
-      fetchInstagramMetricsFromDB(brandId, currentStart.last14Days, currentEnd.last14Days),
-      fetchInstagramMetricsFromDB(brandId, prevStart.last14Days, prevEnd.last14Days),
+      fetchInstagramMetricsFromDB(brandId, last14DaysStart, yesterday),
+      fetchInstagramMetricsFromDB(brandId, previous14DaysStart, previous14DaysEnd),
 
-      fetchInstagramMetricsFromDB(brandId, currentStart.last30Days, currentEnd.last30Days),
-      fetchInstagramMetricsFromDB(brandId, prevStart.last30Days, prevEnd.last30Days),
+      fetchInstagramMetricsFromDB(brandId, last30DaysStart, yesterday),
+      fetchInstagramMetricsFromDB(brandId, previous30DaysStart, previous30DaysEnd),
 
-      fetchInstagramMetricsFromDB(brandId, currentStart.quarterly, currentEnd.quarterly),
-      fetchInstagramMetricsFromDB(brandId, prevStart.quarterly, prevEnd.quarterly),
+      fetchInstagramMetricsFromDB(brandId, quarterStart, yesterday),
+      fetchInstagramMetricsFromDB(brandId, previousQuarterStart, previousQuarterEnd),
     ];
 
     if (customDates) {
@@ -2245,13 +2265,34 @@ export const getInstagramSummary = async (req, res) => {
 
     const results = await Promise.all(promises);
     const [
-      yesterday, prevYesterday,
+      yesterdayRes, prevYesterday,
       last7, prev7,
       last14, prev14,
       last30, prev30,
       quarter, prevQuarter,
       custom, prevCustom
     ] = results;
+
+    // Helper function to calculate metrics
+    const calculateMetrics = (current, previous) => {
+      const numCurrent = Number(current);
+      const numPrevious = Number(previous);
+      const roundedCurrent = Number(numCurrent.toFixed(2));
+      const roundedPrevious = Number(numPrevious.toFixed(2));
+      const change =
+        roundedPrevious > 0
+          ? Number((((roundedCurrent - roundedPrevious) / roundedPrevious) * 100).toFixed(2))
+          : 0;
+      let trend = "neutral";
+      if (roundedCurrent > roundedPrevious) trend = "up";
+      if (roundedCurrent < roundedPrevious) trend = "down";
+      return {
+        current: roundedCurrent,
+        previous: roundedPrevious,
+        change,
+        trend,
+      };
+    };
 
     const createMetrics = (curr, prev) => ({
       followers: calculateMetrics(curr.followers, prev.followers),
@@ -2265,7 +2306,7 @@ export const getInstagramSummary = async (req, res) => {
     });
 
     const periodData = {
-      yesterday: createMetrics(yesterday, prevYesterday),
+      yesterday: createMetrics(yesterdayRes, prevYesterday),
       last7Days: createMetrics(last7, prev7),
       last14Days: createMetrics(last14, prev14),
       last30Days: createMetrics(last30, prev30),

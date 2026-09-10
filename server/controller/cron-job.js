@@ -3,6 +3,7 @@ import { calculateMetricsForAllBrands, syncAllBrandProducts as syncYesterdayProd
 import { sendAllBrandMetricsReports } from './summaryEmail.js';
 import { setupHolidayGenerationCron } from '../cron/holidayGenerationCron.js';
 import { setupLocationClassificationCron } from '../cron/locationClassificationCron.js';
+import { syncYesterdayInstagramMetricsForAllBrands } from '../Report/InstagramReport.js';
 import { metricsQueue } from '../config/redis.js';
 import Brand from '../models/Brands.js';
 import User from '../models/User.js';
@@ -30,6 +31,17 @@ export const setupCronJobs = () => {
       console.log('Metrics calculation cron job finished successfully at:', new Date().toISOString());
     } catch (error) {
       console.error('Error executing metrics calculation:', error);
+    }
+  }, { timezone: 'UTC' });
+
+  // cron job for Instagram metrics calculation (runs at 03:30 UTC)
+  cron.schedule('30 3 * * *', async () => {
+    console.log('Instagram metrics calculation cron job started at:', new Date().toISOString());
+    try {
+      await syncYesterdayInstagramMetricsForAllBrands();
+      console.log('Instagram metrics calculation cron job finished successfully at:', new Date().toISOString());
+    } catch (error) {
+      console.error('Error executing Instagram metrics calculation:', error);
     }
   }, { timezone: 'UTC' });
 

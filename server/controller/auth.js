@@ -474,6 +474,98 @@ export const handleFbCallback = async (req, res) => {
   }
 };
 
+export const getIgAuthURL = (req, res) => {
+  const { source } = req.query;
+
+  // Generate a random state for security
+  const state =
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
+
+  // Store both state and source in the cookie
+  const stateData = JSON.stringify({ state, source: source || "/dashboard" });
+  res.cookie("ig_state", stateData, { httpOnly: true, secure: true });
+
+  const authURL =
+    `https://www.facebook.com/v21.0/dialog/oauth?` +
+    `client_id=${process.env.FACEBOOK_APP_ID}` +
+    `&redirect_uri=${encodeURIComponent(process.env.INSTAGRAM_CALLBACK_URL)}` +
+    `&state=${state}` +
+    `&scope=instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management` +
+    `&auth_type=rerequest`;
+
+  return res.status(200).json({ success: true, authURL });
+};
+
+export const handleIgCallback = async (req, res) => {
+  try {
+    const { code, state: receivedState } = req.query;
+    const storedStateData = req.cookies.ig_state;
+    let sourcePage = "/dashboard";
+
+    try {
+      const stateData = JSON.parse(storedStateData);
+      if (stateData.state !== receivedState) {
+        return res.status(400).send("Invalid state parameter");
+      }
+      sourcePage = stateData.source;
+    } catch (e) {
+      console.error("Error parsing state data:", e);
+      return res.status(400).send("Invalid state data");
+    }
+
+    if (!code) {
+      return res.status(400).send("Authorization code not provided");
+    }
+
+    const tokenResponse = await axios.get(
+      "https://graph.facebook.com/v22.0/oauth/access_token",
+      {
+        params: {
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          redirect_uri: process.env.INSTAGRAM_CALLBACK_URL,
+          code,
+        },
+      },
+    );
+    const { access_token } = tokenResponse.data;
+
+    const longLivedTokenResponse = await axios.get(
+      "https://graph.facebook.com/v22.0/oauth/access_token",
+      {
+        params: {
+          grant_type: "fb_exchange_token",
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          fb_exchange_token: access_token,
+        },
+      },
+    );
+
+    const longLivedAccessToken = longLivedTokenResponse.data.access_token;
+    const isProduction = process.env.NODE_ENV === "production";
+    const clientURL = isProduction
+      ? "https://parallels.messold.com/callback"
+      : "http://localhost:5173/callback";
+
+    return res.redirect(
+      clientURL +
+        `?igToken=${longLivedAccessToken}&source=${encodeURIComponent(sourcePage)}`,
+    );
+  } catch (err) {
+    console.error("Error during Instagram OAuth callback:", err);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to handle Instagram callback",
+        error: err.message,
+      });
+  }
+};
+
+
 export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
   try {
     const { type } = req.params;
@@ -538,6 +630,13 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
           .status(400)
           .json({ success: false, message: "Facebook token is required." });
       update.fbAccessToken = fbToken;
+    } else if (type === "igToken") {
+      const { igToken } = req.query;
+      if (!igToken)
+        return res
+          .status(400)
+          .json({ success: false, message: "Instagram token is required." });
+      update.igAccessToken = igToken;
     } else if (type === "googleadRefreshToken") {
       const { googleadRefreshToken } = req.query;
       if (!googleadRefreshToken)

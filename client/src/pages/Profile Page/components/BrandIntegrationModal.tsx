@@ -32,6 +32,7 @@ interface BrandIntegrationModalProps {
         googleAds: PlatformIcon;
         googleAnalytics: PlatformIcon;
         facebook: PlatformIcon;
+        instagram: PlatformIcon;
     };
     initialPlatform?: string | null;
 }
@@ -110,6 +111,18 @@ export function BrandIntegrationModal({
             : undefined,
             data: localBrandData.fbAdAccounts,
             allowMultipleAccounts: true
+        },
+        {
+            key: "instagram",
+            icon: platformIcons.instagram.icon,
+            name: platformIcons.instagram.name,
+            isConnected: !!(localBrandData.igAccountIds && localBrandData.igAccountIds.length > 0),
+            accountNumber: localBrandData.igAccountIds ? `${localBrandData.igAccountIds.length} Account(s)` : undefined,
+            accountName: localBrandData.igAccountIds && localBrandData.igAccountIds.length > 0
+            ? `${localBrandData.igAccountIds.join(", ")}` 
+            : undefined,
+            data: localBrandData.igAccountIds,
+            allowMultipleAccounts: true
         }
     ]
 
@@ -122,9 +135,10 @@ export function BrandIntegrationModal({
                     : platformKey
             }
 
-            // Omit accountId for facebook/googleAds so the API disconnects all accounts
+            // Omit accountId for facebook/googleAds/instagram so the API disconnects all accounts
             switch (platformKey) {
                 case 'facebook':
+                case 'instagram':
                 case 'googleAds':
                     break
                 case 'googleAnalytics':
@@ -147,6 +161,11 @@ export function BrandIntegrationModal({
                         `${baseURL}/api/setup/fb-ad-accounts-cache/${brandId}`,
                         { withCredentials: true }
                     )
+                } else if (platformKey === 'instagram') {
+                    await axios.delete(
+                        `${baseURL}/api/setup/ig-accounts-cache/${brandId}`,
+                        { withCredentials: true }
+                    )
                 }
             } catch (cacheError) {
                 console.warn('Cache clear failed, but continuing:', cacheError)
@@ -165,6 +184,8 @@ export function BrandIntegrationModal({
 
                     if (platformKey === 'facebook') {
                         next.fbAdAccounts = (updatedBrand.fbAdAccounts || []) as []
+                    } else if (platformKey === 'instagram') {
+                        next.igAccountIds = (updatedBrand.igAccountIds || []) as []
                     } else if (platformKey === 'googleAds') {
                         next.googleAdAccount = updatedBrand.googleAdAccount
                     } else if (platformKey === 'googleAnalytics') {
@@ -214,6 +235,7 @@ export function BrandIntegrationModal({
                 return {
                     ...b,
                     fbAdAccounts: (updatedBrand.fbAdAccounts || []) as [],
+                    igAccountIds: (updatedBrand.igAccountIds || []) as [],
                     googleAdAccount: updatedBrand.googleAdAccount,
                     ga4Account: updatedBrand.ga4Account?.PropertyID
                         ? { PropertyID: updatedBrand.ga4Account.PropertyID }
@@ -263,12 +285,13 @@ export function BrandIntegrationModal({
                 </DialogHeader>
 
                 <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mt-2">
-                    <TabsList className="grid grid-cols-5 mb-4">
+                    <TabsList className="grid grid-cols-6 mb-4 h-auto">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="shopify">Shopify</TabsTrigger>
                         <TabsTrigger value="googleAds">Google Ads</TabsTrigger>
                         <TabsTrigger value="googleAnalytics">Analytics</TabsTrigger>
                         <TabsTrigger value="facebook">Facebook</TabsTrigger>
+                        <TabsTrigger value="instagram">Instagram</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-4">
@@ -406,7 +429,8 @@ export function BrandIntegrationModal({
                 <PlatformModal
                     platform={selectedPlatform === 'googleAds' ? 'Google Ads' : 
                               selectedPlatform === 'googleAnalytics' ? 'Google Analytics' : 
-                              selectedPlatform === 'facebook' ? 'Facebook' : 'Shopify'}
+                              selectedPlatform === 'facebook' ? 'Facebook' : 
+                              selectedPlatform === 'instagram' ? 'Instagram' : 'Shopify'}
                     open={platformModalOpen}
                     onOpenChange={handlePlatformModalOpenChange}
                     brandId={brandId}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios, { AxiosError } from 'axios';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -47,7 +47,9 @@ export default function PlatformModal({
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
   const [googleAnalyticsAccounts, setGoogleAnalyticsAccounts] = useState<GoogleAnalyticsAccount[]>([]);
   const [facebookAdsAccounts, setFacebookAdsAccounts] = useState<FacebookAdsAccount[]>([]);
+  const [instagramAccounts, setInstagramAccounts] = useState<FacebookAdsAccount[]>([]);
   const [showLoginButton, setShowLoginButton] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -87,6 +89,11 @@ export default function PlatformModal({
             onOpenChange(true);
           }
           break;
+        case 'instagram':
+          if (platform.toLowerCase() === 'instagram') {
+            onOpenChange(true);
+          }
+          break;
       }
       
       // Remove the modal parameter from URL
@@ -106,6 +113,7 @@ export default function PlatformModal({
 
         const connectedIds: string[] = [];
         if (brand.fbAdAccounts?.length) connectedIds.push(...brand.fbAdAccounts);
+        if (brand.igAccountIds?.length) connectedIds.push(...brand.igAccountIds);
         if (brand.googleAdAccount) connectedIds.push(brand.googleAdAccount);
         if (brand.ga4Account?.PropertyID) connectedIds.push(brand.ga4Account.PropertyID);
 
@@ -200,6 +208,10 @@ export default function PlatformModal({
             endpoint = `/api/setup/fb-ad-accounts/${brandId}`;
             accountsSetter = setFacebookAdsAccounts;
             break;
+          case 'instagram':
+            endpoint = `/api/setup/ig-accounts/${brandId}`;
+            accountsSetter = setInstagramAccounts;
+            break;
         }
         console.log(`Calling API: ${baseURL}${endpoint} with brandId: ${brandId}`);
 
@@ -218,6 +230,8 @@ export default function PlatformModal({
           } else if (platform.toLowerCase() === 'google analytics') {
             accountsSetter(response.data.propertiesList || []);
           } else if (platform.toLowerCase() === 'facebook') {
+            accountsSetter(response.data.adAccounts || []);
+          } else if (platform.toLowerCase() === 'instagram') {
             accountsSetter(response.data.adAccounts || []);
           }
         }
@@ -240,22 +254,19 @@ export default function PlatformModal({
       
       // Check for Facebook OAuth authorization error
       if (status === 401 && (code === 'OAUTH_NOT_AUTHORIZED' || code === 'TOKEN_EXPIRED')) {
-        if (platform.toLowerCase() === 'facebook' && code === 'OAUTH_NOT_AUTHORIZED') {
-          // Show reconnect button for Facebook
+        if ((platform.toLowerCase() === 'facebook' || platform.toLowerCase() === 'instagram') && code === 'OAUTH_NOT_AUTHORIZED') {
+          setErrorMsg(`${platform} authorization has expired. Please reconnect.`);
           setShowLoginButton(true);
         } else {
-          alert('Your session has expired. Please log in again.');
-          setShowLoginButton(true);
+          setErrorMsg((data as any)?.message || 'Authentication expired. Please log in again.');
         }
       } else if (status === 400) {
-        // Check if it's a Facebook OAuth error in the error object
-        const errorData = (data as any)?.error;
-        if (errorData?.code === 190 && errorData?.error_subcode === 458) {
-          setShowLoginButton(true);
-        } else {
-          setShowLoginButton(true);
-        }
+        setErrorMsg((data as any)?.message || 'Bad request. Please check your inputs.');
       } else if (status === 403) {
+        setErrorMsg(`Please connect your ${platform} account to view available profiles.`);
+        setShowLoginButton(true);
+      } else if (status === 404) {
+        setErrorMsg((data as any)?.message || `No ${platform} accounts found. Please reconnect and ensure you have granted the correct permissions.`);
         setShowLoginButton(true);
       } else {
         console.error('Unhandled Error Status:', status);
@@ -266,6 +277,14 @@ export default function PlatformModal({
     } else {
       console.error('Unexpected Error:', axiosError.message);
     }
+  };
+
+  const handlePlatformLogin = () => {
+    const p = platform.toLowerCase();
+    if (p === 'facebook') handleFbLogin();
+    else if (p === 'instagram') handleIgLogin();
+    else if (p === 'google ads') handleGoogleAdLogin();
+    else if (p === 'google analytics') handleGoogleAnalyticsLogin();
   };
 
   const updateBrandWithAccount = async (accountIds: string[], accountNames: string[], managerIds: (string | undefined)[]) => {
@@ -279,6 +298,12 @@ export default function PlatformModal({
           const existingFbAccounts = currentBrand?.fbAdAccounts || [];
           const newFbAccounts = [...new Set([...existingFbAccounts, ...accountIds])];
           updateData = { fbAdAccounts: newFbAccounts };
+          break;
+        case 'instagram':
+          const currentBrandIg = brands.find(brand => brand._id === brandId);
+          const existingIgAccounts = currentBrandIg?.igAccountIds || [];
+          const newIgAccounts = [...new Set([...existingIgAccounts, ...accountIds])];
+          updateData = { igAccountIds: newIgAccounts };
           break;
         case 'google ads':
           // Get current brand to append to existing accounts
@@ -347,29 +372,6 @@ export default function PlatformModal({
     }
   };
 
-  // const handleConnect = async (account: GoogleAdsAccount | GoogleAnalyticsAccount | FacebookAdsAccount) => {
-  //   let accountId: string;
-
-  //   if ('clientId' in account) {
-  //     accountId = account.clientId;
-  //   } else if ('propertyId' in account) {
-  //     accountId = account.propertyId;
-  //   } else if ('id' in account) {
-  //     accountId = account.id;
-  //   } else {
-  //     return;
-  //   }
-
-  //   // Instead of immediately connecting, add to selected accounts
-  //   setSelectedAccounts(prev => {
-  //     if (prev.includes(accountId)) {
-  //       return prev.filter(id => id !== accountId);
-  //     } else {
-  //       return [...prev, accountId];
-  //     }
-  //   });
-  // };
-
   const handleAccountSelection = (accountId: string) => {
     setSelectedAccounts(prev => {
       if (prev.includes(accountId)) {
@@ -387,7 +389,7 @@ export default function PlatformModal({
       const account = filteredAccounts()?.find(acc => {
         if (platform.toLowerCase() === 'google ads') {
           return (acc as GoogleAdsAccount).clientId === accountId;
-        } else if (platform.toLowerCase() === 'facebook') {
+        } else if (platform.toLowerCase() === 'facebook' || platform.toLowerCase() === 'instagram') {
           return (acc as FacebookAdsAccount).id === accountId;
         } else {
           return (acc as GoogleAnalyticsAccount).propertyId === accountId;
@@ -478,6 +480,20 @@ export default function PlatformModal({
     }
   };
 
+  const handleIgLogin = async () => {
+    try {
+      const response = await axios.get(
+        `${baseURL}/api/auth/instagram?source=${encodeURIComponent(getOAuthSource('instagram'))}`, 
+        { withCredentials: true }
+      );
+      if (response.data.success) {
+        window.location.href = response.data.authURL;
+      }
+    } catch (error) {
+      console.error('Error getting Instagram Auth URL:', error);
+    }
+  };
+
   const handleShopifyLogin = async () => {
     const cleanInput = shopifyStoreName.trim();
     if (!cleanInput) return;
@@ -556,6 +572,17 @@ export default function PlatformModal({
           (account.id && account.id.toLowerCase().includes(searchLower))
         );
       });
+    } else if (platform.toLowerCase() === 'instagram') {
+      if (!instagramAccounts || instagramAccounts.length === 0) {
+        return [];
+      }
+      return instagramAccounts.filter((account) => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          (account.adname && account.adname.toLowerCase().includes(searchLower)) ||
+          (account.id && account.id.toLowerCase().includes(searchLower))
+        );
+      });
     } else {
       return [];
     }
@@ -603,37 +630,22 @@ export default function PlatformModal({
             <div className="flex justify-center py-4">Loading...</div>
           ) : showLoginButton ? (
             <div className="space-y-3">
-              {platform.toLowerCase() === 'facebook' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-yellow-800 mb-2">
-                    Your Facebook authorization has expired. Please reconnect your account to continue.
-                  </p>
-                </div>
-              )}
-              <Button
-                size="sm"
-                onClick={platform.toLowerCase() === 'facebook' ? handleFbLogin : platform.toLowerCase()=== 'google ads' ? handleGoogleAdLogin : handleGoogleAnalyticsLogin}
-                className="flex items-center gap-2 bg-white text-black border border-green-800 hover:bg-green-50"
-              >
-                {platform.toLowerCase() === 'google ads' && (
-                  <>
-                    <GoogleLogo height="1rem" width="1rem" />
-                    Connect to your Google Ads account
-                  </>
-                )}
-                {platform.toLowerCase() === 'google analytics' && (
-                  <>
-                    <Ga4Logo height="1rem" width="1rem" />
-                    Connect to your GA4 account
-                  </>
-                )}
-                {platform.toLowerCase() === 'facebook' && (
-                  <>
-                    <FacebookLogo height="1rem" width="1rem" />
-                    Reconnect Facebook Account
-                  </>
-                )}
-              </Button>
+              <div className="bg-amber-50 p-4 rounded-md border border-amber-200">
+                <p className="text-sm text-amber-800 mb-4">
+                  {errorMsg || `Please connect your ${platform} account to view available profiles.`}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={handlePlatformLogin}
+                  className="w-full sm:w-auto bg-white text-slate-700 border-slate-200 hover:bg-slate-50 flex items-center gap-2 border"
+                >
+                  {platform.toLowerCase() === 'google ads' && <GoogleLogo height="1rem" width="1rem" />}
+                  {platform.toLowerCase() === 'google analytics' && <Ga4Logo height="1rem" width="1rem" />}
+                  {platform.toLowerCase() === 'facebook' && <FacebookLogo height="1rem" width="1rem" />}
+                  {platform.toLowerCase() === 'instagram' && <Instagram height="1rem" width="1rem" className="text-pink-600" />}
+                  {errorMsg?.includes('expired') ? `Reconnect ${platform} Account` : `Connect ${platform} Account`}
+                </Button>
+              </div>
             </div>
           ) : (
             <>
@@ -685,8 +697,24 @@ export default function PlatformModal({
                   const filtered = filteredAccounts();  
                   if (!filtered || filtered.length === 0) {
                     return (
-                      <div className="text-center py-4 text-gray-500">
-                        {searchTerm ? 'No accounts found matching your search.' : 'No accounts available.'}
+                      <div className="text-center py-8 space-y-4">
+                        <p className="text-gray-500">
+                          {searchTerm ? 'No accounts found matching your search.' : 'No accounts available.'}
+                        </p>
+                        {!searchTerm && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handlePlatformLogin}
+                            className="mx-auto flex items-center gap-2"
+                          >
+                            {platform.toLowerCase() === 'facebook' && <FacebookLogo height="1rem" width="1rem" />}
+                            {platform.toLowerCase() === 'instagram' && <Instagram height="1rem" width="1rem" className="text-pink-600" />}
+                            {platform.toLowerCase() === 'google ads' && <GoogleLogo height="1rem" width="1rem" />}
+                            {platform.toLowerCase() === 'google analytics' && <Ga4Logo height="1rem" width="1rem" />}
+                            Reconnect {platform}
+                          </Button>
+                        )}
                       </div>
                     );
                   }
@@ -694,10 +722,11 @@ export default function PlatformModal({
                   return filtered.map((account, _) => {
                     const isGoogleAds = platform.toLowerCase() === 'google ads';
                     const isFacebook = platform.toLowerCase() === 'facebook';
+                    const isInstagram = platform.toLowerCase() === 'instagram';
 
                     const accountId = isGoogleAds
                       ? (account as GoogleAdsAccount).clientId
-                      : isFacebook
+                      : (isFacebook || isInstagram)
                         ? (account as FacebookAdsAccount).id
                         : (account as GoogleAnalyticsAccount).propertyId;
 
@@ -707,7 +736,7 @@ export default function PlatformModal({
 
                     const accountName = isGoogleAds
                       ? (account as GoogleAdsAccount).name
-                      : isFacebook
+                      : (isFacebook || isInstagram)
                         ? (account as FacebookAdsAccount).adname
                         : (account as GoogleAnalyticsAccount).propertyName;
 
@@ -720,6 +749,8 @@ export default function PlatformModal({
                       <GoogleLogo height="1rem" width="1rem" />
                     ) : isFacebook ? (
                       <FacebookLogo height="1rem" width="1rem" />
+                    ) : isInstagram ? (
+                      <Instagram height="1rem" width="1rem" />
                     ) : (
                       <Ga4Logo height="1rem" width="1rem" />
                     );
@@ -729,7 +760,7 @@ export default function PlatformModal({
 
                     const displayText = isGoogleAds && managerId
                       ? `${accountName} (${accountId}/${managerId})`
-                      : isFacebook
+                      : (isFacebook || isInstagram)
                         ? `${accountName}`
                         : `${accountName} (${accountId})`;
 

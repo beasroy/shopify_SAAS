@@ -13,6 +13,7 @@ import excelReportRoutes from "./routes/report.js"
 import targetReportRoutes from "./routes/BrandPerformance.js"
 import segmentReportRoutes from "./routes/segmentReport.js"
 import metaRoutes from "./routes/meta.js"
+import instagramRoutes from "./routes/instagram.js"
 import googleRoutes from "./routes/google.js"
 import googleAdConversionReportRoutes from "./routes/googleAdsConversion.js"
 import summaryRoutes from "./routes/summary.js"
@@ -99,6 +100,7 @@ dataOperationRouter.use("/segment", segmentReportRoutes);
 dataOperationRouter.use("/setup", setupBrandRoutes);
 dataOperationRouter.use("/googleAd", googleAdConversionReportRoutes)
 dataOperationRouter.use("/meta", metaRoutes);
+dataOperationRouter.use("/instagram", instagramRoutes);
 dataOperationRouter.use("/google", googleRoutes);
 dataOperationRouter.use("/users", userRoutes);
 dataOperationRouter.use("/summary", summaryRoutes)

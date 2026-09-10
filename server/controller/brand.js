@@ -191,6 +191,7 @@ export const updateBrands = async (req, res) => {
       ga4Account,
       shopifyAccount,
       customLabel,
+      igAccountIds,
     } = req.body;
     const userId = req.user?.id;
 
@@ -264,6 +265,15 @@ export const updateBrands = async (req, res) => {
         ...new Set([...existingFbAccounts, ...fbAdAccounts]),
       ];
       updateData.fbAdAccounts = mergedFbAccounts;
+    }
+
+    // Check for new Instagram accounts
+    if (igAccountIds) {
+      const existingIgAccounts = currentBrand.igAccountIds || [];
+      const mergedIgAccounts = [
+        ...new Set([...existingIgAccounts, ...igAccountIds]),
+      ];
+      updateData.igAccountIds = mergedIgAccounts;
     }
 
     // Check for new Google ad accounts

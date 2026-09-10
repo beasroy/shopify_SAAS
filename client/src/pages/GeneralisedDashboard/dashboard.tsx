@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { PlusCircle, ChevronRight, X, Shield, Database, KeyRound } from "lucide-react";
+import { PlusCircle, ChevronRight, X, Shield, Database, KeyRound, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAxiosInstance } from "../ConversionReportPage/components/axiosInstance";
@@ -16,6 +16,7 @@ import MarketingInsightsCard from "./components/MarketingInsightsCard";
 import PerformanceTable from "./components/PerformanceTable";
 import { Platform, PerformanceSummary } from "./components/PerformanceTable";
 import PaymentOrdersCard from "./components/PaymentOrdersCard";
+import InstagramPerformanceTable from "./components/InstagramPerformanceTable";
 import { useBrandRefresh } from "@/hooks/useBrandRefresh";
 import ReportTable, {
   BreakdownCatagory,
@@ -40,6 +41,8 @@ export function ConnectPlatformCard({
         return <Ga4Logo width={"2rem"} height={"2rem"} />;
       case "Shopify":
         return <ShopifyLogo width={"2rem"} height={"2rem"} />;
+      case "Instagram":
+        return <Instagram size={32} className="text-pink-600" />;
       default:
         return null;
     }
@@ -121,6 +124,8 @@ const SummaryDashboard: React.FC = () => {
     !!selectedBrand?.shopifyAccount &&
     (Boolean(selectedBrand.shopifyAccount.shopifyAccessToken) ||
       Boolean(selectedBrand.shopifyAccount.shopName));
+
+  const isInstagramConnected = !!(selectedBrand?.igAccountIds && selectedBrand.igAccountIds.length > 0);
 
   const userName = user?.username;
   const [initialLoading, setInitialLoading] = useState(true);
@@ -443,7 +448,8 @@ const SummaryDashboard: React.FC = () => {
     apiStatus.meta &&
     apiStatus.google &&
     apiStatus.analytics &&
-    isShopifyConnected;
+    isShopifyConnected &&
+    isInstagramConnected;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -584,6 +590,12 @@ const SummaryDashboard: React.FC = () => {
                     onClick={() => handleConnectPlatform("Shopify")}
                   />
                 )}
+                {!isInstagramConnected && (
+                  <ConnectPlatformCard
+                    platform="Instagram"
+                    onClick={() => handleConnectPlatform("Instagram")}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -604,6 +616,13 @@ const SummaryDashboard: React.FC = () => {
           apiStatus={apiStatus}
           onRefresh={() => fetchBreakdownData(true)}
           loading={breakdownLoading}
+        />
+
+        <InstagramPerformanceTable
+          brandId={brandId || ""}
+          dateFrom={dateFrom ? dateFrom.slice(0, 10) : null}
+          dateTo={dateTo ? dateTo.slice(0, 10) : null}
+          isInstagramConnected={isInstagramConnected}
         />
 
         {/* Dashboard Quick Links Section */}

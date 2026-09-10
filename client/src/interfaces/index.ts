@@ -3,6 +3,7 @@ export interface IBrand {
     name: string;
     brandId: string;
     fbAdAccounts?: [];
+    igAccountIds?: [];
     googleAdAccount?: {
         clientId: string;
         managerId: string;
@@ -11,6 +12,7 @@ export interface IBrand {
     shopifyAccount: { [key: string]: string };
     customLabel?: string;
     fbAccessToken?: string;
+    igAccessToken?: string;
     googleAdsRefreshToken?: string;
     googleAnalyticsRefreshToken?: string;
 }
@@ -183,6 +185,7 @@ export interface FullBrandData {
     _id: string;
     name: string;
     fbAdAccounts: string[];
+    igAccountIds?: string[];
     googleAdAccount: Array<{ clientId: string, managerId: string }>;
     ga4Account: { PropertyID: string };
     shopifyAccount: {

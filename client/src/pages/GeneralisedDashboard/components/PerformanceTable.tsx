@@ -27,7 +27,8 @@ export type Platform =
   | "Facebook"
   | "Google Ads"
   | "Google Analytics"
-  | "Shopify";
+  | "Shopify"
+  | "Instagram";
 
 export interface MetricData {
   current: number;

@@ -64,6 +64,7 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
         }
 
         const results = [];
+        const MAX_BATCH_SIZE = 50;
         let currentChunkStart = start.clone();
 
         // Process in chunks of 15 days
@@ -78,77 +79,81 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
             const requestDates = [];
             let currentDay = currentChunkStart.clone();
 
+            const flushBatchRequests = async () => {
+                if (batchRequests.length === 0) return;
+
+                try {
+                    const response = await axios.post(
+                        'https://graph.facebook.com/v24.0/',
+                        { batch: batchRequests },
+                        {
+                            headers: { 'Content-Type': 'application/json' },
+                            params: { access_token: accessToken }
+                        }
+                    );
+
+                    response.data?.forEach((res, index) => {
+                        const { accountId, date } = requestDates[index];
+                        const formattedDate = date.format('YYYY-MM-DD');
+
+                        if (res.code === 200) {
+                            try {
+                                const result = JSON.parse(res.body);
+                                const insight = result.data?.[0];
+
+                                if (insight) {
+                                    const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0';
+
+                                    results.push({
+                                        adAccountId: accountId,
+                                        date: formattedDate,
+                                        spend: insight.spend || '0',
+                                        revenue: revenue
+                                    });
+                                } else {
+                                    results.push({
+                                        adAccountId: accountId,
+                                        date: formattedDate,
+                                        spend: '0',
+                                        revenue: '0'
+                                    });
+                                }
+                            } catch (parseError) {
+                                console.error(`Error parsing response for ${accountId} on ${formattedDate}:`, parseError);
+                                throw parseError;
+                            }
+                        } else {
+                            console.error(`Error for account ${accountId} on ${formattedDate}:`, res.body);
+                            throw new Error(`Facebook API error: ${res.body}`);
+                        }
+                    });
+                } catch (batchError) {
+                    console.error('Batch request error:', batchError.response?.data || batchError.message);
+                    throw batchError;
+                } finally {
+                    batchRequests.length = 0;
+                    requestDates.length = 0;
+                }
+            };
+
             while (currentDay.isSameOrBefore(chunkEnd)) {
                 const formattedDay = currentDay.format('YYYY-MM-DD');
 
-                // Create batch requests for each account
-                adAccountIds.forEach(accountId => {
-                    const requestUrl = `${accountId}/insights?fields=spend,action_values&time_range={"since":"${formattedDay}","until":"${formattedDay}"}`;
-                    batchRequests.push({ method: 'GET', relative_url: requestUrl });
-                    requestDates.push({ accountId, date: currentDay.clone() });
-                });
-
-                // Process batch if limit reached or last day
-                if (batchRequests.length >= 50 || currentDay.isSame(chunkEnd)) {
-                    try {
-                        const response = await axios.post(
-                            'https://graph.facebook.com/v22.0/',
-                            { batch: batchRequests },
-                            {
-                                headers: { 'Content-Type': 'application/json' },
-                                params: { access_token: accessToken }
-                            }
-                        );
-
-                        // Process responses
-                        response.data?.forEach((res, index) => {
-                            const { accountId, date } = requestDates[index];
-                            const formattedDate = date.format('YYYY-MM-DD');
-
-                            if (res.code === 200) {
-                                try {
-                                    const result = JSON.parse(res.body);
-                                    const insight = result.data?.[0];
-
-                                    if (insight) {
-                                        // Extract revenue from action_values
-                                        const revenue = insight.action_values?.find((action) => action.action_type === 'purchase')?.value || '0';
-                                        
-                                        results.push({
-                                            adAccountId: accountId,
-                                            date: formattedDate,
-                                            spend: insight.spend || '0',
-                                            revenue: revenue
-                                        });
-                                    } else {
-                                        results.push({
-                                            adAccountId: accountId,
-                                            date: formattedDate,
-                                            spend: '0',
-                                            revenue: '0'
-                                        });
-                                    }
-                                } catch (parseError) {
-                                    console.error(`Error parsing response for ${accountId} on ${formattedDate}:`, parseError);
-                                    throw parseError;
-                                }
-                            } else {
-                                console.error(`Error for account ${accountId} on ${formattedDate}:`, res.body);
-                                throw new Error(`Facebook API error: ${res.body}`);
-                            }
-                        });
-                    } catch (batchError) {
-                        console.error('Batch request error:', batchError);
-                        throw batchError;
+                // Keep each batch at or below Facebook's 50-request limit.
+                for (const accountId of adAccountIds) {
+                    if (batchRequests.length === MAX_BATCH_SIZE) {
+                        await flushBatchRequests();
                     }
 
-                    // Reset batch arrays
-                    batchRequests.length = 0;
-                    requestDates.length = 0;
+                    const requestUrl = `${accountId}/insights?fields=spend,action_values&time_range={'since':'${formattedDay}','until':'${formattedDay}'}`;
+                    batchRequests.push({ method: 'GET', relative_url: requestUrl });
+                    requestDates.push({ accountId, date: currentDay.clone() });
                 }
 
                 currentDay.add(1, 'days');
             }
+
+            await flushBatchRequests();
 
             // Move to next chunk
             currentChunkStart = chunkEnd.clone().add(1, 'days');

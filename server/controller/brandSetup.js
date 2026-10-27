@@ -4,12 +4,32 @@ import { config } from "dotenv";
 import NodeCache from "node-cache";
 import axios from "axios";
 import Brand from "../models/Brands.js";
+import { isUsableToken } from "../utils/tokenUtils.js";
 
 const cache = new NodeCache({ stdTTL: 604800, checkperiod: 600 });
 config();
 
 // Export cache instance for central management
 export { cache };
+
+const ACCOUNT_CACHE_KEY = {
+  googleAds: (brandId) => `google_ads_accounts_${brandId}`,
+  googleAnalytics: (brandId) => `ga4_properties_${brandId}`,
+  facebook: (brandId) => `fb_ad_accounts_${brandId}`,
+  instagram: (brandId) => `ig_accounts_${brandId}`,
+};
+
+// Drop a brand's cached account list so the next fetch is rebuilt with whatever
+// credentials the brand now holds.
+export const invalidateAccountCache = (brandId, platform) => {
+  const keyFor = ACCOUNT_CACHE_KEY[platform];
+  if (!brandId || !keyFor) return false;
+
+  const cacheKey = keyFor(brandId);
+  const deleted = cache.del(cacheKey) > 0;
+  console.log(`Account cache ${deleted ? "cleared" : "miss"} for ${cacheKey}`);
+  return deleted;
+};
 
 const createGoogleAdsClient = (refreshToken) => {
   return new GoogleAdsApi({
@@ -30,7 +50,7 @@ export const getGoogleAdAccounts = async (req, res) => {
     if (!brand) {
       return res.status(404).json({ message: "Brand not found." });
     }
-    if (!brand.googleAdsRefreshToken) {
+    if (!isUsableToken(brand.googleAdsRefreshToken)) {
       return res
         .status(403)
         .json({
@@ -70,6 +90,7 @@ export const getGoogleAdAccounts = async (req, res) => {
 
     // Process each customer account
     const clientAccounts = [];
+    const seenClientIds = new Set();
 
     for (const customerId of customerIds) {
       try {
@@ -77,6 +98,8 @@ export const getGoogleAdAccounts = async (req, res) => {
           customer_id: customerId,
           refresh_token: brand.googleAdsRefreshToken,
         });
+        // listAccessibleCustomers only returns accounts the user is directly
+        // linked to, so anything below a sub-manager needs the deeper levels.
         const query = `
                     SELECT
                       customer_client.client_customer,
@@ -84,7 +107,7 @@ export const getGoogleAdAccounts = async (req, res) => {
                       customer_client.hidden,
                       customer_client.descriptive_name
                     FROM customer_client
-                    WHERE customer_client.level IN (0,1)
+                    WHERE customer_client.level <= 5
                 `;
 
         const response = await customer.query(query);
@@ -98,7 +121,13 @@ export const getGoogleAdAccounts = async (req, res) => {
             hidden: row.customer_client.hidden,
             managerId: customerId,
           }))
-          .filter((account) => account.clientId);
+          .filter((account) => account.clientId)
+          // The same account can be reachable through several accessible roots.
+          .filter((account) => {
+            if (seenClientIds.has(account.clientId)) return false;
+            seenClientIds.add(account.clientId);
+            return true;
+          });
 
         clientAccounts.push(...accounts);
       } catch (error) {
@@ -370,6 +399,39 @@ export const getFbAdAccountIds = async (req, res) => {
         message: "Error fetching Facebook Ad accounts.",
         error: error.response?.data,
       });
+  }
+};
+
+// Function to clear Google Ads accounts cache for a specific brand
+export const clearGoogleAdAccountCache = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    if (!brandId) {
+      return res.status(400).json({ message: "Brand ID is required." });
+    }
+
+    const cacheKey = `google_ads_accounts_${brandId}`;
+    const deleted = cache.del(cacheKey);
+
+    if (deleted) {
+      return res.status(200).json({
+        message: "Cache cleared successfully.",
+        brandId,
+        cacheKey,
+      });
+    } else {
+      return res.status(404).json({
+        message: "Cache entry not found.",
+        brandId,
+        cacheKey,
+      });
+    }
+  } catch (error) {
+    console.error("Error clearing Google Ad Accounts cache:", error.message);
+    res.status(500).json({
+      message: "Error clearing cache.",
+      error: error.message,
+    });
   }
 };
 

@@ -32,6 +32,20 @@ const GoogleCallback = () => {
                 const zohoRefreshToken = queryParams.get('zohoToken');
                 const userId = queryParams.get('userId');
                 const appToken = queryParams.get('shopify_token');
+                const oauthError = queryParams.get('error');
+
+                // Google did not hand back a refresh token, so nothing was saved.
+                if (oauthError) {
+                    toast({
+                        title: 'Connection Failed',
+                        description: oauthError === 'missing_refresh_token'
+                            ? 'Google did not return a refresh token. Please try connecting again and approve the consent screen.'
+                            : 'Could not complete the connection. Please try again.',
+                        variant: 'destructive',
+                    });
+                    navigate(queryParams.get('source') || '/dashboard');
+                    return;
+                }
                
 
                 // Helper function for token update

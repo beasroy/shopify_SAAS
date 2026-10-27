@@ -9,6 +9,8 @@ import Brand from "../models/Brands.js";
 import Subscription from "../models/Subscription.js";
 import { registerWebhooks } from "../webhooks/shopify.js";
 import { metricsQueue } from "../config/redis.js";
+import { invalidateAccountCache } from "./brandSetup.js";
+import { isUsableToken } from "../utils/tokenUtils.js";
 
 config();
 
@@ -19,9 +21,17 @@ export const oauth2Client = new OAuth2Client(
 );
 const SECRET_KEY = process.env.JWT_SECRET || "your-default-secret";
 
+// Which cached account list a token type invalidates when it is replaced.
+const PLATFORM_BY_TOKEN_TYPE = {
+  googleadRefreshToken: "googleAds",
+  googleanalyticsRefreshToken: "googleAnalytics",
+  fbToken: "facebook",
+  igToken: "instagram",
+};
+
 export const getGoogleAuthURL = async (req, res) => {
   try {
-    const { context, source, brandId } = req.query;
+    const { context, source } = req.query;
 
     const isAdOrAnalyticsSetup =
       context === "googleAdSetup" || context === "googleAnalyticsSetup";
@@ -40,29 +50,10 @@ export const getGoogleAuthURL = async (req, res) => {
           "https://www.googleapis.com/auth/userinfo.profile",
         ];
 
-    let requireConsent = false;
-
-    if (isAdOrAnalyticsSetup) {
-      requireConsent = true;
-
-      if (brandId) {
-        try {
-          const brand = await Brand.findById(brandId).lean();
-          if (brand) {
-            const alreadyHasToken =
-              (context === "googleAdSetup" && brand.googleAdsRefreshToken) ||
-              (context === "googleAnalyticsSetup" &&
-                brand.googleAnalyticsRefreshToken);
-
-            if (alreadyHasToken) requireConsent = false;
-          }
-        } catch (error) {
-          console.error("Error checking brand refresh token:", error);
-          // Keep requireConsent = true as fallback
-        }
-      }
-    }
-
+    // Always force both screens for ad/analytics setup. Without prompt=consent
+    // Google only returns a refresh_token on the very first authorization, so a
+    // reconnect silently kept the old token; without select_account it reuses
+    // whichever Google account the browser session defaults to.
     const authUrlConfig = {
       access_type: "offline",
       scope: scopes,
@@ -70,7 +61,7 @@ export const getGoogleAuthURL = async (req, res) => {
         context: context || "default",
         source: source || "/dashboard",
       }),
-      ...(requireConsent && { prompt: "consent" }),
+      ...(isAdOrAnalyticsSetup && { prompt: "consent select_account" }),
     };
 
     const url = oauth2Client.generateAuthUrl(authUrlConfig);
@@ -105,27 +96,33 @@ export const handleGoogleCallback = async (req, res) => {
     const sourcePage = stateObj.source || "/dashboard";
     const isProduction = process.env.NODE_ENV === "production";
 
-    if (context === "googleAdSetup") {
-      const googleadRefreshToken = tokens.refresh_token;
+    if (context === "googleAdSetup" || context === "googleAnalyticsSetup") {
+      const refreshToken = tokens.refresh_token;
 
       const clientURL = isProduction
         ? "https://parallels.messold.com/callback"
         : "http://localhost:5173/callback";
 
+      // Google omits refresh_token when the user has already granted consent.
+      // Forwarding it anyway used to store the literal string "undefined".
+      if (!refreshToken) {
+        console.warn(
+          `No refresh_token returned by Google for context ${context}.`,
+        );
+        return res.redirect(
+          clientURL +
+            `?error=missing_refresh_token&source=${encodeURIComponent(sourcePage)}`,
+        );
+      }
+
+      const tokenParam =
+        context === "googleAdSetup"
+          ? "googleadRefreshToken"
+          : "googleanalyticsRefreshToken";
+
       return res.redirect(
         clientURL +
-          `?googleadRefreshToken=${googleadRefreshToken}&source=${encodeURIComponent(sourcePage)}`,
-      );
-    } else if (context === "googleAnalyticsSetup") {
-      const googleanalyticsRefreshToken = tokens.refresh_token;
-
-      const clientURL = isProduction
-        ? "https://parallels.messold.com/callback"
-        : "http://localhost:5173/callback";
-
-      return res.redirect(
-        clientURL +
-          `?googleanalyticsRefreshToken=${googleanalyticsRefreshToken}&source=${encodeURIComponent(sourcePage)}`,
+          `?${tokenParam}=${encodeURIComponent(refreshToken)}&source=${encodeURIComponent(sourcePage)}`,
       );
     } else if (context === "userLogin") {
       const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
@@ -625,21 +622,21 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
     let update = {};
     if (type === "fbToken") {
       const { fbToken } = req.query;
-      if (!fbToken)
+      if (!isUsableToken(fbToken))
         return res
           .status(400)
           .json({ success: false, message: "Facebook token is required." });
       update.fbAccessToken = fbToken;
     } else if (type === "igToken") {
       const { igToken } = req.query;
-      if (!igToken)
+      if (!isUsableToken(igToken))
         return res
           .status(400)
           .json({ success: false, message: "Instagram token is required." });
       update.igAccessToken = igToken;
     } else if (type === "googleadRefreshToken") {
       const { googleadRefreshToken } = req.query;
-      if (!googleadRefreshToken)
+      if (!isUsableToken(googleadRefreshToken))
         return res
           .status(400)
           .json({
@@ -649,7 +646,7 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
       update.googleAdsRefreshToken = googleadRefreshToken;
     } else if (type === "googleanalyticsRefreshToken") {
       const { googleanalyticsRefreshToken } = req.query;
-      if (!googleanalyticsRefreshToken)
+      if (!isUsableToken(googleanalyticsRefreshToken))
         return res
           .status(400)
           .json({
@@ -672,6 +669,10 @@ export const updateTokensForGoogleAndFbAndZoho = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Brand not found" });
     }
+
+    // The account list is cached for 7 days, so without this the brand keeps
+    // seeing the accounts of whichever account it was connected with before.
+    invalidateAccountCache(brandId, PLATFORM_BY_TOKEN_TYPE[type]);
 
     return res.status(200).json({
       success: true,

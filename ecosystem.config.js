@@ -10,7 +10,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 8000,
       },
-      max_memory_restart: '1G',
+      max_memory_restart: '512M',
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
       merge_logs: true,
@@ -25,7 +25,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
       },
-      max_memory_restart: '1G',
+      max_memory_restart: '768M',
       error_file: './logs/worker-error.log',
       out_file: './logs/worker-out.log',
       merge_logs: true,
@@ -40,7 +40,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
       },
-      max_memory_restart: '1G',
+      max_memory_restart: '512M',
       error_file: './logs/scraping-error.log',
       out_file: './logs/scraping-out.log',
       merge_logs: true,
@@ -55,7 +55,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
       },
-      max_memory_restart: '1G',
+      max_memory_restart: '512M',
       error_file: './logs/city-classification-error.log',
       out_file: './logs/city-classification-out.log',
       merge_logs: true,

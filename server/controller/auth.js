@@ -488,7 +488,7 @@ export const getIgAuthURL = (req, res) => {
     `client_id=${process.env.FACEBOOK_APP_ID}` +
     `&redirect_uri=${encodeURIComponent(process.env.INSTAGRAM_CALLBACK_URL)}` +
     `&state=${state}` +
-    `&scope=instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management` +
+    `&scope=instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement` +
     `&auth_type=rerequest`;
 
   return res.status(200).json({ success: true, authURL });

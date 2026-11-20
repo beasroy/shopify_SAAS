@@ -2,10 +2,12 @@ import mongoose from "mongoose";
 import Brand from "../models/Brands.js";
 import User from "../models/User.js";
 import AdMetrics from "../models/AdMetrics.js";
+import InstagramMetrics from "../models/InstagramMetrics.js";
 import axios from "axios";
 
 import { metricsQueue } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
+import { backfillInstagramMetrics } from "../Report/InstagramReport.js";
 
 const fetchShopifyPrimaryDomain = async (shopName, accessToken) => {
   if (!shopName || !accessToken) return null;
@@ -268,12 +270,19 @@ export const updateBrands = async (req, res) => {
     }
 
     // Check for new Instagram accounts
+    let shouldBackfillInstagram = false;
     if (igAccountIds) {
       const existingIgAccounts = currentBrand.igAccountIds || [];
+      const newIgAccounts = igAccountIds.filter(
+        (account) => !existingIgAccounts.includes(account),
+      );
       const mergedIgAccounts = [
         ...new Set([...existingIgAccounts, ...igAccountIds]),
       ];
       updateData.igAccountIds = mergedIgAccounts;
+      shouldBackfillInstagram =
+        newIgAccounts.length > 0 ||
+        (existingIgAccounts.length === 0 && mergedIgAccounts.length > 0);
     }
 
     // Check for new Google ad accounts
@@ -352,6 +361,31 @@ export const updateBrands = async (req, res) => {
         console.error(
           `Failed to queue metrics calculation for new additions for brand ${brandid}:`,
           metricsError,
+        );
+      }
+    }
+
+    // Backfill Instagram organic metrics immediately when IG accounts are
+    // newly connected (or connected with no metrics yet), so dashboard
+    // has data as soon as the connect request completes.
+    if (updatedBrand.igAccountIds?.length > 0 && updatedBrand.igAccessToken) {
+      try {
+        const metricsCount = await InstagramMetrics.countDocuments({
+          brandId: brandid,
+        });
+        if (shouldBackfillInstagram || metricsCount === 0) {
+          console.log(
+            `Instagram metrics backfill starting (awaited) for brand ${brandid}`,
+          );
+          await backfillInstagramMetrics(brandid, 30);
+          console.log(
+            `Instagram metrics backfill completed for brand ${brandid}`,
+          );
+        }
+      } catch (igBackfillError) {
+        console.error(
+          `Instagram backfill failed for brand ${brandid}:`,
+          igBackfillError.message,
         );
       }
     }
@@ -597,12 +631,78 @@ export const deletePlatformIntegration = async (req, res) => {
         }
         break;
 
+      case "instagram": {
+        const currentIgAccounts = brand.igAccountIds || [];
+
+        if (currentIgAccounts.length === 0 && !brand.igAccessToken) {
+          return res
+            .status(404)
+            .json({ error: "Instagram account not found for this brand." });
+        }
+
+        let updatedIgAccounts;
+        if (!accountId) {
+          updatedIgAccounts = [];
+        } else {
+          updatedIgAccounts = currentIgAccounts.filter(
+            (account) => account !== accountId,
+          );
+          if (
+            updatedIgAccounts.length === currentIgAccounts.length &&
+            currentIgAccounts.length > 0
+          ) {
+            return res
+              .status(404)
+              .json({ error: "Instagram account not found for this brand." });
+          }
+        }
+
+        updateData = { igAccountIds: updatedIgAccounts };
+
+        // When no Instagram accounts remain: revoke app access + clear token + wipe metrics
+        if (updatedIgAccounts.length === 0) {
+          if (brand.igAccessToken) {
+            try {
+              await axios.delete(
+                "https://graph.facebook.com/v22.0/me/permissions",
+                {
+                  params: { access_token: brand.igAccessToken },
+                },
+              );
+            } catch (revokeError) {
+              console.warn(
+                "Failed to revoke Instagram permissions (continuing):",
+                revokeError?.response?.data || revokeError.message,
+              );
+            }
+          }
+          unsetData.igAccessToken = 1;
+          try {
+            await InstagramMetrics.deleteMany({ brandId: brand._id });
+          } catch (metricsError) {
+            console.warn(
+              "Failed to delete Instagram metrics on disconnect:",
+              metricsError.message,
+            );
+          }
+        }
+
+        deletedInfo = {
+          platform: "instagram",
+          accountId: accountId || null,
+          disconnectedAll: !accountId,
+          removedCount: currentIgAccounts.length - updatedIgAccounts.length,
+          tokenCleared: updatedIgAccounts.length === 0,
+        };
+        break;
+      }
+
       default:
         return res
           .status(400)
           .json({
             error:
-              "Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics",
+              "Invalid platform. Supported platforms: shopify, facebook, google ads, google analytics, instagram",
           });
     }
 

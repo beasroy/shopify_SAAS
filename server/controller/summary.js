@@ -2206,6 +2206,33 @@ export const getInstagramSummary = async (req, res) => {
       return res.status(200).json({ success: true, connected: false });
     }
 
+    // If IG is connected but metrics are missing/empty, backfill before reading
+    // so the dashboard doesn't show all zeros after a fresh connect.
+    try {
+      if (brand.igAccessToken && brand.igAccountIds?.length > 0) {
+        const hasMeaningfulData = await InstagramMetrics.exists({
+          brandId,
+          $or: [
+            { followers: { $gt: 0 } },
+            { reach: { $gt: 0 } },
+            { views: { $gt: 0 } },
+            { engagements: { $gt: 0 } },
+            { profile_views: { $gt: 0 } },
+          ],
+        });
+        if (!hasMeaningfulData) {
+          const { backfillInstagramMetrics } = await import("../Report/InstagramReport.js");
+          console.log(`Empty Instagram metrics for brand ${brandId}; running immediate backfill`);
+          await backfillInstagramMetrics(brandId, 30);
+        }
+      }
+    } catch (backfillError) {
+      console.warn(
+        `Instagram initial backfill skipped for brand ${brandId}:`,
+        backfillError.message,
+      );
+    }
+
     // Calculate date ranges
     const today = new Date();
     const yesterday = new Date(today);

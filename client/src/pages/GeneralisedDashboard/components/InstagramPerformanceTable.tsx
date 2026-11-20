@@ -99,7 +99,9 @@ export default function InstagramPerformanceTable({
     return value >= 1000 ? value.toLocaleString() : value;
   };
 
-  const kpis = periodData ? periodData[activePeriod] : null;
+  const kpis = periodData
+    ? periodData[activePeriod] || periodData.last30Days || null
+    : null;
 
   return (
     <div className="bg-white border rounded-lg shadow-sm mt-8 overflow-hidden animate-fade-in">

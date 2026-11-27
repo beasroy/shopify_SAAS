@@ -464,7 +464,7 @@ router.post('/monthly', async (req, res) => {
   }
 });
 
-// Queue a weekly-style update/backfill (last 2 years) without blocking the request.
+// Queue a weekly-style update/backfill (last 3 years / 36 months) without blocking the request.
 // - Admin: can queue for all brands
 // - Non-admin: queues for brands assigned to the user
 router.post('/weekly/update', verifyAuth, async (req, res) => {
@@ -502,7 +502,7 @@ router.post('/weekly/update', verifyAuth, async (req, res) => {
         }));
 
         // Enqueue one job per brand.
-        // Date range is intentionally omitted so the worker uses default: last 2 years → yesterday.
+        // Date range is intentionally omitted so the worker uses default: last 3 years / 36 months → yesterday.
         const jobs = await Promise.all(
             brandIds.map(id =>
                 metricsQueue.add('update-metrics', {

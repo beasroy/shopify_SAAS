@@ -57,7 +57,7 @@ export const setupCronJobs = () => {
     }
   }, { timezone: 'UTC' });
 
-  // Weekly backfill/update of last 2 years metrics (Monday 02:00 UTC)
+  // Weekly backfill/update of last 3 years / 36 months metrics (Monday 02:00 UTC)
   // This queues jobs into BullMQ so the API server doesn't do heavy work.
   cron.schedule('0 2 * * 1', async () => {
     console.log('Weekly metrics update enqueue started at:', new Date().toISOString());

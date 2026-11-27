@@ -34,18 +34,18 @@ export const getMarketingInsights = async (req, res) => {
         const query = {};
 
         const today = new Date();
-        const ApproxThreeAgo = new Date(today);
-        ApproxThreeAgo.setMonth(today.getMonth() - 38); // Using 38 for buffer to allow the whole 37th month
-        ApproxThreeAgo.setHours(0, 0, 0, 0);
+        const maxPastDate = new Date(today);
+        maxPastDate.setMonth(today.getMonth() - 36);
+        maxPastDate.setHours(0, 0, 0, 0);
 
         if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
 
-            if (start < ApproxThreeAgo || end < ApproxThreeAgo) {
+            if (start < maxPastDate || end < maxPastDate) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Please select a date range within the last 37 months.'
+                    message: 'Please select a date range within the last 36 months.'
                 });
             }
 
@@ -1058,9 +1058,10 @@ function getDateRanges(filter) {
 // }
 
 export async function fetchMetaAdsData(startDate, endDate, accessToken, adAccountIds) {
+  // Keep Meta live fetches within last 36 months
   const maxPastDate = new Date();
-  maxPastDate.setMonth(maxPastDate.getMonth() - 37);
-  maxPastDate.setDate(maxPastDate.getDate() + 1);
+  maxPastDate.setMonth(maxPastDate.getMonth() - 36);
+  maxPastDate.setHours(0, 0, 0, 0);
 
   let safeStartDate = new Date(startDate);
   if (safeStartDate < maxPastDate) safeStartDate = maxPastDate;

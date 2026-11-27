@@ -338,9 +338,10 @@ export async function fetchMetaAdsData(
   accessToken,
   adAccountIds,
 ) {
+  // Keep Meta live fetches within last 36 months
   const maxPastDate = new Date();
-  maxPastDate.setMonth(maxPastDate.getMonth() - 37);
-  maxPastDate.setDate(maxPastDate.getDate() + 1);
+  maxPastDate.setMonth(maxPastDate.getMonth() - 36);
+  maxPastDate.setHours(0, 0, 0, 0);
 
   let safeStartDate = new Date(startDate);
   if (safeStartDate < maxPastDate) safeStartDate = maxPastDate;

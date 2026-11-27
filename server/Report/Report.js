@@ -768,13 +768,13 @@ async function fetchShopifyProducts(shopName, accessToken) {
   yesterday.setDate(now.getDate() - 1);
   yesterday.setHours(23, 59, 59, 999);
 
-  // 2 Years Ago (Start Date)
-  const twoYearsAgo = new Date(now);
-  twoYearsAgo.setFullYear(now.getFullYear() - 2);
-  twoYearsAgo.setHours(0, 0, 0, 0);
+  // 3 Years / 36 months Ago (Start Date)
+  const threeYearsAgo = new Date(now);
+  threeYearsAgo.setMonth(now.getMonth() - 36);
+  threeYearsAgo.setHours(0, 0, 0, 0);
 
   // Convert to ISO strings for Shopify
-  const startDate = twoYearsAgo.toISOString();
+  const startDate = threeYearsAgo.toISOString();
   const endDate = yesterday.toISOString();
   // const { startDate, endDate } = getYesterdayRangeUTC();
 

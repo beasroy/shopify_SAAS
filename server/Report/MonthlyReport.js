@@ -25,14 +25,36 @@ const publishNotification = (channel, data) => {
     }
 };
 
+// Meta Insights rejects time ranges older than 37 months from "now" (error #3018).
+const getMetaInsightsEarliestDate = () =>
+    moment().subtract(37, 'months').add(1, 'day').startOf('day');
+
 export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
     try {
         // Validate and convert input dates to Moment objects
-        const start = moment(startDate);
+        let start = moment(startDate);
         const end = moment(endDate);
 
         if (!start.isValid() || !end.isValid()) {
             throw new Error('Invalid date format provided');
+        }
+
+        // Clamp to Meta's 37-month lookback window
+        const earliestAllowed = getMetaInsightsEarliestDate();
+        if (start.isBefore(earliestAllowed)) {
+            console.warn(
+                `FB insights start ${start.format('YYYY-MM-DD')} is older than Meta's 37-month limit; clamping to ${earliestAllowed.format('YYYY-MM-DD')}`
+            );
+            start = earliestAllowed.clone();
+        }
+
+        if (start.isAfter(end)) {
+            console.warn('FB insights range is entirely outside Meta lookback; skipping.');
+            return {
+                success: true,
+                message: 'No Facebook Ads data within Meta lookback window.',
+                data: []
+            };
         }
 
         const brand = await Brand.findById(brandId).lean();
@@ -133,6 +155,20 @@ export const monthlyFetchFBAdReport = async (brandId, startDate, endDate) => {
                                     throw parseError;
                                 }
                             } else {
+                                let errorBody = res.body;
+                                try {
+                                    errorBody = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+                                } catch (_) { /* keep raw body */ }
+
+                                const errorCode = errorBody?.error?.code;
+                                // #3018 = date beyond Meta's 37-month lookback — skip day, don't fail whole job
+                                if (errorCode === 3018) {
+                                    console.warn(
+                                        `Skipping ${accountId} on ${formattedDate}: beyond Meta 37-month lookback`
+                                    );
+                                    return; // forEach: skip this response, don't fail the batch
+                                }
+
                                 console.error(`Error for account ${accountId} on ${formattedDate}:`, res.body);
                                 throw new Error(`Facebook API error: ${res.body}`);
                             }
@@ -782,14 +818,14 @@ export const calculateMetricsForSingleBrand = async (brandId, userId) => {
         }
         console.log('User found:', user.email);
 
-        // Calculate dates for the last two years
+        // Last 3 years / 36 months of data (up to yesterday) — within Meta's 37-month limit
         const endDate = new Date();
         endDate.setDate(endDate.getDate() - 1); // Set to yesterday
         endDate.setHours(23, 59, 59, 999);
 
         const startDate = new Date(endDate);
-        startDate.setMonth(endDate.getMonth() - 37);
-        startDate.setDate(1); // Set to first day of the month
+        startDate.setMonth(startDate.getMonth() - 36);
+        startDate.setDate(1); // first day of that month
         startDate.setHours(0, 0, 0, 0);
 
         console.log(`Date range for ad metrics: ${startDate.toISOString()} to ${endDate.toISOString()}`);
@@ -872,19 +908,28 @@ export const updateMetricsForSingleBrand = async (brandId, userId, startDateInpu
             return errorResult;
         }
 
-        // Default: last two years up to yesterday, aligned to month start.
+        // Default: last 3 years / 36 months up to yesterday, aligned to month start.
         const endDate = endDateInput ? new Date(endDateInput) : new Date();
         if (!endDateInput) {
             endDate.setDate(endDate.getDate() - 1);
         }
         endDate.setHours(23, 59, 59, 999);
 
-        const startDate = startDateInput ? new Date(startDateInput) : new Date(endDate);
+        let startDate = startDateInput ? new Date(startDateInput) : new Date(endDate);
         if (!startDateInput) {
-            startDate.setMonth(endDate.getMonth() - 37);
+            startDate.setMonth(startDate.getMonth() - 36);
             startDate.setDate(1);
         }
         startDate.setHours(0, 0, 0, 0);
+
+        // Clamp any explicit startDate to Meta's 37-month lookback window
+        const earliestAllowed = getMetaInsightsEarliestDate().toDate();
+        if (startDate < earliestAllowed) {
+            console.warn(
+                `Requested start ${startDate.toISOString()} is beyond Meta lookback; clamping to ${earliestAllowed.toISOString()}`
+            );
+            startDate = earliestAllowed;
+        }
 
         console.log(`UPDATE date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
@@ -944,15 +989,15 @@ export const calculateMetricsForNewAdditions = async (brandId, userId, newAdditi
             return { success: true, message: 'No new additions to process' };
         }
 
-        // Calculate date range based on brand creation date
+        // Last 3 years / 36 months of data (up to yesterday)
         const brandCreatedAt = new Date(brand.createdAt);
         const endDate = new Date();
         endDate.setDate(endDate.getDate() - 1); // Set to yesterday
         endDate.setHours(23, 59, 59, 999);
 
-        // Start date is 37 months before brand creation date
-        const startDate = new Date(brandCreatedAt);
-        startDate.setMonth(startDate.getMonth() - 37);
+        const startDate = new Date(endDate);
+        startDate.setMonth(startDate.getMonth() - 36);
+        startDate.setDate(1);
         startDate.setHours(0, 0, 0, 0);
 
         console.log(`Brand creation date: ${brandCreatedAt.toISOString()}`);
